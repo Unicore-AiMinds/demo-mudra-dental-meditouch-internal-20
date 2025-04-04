@@ -209,73 +209,73 @@ const Appointments = () => {
                     <TabsTrigger value="weekly">Weekly</TabsTrigger>
                     <TabsTrigger value="monthly">Monthly</TabsTrigger>
                   </TabsList>
+                
+                  <TabsContent value="daily" className="m-0">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-lg font-medium mb-3">Morning</h3>
+                        <div className="space-y-1">
+                          {appointments
+                            .filter(a => {
+                              const hour = parseInt(a.time.split(':')[0]);
+                              const isPM = a.time.includes('PM');
+                              return (!isPM || hour === 12);
+                            })
+                            .map((appointment, i) => (
+                              <AppointmentCard
+                                key={i}
+                                time={appointment.time}
+                                patient={appointment.patient}
+                                service={appointment.service}
+                                doctor={isDental ? (appointment as DentalAppointment).doctor : undefined}
+                                status={appointment.status}
+                                secondPatient={(appointment as any).secondPatient}
+                                isDental={isDental}
+                              />
+                            ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-medium mb-3">Afternoon</h3>
+                        <div className="space-y-1">
+                          {appointments
+                            .filter(a => {
+                              const hour = parseInt(a.time.split(':')[0]);
+                              const isPM = a.time.includes('PM');
+                              return (isPM && hour !== 12);
+                            })
+                            .map((appointment, i) => (
+                              <AppointmentCard
+                                key={i}
+                                time={appointment.time}
+                                patient={appointment.patient}
+                                service={appointment.service}
+                                doctor={isDental ? (appointment as DentalAppointment).doctor : undefined}
+                                status={appointment.status}
+                                secondPatient={(appointment as any).secondPatient}
+                                isDental={isDental}
+                              />
+                            ))}
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="weekly" className="m-0">
+                    <div className="text-center p-8 border-2 border-dashed rounded-lg">
+                      <h3 className="text-lg font-medium mb-2">Weekly View</h3>
+                      <p className="text-muted-foreground">The weekly calendar view would display here</p>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="monthly" className="m-0">
+                    <div className="text-center p-8 border-2 border-dashed rounded-lg">
+                      <h3 className="text-lg font-medium mb-2">Monthly View</h3>
+                      <p className="text-muted-foreground">The monthly calendar view would display here</p>
+                    </div>
+                  </TabsContent>
                 </Tabs>
               </div>
-
-              <TabsContent value="daily" className="m-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="text-lg font-medium mb-3">Morning</h3>
-                    <div className="space-y-1">
-                      {appointments
-                        .filter(a => {
-                          const hour = parseInt(a.time.split(':')[0]);
-                          const isPM = a.time.includes('PM');
-                          return (!isPM || hour === 12);
-                        })
-                        .map((appointment, i) => (
-                          <AppointmentCard
-                            key={i}
-                            time={appointment.time}
-                            patient={appointment.patient}
-                            service={appointment.service}
-                            doctor={isDental ? (appointment as DentalAppointment).doctor : undefined}
-                            status={appointment.status}
-                            secondPatient={(appointment as any).secondPatient}
-                            isDental={isDental}
-                          />
-                        ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium mb-3">Afternoon</h3>
-                    <div className="space-y-1">
-                      {appointments
-                        .filter(a => {
-                          const hour = parseInt(a.time.split(':')[0]);
-                          const isPM = a.time.includes('PM');
-                          return (isPM && hour !== 12);
-                        })
-                        .map((appointment, i) => (
-                          <AppointmentCard
-                            key={i}
-                            time={appointment.time}
-                            patient={appointment.patient}
-                            service={appointment.service}
-                            doctor={isDental ? (appointment as DentalAppointment).doctor : undefined}
-                            status={appointment.status}
-                            secondPatient={(appointment as any).secondPatient}
-                            isDental={isDental}
-                          />
-                        ))}
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="weekly" className="m-0">
-                <div className="text-center p-8 border-2 border-dashed rounded-lg">
-                  <h3 className="text-lg font-medium mb-2">Weekly View</h3>
-                  <p className="text-muted-foreground">The weekly calendar view would display here</p>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="monthly" className="m-0">
-                <div className="text-center p-8 border-2 border-dashed rounded-lg">
-                  <h3 className="text-lg font-medium mb-2">Monthly View</h3>
-                  <p className="text-muted-foreground">The monthly calendar view would display here</p>
-                </div>
-              </TabsContent>
             </CardContent>
           </Card>
         </div>
