@@ -108,9 +108,9 @@ const AppSidebar = () => {
       <SidebarHeader className="flex flex-col items-center justify-center py-6">
         <div className="mb-4 w-full flex justify-center">
           {activeClinic === 'dental' ? (
-            <DentalMetrixLogo className="h-10" />
+            <DentalMetrixLogo />
           ) : (
-            <MeditouchLogo className="h-10" />
+            <MeditouchLogo />
           )}
         </div>
       </SidebarHeader>

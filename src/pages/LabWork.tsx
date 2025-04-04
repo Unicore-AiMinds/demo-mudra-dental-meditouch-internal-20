@@ -26,7 +26,8 @@ import {
   Search, 
   AlertCircle,
   CheckCircle2,
-  Clock
+  Clock,
+  Microscope
 } from 'lucide-react';
 import {
   Dialog,
@@ -123,15 +124,23 @@ const demoLabJobs: LabJob[] = [
   }
 ];
 
+type StatusConfig = {
+  [key in LabJob['status']]: {
+    label: string;
+    variant: "outline" | "secondary" | "default" | "destructive";
+    className?: string;
+  }
+};
+
 const getStatusBadge = (status: LabJob['status']) => {
-  const statusConfig = {
-    pending: { label: "Pending", variant: "outline" as const },
-    sent: { label: "Sent to Lab", variant: "secondary" as const },
-    "in-progress": { label: "In Progress", variant: "default" as const, className: "bg-blue-500" },
-    received: { label: "Received (QC)", variant: "default" as const, className: "bg-purple-500" },
-    ready: { label: "Ready", variant: "default" as const, className: "bg-green-500" },
-    delivered: { label: "Delivered", variant: "default" as const, className: "bg-gray-500 opacity-70" },
-    issue: { label: "Issue", variant: "destructive" as const }
+  const statusConfig: StatusConfig = {
+    pending: { label: "Pending", variant: "outline" },
+    sent: { label: "Sent to Lab", variant: "secondary" },
+    "in-progress": { label: "In Progress", variant: "default", className: "bg-blue-500" },
+    received: { label: "Received (QC)", variant: "default", className: "bg-purple-500" },
+    ready: { label: "Ready", variant: "default", className: "bg-green-500" },
+    delivered: { label: "Delivered", variant: "default", className: "bg-gray-500 opacity-70" },
+    issue: { label: "Issue", variant: "destructive" }
   };
 
   const config = statusConfig[status];

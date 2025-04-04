@@ -74,8 +74,8 @@ const AppHeader = () => {
 
         <div className="ml-2 md:hidden">
           {activeClinic === 'dental' ? 
-            <DentalMetrixLogo className="h-8" /> : 
-            <MeditouchLogo className="h-8" />
+            <DentalMetrixLogo /> : 
+            <MeditouchLogo />
           }
         </div>
 
