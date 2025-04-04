@@ -1,7 +1,6 @@
-
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Calendar, Users, PackageOpen, Flask, Clock } from 'lucide-react';
+import { Calendar, Users, PackageOpen, Microscope, Clock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +10,6 @@ const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  // We would normally fetch this data from an API
   const stats = {
     dental: {
       appointments: 12,
@@ -93,7 +91,7 @@ const Dashboard = () => {
               <Card className="card-shadow card-hover">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Lab Work Pending</CardTitle>
-                  <Flask className="h-4 w-4 text-dental-primary" />
+                  <Microscope className="h-4 w-4 text-dental-primary" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stats.dental.labWorkPending}</div>

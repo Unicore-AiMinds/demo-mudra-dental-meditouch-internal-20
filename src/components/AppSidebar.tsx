@@ -8,7 +8,7 @@ import {
   LayoutDashboard,
   Calendar,
   PackageOpen,
-  Flask,
+  Microscope,
   User,
   FileText,
   Settings,
@@ -55,7 +55,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Lab Work',
-    icon: Flask,
+    icon: Microscope,
     path: '/lab',
     clinics: ['dental'],
     roles: ['admin', 'doctor', 'receptionist'],

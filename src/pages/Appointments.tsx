@@ -68,22 +68,39 @@ const Appointments = () => {
   const [doctor, setDoctor] = useState<string | undefined>(undefined);
   const [popoverOpen, setPopoverOpen] = useState(false);
 
-  // Mock appointments - in a real app, these would come from an API
-  const dentalAppointments = [
-    { time: '9:00 AM', patient: 'Aarav Sharma', service: 'Dental Checkup', doctor: 'Dr. Khanna', status: 'confirmed' as const },
-    { time: '9:15 AM', patient: 'Priya Patel', service: 'Root Canal', doctor: 'Dr. Khanna', status: 'confirmed' as const },
-    { time: '10:30 AM', patient: 'Arjun Singh', service: 'Teeth Cleaning', doctor: 'Dr. Khanna', status: 'confirmed' as const, secondPatient: 'Neha Singh' },
-    { time: '11:45 AM', patient: 'Rohan Gupta', service: 'Crown Fitting', doctor: 'Dr. Khanna', status: 'arrived' as const },
-    { time: '2:00 PM', patient: 'Ishaan Desai', service: 'Dental Filling', doctor: 'Dr. Khanna', status: 'cancelled' as const },
-    { time: '3:30 PM', patient: 'Sanjay Patel', service: 'Denture Adjustment', doctor: 'Dr. Khanna', status: 'confirmed' as const },
+  // Update the type definition for the appointments
+  type DentalAppointment = {
+    time: string;
+    patient: string;
+    service: string;
+    doctor: string;
+    status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
+    secondPatient?: string;
+  };
+  
+  type MeditouchAppointment = {
+    time: string;
+    patient: string;
+    service: string;
+    status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
+  };
+
+  // Mock appointments with proper types
+  const dentalAppointments: DentalAppointment[] = [
+    { time: '9:00 AM', patient: 'Aarav Sharma', service: 'Dental Checkup', doctor: 'Dr. Khanna', status: 'confirmed' },
+    { time: '9:15 AM', patient: 'Priya Patel', service: 'Root Canal', doctor: 'Dr. Khanna', status: 'confirmed' },
+    { time: '10:30 AM', patient: 'Arjun Singh', service: 'Teeth Cleaning', doctor: 'Dr. Khanna', status: 'confirmed', secondPatient: 'Neha Singh' },
+    { time: '11:45 AM', patient: 'Rohan Gupta', service: 'Crown Fitting', doctor: 'Dr. Khanna', status: 'arrived' },
+    { time: '2:00 PM', patient: 'Ishaan Desai', service: 'Dental Filling', doctor: 'Dr. Khanna', status: 'cancelled' },
+    { time: '3:30 PM', patient: 'Sanjay Patel', service: 'Denture Adjustment', doctor: 'Dr. Khanna', status: 'confirmed' },
   ];
 
-  const meditouchAppointments = [
-    { time: '9:15 AM', patient: 'Meera Joshi', service: 'Skin Consultation', status: 'confirmed' as const },
-    { time: '10:00 AM', patient: 'Ravi Kumar', service: 'Hair Treatment', status: 'arrived' as const },
-    { time: '12:45 PM', patient: 'Vikram Mehta', service: 'Hair Treatment', status: 'confirmed' as const },
-    { time: '2:30 PM', patient: 'Neha Kapoor', service: 'Facial', status: 'cancelled' as const },
-    { time: '3:30 PM', patient: 'Aisha Khan', service: 'Facial', status: 'confirmed' as const },
+  const meditouchAppointments: MeditouchAppointment[] = [
+    { time: '9:15 AM', patient: 'Meera Joshi', service: 'Skin Consultation', status: 'confirmed' },
+    { time: '10:00 AM', patient: 'Ravi Kumar', service: 'Hair Treatment', status: 'arrived' },
+    { time: '12:45 PM', patient: 'Vikram Mehta', service: 'Hair Treatment', status: 'confirmed' },
+    { time: '2:30 PM', patient: 'Neha Kapoor', service: 'Facial', status: 'cancelled' },
+    { time: '3:30 PM', patient: 'Aisha Khan', service: 'Facial', status: 'confirmed' },
   ];
 
   const appointments = isDental ? dentalAppointments : meditouchAppointments;
