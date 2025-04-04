@@ -229,7 +229,7 @@ const Appointments = () => {
                             time={appointment.time}
                             patient={appointment.patient}
                             service={appointment.service}
-                            doctor={appointment.doctor}
+                            doctor={isDental ? (appointment as DentalAppointment).doctor : undefined}
                             status={appointment.status}
                             secondPatient={(appointment as any).secondPatient}
                             isDental={isDental}
@@ -252,7 +252,7 @@ const Appointments = () => {
                             time={appointment.time}
                             patient={appointment.patient}
                             service={appointment.service}
-                            doctor={appointment.doctor}
+                            doctor={isDental ? (appointment as DentalAppointment).doctor : undefined}
                             status={appointment.status}
                             secondPatient={(appointment as any).secondPatient}
                             isDental={isDental}
