@@ -1,6 +1,7 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import AppHeader from './AppHeader';
 import AppSidebar from './AppSidebar';
 import { useClinic } from '@/contexts/ClinicContext';
@@ -21,17 +22,19 @@ const AppLayout = () => {
   }, [location.pathname, activeClinic]);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <AppHeader />
-      <div className="flex flex-1">
+    <SidebarProvider defaultOpen={true}>
+      <div className="min-h-screen flex w-full overflow-hidden">
         <AppSidebar />
-        <main className="flex-1 bg-gray-50 overflow-auto">
-          <div className="container mx-auto p-6">
-            <Outlet />
-          </div>
-        </main>
+        <div className="flex flex-1 flex-col min-h-screen">
+          <AppHeader />
+          <main className="flex-1 bg-gray-50 overflow-auto">
+            <div className="container mx-auto p-6">
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 

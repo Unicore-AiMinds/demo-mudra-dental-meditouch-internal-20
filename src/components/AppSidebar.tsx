@@ -1,29 +1,35 @@
 
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useClinic } from '@/contexts/ClinicContext';
-import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar
+} from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
   Calendar,
   PackageOpen,
   Microscope,
-  User,
+  Users,
   FileText,
   Settings,
   AlertCircle,
-  ChevronLeft,
-  ChevronRight
+  LogOut
 } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { DentalMetrixLogo, MeditouchLogo } from '@/assets/logos';
 
 // Type for navigation items
 interface NavItem {
@@ -31,7 +37,7 @@ interface NavItem {
   icon: React.ElementType;
   path: string;
   clinics?: ('dental' | 'meditouch')[];
-  roles?: UserRole[];
+  roles?: string[];
 }
 
 // Navigation items
@@ -62,7 +68,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Patients',
-    icon: User,
+    icon: Users,
     path: '/patients',
   },
   {
@@ -85,106 +91,67 @@ const navItems: NavItem[] = [
   },
 ];
 
-// Navigation Link component
-const NavItemLink = ({
-  collapsed,
-  item,
-}: {
-  collapsed: boolean;
-  item: NavItem;
-}) => {
-  const { activeClinic } = useClinic();
-  const { user } = useAuth();
-
-  // Check if this item should be visible based on clinic and role
-  const isVisible = 
-    (!item.clinics || item.clinics.includes(activeClinic)) && 
-    (!item.roles || (user && item.roles.includes(user.role)));
-
-  if (!isVisible) return null;
-
-  // Determine the common styles
-  const baseClasses = "flex items-center py-2 px-3 rounded-md transition-colors group";
-  const iconClasses = "h-5 w-5";
-  
-  // When collapsed, show tooltips
-  if (collapsed) {
-    return (
-      <TooltipProvider>
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <NavLink
-              to={item.path}
-              className={({ isActive }) =>
-                cn(
-                  baseClasses,
-                  isActive 
-                    ? `${activeClinic === 'dental' ? 'bg-dental-light text-dental-primary' : 'bg-meditouch-light text-meditouch-primary'}` 
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )
-              }
-            >
-              <item.icon className={iconClasses} />
-            </NavLink>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="bg-foreground text-background border-none">
-            {item.title}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  }
-
-  // When expanded, show normal navigation items
-  return (
-    <NavLink
-      to={item.path}
-      className={({ isActive }) =>
-        cn(
-          baseClasses,
-          isActive
-            ? `${activeClinic === 'dental' ? 'bg-dental-light text-dental-primary' : 'bg-meditouch-light text-meditouch-primary'}`
-            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-        )
-      }
-    >
-      <item.icon className={cn(iconClasses, 'mr-2')} />
-      <span className="font-medium text-sm">{item.title}</span>
-    </NavLink>
-  );
-};
-
 const AppSidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
   const { activeClinic } = useClinic();
+  const { user, logout } = useAuth();
+  const { state, toggleSidebar } = useSidebar();
+
+  // Check if a nav item should be visible based on clinic and role
+  const isVisible = (item: NavItem) => {
+    return (!item.clinics || item.clinics.includes(activeClinic)) && 
+      (!item.roles || (user && item.roles.includes(user.role)));
+  };
 
   return (
-    <div className={`${collapsed ? 'w-16' : 'w-64'} h-screen flex flex-col border-r transition-all duration-200`}>
-      {/* Nav items */}
-      <ScrollArea className="flex-1 py-4 px-2">
-        <nav className="space-y-1">
-          {navItems.map((item) => (
-            <NavItemLink key={item.title} collapsed={collapsed} item={item} />
-          ))}
-        </nav>
-      </ScrollArea>
-
-      {/* Toggle collapse button */}
-      <div className="p-2 border-t">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => setCollapsed(!collapsed)} 
-          className="w-full h-8 justify-center"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
+    <Sidebar variant="floating">
+      <SidebarHeader className="flex flex-col items-center justify-center py-6">
+        <div className="mb-4 w-full flex justify-center">
+          {activeClinic === 'dental' ? (
+            <DentalMetrixLogo className="h-10" />
           ) : (
-            <ChevronLeft className="h-4 w-4" />
+            <MeditouchLogo className="h-10" />
           )}
+        </div>
+      </SidebarHeader>
+      
+      <SidebarContent>
+        <SidebarMenu>
+          {navItems.map((item) => 
+            isVisible(item) && (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton 
+                  asChild 
+                  isActive={location.pathname === item.path}
+                  tooltip={item.title}
+                >
+                  <Link to={item.path}>
+                    <item.icon className={cn(
+                      "transition-colors",
+                      activeClinic === 'dental' 
+                        ? "group-hover:text-dental-primary" 
+                        : "group-hover:text-meditouch-primary"
+                    )} />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )
+          )}
+        </SidebarMenu>
+      </SidebarContent>
+      
+      <SidebarFooter className="p-4">
+        <Button 
+          variant="outline" 
+          className="w-full flex items-center justify-center gap-2"
+          onClick={() => logout()}
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Sign Out</span>
         </Button>
-      </div>
-    </div>
+      </SidebarFooter>
+    </Sidebar>
   );
 };
 

@@ -12,6 +12,11 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Appointments from "@/pages/Appointments";
 import StockTracker from "@/pages/StockTracker";
+import LabWork from "@/pages/LabWork";
+import Patients from "@/pages/Patients";
+import Reports from "@/pages/Reports";
+import AuditLog from "@/pages/AuditLog";
+import Settings from "@/pages/Settings";
 import Unauthorized from "@/pages/Unauthorized";
 import NotFound from "@/pages/NotFound";
 
@@ -47,15 +52,20 @@ const App = () => (
                     </ProtectedRoute>
                   } 
                 />
-                
-                {/* Placeholder routes for future implementation */}
-                <Route path="/lab" element={<div className="p-8 text-center">Lab Work Tracker - Coming soon</div>} />
-                <Route path="/patients" element={<div className="p-8 text-center">Patients Management - Coming soon</div>} />
+                <Route 
+                  path="/lab" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
+                      <LabWork />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route path="/patients" element={<Patients />} />
                 <Route 
                   path="/reports" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <div className="p-8 text-center">Reports - Coming soon</div>
+                      <Reports />
                     </ProtectedRoute>
                   } 
                 />
@@ -63,7 +73,7 @@ const App = () => (
                   path="/audit" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <div className="p-8 text-center">Audit Log - Coming soon</div>
+                      <AuditLog />
                     </ProtectedRoute>
                   } 
                 />
@@ -71,7 +81,7 @@ const App = () => (
                   path="/settings" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <div className="p-8 text-center">Settings - Coming soon</div>
+                      <Settings />
                     </ProtectedRoute>
                   } 
                 />

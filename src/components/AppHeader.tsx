@@ -5,14 +5,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { DentalMetrixLogo, MeditouchLogo } from '@/assets/logos';
 import ClinicSelector from './ClinicSelector';
+import { useSidebar } from '@/components/ui/sidebar';
 import { 
   Search, 
   PlusCircle, 
   Bell, 
-  ChevronDown, 
+  ChevronLeft,
+  ChevronRight,
   LogOut,
   Settings,
-  User
+  User,
+  Menu
 } from 'lucide-react';
 import { 
   DropdownMenu,
@@ -33,6 +36,7 @@ const AppHeader = () => {
   const { activeClinic } = useClinic();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { toggleSidebar, state } = useSidebar();
 
   const getInitials = (name: string) => {
     return name
@@ -44,20 +48,46 @@ const AppHeader = () => {
 
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center px-6">
-        <div className="mr-6">
-          {activeClinic === 'dental' ? <DentalMetrixLogo /> : <MeditouchLogo />}
+      <div className="flex h-16 items-center px-4 md:px-6">
+        <Button 
+          variant="ghost" 
+          size="icon"
+          className="mr-2 md:hidden"
+          onClick={toggleSidebar}
+        >
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle Menu</span>
+        </Button>
+
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={toggleSidebar}
+          className="hidden md:flex"
+        >
+          {state === "expanded" ? (
+            <ChevronLeft className="h-5 w-5" />
+          ) : (
+            <ChevronRight className="h-5 w-5" />
+          )}
+        </Button>
+
+        <div className="ml-2 md:hidden">
+          {activeClinic === 'dental' ? 
+            <DentalMetrixLogo className="h-8" /> : 
+            <MeditouchLogo className="h-8" />
+          }
         </div>
 
-        <div className="lg:hidden flex-1">
+        <div className="lg:hidden flex-1 ml-4">
           <ClinicSelector variant="tabs" />
         </div>
 
-        <div className="hidden lg:flex lg:flex-1">
+        <div className="hidden lg:flex lg:flex-1 ml-4">
           <ClinicSelector />
         </div>
 
-        <div className="ml-auto flex items-center space-x-4">
+        <div className="ml-auto flex items-center gap-2 md:gap-4">
           {/* Global Patient Search */}
           <>
             <Button 
@@ -67,6 +97,7 @@ const AppHeader = () => {
               onClick={() => setIsSearchOpen(true)}
             >
               <Search className="h-5 w-5" />
+              <span className="sr-only">Search</span>
             </Button>
 
             <Sheet open={isSearchOpen} onOpenChange={setIsSearchOpen}>
@@ -92,10 +123,11 @@ const AppHeader = () => {
           <Button 
             className={`${
               activeClinic === 'dental' 
-                ? 'bg-dental-primary hover:bg-dental-dark' 
-                : 'bg-meditouch-primary hover:bg-meditouch-dark'
+                ? 'bg-dental-primary hover:bg-dental-dark text-white' 
+                : 'bg-meditouch-primary hover:bg-meditouch-dark text-white'
             }`}
             onClick={() => navigate('/appointments/new')}
+            size="sm"
           >
             <PlusCircle className="h-4 w-4 mr-2" />
             <span className="hidden md:inline">New Appointment</span>
@@ -105,7 +137,7 @@ const AppHeader = () => {
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="relative">
+              <Button variant="outline" size="icon" className="relative h-9 w-9 rounded-full">
                 <Bell className="h-5 w-5" />
                 <span className="absolute top-0 right-0 flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-coral opacity-75"></span>
@@ -121,12 +153,23 @@ const AppHeader = () => {
                   <div className="p-2 hover:bg-muted rounded-md cursor-pointer">
                     <div className="text-sm font-medium">Appointment Reminder</div>
                     <div className="text-xs text-muted-foreground">Aarav Sharma's appointment is in 30 minutes</div>
+                    <div className="text-xs text-muted-foreground mt-1">10 minutes ago</div>
                   </div>
                   <div className="p-2 hover:bg-muted rounded-md cursor-pointer">
                     <div className="text-sm font-medium">Stock Alert</div>
                     <div className="text-xs text-muted-foreground">Dental composite is running low</div>
+                    <div className="text-xs text-muted-foreground mt-1">1 hour ago</div>
+                  </div>
+                  <div className="p-2 hover:bg-muted rounded-md cursor-pointer">
+                    <div className="text-sm font-medium">Lab Work Update</div>
+                    <div className="text-xs text-muted-foreground">Vikram Singh's crown is ready for pickup</div>
+                    <div className="text-xs text-muted-foreground mt-1">2 hours ago</div>
                   </div>
                 </div>
+              </div>
+              <DropdownMenuSeparator />
+              <div className="p-2">
+                <Button variant="ghost" className="w-full text-sm">View all notifications</Button>
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -134,8 +177,8 @@ const AppHeader = () => {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
+              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                <Avatar className="h-9 w-9">
                   <AvatarFallback className={activeClinic === 'dental' ? 'bg-dental-light text-dental-dark' : 'bg-meditouch-light text-meditouch-dark'}>
                     {user?.name ? getInitials(user.name) : 'U'}
                   </AvatarFallback>
@@ -150,7 +193,7 @@ const AppHeader = () => {
                   <User className="mr-2 h-4 w-4" />
                   <span>{user?.name}</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
