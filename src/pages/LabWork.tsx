@@ -242,7 +242,7 @@ const LabWork = () => {
               <SelectValue placeholder="Filter by Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="sent">Sent to Lab</SelectItem>
               <SelectItem value="in-progress">In Progress</SelectItem>
@@ -258,7 +258,7 @@ const LabWork = () => {
               <SelectValue placeholder="Filter by Lab" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Labs</SelectItem>
+              <SelectItem value="all">All Labs</SelectItem>
               {uniqueLabs.map((lab) => (
                 <SelectItem key={lab} value={lab}>{lab}</SelectItem>
               ))}

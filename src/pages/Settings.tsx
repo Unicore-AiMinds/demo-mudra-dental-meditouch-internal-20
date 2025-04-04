@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
@@ -65,7 +64,6 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 
-// Sample data for settings
 const clinicDetails = {
   dental: {
     name: "Dental Metrix Clinic",
@@ -99,7 +97,6 @@ const clinicDetails = {
   }
 };
 
-// Sample doctors for dental clinic
 const dentalDoctors = [
   { id: 1, name: "Dr. Rajan Khanna", specialization: "General Dentistry", email: "rajan.khanna@dentalmetrix.com" },
   { id: 2, name: "Dr. Priya Desai", specialization: "Orthodontics", email: "priya.desai@dentalmetrix.com" },
@@ -107,7 +104,6 @@ const dentalDoctors = [
   { id: 4, name: "Dr. Ananya Sharma", specialization: "Pediatric Dentistry", email: "ananya.sharma@dentalmetrix.com" }
 ];
 
-// Sample services
 const services = {
   dental: [
     { id: 1, name: "General Checkup", duration: 30, price: 500 },
@@ -127,7 +123,6 @@ const services = {
   ]
 };
 
-// Sample dental labs
 const dentalLabs = [
   { id: 1, name: "Precision Dental Lab", contact: "+91 98765 43210", address: "Mumbai", specialization: "Crowns & Bridges" },
   { id: 2, name: "Nova Dental Solutions", contact: "+91 87654 32109", address: "Delhi", specialization: "Dentures" },
@@ -135,7 +130,6 @@ const dentalLabs = [
   { id: 4, name: "Implant Specialists", contact: "+91 65432 10987", address: "Chennai", specialization: "Custom Abutments" }
 ];
 
-// Sample lab work types
 const labWorkTypes = [
   { id: 1, name: "PFM Crown", turnaround: "7-10 days" },
   { id: 2, name: "Ceramic Bridge", turnaround: "8-12 days" },
@@ -145,7 +139,6 @@ const labWorkTypes = [
   { id: 6, name: "Hard Acrylic Splint", turnaround: "3-5 days" }
 ];
 
-// Sample system users
 const systemUsers = [
   { id: 1, name: "Dr. Rajan Khanna", email: "rajan.khanna@mudraclinic.com", role: "admin", status: "active" },
   { id: 2, name: "Lakshmi Menon", email: "lakshmi.menon@mudraclinic.com", role: "receptionist", status: "active" },
@@ -163,7 +156,6 @@ const Settings = () => {
   const [isAddLabWorkTypeDialogOpen, setIsAddLabWorkTypeDialogOpen] = useState(false);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   
-  // Check if the user is an admin
   if (user?.role !== 'admin') {
     return (
       <div className="flex flex-col items-center justify-center h-96">
@@ -179,17 +171,14 @@ const Settings = () => {
     );
   }
 
-  // Get current clinic details
   const currentClinicDetails = activeClinic === 'dental' 
     ? clinicDetails.dental 
     : clinicDetails.meditouch;
   
-  // Get current services
   const currentServices = activeClinic === 'dental' 
     ? services.dental 
     : services.meditouch;
     
-  // Save clinic details
   const handleSaveClinicDetails = () => {
     toast({
       title: "Settings Updated",
@@ -217,7 +206,6 @@ const Settings = () => {
           <TabsTrigger value="users">User Management</TabsTrigger>
         </TabsList>
         
-        {/* Clinic Details Tab */}
         <TabsContent value="clinic" className="space-y-6">
           <Card>
             <CardHeader>
@@ -230,7 +218,6 @@ const Settings = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Basic Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Basic Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -266,7 +253,6 @@ const Settings = () => {
                 </div>
               </div>
               
-              {/* Operating Hours */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Operating Hours</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -331,7 +317,6 @@ const Settings = () => {
           </Card>
         </TabsContent>
         
-        {/* Doctors Tab (Dental Only) */}
         {activeClinic === 'dental' && (
           <TabsContent value="doctors" className="space-y-6">
             <Card>
@@ -382,7 +367,6 @@ const Settings = () => {
               </CardContent>
             </Card>
             
-            {/* Add Doctor Dialog */}
             <Dialog open={isAddDoctorDialogOpen} onOpenChange={setIsAddDoctorDialogOpen}>
               <DialogContent>
                 <DialogHeader>
@@ -432,7 +416,6 @@ const Settings = () => {
           </TabsContent>
         )}
         
-        {/* Services Tab */}
         <TabsContent value="services" className="space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -482,7 +465,6 @@ const Settings = () => {
             </CardContent>
           </Card>
           
-          {/* Add Service Dialog */}
           <Dialog open={isAddServiceDialogOpen} onOpenChange={setIsAddServiceDialogOpen}>
             <DialogContent>
               <DialogHeader>
@@ -532,7 +514,6 @@ const Settings = () => {
           </Dialog>
         </TabsContent>
         
-        {/* Labs Tab (Dental Only) */}
         {activeClinic === 'dental' && (
           <TabsContent value="labs" className="space-y-6">
             <Card>
@@ -585,7 +566,6 @@ const Settings = () => {
               </CardContent>
             </Card>
             
-            {/* Add Lab Dialog */}
             <Dialog open={isAddLabDialogOpen} onOpenChange={setIsAddLabDialogOpen}>
               <DialogContent>
                 <DialogHeader>
@@ -635,7 +615,6 @@ const Settings = () => {
           </TabsContent>
         )}
         
-        {/* Lab Work Types Tab (Dental Only) */}
         {activeClinic === 'dental' && (
           <TabsContent value="labwork" className="space-y-6">
             <Card>
@@ -684,7 +663,6 @@ const Settings = () => {
               </CardContent>
             </Card>
             
-            {/* Add Lab Work Type Dialog */}
             <Dialog open={isAddLabWorkTypeDialogOpen} onOpenChange={setIsAddLabWorkTypeDialogOpen}>
               <DialogContent>
                 <DialogHeader>
@@ -730,7 +708,6 @@ const Settings = () => {
           </TabsContent>
         )}
         
-        {/* Notifications Tab */}
         <TabsContent value="notifications" className="space-y-6">
           <Card>
             <CardHeader>
@@ -863,7 +840,6 @@ const Settings = () => {
           </Card>
         </TabsContent>
         
-        {/* User Management Tab */}
         <TabsContent value="users" className="space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -925,7 +901,6 @@ const Settings = () => {
             </CardContent>
           </Card>
           
-          {/* Add User Dialog */}
           <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
             <DialogContent>
               <DialogHeader>

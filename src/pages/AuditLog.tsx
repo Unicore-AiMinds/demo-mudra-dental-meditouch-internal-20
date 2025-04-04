@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -303,7 +302,7 @@ const AuditLog = () => {
               <SelectValue placeholder="Action Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Categories</SelectItem>
+              <SelectItem value="all">All Categories</SelectItem>
               <SelectItem value="auth">Authentication</SelectItem>
               <SelectItem value="appointment">Appointments</SelectItem>
               <SelectItem value="stock">Stock Management</SelectItem>
@@ -319,7 +318,7 @@ const AuditLog = () => {
               <SelectValue placeholder="Filter by User" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Users</SelectItem>
+              <SelectItem value="all">All Users</SelectItem>
               {uniqueUsers.map((user) => (
                 <SelectItem key={user} value={user}>{user}</SelectItem>
               ))}
