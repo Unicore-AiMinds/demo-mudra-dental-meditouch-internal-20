@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { 
@@ -203,6 +204,7 @@ const Patients = () => {
   const [currentTab, setCurrentTab] = useState<string>("all");
   const { toast } = useToast();
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const [patients, setPatients] = useState<Patient[]>(demoPatients);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -247,6 +249,22 @@ const Patients = () => {
       return;
     }
     
+    // Create new patient object
+    const newPatient: Patient = {
+      id: `PT${String(patients.length + 1).padStart(3, '0')}`,
+      name: formData.name,
+      gender: formData.gender as 'male' | 'female' | 'other',
+      age: Number(formData.age),
+      email: formData.email || null,
+      phone: formData.phone,
+      address: formData.address,
+      clinic: formData.clinic as 'dental' | 'meditouch' | 'both',
+      lastVisit: new Date().toISOString().split('T')[0]
+    };
+    
+    // Add new patient to the list
+    setPatients([...patients, newPatient]);
+    
     setIsAddPatientDialogOpen(false);
     
     toast({
@@ -262,7 +280,7 @@ const Patients = () => {
     resetFormData();
   };
   
-  const filteredPatients = demoPatients.filter(patient => {
+  const filteredPatients = patients.filter(patient => {
     if (currentTab === "all") {
       return patient.clinic === activeClinic || patient.clinic === 'both';
     }
