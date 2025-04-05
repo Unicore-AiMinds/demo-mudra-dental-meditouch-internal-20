@@ -1,7 +1,8 @@
+
 import { useState } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, ChevronLeft, ChevronRight, Plus, Search, UserPlus, Edit, X } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Plus, Search, UserPlus, Edit, X, Clock, CalendarRange } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -67,7 +68,17 @@ const doctors = [{
 }];
 
 // Available time slots (15-minute intervals)
-const timeSlots = ['9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM', '10:00 AM', '10:15 AM', '10:30 AM', '10:45 AM', '11:00 AM', '11:15 AM', '11:30 AM', '11:45 AM', '12:00 PM', '12:15 PM', '12:30 PM', '12:45 PM', '2:00 PM', '2:15 PM', '2:30 PM', '2:45 PM', '3:00 PM', '3:15 PM', '3:30 PM', '3:45 PM', '4:00 PM', '4:15 PM', '4:30 PM', '4:45 PM', '5:00 PM', '5:15 PM', '5:30 PM', '5:45 PM'];
+const timeSlots = [
+  '9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM', 
+  '10:00 AM', '10:15 AM', '10:30 AM', '10:45 AM', 
+  '11:00 AM', '11:15 AM', '11:30 AM', '11:45 AM', 
+  '12:00 PM', '12:15 PM', '12:30 PM', '12:45 PM', 
+  '2:00 PM', '2:15 PM', '2:30 PM', '2:45 PM', 
+  '3:00 PM', '3:15 PM', '3:30 PM', '3:45 PM', 
+  '4:00 PM', '4:15 PM', '4:30 PM', '4:45 PM', 
+  '5:00 PM', '5:15 PM', '5:30 PM', '5:45 PM'
+];
+
 const AppointmentCard = ({
   time,
   patient,
@@ -76,7 +87,9 @@ const AppointmentCard = ({
   status,
   secondPatient = null,
   isDental = true,
-  onEdit
+  onEdit,
+  onReschedule,
+  onCancel
 }: {
   time: string;
   patient: string;
@@ -86,18 +99,31 @@ const AppointmentCard = ({
   secondPatient?: string | null;
   isDental?: boolean;
   onEdit: () => void;
+  onReschedule: () => void;
+  onCancel: () => void;
 }) => {
   // Don't display cancelled appointments
   if (status === 'cancelled') {
     return null;
   }
-  return <div className="border rounded-md p-3 mb-2 card-shadow">
-      <div className="flex justify-between items-center">
-        <div className="font-medium text-sm">{time}</div>
-        <Button variant="ghost" size="sm" onClick={onEdit}>
-          <Edit className="h-4 w-4" />
-          <span className="sr-only">Edit</span>
-        </Button>
+  
+  return (
+    <div className="border rounded-md p-3 mb-2 card-shadow">
+      <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center">
+          <Button variant="outline" size="sm" onClick={onReschedule} className="h-7 mr-1">
+            <Clock className="h-3 w-3 mr-1" />
+            Reschedule
+          </Button>
+          <Button variant="outline" size="sm" onClick={onCancel} className="h-7 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600">
+            <X className="h-3 w-3 mr-1" />
+            Cancel
+          </Button>
+        </div>
+        <div className="font-medium text-sm flex items-center">
+          <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
+          {time}
+        </div>
       </div>
       <div className="mt-1">
         <div className="text-sm font-medium">{patient}</div>
@@ -105,9 +131,12 @@ const AppointmentCard = ({
         <div className="text-xs text-muted-foreground">{service}</div>
         {doctor && <div className="text-xs font-medium mt-1 text-dental-primary">{doctor}</div>}
       </div>
-    </div>;
+    </div>
+  );
 };
+
 const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 const Appointments = () => {
   const {
     activeClinic,
@@ -144,6 +173,7 @@ const Appointments = () => {
     status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
     secondPatient?: string;
   };
+  
   type MeditouchAppointment = {
     id: string;
     time: string;
@@ -197,6 +227,7 @@ const Appointments = () => {
     doctor: 'Dr. Desai',
     status: 'confirmed'
   }]);
+  
   const [meditouchAppointments, setMeditouchAppointments] = useState<MeditouchAppointment[]>([{
     id: 'm1',
     time: '9:15 AM',
@@ -228,6 +259,7 @@ const Appointments = () => {
     service: 'Facial',
     status: 'confirmed'
   }]);
+  
   const appointments = isDental ? dentalAppointments : meditouchAppointments;
 
   // Filter appointments
@@ -268,7 +300,53 @@ const Appointments = () => {
   };
 
   // Handle reschedule
-  const handleReschedule = () => {
+  const handleReschedule = (appointment: any) => {
+    setEditingAppointment(appointment);
+    setAppointmentPatient(appointment.patient);
+    setAppointmentService(appointment.service);
+    setAppointmentTime(appointment.time);
+    if (isDental && 'doctor' in appointment) {
+      setAppointmentDoctor(appointment.doctor);
+    }
+    
+    // Navigate to the new appointment page with pre-filled data
+    navigate('/appointments/new', { 
+      state: { 
+        reschedule: true,
+        appointmentId: appointment.id,
+        patient: appointment.patient,
+        service: appointment.service,
+        time: appointment.time,
+        doctor: isDental ? appointment.doctor : undefined
+      } 
+    });
+  };
+
+  // Handle direct reschedule from appointment card
+  const handleDirectReschedule = (appointment: any) => {
+    handleReschedule(appointment);
+  };
+
+  // Handle direct cancel from appointment card
+  const handleDirectCancel = (appointment: any) => {
+    if (isDental) {
+      setDentalAppointments(dentalAppointments.map(app => 
+        app.id === appointment.id ? { ...app, status: 'cancelled' as const } : app
+      ));
+    } else {
+      setMeditouchAppointments(meditouchAppointments.map(app => 
+        app.id === appointment.id ? { ...app, status: 'cancelled' as const } : app
+      ));
+    }
+    
+    toast({
+      title: "Appointment Cancelled",
+      description: `${appointment.patient}'s appointment has been cancelled.`
+    });
+  };
+
+  // Handle reschedule
+  const handleRescheduleSubmit = () => {
     if (editingAppointment) {
       const updatedAppointments = isDental ? dentalAppointments.map(app => app.id === editingAppointment.id ? {
         ...app,
@@ -280,11 +358,13 @@ const Appointments = () => {
         time: appointmentTime,
         service: appointmentService
       } : app);
+      
       if (isDental) {
         setDentalAppointments(updatedAppointments as DentalAppointment[]);
       } else {
         setMeditouchAppointments(updatedAppointments as MeditouchAppointment[]);
       }
+      
       toast({
         title: "Appointment Rescheduled",
         description: `${editingAppointment.patient}'s appointment has been rescheduled to ${appointmentTime}`
@@ -303,11 +383,13 @@ const Appointments = () => {
         ...app,
         status: 'cancelled' as const
       } : app);
+      
       if (isDental) {
         setDentalAppointments(updatedAppointments as DentalAppointment[]);
       } else {
         setMeditouchAppointments(updatedAppointments as MeditouchAppointment[]);
       }
+      
       toast({
         title: "Appointment Cancelled",
         description: `${editingAppointment.patient}'s appointment has been cancelled`
@@ -327,7 +409,9 @@ const Appointments = () => {
       });
       return;
     }
+    
     const newId = `${isDental ? 'd' : 'm'}${Math.floor(Math.random() * 10000)}`;
+    
     if (isDental) {
       const newAppointment: DentalAppointment = {
         id: newId,
@@ -348,6 +432,7 @@ const Appointments = () => {
       };
       setMeditouchAppointments([...meditouchAppointments, newAppointment]);
     }
+    
     toast({
       title: "Appointment Created",
       description: `New appointment for ${appointmentPatient} at ${appointmentTime}`
@@ -364,18 +449,26 @@ const Appointments = () => {
     setAppointmentDoctor("");
   };
 
+  // Go to new appointment page
+  const goToNewAppointment = () => {
+    navigate('/appointments/new');
+  };
+
   // Filter appointments by morning/afternoon
   const morningAppointments = filteredAppointments.filter(a => {
     const hour = parseInt(a.time.split(':')[0]);
     const isPM = a.time.includes('PM');
     return !isPM || hour === 12;
   });
+  
   const afternoonAppointments = filteredAppointments.filter(a => {
     const hour = parseInt(a.time.split(':')[0]);
     const isPM = a.time.includes('PM');
     return isPM && hour !== 12;
   });
-  return <div className="space-y-6">
+  
+  return (
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold tracking-tight">Appointments</h1>
@@ -383,6 +476,17 @@ const Appointments = () => {
             Manage and schedule {isDental ? 'Dental Metrix' : 'Meditouch'} appointments
           </p>
         </div>
+        
+        <Button
+          onClick={goToNewAppointment}
+          className={`${
+            isDental 
+              ? 'bg-dental-primary hover:bg-dental-dark' 
+              : 'bg-meditouch-primary hover:bg-meditouch-dark'
+          }`}
+        >
+          <Plus className="h-4 w-4 mr-2" /> New Appointment
+        </Button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
@@ -409,7 +513,8 @@ const Appointments = () => {
               </div>
               
               {/* Doctor filter (only for dental) */}
-              {isDental && <div className="space-y-2">
+              {isDental && (
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Doctor</label>
                   <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
                     <SelectTrigger>
@@ -417,10 +522,13 @@ const Appointments = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Doctors</SelectItem>
-                      {doctors.map(doctor => <SelectItem key={doctor.id} value={doctor.name}>{doctor.name}</SelectItem>)}
+                      {doctors.map(doctor => (
+                        <SelectItem key={doctor.id} value={doctor.name}>{doctor.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>}
+                </div>
+              )}
               
               {/* Search */}
               <div className="space-y-2">
@@ -442,7 +550,7 @@ const Appointments = () => {
         </div>
 
         <div className="flex-1">
-          <Card>
+          <Card className="w-full">
             <CardContent className="p-4">
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center space-x-2">
@@ -450,25 +558,57 @@ const Appointments = () => {
                   
                 </div>
                 
-                <Tabs defaultValue="daily" value={view} onValueChange={setView}>
+                <Tabs defaultValue="daily" value={view} onValueChange={setView} className="w-full">
                   <TabsList>
                     <TabsTrigger value="daily">Daily</TabsTrigger>
                     <TabsTrigger value="weekly">Weekly</TabsTrigger>
                     <TabsTrigger value="monthly">Monthly</TabsTrigger>
                   </TabsList>
                 
-                  <TabsContent value="daily" className="m-0">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <TabsContent value="daily" className="m-0 w-full">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
                       <div>
                         <h3 className="text-lg font-medium mb-3">Morning</h3>
                         <div className="space-y-1">
-                          {morningAppointments.length > 0 ? morningAppointments.map(appointment => <AppointmentCard key={appointment.id} time={appointment.time} patient={appointment.patient} service={appointment.service} doctor={isDental ? (appointment as DentalAppointment).doctor : undefined} status={appointment.status} secondPatient={(appointment as any).secondPatient} isDental={isDental} onEdit={() => handleEditAppointment(appointment)} />) : <p className="text-sm text-muted-foreground">No morning appointments</p>}
+                          {morningAppointments.length > 0 ? morningAppointments.map(appointment => (
+                            <AppointmentCard 
+                              key={appointment.id} 
+                              time={appointment.time} 
+                              patient={appointment.patient} 
+                              service={appointment.service} 
+                              doctor={isDental ? (appointment as DentalAppointment).doctor : undefined} 
+                              status={appointment.status} 
+                              secondPatient={(appointment as any).secondPatient} 
+                              isDental={isDental} 
+                              onEdit={() => handleEditAppointment(appointment)}
+                              onReschedule={() => handleDirectReschedule(appointment)}
+                              onCancel={() => handleDirectCancel(appointment)}
+                            />
+                          )) : (
+                            <p className="text-sm text-muted-foreground">No morning appointments</p>
+                          )}
                         </div>
                       </div>
                       <div>
                         <h3 className="text-lg font-medium mb-3">Afternoon</h3>
                         <div className="space-y-1">
-                          {afternoonAppointments.length > 0 ? afternoonAppointments.map(appointment => <AppointmentCard key={appointment.id} time={appointment.time} patient={appointment.patient} service={appointment.service} doctor={isDental ? (appointment as DentalAppointment).doctor : undefined} status={appointment.status} secondPatient={(appointment as any).secondPatient} isDental={isDental} onEdit={() => handleEditAppointment(appointment)} />) : <p className="text-sm text-muted-foreground">No afternoon appointments</p>}
+                          {afternoonAppointments.length > 0 ? afternoonAppointments.map(appointment => (
+                            <AppointmentCard 
+                              key={appointment.id} 
+                              time={appointment.time} 
+                              patient={appointment.patient} 
+                              service={appointment.service} 
+                              doctor={isDental ? (appointment as DentalAppointment).doctor : undefined} 
+                              status={appointment.status} 
+                              secondPatient={(appointment as any).secondPatient} 
+                              isDental={isDental} 
+                              onEdit={() => handleEditAppointment(appointment)}
+                              onReschedule={() => handleDirectReschedule(appointment)}
+                              onCancel={() => handleDirectCancel(appointment)}
+                            />
+                          )) : (
+                            <p className="text-sm text-muted-foreground">No afternoon appointments</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -656,13 +796,15 @@ const Appointments = () => {
               <Button variant="outline" onClick={() => setIsEditAppointmentOpen(false)}>
                 Close
               </Button>
-              <Button onClick={handleReschedule} className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}>
+              <Button onClick={handleRescheduleSubmit} className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}>
                 Reschedule
               </Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>;
+    </div>
+  );
 };
+
 export default Appointments;
