@@ -10,6 +10,7 @@ interface ClinicContextType {
   setActiveClinic: (clinic: ClinicType) => void;
   isDental: boolean;
   isMeditouch: boolean;
+  clinicCapacity: number; // Added clinic capacity
 }
 
 // Create the clinic context
@@ -36,12 +37,16 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, []);
 
+  // Get current clinic capacity
+  const clinicCapacity = activeClinic === 'dental' ? 2 : 1;
+
   return (
     <ClinicContext.Provider value={{
       activeClinic,
       setActiveClinic,
       isDental: activeClinic === 'dental',
       isMeditouch: activeClinic === 'meditouch',
+      clinicCapacity,
     }}>
       {children}
     </ClinicContext.Provider>

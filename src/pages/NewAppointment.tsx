@@ -48,7 +48,7 @@ const bookedTimeSlots = {
 };
 
 const NewAppointment = () => {
-  const { activeClinic, isDental } = useClinic();
+  const { activeClinic, isDental, clinicCapacity } = useClinic();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
@@ -74,7 +74,7 @@ const NewAppointment = () => {
   const generateTimeSlots = () => {
     const slots = [];
     const clinicType = isDental ? 'dental' : 'meditouch';
-    const maxPatientsPerSlot = isDental ? 2 : 1;
+    const maxPatientsPerSlot = clinicCapacity;
     
     // Start from 9 AM
     for (let hour = 9; hour <= 17; hour++) {
@@ -159,7 +159,8 @@ const NewAppointment = () => {
         <div>
           <h1 className="text-3xl font-display font-bold tracking-tight">New Appointment</h1>
           <p className="text-muted-foreground">
-            Schedule a new {clinicName} appointment
+            Schedule a new {clinicName} appointment 
+            ({isDental ? "2 patients" : "1 patient"} per time slot)
           </p>
         </div>
       </div>
