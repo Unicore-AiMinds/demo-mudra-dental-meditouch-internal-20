@@ -91,17 +91,18 @@ const doctors = [{
 const timeSlots = ['9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM', '10:00 AM', '10:15 AM', '10:30 AM', '10:45 AM', '11:00 AM', '11:15 AM', '11:30 AM', '11:45 AM', '12:00 PM', '12:15 PM', '12:30 PM', '12:45 PM', '2:00 PM', '2:15 PM', '2:30 PM', '2:45 PM', '3:00 PM', '3:15 PM', '3:30 PM', '3:45 PM', '4:00 PM', '4:15 PM', '4:30 PM', '4:45 PM', '5:00 PM', '5:15 PM', '5:30 PM', '5:45 PM'];
 
 // Group time slots by hour for the timeline display
-const hourlyTimeSlots = useMemo(() => {
-  const grouped = {};
-  timeSlots.forEach(slot => {
-    const hour = slot.split(':')[0] + (slot.includes('PM') && slot.split(':')[0] !== '12' ? ' PM' : slot.includes('PM') ? ' PM' : ' AM');
-    if (!grouped[hour]) {
-      grouped[hour] = [];
-    }
-    grouped[hour].push(slot);
-  });
-  return grouped;
-}, []);
+// Move this inside the component to fix the "Invalid hook call" error
+// const hourlyTimeSlots = useMemo(() => {
+//   const grouped = {};
+//   timeSlots.forEach(slot => {
+//     const hour = slot.split(':')[0] + (slot.includes('PM') && slot.split(':')[0] !== '12' ? ' PM' : slot.includes('PM') ? ' PM' : ' AM');
+//     if (!grouped[hour]) {
+//       grouped[hour] = [];
+//     }
+//     grouped[hour].push(slot);
+//   });
+//   return grouped;
+// }, []);
 
 type DentalAppointment = {
   id: string;
@@ -241,6 +242,19 @@ const Appointments = () => {
   const [appointmentTime, setAppointmentTime] = useState("");
   const [appointmentDoctor, setAppointmentDoctor] = useState("");
   const [appointmentDate, setAppointmentDate] = useState<Date | undefined>(undefined);
+
+  // Group time slots by hour for the timeline display - moved inside component
+  const hourlyTimeSlots = useMemo(() => {
+    const grouped: Record<string, string[]> = {}; // Add proper type here
+    timeSlots.forEach(slot => {
+      const hour = slot.split(':')[0] + (slot.includes('PM') && slot.split(':')[0] !== '12' ? ' PM' : slot.includes('PM') ? ' PM' : ' AM');
+      if (!grouped[hour]) {
+        grouped[hour] = [];
+      }
+      grouped[hour].push(slot);
+    });
+    return grouped;
+  }, []);
 
   const [dentalAppointments, setDentalAppointments] = useState<DentalAppointment[]>([
     {
@@ -789,8 +803,7 @@ const Appointments = () => {
                                               key={appointment.id}
                                               appointment={appointment}
                                               isDental={isDental}
-                                              onClick={(e) => {
-                                                e.stopPropagation();
+                                              onClick={() => {
                                                 handleEditAppointment(appointment);
                                               }}
                                             />
@@ -893,8 +906,7 @@ const Appointments = () => {
                                   key={appointment.id}
                                   appointment={appointment}
                                   isDental={isDental}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
+                                  onClick={() => {
                                     handleEditAppointment(appointment);
                                   }}
                                 />
@@ -1178,3 +1190,4 @@ const Appointments = () => {
 };
 
 export default Appointments;
+
