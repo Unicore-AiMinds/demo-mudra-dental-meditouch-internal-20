@@ -16,7 +16,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
 import {
@@ -44,6 +43,7 @@ import {
   ColumnFiltersState,
   getFilteredRowModel,
 } from "@tanstack/react-table";
+import { useToast } from "@/hooks/use-toast";
 
 import { 
   Plus, 
@@ -201,6 +201,47 @@ const Patients = () => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [currentTab, setCurrentTab] = useState<string>("all");
+  const { toast } = useToast();
+  
+  // Form fields state
+  const [formData, setFormData] = useState({
+    name: '',
+    gender: '',
+    age: '',
+    email: '',
+    phone: '',
+    address: '',
+    clinic: '',
+    notes: ''
+  });
+  
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+  };
+  
+  const handleAddPatient = () => {
+    // Here you would normally add validation and API calls
+    // For now, we'll just show a success toast
+    setIsAddPatientDialogOpen(false);
+    
+    toast({
+      title: "Patient Added",
+      description: `${formData.name} has been added to the patient registry.`,
+    });
+    
+    // Reset form data
+    setFormData({
+      name: '',
+      gender: '',
+      age: '',
+      email: '',
+      phone: '',
+      address: '',
+      clinic: '',
+      notes: ''
+    });
+  };
   
   // Filter patients based on current clinic and tab
   const filteredPatients = demoPatients.filter(patient => {
@@ -518,11 +559,21 @@ const Patients = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name *</Label>
-                <Input id="name" placeholder="Enter patient's full name" />
+                <Input 
+                  id="name" 
+                  placeholder="Enter patient's full name"
+                  value={formData.name}
+                  onChange={handleFormChange}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="gender">Gender *</Label>
-                <select id="gender" className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                <select 
+                  id="gender" 
+                  className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={formData.gender}
+                  onChange={handleFormChange}
+                >
                   <option value="">Select Gender</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -531,19 +582,41 @@ const Patients = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="age">Age *</Label>
-                <Input id="age" type="number" placeholder="Enter age" />
+                <Input 
+                  id="age" 
+                  type="number" 
+                  placeholder="Enter age"
+                  value={formData.age}
+                  onChange={handleFormChange}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number *</Label>
-                <Input id="phone" placeholder="e.g., +91 98765 43210" />
+                <Input 
+                  id="phone" 
+                  placeholder="e.g., +91 98765 43210"
+                  value={formData.phone}
+                  onChange={handleFormChange}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="patient@example.com" />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="patient@example.com"
+                  value={formData.email}
+                  onChange={handleFormChange}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="clinic">Registered For *</Label>
-                <select id="clinic" className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                <select 
+                  id="clinic" 
+                  className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={formData.clinic}
+                  onChange={handleFormChange}
+                >
                   <option value="">Select Clinic</option>
                   <option value="dental">Dental Metrix</option>
                   <option value="meditouch">Meditouch</option>
@@ -552,11 +625,21 @@ const Patients = () => {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="address">Address *</Label>
-                <Input id="address" placeholder="Enter patient's address" />
+                <Input 
+                  id="address" 
+                  placeholder="Enter patient's address"
+                  value={formData.address}
+                  onChange={handleFormChange}
+                />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="notes">Additional Notes</Label>
-                <Input id="notes" placeholder="Any important medical history or notes" />
+                <Input 
+                  id="notes" 
+                  placeholder="Any important medical history or notes"
+                  value={formData.notes}
+                  onChange={handleFormChange}
+                />
               </div>
             </div>
           </div>
@@ -566,7 +649,7 @@ const Patients = () => {
             </Button>
             <Button 
               type="submit" 
-              onClick={() => setIsAddPatientDialogOpen(false)}
+              onClick={handleAddPatient}
               className={activeClinic === 'dental' 
                 ? "bg-dental-primary hover:bg-dental-dark" 
                 : "bg-meditouch-primary hover:bg-meditouch-dark"}

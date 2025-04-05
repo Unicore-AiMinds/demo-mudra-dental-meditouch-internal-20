@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { 
@@ -19,9 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-  ArrowDownUp, 
   Download, 
-  Filter, 
   Plus, 
   Search, 
   AlertCircle,
@@ -36,7 +33,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
 import {
@@ -48,6 +44,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
+import { useToast } from "@/hooks/use-toast";
 
 interface LabJob {
   id: string;
@@ -60,7 +57,6 @@ interface LabJob {
   status: 'pending' | 'sent' | 'in-progress' | 'received' | 'ready' | 'delivered' | 'issue';
 }
 
-// Sample data for the lab jobs
 const demoLabJobs: LabJob[] = [
   {
     id: "LJ001",
@@ -175,8 +171,8 @@ const LabWork = () => {
   const [isNewLabDialogOpen, setIsNewLabDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
   const [selectedLab, setSelectedLab] = useState<string | undefined>(undefined);
+  const { toast } = useToast();
 
-  // Only continue if we're in the dental clinic
   if (activeClinic !== 'dental') {
     return (
       <div className="flex flex-col items-center justify-center h-96">
@@ -199,14 +195,21 @@ const LabWork = () => {
       job.assignedLab.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.labWorkType.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = !selectedStatus || job.status === selectedStatus;
-    const matchesLab = !selectedLab || job.assignedLab === selectedLab;
+    const matchesStatus = !selectedStatus || selectedStatus === "all" || job.status === selectedStatus;
+    const matchesLab = !selectedLab || selectedLab === "all" || job.assignedLab === selectedLab;
     
     return matchesSearch && matchesStatus && matchesLab;
   });
   
-  // Get unique labs for filter
   const uniqueLabs = Array.from(new Set(demoLabJobs.map(job => job.assignedLab)));
+
+  const handleCreateLabEntry = () => {
+    setIsNewLabDialogOpen(false);
+    toast({
+      title: "Lab Entry Created",
+      description: "The new lab work entry has been added successfully.",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -223,7 +226,6 @@ const LabWork = () => {
         </Button>
       </div>
       
-      {/* Filters and search */}
       <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -264,10 +266,6 @@ const LabWork = () => {
               ))}
             </SelectContent>
           </Select>
-
-          <Button variant="outline" size="icon">
-            <ArrowDownUp className="h-4 w-4" />
-          </Button>
           
           <Button variant="outline" size="icon">
             <Download className="h-4 w-4" />
@@ -275,7 +273,6 @@ const LabWork = () => {
         </div>
       </div>
       
-      {/* Lab jobs table */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -293,45 +290,52 @@ const LabWork = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLabJobs.map((job) => (
-                <TableRow key={job.id} className="group">
-                  <TableCell className="font-mono text-sm">{job.id}</TableCell>
-                  <TableCell className="font-medium">{job.patient}</TableCell>
-                  <TableCell className="hidden md:table-cell">{job.service}</TableCell>
-                  <TableCell>{job.labWorkType}</TableCell>
-                  <TableCell className="hidden lg:table-cell">{job.dateSent}</TableCell>
-                  <TableCell className="hidden md:table-cell">{job.assignedLab}</TableCell>
-                  <TableCell>{job.expectedDelivery}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(job.status)}
-                      {getStatusBadge(job.status)}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Select>
-                      <SelectTrigger className="h-8 w-[130px]">
-                        <SelectValue placeholder="Update Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="sent">Sent to Lab</SelectItem>
-                        <SelectItem value="in-progress">In Progress</SelectItem>
-                        <SelectItem value="received">Received (QC)</SelectItem>
-                        <SelectItem value="ready">Ready</SelectItem>
-                        <SelectItem value="delivered">Delivered</SelectItem>
-                        <SelectItem value="issue">Issue</SelectItem>
-                      </SelectContent>
-                    </Select>
+              {filteredLabJobs.length > 0 ? (
+                filteredLabJobs.map((job) => (
+                  <TableRow key={job.id} className="group">
+                    <TableCell className="font-mono text-sm">{job.id}</TableCell>
+                    <TableCell className="font-medium">{job.patient}</TableCell>
+                    <TableCell className="hidden md:table-cell">{job.service}</TableCell>
+                    <TableCell>{job.labWorkType}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{job.dateSent}</TableCell>
+                    <TableCell className="hidden md:table-cell">{job.assignedLab}</TableCell>
+                    <TableCell>{job.expectedDelivery}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(job.status)}
+                        {getStatusBadge(job.status)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Select>
+                        <SelectTrigger className="h-8 w-[130px]">
+                          <SelectValue placeholder="Update Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="sent">Sent to Lab</SelectItem>
+                          <SelectItem value="in-progress">In Progress</SelectItem>
+                          <SelectItem value="received">Received (QC)</SelectItem>
+                          <SelectItem value="ready">Ready</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem>
+                          <SelectItem value="issue">Issue</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={9} className="h-24 text-center">
+                    No lab jobs found matching the selected filters.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
       
-      {/* New Lab Entry Dialog */}
       <Dialog open={isNewLabDialogOpen} onOpenChange={setIsNewLabDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
@@ -420,7 +424,9 @@ const LabWork = () => {
             <Button variant="outline" onClick={() => setIsNewLabDialogOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" onClick={() => setIsNewLabDialogOpen(false)}
+            <Button 
+              type="submit" 
+              onClick={handleCreateLabEntry}
               className="bg-dental-primary hover:bg-dental-dark">
               Create Lab Entry
             </Button>
