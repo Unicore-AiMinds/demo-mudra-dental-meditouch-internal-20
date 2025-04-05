@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+
+import { useState, useMemo, useCallback } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -22,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday } from 'date-fns';
+import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
@@ -36,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const registeredPatients = [{
   id: 'p1',
@@ -87,6 +89,19 @@ const doctors = [{
 }];
 
 const timeSlots = ['9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM', '10:00 AM', '10:15 AM', '10:30 AM', '10:45 AM', '11:00 AM', '11:15 AM', '11:30 AM', '11:45 AM', '12:00 PM', '12:15 PM', '12:30 PM', '12:45 PM', '2:00 PM', '2:15 PM', '2:30 PM', '2:45 PM', '3:00 PM', '3:15 PM', '3:30 PM', '3:45 PM', '4:00 PM', '4:15 PM', '4:30 PM', '4:45 PM', '5:00 PM', '5:15 PM', '5:30 PM', '5:45 PM'];
+
+// Group time slots by hour for the timeline display
+const hourlyTimeSlots = useMemo(() => {
+  const grouped = {};
+  timeSlots.forEach(slot => {
+    const hour = slot.split(':')[0] + (slot.includes('PM') && slot.split(':')[0] !== '12' ? ' PM' : slot.includes('PM') ? ' PM' : ' AM');
+    if (!grouped[hour]) {
+      grouped[hour] = [];
+    }
+    grouped[hour].push(slot);
+  });
+  return grouped;
+}, []);
 
 type DentalAppointment = {
   id: string;
@@ -184,6 +199,27 @@ const CalendarAppointmentItem = ({ appointment, isDental, onClick }: {
   );
 };
 
+const TimeSlotAppointment = ({ appointment, isDental, onClick }: {
+  appointment: DentalAppointment | MeditouchAppointment,
+  isDental: boolean,
+  onClick: () => void
+}) => {
+  const bgColor = isDental ? 'bg-dental-primary' : 'bg-meditouch-primary';
+  
+  return (
+    <div 
+      className={`${bgColor} text-white rounded p-1 text-xs cursor-pointer hover:opacity-90 transition-opacity`}
+      onClick={onClick}
+    >
+      <div className="font-medium">{appointment.patient}</div>
+      <div className="text-white/90 text-[10px]">{appointment.service}</div>
+      {isDental && (appointment as DentalAppointment).doctor && (
+        <div className="text-white/90 text-[10px] font-medium">{(appointment as DentalAppointment).doctor}</div>
+      )}
+    </div>
+  );
+};
+
 const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const weekDaysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -198,6 +234,7 @@ const Appointments = () => {
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
   const [isEditAppointmentOpen, setIsEditAppointmentOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<any>(null);
+  const isMobile = useIsMobile();
 
   const [appointmentPatient, setAppointmentPatient] = useState("");
   const [appointmentService, setAppointmentService] = useState("");
@@ -330,6 +367,10 @@ const Appointments = () => {
     });
   }, [appointments, date, searchTerm, selectedDoctor, isDental, view]);
 
+  const getAppointmentsForTimeSlot = useCallback((timeSlot: string) => {
+    return filteredAppointments.filter(app => app.time === timeSlot);
+  }, [filteredAppointments]);
+
   const getBookedTimeSlots = () => {
     const bookedSlots = appointments
       .filter(app => app.date === format(date, 'yyyy-MM-dd') && app.status !== 'cancelled')
@@ -340,6 +381,12 @@ const Appointments = () => {
   const getAvailableTimeSlots = () => {
     const bookedSlots = getBookedTimeSlots();
     return timeSlots.filter(time => !bookedSlots.includes(time));
+  };
+
+  const handleNewAppointmentForTimeSlot = (time: string) => {
+    setAppointmentTime(time);
+    setAppointmentDate(date);
+    setIsNewAppointmentOpen(true);
   };
 
   const handleEditAppointment = (appointment: any) => {
@@ -704,49 +751,58 @@ const Appointments = () => {
                   </TabsList>
                 
                   <TabsContent value="daily" className="m-0 w-full">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full mt-4">
-                      <div>
-                        <h3 className="text-lg font-medium mb-3">Morning</h3>
-                        <div className="space-y-1">
-                          {morningAppointments.length > 0 ? morningAppointments.map(appointment => (
-                            <AppointmentCard 
-                              key={appointment.id} 
-                              time={appointment.time} 
-                              patient={appointment.patient} 
-                              service={appointment.service} 
-                              doctor={isDental ? (appointment as DentalAppointment).doctor : undefined} 
-                              status={appointment.status} 
-                              secondPatient={(appointment as any).secondPatient} 
-                              isDental={isDental} 
-                              onEdit={() => handleEditAppointment(appointment)} 
-                              onReschedule={() => handleDirectReschedule(appointment)} 
-                              onCancel={() => handleDirectCancel(appointment)} 
-                            />
-                          )) : (
-                            <p className="text-sm text-muted-foreground">No morning appointments</p>
-                          )}
+                    <div className="mt-4 w-full">
+                      <div className="relative">
+                        <div className="absolute left-0 top-0 bottom-0 w-16 border-r flex flex-col">
+                          <div className="h-16 border-b"></div>
+                          {Object.keys(hourlyTimeSlots).map(hour => (
+                            <div key={hour} className="h-16 border-b flex items-start justify-end pr-2 text-xs text-gray-500 font-medium">
+                              {hour}
+                            </div>
+                          ))}
                         </div>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-medium mb-3">Afternoon</h3>
-                        <div className="space-y-1">
-                          {afternoonAppointments.length > 0 ? afternoonAppointments.map(appointment => (
-                            <AppointmentCard 
-                              key={appointment.id} 
-                              time={appointment.time} 
-                              patient={appointment.patient} 
-                              service={appointment.service} 
-                              doctor={isDental ? (appointment as DentalAppointment).doctor : undefined} 
-                              status={appointment.status} 
-                              secondPatient={(appointment as any).secondPatient} 
-                              isDental={isDental} 
-                              onEdit={() => handleEditAppointment(appointment)} 
-                              onReschedule={() => handleDirectReschedule(appointment)} 
-                              onCancel={() => handleDirectCancel(appointment)} 
-                            />
-                          )) : (
-                            <p className="text-sm text-muted-foreground">No afternoon appointments</p>
-                          )}
+                        
+                        <div className="ml-16 overflow-y-auto">
+                          <div className="h-16 border-b flex items-center px-2 font-medium">
+                            {format(date, 'EEEE, MMMM d, yyyy')}
+                          </div>
+                          
+                          {Object.entries(hourlyTimeSlots).map(([hour, slots]) => (
+                            <div key={hour} className="h-16 border-b relative">
+                              <div className="absolute inset-0 grid grid-cols-4 divide-x">
+                                {slots.map(slot => {
+                                  const appointments = getAppointmentsForTimeSlot(slot);
+                                  return (
+                                    <div 
+                                      key={slot} 
+                                      className={`p-1 cursor-pointer hover:bg-gray-50 h-full ${appointments.length === 0 ? 'border-dashed border-gray-200 border' : ''}`}
+                                      onClick={() => handleNewAppointmentForTimeSlot(slot)}
+                                    >
+                                      {appointments.length === 0 ? (
+                                        <div className="h-full w-full flex items-center justify-center">
+                                          <div className="text-xs text-gray-400">{slot}</div>
+                                        </div>
+                                      ) : (
+                                        <div className="h-full">
+                                          {appointments.map(appointment => (
+                                            <TimeSlotAppointment 
+                                              key={appointment.id}
+                                              appointment={appointment}
+                                              isDental={isDental}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEditAppointment(appointment);
+                                              }}
+                                            />
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -837,7 +893,8 @@ const Appointments = () => {
                                   key={appointment.id}
                                   appointment={appointment}
                                   isDental={isDental}
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     handleEditAppointment(appointment);
                                   }}
                                 />
