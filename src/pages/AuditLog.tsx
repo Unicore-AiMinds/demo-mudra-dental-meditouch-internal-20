@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -258,8 +259,9 @@ const AuditLog = () => {
       log.targetEntity.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.details.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesCategory = !selectedCategory || log.actionCategory === selectedCategory;
-    const matchesUser = !selectedUser || log.user === selectedUser;
+    // Fixed filtering logic - when "all" is selected or nothing is selected, show all items
+    const matchesCategory = !selectedCategory || selectedCategory === "all" || log.actionCategory === selectedCategory;
+    const matchesUser = !selectedUser || selectedUser === "all" || log.user === selectedUser;
     
     return matchesSearch && matchesCategory && matchesUser;
   });
@@ -346,33 +348,41 @@ const AuditLog = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentLogs.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell className="font-mono text-xs whitespace-nowrap">
-                    {log.timestamp}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{log.user}</span>
-                      <span className="text-xs text-muted-foreground">{log.userRole}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getActionIcon(log.actionCategory)}
-                      {getActionBadge(log.actionType)}
-                    </div>
-                  </TableCell>
-                  <TableCell>{log.targetEntity}</TableCell>
-                  <TableCell className="hidden md:table-cell max-w-xs truncate">{log.details}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <Eye className="h-4 w-4" />
-                      <span className="sr-only">View details</span>
-                    </Button>
+              {currentLogs.length > 0 ? (
+                currentLogs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell className="font-mono text-xs whitespace-nowrap">
+                      {log.timestamp}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{log.user}</span>
+                        <span className="text-xs text-muted-foreground">{log.userRole}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getActionIcon(log.actionCategory)}
+                        {getActionBadge(log.actionType)}
+                      </div>
+                    </TableCell>
+                    <TableCell>{log.targetEntity}</TableCell>
+                    <TableCell className="hidden md:table-cell max-w-xs truncate">{log.details}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Eye className="h-4 w-4" />
+                        <span className="sr-only">View details</span>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    No matching logs found
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
           

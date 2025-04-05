@@ -1,9 +1,8 @@
-
 import { useState } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, AlertTriangle, Package, FileDown, Filter } from 'lucide-react';
+import { Plus, Search, AlertTriangle, Package, FileDown, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -30,9 +29,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
 
-// Define stock item type
 interface StockItem {
   id: string;
   name: string;
@@ -50,14 +49,8 @@ const StockTracker = () => {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  
-  // Redirect if not dental clinic
-  if (!isDental) {
-    navigate('/dashboard');
-  }
-  
-  // Mock stock data
-  const stockItems: StockItem[] = [
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [stockItems, setStockItems] = useState<StockItem[]>([
     {
       id: '1',
       name: 'Dental Composite',
@@ -118,14 +111,25 @@ const StockTracker = () => {
       currentQuantity: 15,
       minimumThreshold: 5,
     },
-  ];
+  ]);
+
+  const [newItem, setNewItem] = useState<Omit<StockItem, 'id'>>({
+    name: '',
+    description: '',
+    unit: '',
+    currentQuantity: 0,
+    minimumThreshold: 0,
+    nearestExpiryDate: undefined
+  });
+
+  if (!isDental) {
+    navigate('/dashboard');
+  }
 
   const filteredItems = stockItems.filter(item => {
-    // Apply search filter
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Apply status filter
     if (filterStatus === 'all') return matchesSearch;
     if (filterStatus === 'low' && item.currentQuantity <= item.minimumThreshold) return matchesSearch;
     if (filterStatus === 'expiring' && item.nearestExpiryDate && new Date(item.nearestExpiryDate) < new Date('2025-06-01')) return matchesSearch;
@@ -136,12 +140,39 @@ const StockTracker = () => {
   const isLowStock = (item: StockItem) => item.currentQuantity <= item.minimumThreshold;
   const isExpiringSoon = (item: StockItem) => item.nearestExpiryDate && new Date(item.nearestExpiryDate) < new Date('2025-06-01');
 
-  // Handle stock actions
   const handleAddStockItem = () => {
+    setIsAddDialogOpen(true);
+  };
+
+  const handleSaveNewItem = () => {
+    if (!newItem.name || !newItem.unit) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in the required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newId = `${stockItems.length + 1}`;
+    const itemToAdd = { id: newId, ...newItem };
+    
+    setStockItems(prev => [...prev, itemToAdd]);
     toast({
-      title: "Feature in Development",
-      description: "Add new stock item functionality will be available soon.",
+      title: "Item Added",
+      description: `${newItem.name} has been added to inventory.`,
     });
+    
+    setNewItem({
+      name: '',
+      description: '',
+      unit: '',
+      currentQuantity: 0,
+      minimumThreshold: 0,
+      nearestExpiryDate: undefined
+    });
+    
+    setIsAddDialogOpen(false);
   };
 
   const handleIncomingStock = (itemId: string) => {
@@ -166,18 +197,97 @@ const StockTracker = () => {
           <p className="text-muted-foreground">Manage and monitor dental supplies inventory</p>
         </div>
         
-        <Button 
-          className="bg-dental-primary hover:bg-dental-dark"
-          onClick={handleAddStockItem}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Item
-        </Button>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              className="bg-dental-primary hover:bg-dental-dark"
+              onClick={handleAddStockItem}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Item
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add New Inventory Item</DialogTitle>
+              <DialogDescription>
+                Enter details for the new inventory item.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="itemName" className="text-right">Name</Label>
+                <Input
+                  id="itemName"
+                  value={newItem.name}
+                  onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                  className="col-span-3"
+                  placeholder="Item name"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">Description</Label>
+                <Input
+                  id="description"
+                  value={newItem.description}
+                  onChange={(e) => setNewItem({...newItem, description: e.target.value})}
+                  className="col-span-3"
+                  placeholder="Item description"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="unit" className="text-right">Unit</Label>
+                <Input
+                  id="unit"
+                  value={newItem.unit}
+                  onChange={(e) => setNewItem({...newItem, unit: e.target.value})}
+                  className="col-span-3"
+                  placeholder="e.g., pack, bottle"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="quantity" className="text-right">Quantity</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  value={newItem.currentQuantity}
+                  onChange={(e) => setNewItem({...newItem, currentQuantity: Number(e.target.value)})}
+                  className="col-span-3"
+                  min="0"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="threshold" className="text-right">Min. Threshold</Label>
+                <Input
+                  id="threshold"
+                  type="number"
+                  value={newItem.minimumThreshold}
+                  onChange={(e) => setNewItem({...newItem, minimumThreshold: Number(e.target.value)})}
+                  className="col-span-3"
+                  min="0"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="expiry" className="text-right">Expiry Date</Label>
+                <Input
+                  id="expiry"
+                  type="date"
+                  value={newItem.nearestExpiryDate}
+                  onChange={(e) => setNewItem({...newItem, nearestExpiryDate: e.target.value})}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveNewItem}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4">
-        {/* Stock Overview Cards */}
-        <div className="lg:w-1/3 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
+        <div className="lg:w-1/4 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
           <Card className="card-shadow">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-medium flex items-center">
@@ -218,17 +328,14 @@ const StockTracker = () => {
           </Card>
         </div>
         
-        {/* Stock List */}
-        <div className="lg:w-2/3">
+        <div className="lg:w-3/4">
           <Card className="card-shadow">
             <CardHeader className="pb-2">
               <CardTitle>Inventory Items</CardTitle>
               <CardDescription>Manage your dental supply inventory</CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Filters */}
               <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                {/* Search */}
                 <div className="relative flex-1">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input 
@@ -239,7 +346,6 @@ const StockTracker = () => {
                   />
                 </div>
                 
-                {/* Status Filter */}
                 <Tabs value={filterStatus} onValueChange={setFilterStatus} className="w-full sm:w-auto">
                   <TabsList>
                     <TabsTrigger value="all">All</TabsTrigger>
@@ -248,15 +354,13 @@ const StockTracker = () => {
                   </TabsList>
                 </Tabs>
                 
-                {/* Export */}
                 <Button variant="outline" className="flex gap-2 items-center">
                   <FileDown className="h-4 w-4" />
                   <span>Export</span>
                 </Button>
               </div>
               
-              {/* Table */}
-              <div className="border rounded-md">
+              <div className="border rounded-md overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
