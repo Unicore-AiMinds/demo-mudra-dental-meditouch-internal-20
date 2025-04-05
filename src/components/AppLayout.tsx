@@ -5,10 +5,12 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import AppHeader from './AppHeader';
 import AppSidebar from './AppSidebar';
 import { useClinic } from '@/contexts/ClinicContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const AppLayout = () => {
   const { activeClinic } = useClinic();
   const location = useLocation();
+  const isMobile = useIsMobile();
   
   // Set page title based on current route and active clinic
   useEffect(() => {
@@ -22,13 +24,13 @@ const AppLayout = () => {
   }, [location.pathname, activeClinic]);
 
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider defaultOpen={!isMobile}>
       <div className="min-h-screen flex w-full overflow-hidden">
         <AppSidebar />
         <div className="flex flex-1 flex-col min-h-screen">
           <AppHeader />
           <main className="flex-1 bg-gray-50 overflow-auto">
-            <div className="container mx-auto p-6">
+            <div className="container mx-auto p-2 sm:p-4 md:p-6">
               <Outlet />
             </div>
           </main>
