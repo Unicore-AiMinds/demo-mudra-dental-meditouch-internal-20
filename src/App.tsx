@@ -11,6 +11,7 @@ import AppLayout from "@/components/AppLayout";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Appointments from "@/pages/Appointments";
+import NewAppointment from "@/pages/NewAppointment";
 import StockTracker from "@/pages/StockTracker";
 import LabWork from "@/pages/LabWork";
 import Patients from "@/pages/Patients";
@@ -44,6 +45,7 @@ const App = () => (
               >
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/appointments" element={<Appointments />} />
+                <Route path="/appointments/new" element={<NewAppointment />} />
                 <Route 
                   path="/stock" 
                   element={
