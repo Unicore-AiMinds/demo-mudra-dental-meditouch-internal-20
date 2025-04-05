@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useNavigate } from 'react-router-dom';
@@ -38,7 +37,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 
-// Sample registered patients
 const registeredPatients = [{
   id: 'p1',
   name: 'Aarav Sharma'
@@ -77,7 +75,6 @@ const registeredPatients = [{
   name: 'Aisha Khan'
 }];
 
-// Sample doctors
 const doctors = [{
   id: 'dr1',
   name: 'Dr. Khanna'
@@ -89,17 +86,15 @@ const doctors = [{
   name: 'Dr. Desai'
 }];
 
-// Available time slots (15-minute intervals)
 const timeSlots = ['9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM', '10:00 AM', '10:15 AM', '10:30 AM', '10:45 AM', '11:00 AM', '11:15 AM', '11:30 AM', '11:45 AM', '12:00 PM', '12:15 PM', '12:30 PM', '12:45 PM', '2:00 PM', '2:15 PM', '2:30 PM', '2:45 PM', '3:00 PM', '3:15 PM', '3:30 PM', '3:45 PM', '4:00 PM', '4:15 PM', '4:30 PM', '4:45 PM', '5:00 PM', '5:15 PM', '5:30 PM', '5:45 PM'];
 
-// Define types
 type DentalAppointment = {
   id: string;
   time: string;
   patient: string;
   service: string;
   doctor: string;
-  date?: string; // For storing the date of the appointment
+  date?: string;
   status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
   secondPatient?: string;
 };
@@ -109,7 +104,7 @@ type MeditouchAppointment = {
   time: string;
   patient: string;
   service: string;
-  date?: string; // For storing the date of the appointment
+  date?: string;
   status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
 };
 
@@ -138,7 +133,6 @@ const AppointmentCard = ({
   onReschedule: () => void;
   onCancel: () => void;
 }) => {
-  // Don't display cancelled appointments
   if (status === 'cancelled') {
     return null;
   }
@@ -148,7 +142,7 @@ const AppointmentCard = ({
         <div className="font-medium text-sm">{time}</div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="xs" className="h-6 w-6 p-0">
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
               <MoreVertical className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
@@ -171,7 +165,6 @@ const AppointmentCard = ({
   );
 };
 
-// Small appointment item for calendar view
 const CalendarAppointmentItem = ({ appointment, isDental, onClick }: { 
   appointment: DentalAppointment | MeditouchAppointment,
   isDental: boolean,
@@ -206,14 +199,12 @@ const Appointments = () => {
   const [isEditAppointmentOpen, setIsEditAppointmentOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<any>(null);
 
-  // New appointment form state
   const [appointmentPatient, setAppointmentPatient] = useState("");
   const [appointmentService, setAppointmentService] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
   const [appointmentDoctor, setAppointmentDoctor] = useState("");
   const [appointmentDate, setAppointmentDate] = useState<Date | undefined>(undefined);
 
-  // Mock appointments with dates for the current month
   const [dentalAppointments, setDentalAppointments] = useState<DentalAppointment[]>([
     {
       id: 'd1',
@@ -317,30 +308,20 @@ const Appointments = () => {
 
   const appointments = isDental ? dentalAppointments : meditouchAppointments;
 
-  // Get appointments for a specific date
   const getAppointmentsForDate = (date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
     return appointments.filter(app => app.date === dateString && app.status !== 'cancelled');
   };
 
-  // Filter appointments
   const filteredAppointments = useMemo(() => {
     return appointments.filter(app => {
-      // Filter by date for daily view
       const matchesDate = app.date === format(date, 'yyyy-MM-dd');
-      
-      // Filter by search term
       const matchesSearch = !searchTerm || app.patient.toLowerCase().includes(searchTerm.toLowerCase()) || 
         (app as any).secondPatient?.toLowerCase().includes(searchTerm.toLowerCase()) || 
         app.service.toLowerCase().includes(searchTerm.toLowerCase());
-
-      // Filter by doctor (dental only)
       const matchesDoctor = !selectedDoctor || isDental && (app as DentalAppointment).doctor === selectedDoctor;
-
-      // Don't show cancelled appointments
       const isNotCancelled = app.status !== 'cancelled';
       
-      // Different filters based on view
       if (view === 'daily') {
         return matchesDate && matchesSearch && matchesDoctor && isNotCancelled;
       } else {
@@ -349,7 +330,6 @@ const Appointments = () => {
     });
   }, [appointments, date, searchTerm, selectedDoctor, isDental, view]);
 
-  // Get booked time slots for the selected date
   const getBookedTimeSlots = () => {
     const bookedSlots = appointments
       .filter(app => app.date === format(date, 'yyyy-MM-dd') && app.status !== 'cancelled')
@@ -357,13 +337,11 @@ const Appointments = () => {
     return bookedSlots;
   };
 
-  // Get available time slots
   const getAvailableTimeSlots = () => {
     const bookedSlots = getBookedTimeSlots();
     return timeSlots.filter(time => !bookedSlots.includes(time));
   };
 
-  // Handle edit appointment
   const handleEditAppointment = (appointment: any) => {
     setEditingAppointment(appointment);
     setAppointmentPatient(appointment.patient);
@@ -379,7 +357,6 @@ const Appointments = () => {
     setIsEditAppointmentOpen(true);
   };
 
-  // Handle reschedule
   const handleReschedule = (appointment: any) => {
     setEditingAppointment(appointment);
     setAppointmentPatient(appointment.patient);
@@ -393,7 +370,6 @@ const Appointments = () => {
       setAppointmentDoctor(appointment.doctor);
     }
 
-    // Navigate to the new appointment page with pre-filled data
     navigate('/appointments/new', {
       state: {
         reschedule: true,
@@ -407,12 +383,10 @@ const Appointments = () => {
     });
   };
 
-  // Handle direct reschedule from appointment card
   const handleDirectReschedule = (appointment: any) => {
     handleReschedule(appointment);
   };
 
-  // Handle direct cancel from appointment card
   const handleDirectCancel = (appointment: any) => {
     if (isDental) {
       setDentalAppointments(dentalAppointments.map(app => 
@@ -429,7 +403,6 @@ const Appointments = () => {
     });
   };
 
-  // Handle reschedule
   const handleRescheduleSubmit = () => {
     if (editingAppointment) {
       const updatedAppointments = isDental 
@@ -470,7 +443,6 @@ const Appointments = () => {
     }
   };
 
-  // Handle cancel appointment
   const handleCancelAppointment = () => {
     if (editingAppointment) {
       const updatedAppointments = isDental 
@@ -496,9 +468,7 @@ const Appointments = () => {
     }
   };
 
-  // Create new appointment
   const handleCreateAppointment = () => {
-    // Validate form
     if (!appointmentPatient || !appointmentService || !appointmentTime || !appointmentDate) {
       toast({
         title: "Missing Information",
@@ -542,7 +512,6 @@ const Appointments = () => {
     resetAppointmentForm();
   };
 
-  // Reset appointment form
   const resetAppointmentForm = () => {
     setAppointmentPatient("");
     setAppointmentService("");
@@ -551,19 +520,16 @@ const Appointments = () => {
     setAppointmentDate(undefined);
   };
 
-  // Go to new appointment page
   const goToNewAppointment = () => {
     navigate('/appointments/new');
   };
 
-  // Go to previous day/week/month
   const handlePreviousClick = () => {
     if (view === 'daily') {
       setDate(prev => addDays(prev, -1));
     } else if (view === 'weekly') {
       setDate(prev => addDays(prev, -7));
     } else if (view === 'monthly') {
-      // Go to previous month
       setDate(prev => {
         const prevMonth = new Date(prev);
         prevMonth.setMonth(prevMonth.getMonth() - 1);
@@ -572,14 +538,12 @@ const Appointments = () => {
     }
   };
 
-  // Go to next day/week/month
   const handleNextClick = () => {
     if (view === 'daily') {
       setDate(prev => addDays(prev, 1));
     } else if (view === 'weekly') {
       setDate(prev => addDays(prev, 7));
     } else if (view === 'monthly') {
-      // Go to next month
       setDate(prev => {
         const nextMonth = new Date(prev);
         nextMonth.setMonth(nextMonth.getMonth() + 1);
@@ -588,20 +552,17 @@ const Appointments = () => {
     }
   };
 
-  // Get days for weekly view
   const weekDates = useMemo(() => {
     const start = startOfWeek(date);
     return eachDayOfInterval({ start, end: addDays(start, 6) });
   }, [date]);
 
-  // Get days for monthly view
   const monthDates = useMemo(() => {
     const start = startOfMonth(date);
     const end = endOfMonth(date);
     return eachDayOfInterval({ start, end });
   }, [date]);
 
-  // Filter appointments by morning/afternoon for daily view
   const morningAppointments = filteredAppointments.filter(a => {
     const hour = parseInt(a.time.split(':')[0]);
     const isPM = a.time.includes('PM');
@@ -642,7 +603,6 @@ const Appointments = () => {
         <div className="md:w-64 space-y-4">
           <Card>
             <CardContent className="p-4 space-y-4">
-              {/* Date picker */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Date</label>
                 <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
@@ -667,7 +627,6 @@ const Appointments = () => {
                 </Popover>
               </div>
               
-              {/* Doctor filter (only for dental) */}
               {isDental && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Doctor</label>
@@ -685,7 +644,6 @@ const Appointments = () => {
                 </div>
               )}
               
-              {/* Search */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Search Patient</label>
                 <div className="relative">
@@ -699,7 +657,6 @@ const Appointments = () => {
                 </div>
               </div>
 
-              {/* Action buttons */}
               <div className="space-y-2 pt-2">
                 <Button 
                   variant="outline" 
@@ -880,8 +837,7 @@ const Appointments = () => {
                                   key={appointment.id}
                                   appointment={appointment}
                                   isDental={isDental}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
+                                  onClick={() => {
                                     handleEditAppointment(appointment);
                                   }}
                                 />
@@ -910,7 +866,6 @@ const Appointments = () => {
         </div>
       </div>
 
-      {/* New Appointment Dialog */}
       <Dialog open={isNewAppointmentOpen} onOpenChange={setIsNewAppointmentOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -1037,7 +992,6 @@ const Appointments = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Appointment Dialog */}
       <Dialog open={isEditAppointmentOpen} onOpenChange={setIsEditAppointmentOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
