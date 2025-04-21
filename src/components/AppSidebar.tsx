@@ -53,11 +53,9 @@ const navItems: NavItem[] = [
     path: '/appointments',
   },
   {
-    title: 'Stock Tracker',
-    icon: PackageOpen,
-    path: '/stock',
-    clinics: ['dental'],
-    roles: ['admin', 'inventory'],
+    title: 'Patients',
+    icon: Users,
+    path: '/patients',
   },
   {
     title: 'Lab Work',
@@ -67,9 +65,11 @@ const navItems: NavItem[] = [
     roles: ['admin', 'doctor', 'receptionist'],
   },
   {
-    title: 'Patients',
-    icon: Users,
-    path: '/patients',
+    title: 'Stock Tracker',
+    icon: PackageOpen,
+    path: '/stock',
+    clinics: ['dental'],
+    roles: ['admin', 'inventory'],
   },
   {
     title: 'Reports',
@@ -99,7 +99,7 @@ const AppSidebar = () => {
 
   // Check if a nav item should be visible based on clinic and role
   const isVisible = (item: NavItem) => {
-    return (!item.clinics || item.clinics.includes(activeClinic)) && 
+    return (!item.clinics || item.clinics.includes(activeClinic)) &&
       (!item.roles || (user && item.roles.includes(user.role)));
   };
 
@@ -114,22 +114,22 @@ const AppSidebar = () => {
           )}
         </div>
       </SidebarHeader>
-      
+
       <SidebarContent>
         <SidebarMenu>
-          {navItems.map((item) => 
+          {navItems.map((item) =>
             isVisible(item) && (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton 
-                  asChild 
+                <SidebarMenuButton
+                  asChild
                   isActive={location.pathname === item.path}
                   tooltip={item.title}
                 >
                   <Link to={item.path}>
                     <item.icon className={cn(
                       "transition-colors",
-                      activeClinic === 'dental' 
-                        ? "group-hover:text-dental-primary" 
+                      activeClinic === 'dental'
+                        ? "group-hover:text-dental-primary"
                         : "group-hover:text-meditouch-primary"
                     )} />
                     <span>{item.title}</span>
@@ -140,10 +140,10 @@ const AppSidebar = () => {
           )}
         </SidebarMenu>
       </SidebarContent>
-      
+
       <SidebarFooter className="p-4">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="w-full flex items-center justify-center gap-2"
           onClick={() => logout()}
         >

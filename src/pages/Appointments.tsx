@@ -2,16 +2,16 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Calendar as CalendarIcon, 
-  ChevronLeft, 
-  ChevronRight, 
-  Plus, 
-  Search, 
-  UserPlus, 
-  Edit, 
-  X, 
-  Clock, 
+import {
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Search,
+  UserPlus,
+  Edit,
+  X,
+  Clock,
   CalendarRange,
   Filter,
   MoreVertical
@@ -181,7 +181,7 @@ const AppointmentCard = ({
   );
 };
 
-const CalendarAppointmentItem = ({ appointment, isDental, onClick }: { 
+const CalendarAppointmentItem = ({ appointment, isDental, onClick }: {
   appointment: DentalAppointment | MeditouchAppointment,
   isDental: boolean,
   onClick: () => void
@@ -189,9 +189,9 @@ const CalendarAppointmentItem = ({ appointment, isDental, onClick }: {
   const bgColor = isDental ? 'bg-dental-light' : 'bg-meditouch-light';
   const borderColor = isDental ? 'border-dental-primary' : 'border-meditouch-primary';
   const textColor = isDental ? 'text-dental-primary' : 'text-meditouch-primary';
-  
+
   return (
-    <div 
+    <div
       className={`px-1.5 py-0.5 text-xs rounded mb-0.5 border-l-2 ${bgColor} ${borderColor} ${textColor} cursor-pointer`}
       onClick={onClick}
     >
@@ -206,9 +206,9 @@ const TimeSlotAppointment = ({ appointment, isDental, onClick }: {
   onClick: () => void
 }) => {
   const bgColor = isDental ? 'bg-dental-primary' : 'bg-meditouch-primary';
-  
+
   return (
-    <div 
+    <div
       className={`${bgColor} text-white rounded p-1 text-xs cursor-pointer hover:opacity-90 transition-opacity`}
       onClick={onClick}
     >
@@ -313,7 +313,7 @@ const Appointments = () => {
       status: 'confirmed'
     }
   ]);
-  
+
   const [meditouchAppointments, setMeditouchAppointments] = useState<MeditouchAppointment[]>([
     {
       id: 'm1',
@@ -367,12 +367,12 @@ const Appointments = () => {
   const filteredAppointments = useMemo(() => {
     return appointments.filter(app => {
       const matchesDate = app.date === format(date, 'yyyy-MM-dd');
-      const matchesSearch = !searchTerm || app.patient.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        (app as any).secondPatient?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      const matchesSearch = !searchTerm || app.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (app as any).secondPatient?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         app.service.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesDoctor = !selectedDoctor || isDental && (app as DentalAppointment).doctor === selectedDoctor;
       const isNotCancelled = app.status !== 'cancelled';
-      
+
       if (view === 'daily') {
         return matchesDate && matchesSearch && matchesDoctor && isNotCancelled;
       } else {
@@ -450,11 +450,11 @@ const Appointments = () => {
 
   const handleDirectCancel = (appointment: any) => {
     if (isDental) {
-      setDentalAppointments(dentalAppointments.map(app => 
+      setDentalAppointments(dentalAppointments.map(app =>
         app.id === appointment.id ? { ...app, status: 'cancelled' as const } : app
       ));
     } else {
-      setMeditouchAppointments(meditouchAppointments.map(app => 
+      setMeditouchAppointments(meditouchAppointments.map(app =>
         app.id === appointment.id ? { ...app, status: 'cancelled' as const } : app
       ));
     }
@@ -466,65 +466,65 @@ const Appointments = () => {
 
   const handleRescheduleSubmit = () => {
     if (editingAppointment) {
-      const updatedAppointments = isDental 
-        ? dentalAppointments.map(app => 
-            app.id === editingAppointment.id 
+      const updatedAppointments = isDental
+        ? dentalAppointments.map(app =>
+            app.id === editingAppointment.id
               ? {
                   ...app,
                   time: appointmentTime,
                   service: appointmentService,
                   doctor: appointmentDoctor,
                   date: appointmentDate ? format(appointmentDate, 'yyyy-MM-dd') : app.date
-                } 
+                }
               : app
-          ) 
-        : meditouchAppointments.map(app => 
-            app.id === editingAppointment.id 
+          )
+        : meditouchAppointments.map(app =>
+            app.id === editingAppointment.id
               ? {
                   ...app,
                   time: appointmentTime,
                   service: appointmentService,
                   date: appointmentDate ? format(appointmentDate, 'yyyy-MM-dd') : app.date
-                } 
+                }
               : app
           );
-          
+
       if (isDental) {
         setDentalAppointments(updatedAppointments as DentalAppointment[]);
       } else {
         setMeditouchAppointments(updatedAppointments as MeditouchAppointment[]);
       }
-      
+
       toast({
         title: "Appointment Rescheduled",
         description: `${editingAppointment.patient}'s appointment has been rescheduled to ${format(appointmentDate || new Date(), 'PP')} at ${appointmentTime}`
       });
-      
+
       setIsEditAppointmentOpen(false);
     }
   };
 
   const handleCancelAppointment = () => {
     if (editingAppointment) {
-      const updatedAppointments = isDental 
-        ? dentalAppointments.map(app => 
+      const updatedAppointments = isDental
+        ? dentalAppointments.map(app =>
             app.id === editingAppointment.id ? { ...app, status: 'cancelled' as const } : app
-          ) 
-        : meditouchAppointments.map(app => 
+          )
+        : meditouchAppointments.map(app =>
             app.id === editingAppointment.id ? { ...app, status: 'cancelled' as const } : app
           );
-          
+
       if (isDental) {
         setDentalAppointments(updatedAppointments as DentalAppointment[]);
       } else {
         setMeditouchAppointments(updatedAppointments as MeditouchAppointment[]);
       }
-      
+
       toast({
         title: "Appointment Cancelled",
         description: `${editingAppointment.patient}'s appointment has been cancelled`
       });
-      
+
       setIsEditAppointmentOpen(false);
     }
   };
@@ -538,9 +538,9 @@ const Appointments = () => {
       });
       return;
     }
-    
+
     const newId = `${isDental ? 'd' : 'm'}${Math.floor(Math.random() * 10000)}`;
-    
+
     if (isDental) {
       const newAppointment: DentalAppointment = {
         id: newId,
@@ -563,12 +563,12 @@ const Appointments = () => {
       };
       setMeditouchAppointments([...meditouchAppointments, newAppointment]);
     }
-    
+
     toast({
       title: "Appointment Created",
       description: `New appointment for ${appointmentPatient} on ${format(appointmentDate, 'PP')} at ${appointmentTime}`
     });
-    
+
     setIsNewAppointmentOpen(false);
     resetAppointmentForm();
   };
@@ -629,7 +629,7 @@ const Appointments = () => {
     const isPM = a.time.includes('PM');
     return !isPM || hour === 12;
   });
-  
+
   const afternoonAppointments = filteredAppointments.filter(a => {
     const hour = parseInt(a.time.split(':')[0]);
     const isPM = a.time.includes('PM');
@@ -648,8 +648,8 @@ const Appointments = () => {
         <div className="flex space-x-2">
           <Button
             className={`${
-              activeClinic === 'dental' 
-                ? 'bg-dental-primary hover:bg-dental-dark text-white' 
+              activeClinic === 'dental'
+                ? 'bg-dental-primary hover:bg-dental-dark text-white'
                 : 'bg-meditouch-primary hover:bg-meditouch-dark text-white'
             }`}
             onClick={() => setIsNewAppointmentOpen(true)}
@@ -660,112 +660,79 @@ const Appointments = () => {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="md:w-64 space-y-4">
-          <Card>
-            <CardContent className="p-4 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Date</label>
-                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {format(date, 'PPP')}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar 
-                      mode="single" 
-                      selected={date} 
-                      onSelect={(date) => {
-                        setDate(date || new Date());
-                        setPopoverOpen(false);
-                      }} 
-                      initialFocus 
-                      className="pointer-events-auto" 
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              {isDental && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Doctor</label>
-                  <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Doctors" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Doctors</SelectItem>
-                      {doctors.map(doctor => (
-                        <SelectItem key={doctor.id} value={doctor.name}>{doctor.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Search Patient</label>
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search..." 
-                    className="pl-8" 
-                    value={searchTerm} 
-                    onChange={e => setSearchTerm(e.target.value)} 
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={goToNewAppointment}
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add Patient & Appointment
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex-1">
+      <div className="flex flex-col gap-4">
+        <div className="w-full">
           <Card className="w-full">
             <CardContent className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="icon" onClick={handlePreviousClick}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <div className="font-medium">
-                    {view === 'daily' && format(date, 'MMMM d, yyyy')}
-                    {view === 'weekly' && (
-                      <>
-                        {format(weekDates[0], 'MMM d')} - {format(weekDates[6], 'MMM d, yyyy')}
-                      </>
-                    )}
-                    {view === 'monthly' && format(date, 'MMMM yyyy')}
-                  </div>
-                  <Button variant="outline" size="icon" onClick={handleNextClick}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" onClick={() => setDate(new Date())}>
-                    Today
-                  </Button>
-                </div>
-                
+              <div className="flex justify-center items-center mb-4">
                 <Tabs defaultValue="daily" value={view} onValueChange={setView} className="w-full">
-                  <TabsList className="ml-auto">
+                  <TabsList className="mx-auto">
                     <TabsTrigger value="daily">Daily</TabsTrigger>
                     <TabsTrigger value="weekly">Weekly</TabsTrigger>
                     <TabsTrigger value="monthly">Monthly</TabsTrigger>
                   </TabsList>
-                
+
                   <TabsContent value="daily" className="m-0 w-full">
-                    <div className="mt-4 w-full">
+                    <div className="mt-4 mb-4 border-b pb-3">
+                      <div className="flex items-center justify-between gap-4 divide-x">
+                        <div className="flex items-center pr-4 space-x-2">
+                          <Button variant="outline" size="icon" onClick={handlePreviousClick}>
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="justify-start text-left font-normal min-w-[150px]">
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {format(date, 'PPP')}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={(date) => {
+                                  setDate(date || new Date());
+                                  setPopoverOpen(false);
+                                }}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <Button variant="outline" size="icon" onClick={handleNextClick}>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setDate(new Date())}>
+                            Today
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-4 pl-4">
+                          <div className="w-48">
+                            <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="All Doctors" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Doctors</SelectItem>
+                                {doctors.map(doctor => (
+                                  <SelectItem key={doctor.id} value={doctor.name}>{doctor.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-48 relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Search Patient"
+                              className="pl-8"
+                              value={searchTerm}
+                              onChange={e => setSearchTerm(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-full">
                       <div className="relative">
                         <div className="absolute left-0 top-0 bottom-0 w-16 border-r flex flex-col">
                           <div className="h-16 border-b"></div>
@@ -775,20 +742,20 @@ const Appointments = () => {
                             </div>
                           ))}
                         </div>
-                        
+
                         <div className="ml-16 overflow-y-auto">
                           <div className="h-16 border-b flex items-center px-2 font-medium">
                             {format(date, 'EEEE, MMMM d, yyyy')}
                           </div>
-                          
+
                           {Object.entries(hourlyTimeSlots).map(([hour, slots]) => (
                             <div key={hour} className="h-16 border-b relative">
                               <div className="absolute inset-0 grid grid-cols-4 divide-x">
                                 {slots.map(slot => {
                                   const appointments = getAppointmentsForTimeSlot(slot);
                                   return (
-                                    <div 
-                                      key={slot} 
+                                    <div
+                                      key={slot}
                                       className={`p-1 cursor-pointer hover:bg-gray-50 h-full ${appointments.length === 0 ? 'border-dashed border-gray-200 border' : ''}`}
                                       onClick={() => handleNewAppointmentForTimeSlot(slot)}
                                     >
@@ -799,7 +766,7 @@ const Appointments = () => {
                                       ) : (
                                         <div className="h-full">
                                           {appointments.map(appointment => (
-                                            <TimeSlotAppointment 
+                                            <TimeSlotAppointment
                                               key={appointment.id}
                                               appointment={appointment}
                                               isDental={isDental}
@@ -820,8 +787,67 @@ const Appointments = () => {
                       </div>
                     </div>
                   </TabsContent>
-                      
+
                   <TabsContent value="weekly" className="m-0 mt-4">
+                    <div className="mt-4 mb-4 border-b pb-3">
+                      <div className="flex items-center justify-between gap-4 divide-x">
+                        <div className="flex items-center space-x-2 pr-4">
+                          <Button variant="outline" size="icon" onClick={handlePreviousClick}>
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="justify-start text-left font-normal min-w-[150px]">
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {format(date, 'PPP')}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={(date) => {
+                                  setDate(date || new Date());
+                                  setPopoverOpen(false);
+                                }}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <Button variant="outline" size="icon" onClick={handleNextClick}>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setDate(new Date())}>
+                            Today
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-4 pl-4">
+                          <div className="w-48">
+                            <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="All Doctors" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Doctors</SelectItem>
+                                {doctors.map(doctor => (
+                                  <SelectItem key={doctor.id} value={doctor.name}>{doctor.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-48 relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Search Patient"
+                              className="pl-8"
+                              value={searchTerm}
+                              onChange={e => setSearchTerm(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-7 gap-1 text-center border-b pb-2 mb-2">
                       {weekDaysShort.map((day, index) => (
                         <div key={day} className="text-xs font-medium text-muted-foreground">
@@ -834,8 +860,8 @@ const Appointments = () => {
                         const dayAppointments = getAppointmentsForDate(day);
                         const isCurrentDay = isToday(day);
                         return (
-                          <div 
-                            key={idx} 
+                          <div
+                            key={idx}
                             className={cn(
                               "border rounded-lg h-full overflow-y-auto p-1",
                               isCurrentDay && "border-primary bg-primary/5",
@@ -850,7 +876,7 @@ const Appointments = () => {
                             </div>
                             <div className="space-y-1">
                               {dayAppointments.map(appointment => (
-                                <CalendarAppointmentItem 
+                                <CalendarAppointmentItem
                                   key={appointment.id}
                                   appointment={appointment}
                                   isDental={isDental}
@@ -863,8 +889,67 @@ const Appointments = () => {
                       })}
                     </div>
                   </TabsContent>
-                      
+
                   <TabsContent value="monthly" className="m-0 mt-4">
+                    <div className="mt-4 mb-4 border-b pb-3">
+                      <div className="flex items-center justify-between gap-4 divide-x">
+                        <div className="flex items-center space-x-2 pr-4">
+                          <Button variant="outline" size="icon" onClick={handlePreviousClick}>
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="justify-start text-left font-normal min-w-[150px]">
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {format(date, 'PPP')}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={(date) => {
+                                  setDate(date || new Date());
+                                  setPopoverOpen(false);
+                                }}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <Button variant="outline" size="icon" onClick={handleNextClick}>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setDate(new Date())}>
+                            Today
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-4 pl-4">
+                          <div className="w-48">
+                            <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="All Doctors" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Doctors</SelectItem>
+                                {doctors.map(doctor => (
+                                  <SelectItem key={doctor.id} value={doctor.name}>{doctor.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-48 relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Search Patient"
+                              className="pl-8"
+                              value={searchTerm}
+                              onChange={e => setSearchTerm(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-7 gap-1 text-center border-b pb-2 mb-2">
                       {weekDaysShort.map((day) => (
                         <div key={day} className="text-xs font-medium text-muted-foreground">
@@ -872,19 +957,19 @@ const Appointments = () => {
                         </div>
                       ))}
                     </div>
-                    
+
                     <div className="grid grid-cols-7 gap-1 auto-rows-fr">
                       {Array.from({ length: new Date(date.getFullYear(), date.getMonth(), 1).getDay() }).map((_, i) => (
                         <div key={`empty-start-${i}`} className="border border-dashed rounded-lg bg-gray-50/50"></div>
                       ))}
-                      
+
                       {monthDates.map((day, idx) => {
                         const dayAppointments = getAppointmentsForDate(day);
                         const isCurrentDay = isToday(day);
-                        
+
                         return (
-                          <div 
-                            key={idx} 
+                          <div
+                            key={idx}
                             className={cn(
                               "border rounded-lg min-h-[100px] max-h-[120px] overflow-y-auto p-1",
                               isCurrentDay && "border-primary bg-primary/5"
@@ -902,7 +987,7 @@ const Appointments = () => {
                             </div>
                             <div className="space-y-0.5 mt-1">
                               {dayAppointments.slice(0, 3).map(appointment => (
-                                <CalendarAppointmentItem 
+                                <CalendarAppointmentItem
                                   key={appointment.id}
                                   appointment={appointment}
                                   isDental={isDental}
@@ -920,9 +1005,9 @@ const Appointments = () => {
                           </div>
                         );
                       })}
-                      
-                      {Array.from({ 
-                        length: 6 * 7 - monthDates.length - new Date(date.getFullYear(), date.getMonth(), 1).getDay() 
+
+                      {Array.from({
+                        length: 6 * 7 - monthDates.length - new Date(date.getFullYear(), date.getMonth(), 1).getDay()
                       }).map((_, i) => (
                         <div key={`empty-end-${i}`} className="border border-dashed rounded-lg bg-gray-50/50"></div>
                       ))}
@@ -960,7 +1045,7 @@ const Appointments = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="service">Service</Label>
                 <Select value={appointmentService} onValueChange={setAppointmentService}>
@@ -986,7 +1071,7 @@ const Appointments = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Appointment Date</Label>
                 <Popover>
@@ -1013,7 +1098,7 @@ const Appointments = () => {
                   </PopoverContent>
                 </Popover>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="time">Time Slot</Label>
                 <Select value={appointmentTime} onValueChange={setAppointmentTime}>
@@ -1028,31 +1113,29 @@ const Appointments = () => {
                 </Select>
               </div>
 
-              {isDental && (
-                <div className="space-y-2">
-                  <Label htmlFor="doctor">Doctor</Label>
-                  <Select value={appointmentDoctor} onValueChange={setAppointmentDoctor}>
-                    <SelectTrigger id="doctor">
-                      <SelectValue placeholder="Select doctor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {doctors.map(doctor => (
-                        <SelectItem key={doctor.id} value={doctor.name}>
-                          {doctor.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="doctor">Doctor</Label>
+                <Select value={appointmentDoctor} onValueChange={setAppointmentDoctor}>
+                  <SelectTrigger id="doctor">
+                    <SelectValue placeholder="Select doctor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {doctors.map(doctor => (
+                      <SelectItem key={doctor.id} value={doctor.name}>
+                        {doctor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewAppointmentOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleCreateAppointment} 
+            <Button
+              onClick={handleCreateAppointment}
               className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
             >
               Create Appointment
@@ -1075,7 +1158,7 @@ const Appointments = () => {
                 <Label>Patient</Label>
                 <p className="font-medium mt-1">{appointmentPatient}</p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-service">Service</Label>
                 <Select value={appointmentService} onValueChange={setAppointmentService}>
@@ -1101,7 +1184,7 @@ const Appointments = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Appointment Date</Label>
                 <Popover>
@@ -1128,7 +1211,7 @@ const Appointments = () => {
                   </PopoverContent>
                 </Popover>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-time">Time Slot</Label>
                 <Select value={appointmentTime} onValueChange={setAppointmentTime}>
@@ -1139,7 +1222,7 @@ const Appointments = () => {
                     <SelectItem value={appointmentTime}>
                       {appointmentTime} (Current)
                     </SelectItem>
-                    {timeSlots.map(time => 
+                    {timeSlots.map(time =>
                       time !== appointmentTime && (
                         <SelectItem key={time} value={time}>{time}</SelectItem>
                       )
@@ -1148,23 +1231,21 @@ const Appointments = () => {
                 </Select>
               </div>
 
-              {isDental && (
-                <div className="space-y-2">
-                  <Label htmlFor="edit-doctor">Doctor</Label>
-                  <Select value={appointmentDoctor} onValueChange={setAppointmentDoctor}>
-                    <SelectTrigger id="edit-doctor">
-                      <SelectValue placeholder="Select doctor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {doctors.map(doctor => (
-                        <SelectItem key={doctor.id} value={doctor.name}>
-                          {doctor.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="edit-doctor">Doctor</Label>
+                <Select value={appointmentDoctor} onValueChange={setAppointmentDoctor}>
+                  <SelectTrigger id="edit-doctor">
+                    <SelectValue placeholder="Select doctor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {doctors.map(doctor => (
+                      <SelectItem key={doctor.id} value={doctor.name}>
+                        {doctor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter className="flex justify-between">
@@ -1175,8 +1256,8 @@ const Appointments = () => {
               <Button variant="outline" onClick={() => setIsEditAppointmentOpen(false)}>
                 Close
               </Button>
-              <Button 
-                onClick={handleRescheduleSubmit} 
+              <Button
+                onClick={handleRescheduleSubmit}
                 className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
               >
                 Update Appointment
