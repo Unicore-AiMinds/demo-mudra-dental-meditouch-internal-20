@@ -52,6 +52,7 @@ import {
   Plus
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuditLogEntry {
   id: string;
@@ -227,11 +228,13 @@ const getActionBadge = (actionType: string) => {
 
 const AuditLog = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const [selectedUser, setSelectedUser] = useState<string | undefined>(undefined);
-  
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
+
   // Check if the user is an admin
   if (user?.role !== 'admin') {
     return (
@@ -247,31 +250,43 @@ const AuditLog = () => {
       </div>
     );
   }
-  
+
   // Get unique users for the filter
   const uniqueUsers = Array.from(new Set(demoAuditLogs.map(log => log.user)));
-  
+
   // Filter logs based on search term and filters
   const filteredLogs = demoAuditLogs.filter(log => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.actionType.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.targetEntity.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.details.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     // Fixed filtering logic - when "all" is selected or nothing is selected, show all items
     const matchesCategory = !selectedCategory || selectedCategory === "all" || log.actionCategory === selectedCategory;
     const matchesUser = !selectedUser || selectedUser === "all" || log.user === selectedUser;
-    
+
     return matchesSearch && matchesCategory && matchesUser;
   });
-  
+
+  // Sort logs by timestamp based on sort order
+  const sortedLogs = [...filteredLogs].sort((a, b) => {
+    const dateA = new Date(a.timestamp).getTime();
+    const dateB = new Date(b.timestamp).getTime();
+    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+  });
+
+  // Toggle sort order function
+  const toggleSortOrder = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
   // Pagination logic
   const logsPerPage = 5;
   const indexOfLastLog = currentPage * logsPerPage;
   const indexOfFirstLog = indexOfLastLog - logsPerPage;
-  const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
-  const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
+  const currentLogs = sortedLogs.slice(indexOfFirstLog, indexOfLastLog);
+  const totalPages = Math.ceil(sortedLogs.length / logsPerPage);
 
   return (
     <div className="space-y-6">
@@ -280,11 +295,51 @@ const AuditLog = () => {
           <h1 className="text-3xl font-bold tracking-tight">Audit Log</h1>
           <p className="text-muted-foreground">Track and monitor all system activities</p>
         </div>
-        <Button variant="outline">
+        <Button
+          variant="outline"
+          onClick={() => {
+            // Create CSV content from the filtered logs
+            const headers = ['Timestamp', 'User', 'Role', 'Action Category', 'Action Type', 'Target', 'Details'];
+
+            const csvContent = [
+              headers.join(','),
+              ...sortedLogs.map((log) => [
+                `"${log.timestamp}"`,
+                `"${log.user}"`,
+                `"${log.userRole}"`,
+                `"${log.actionCategory}"`,
+                `"${log.actionType}"`,
+                `"${log.targetEntity}"`,
+                `"${log.details}"`
+              ].join(','))
+            ].join('\n');
+
+            // Create a blob and download link
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            // Create a temporary link and trigger download
+            const link = document.createElement('a');
+            const filename = `dental_audit_log_${new Date().toISOString().split('T')[0]}.csv`;
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            toast({
+              title: "Export Successful",
+              description: `${sortedLogs.length} audit log entries exported to CSV.`,
+            });
+          }}
+        >
           <Download className="mr-2 h-4 w-4" /> Export Log
         </Button>
       </div>
-      
+
       {/* Filters and search */}
       <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
         <div className="relative flex-1">
@@ -297,7 +352,7 @@ const AuditLog = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger className="w-[160px]">
@@ -314,7 +369,7 @@ const AuditLog = () => {
               <SelectItem value="settings">Settings</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <Select value={selectedUser} onValueChange={setSelectedUser}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Filter by User" />
@@ -326,9 +381,15 @@ const AuditLog = () => {
               ))}
             </SelectContent>
           </Select>
+
+          <Button variant="outline" onClick={toggleSortOrder} className="flex items-center gap-1">
+            <Calendar className="h-4 w-4" />
+            Sort by Date
+            <ArrowDownUp className="h-4 w-4 ml-1" />
+          </Button>
         </div>
       </div>
-      
+
       {/* Audit Log Table */}
       <Card>
         <CardHeader>
@@ -344,7 +405,7 @@ const AuditLog = () => {
                 <TableHead>Action</TableHead>
                 <TableHead>Target</TableHead>
                 <TableHead className="hidden md:table-cell">Details</TableHead>
-                <TableHead className="text-right">View</TableHead>
+
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -368,38 +429,33 @@ const AuditLog = () => {
                     </TableCell>
                     <TableCell>{log.targetEntity}</TableCell>
                     <TableCell className="hidden md:table-cell max-w-xs truncate">{log.details}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <Eye className="h-4 w-4" />
-                        <span className="sr-only">View details</span>
-                      </Button>
-                    </TableCell>
+
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     No matching logs found
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
-          
+
           {/* Pagination */}
           <div className="mt-4">
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
-                  <PaginationPrevious 
+                  <PaginationPrevious
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                   />
                 </PaginationItem>
-                
+
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                   <PaginationItem key={page}>
-                    <PaginationLink 
+                    <PaginationLink
                       isActive={page === currentPage}
                       onClick={() => setCurrentPage(page)}
                     >
@@ -407,9 +463,9 @@ const AuditLog = () => {
                     </PaginationLink>
                   </PaginationItem>
                 ))}
-                
+
                 <PaginationItem>
-                  <PaginationNext 
+                  <PaginationNext
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
                   />
