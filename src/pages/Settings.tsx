@@ -43,17 +43,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Settings as SettingsIcon, 
-  User, 
-  UserPlus, 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Clock, 
-  Edit, 
-  Trash2, 
-  Save, 
+import {
+  Settings as SettingsIcon,
+  User,
+  UserPlus,
+  MapPin,
+  Phone,
+  Mail,
+  Clock,
+  Edit,
+  Trash2,
+  Save,
   Plus,
   AlertCircle,
   FileText,
@@ -97,11 +97,43 @@ const clinicDetails = {
   }
 };
 
-const dentalDoctors = [
-  { id: 1, name: "Dr. Rajan Khanna", specialization: "General Dentistry", email: "rajan.khanna@dentalmetrix.com" },
-  { id: 2, name: "Dr. Priya Desai", specialization: "Orthodontics", email: "priya.desai@dentalmetrix.com" },
-  { id: 3, name: "Dr. Vikram Mehta", specialization: "Endodontics", email: "vikram.mehta@dentalmetrix.com" },
-  { id: 4, name: "Dr. Ananya Sharma", specialization: "Pediatric Dentistry", email: "ananya.sharma@dentalmetrix.com" }
+const initialDoctors = [
+  {
+    id: 1,
+    name: "Dr. Rajan Khanna",
+    specialization: "General Dentistry",
+    email: "rajan.khanna@dentalmetrix.com",
+    phone: "+91 98765 43210",
+    aadharDoc: "/docs/aadhar_rajan.pdf",
+    panDoc: "/docs/pan_rajan.pdf"
+  },
+  {
+    id: 2,
+    name: "Dr. Priya Desai",
+    specialization: "Orthodontics",
+    email: "priya.desai@dentalmetrix.com",
+    phone: "+91 87654 32109",
+    aadharDoc: "/docs/aadhar_priya.pdf",
+    panDoc: ""
+  },
+  {
+    id: 3,
+    name: "Dr. Vikram Mehta",
+    specialization: "Endodontics",
+    email: "vikram.mehta@dentalmetrix.com",
+    phone: "+91 76543 21098",
+    aadharDoc: "",
+    panDoc: "/docs/pan_vikram.pdf"
+  },
+  {
+    id: 4,
+    name: "Dr. Ananya Sharma",
+    specialization: "Pediatric Dentistry",
+    email: "ananya.sharma@dentalmetrix.com",
+    phone: "+91 65432 10987",
+    aadharDoc: "/docs/aadhar_ananya.pdf",
+    panDoc: "/docs/pan_ananya.pdf"
+  }
 ];
 
 const services = {
@@ -150,12 +182,47 @@ const systemUsers = [
 const Settings = () => {
   const { user } = useAuth();
   const { activeClinic } = useClinic();
+  // Add dialogs
   const [isAddDoctorDialogOpen, setIsAddDoctorDialogOpen] = useState(false);
   const [isAddServiceDialogOpen, setIsAddServiceDialogOpen] = useState(false);
   const [isAddLabDialogOpen, setIsAddLabDialogOpen] = useState(false);
   const [isAddLabWorkTypeDialogOpen, setIsAddLabWorkTypeDialogOpen] = useState(false);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
-  
+
+  // Edit dialogs
+  const [isEditDoctorDialogOpen, setIsEditDoctorDialogOpen] = useState(false);
+  const [isEditServiceDialogOpen, setIsEditServiceDialogOpen] = useState(false);
+  const [isEditLabDialogOpen, setIsEditLabDialogOpen] = useState(false);
+  const [isEditLabWorkTypeDialogOpen, setIsEditLabWorkTypeDialogOpen] = useState(false);
+  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
+
+  // Confirmation dialogs
+  const [isConfirmDeleteDoctorOpen, setIsConfirmDeleteDoctorOpen] = useState(false);
+  const [isConfirmDeleteServiceOpen, setIsConfirmDeleteServiceOpen] = useState(false);
+  const [isConfirmDeleteLabOpen, setIsConfirmDeleteLabOpen] = useState(false);
+  const [isConfirmDeleteLabWorkTypeOpen, setIsConfirmDeleteLabWorkTypeOpen] = useState(false);
+  const [isConfirmDeleteUserOpen, setIsConfirmDeleteUserOpen] = useState(false);
+
+  const [isConfirmUpdateDoctorOpen, setIsConfirmUpdateDoctorOpen] = useState(false);
+  const [isConfirmUpdateServiceOpen, setIsConfirmUpdateServiceOpen] = useState(false);
+  const [isConfirmUpdateLabOpen, setIsConfirmUpdateLabOpen] = useState(false);
+  const [isConfirmUpdateLabWorkTypeOpen, setIsConfirmUpdateLabWorkTypeOpen] = useState(false);
+  const [isConfirmUpdateUserOpen, setIsConfirmUpdateUserOpen] = useState(false);
+
+  // Current edit items
+  const [currentDoctor, setCurrentDoctor] = useState(null);
+  const [newDoctorName, setNewDoctorName] = useState('');
+  const [newDoctorSpecialization, setNewDoctorSpecialization] = useState('');
+  const [newDoctorEmail, setNewDoctorEmail] = useState('');
+  const [newDoctorPhone, setNewDoctorPhone] = useState('');
+  const [phoneCountryCode, setPhoneCountryCode] = useState('+91');
+  const [editPhoneCountryCode, setEditPhoneCountryCode] = useState('+91');
+  const [dentalDoctors, setDentalDoctors] = useState(initialDoctors);
+  const [currentService, setCurrentService] = useState(null);
+  const [currentLab, setCurrentLab] = useState(null);
+  const [currentLabWorkType, setCurrentLabWorkType] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+
   if (user?.role !== 'admin') {
     return (
       <div className="flex flex-col items-center justify-center h-96">
@@ -171,21 +238,268 @@ const Settings = () => {
     );
   }
 
-  const currentClinicDetails = activeClinic === 'dental' 
-    ? clinicDetails.dental 
+  const currentClinicDetails = activeClinic === 'dental'
+    ? clinicDetails.dental
     : clinicDetails.meditouch;
-  
-  const currentServices = activeClinic === 'dental' 
-    ? services.dental 
+
+  const currentServices = activeClinic === 'dental'
+    ? services.dental
     : services.meditouch;
-    
+
   const handleSaveClinicDetails = () => {
     toast({
       title: "Settings Updated",
       description: `${activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch'} clinic details have been updated.`,
     });
   };
-  
+
+  // Doctor handlers
+  const handleEditDoctor = (doctor: any) => {
+    setCurrentDoctor(doctor);
+    // Extract country code from phone number if it exists
+    if (doctor.phone && doctor.phone.startsWith('+')) {
+      const parts = doctor.phone.split(' ');
+      const countryCode = parts[0];
+      if (['+91', '+1', '+44', '+61', '+971', '+65'].includes(countryCode)) {
+        setEditPhoneCountryCode(countryCode);
+      }
+    }
+    setIsEditDoctorDialogOpen(true);
+  };
+
+  const handleUpdateDoctorConfirm = () => {
+    setIsConfirmUpdateDoctorOpen(true);
+  };
+
+  const handleUpdateDoctor = () => {
+    if (currentDoctor) {
+      // Get updated values from form fields
+      const updatedName = document.getElementById('editDoctorName') as HTMLInputElement;
+      const updatedSpecialization = document.getElementById('editDoctorSpecialization') as HTMLInputElement;
+      const updatedEmail = document.getElementById('editDoctorEmail') as HTMLInputElement;
+      const updatedPhone = document.getElementById('editDoctorPhone') as HTMLInputElement;
+
+      // Validate email format
+      const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+      const isEmailValid = emailRegex.test(updatedEmail.value);
+
+      // Validate phone number (only digits allowed)
+      const phoneRegex = /^\d+$/;
+      const isPhoneValid = phoneRegex.test(updatedPhone.value);
+
+      if (!isEmailValid) {
+        toast({
+          title: "Invalid Email",
+          description: "Please enter a valid email address.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!isPhoneValid) {
+        toast({
+          title: "Invalid Phone Number",
+          description: "Phone number should contain only digits.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (updatedName && updatedSpecialization && updatedEmail && updatedPhone) {
+        // Update doctor in the list
+        const updatedDoctors = dentalDoctors.map(doctor => {
+          if (doctor.id === currentDoctor.id) {
+            return {
+              ...doctor,
+              name: updatedName.value,
+              specialization: updatedSpecialization.value,
+              email: updatedEmail.value,
+              phone: `${editPhoneCountryCode} ${updatedPhone.value}`,
+              // Keep existing document links
+            };
+          }
+          return doctor;
+        });
+
+        setDentalDoctors(updatedDoctors);
+
+        toast({
+          title: "Doctor Updated",
+          description: `${updatedName.value}'s information has been updated successfully.`,
+        });
+      } else {
+        toast({
+          title: "Update Failed",
+          description: "Could not update doctor information.",
+          variant: "destructive"
+        });
+      }
+
+      setIsConfirmUpdateDoctorOpen(false);
+      setIsEditDoctorDialogOpen(false);
+      setCurrentDoctor(null);
+    }
+  };
+
+  // This function is now only used directly in the UI, not in the edit form
+
+  const handleDeleteDoctor = () => {
+    if (currentDoctor) {
+      // Delete doctor from the list
+      setDentalDoctors(dentalDoctors.filter(doctor => doctor.id !== currentDoctor.id));
+
+      toast({
+        title: "Doctor Removed",
+        description: `${currentDoctor.name} has been removed from the system.`,
+      });
+      setIsConfirmDeleteDoctorOpen(false);
+      setIsEditDoctorDialogOpen(false);
+      setCurrentDoctor(null);
+    }
+  };
+
+  // Service handlers
+  const handleEditService = (service: any) => {
+    setCurrentService(service);
+    setIsEditServiceDialogOpen(true);
+  };
+
+  const handleUpdateServiceConfirm = () => {
+    setIsConfirmUpdateServiceOpen(true);
+  };
+
+  const handleUpdateService = () => {
+    // Update service logic would go here
+    toast({
+      title: "Service Updated",
+      description: `${currentService.name} service has been updated successfully.`,
+    });
+    setIsConfirmUpdateServiceOpen(false);
+    setIsEditServiceDialogOpen(false);
+    setCurrentService(null);
+  };
+
+  // This function is now only used directly in the UI, not in the edit form
+
+  const handleDeleteService = () => {
+    // Delete service logic would go here
+    toast({
+      title: "Service Removed",
+      description: `${currentService.name} service has been removed from the system.`,
+    });
+    setIsConfirmDeleteServiceOpen(false);
+    setIsEditServiceDialogOpen(false);
+    setCurrentService(null);
+  };
+
+  // Lab handlers
+  const handleEditLab = (lab) => {
+    setCurrentLab(lab);
+    setIsEditLabDialogOpen(true);
+  };
+
+  const handleUpdateLabConfirm = () => {
+    setIsConfirmUpdateLabOpen(true);
+  };
+
+  const handleUpdateLab = () => {
+    // Update lab logic would go here
+    toast({
+      title: "Laboratory Updated",
+      description: `${currentLab.name} information has been updated successfully.`,
+    });
+    setIsConfirmUpdateLabOpen(false);
+    setIsEditLabDialogOpen(false);
+    setCurrentLab(null);
+  };
+
+  const handleDeleteLabConfirm = () => {
+    setIsConfirmDeleteLabOpen(true);
+  };
+
+  const handleDeleteLab = () => {
+    // Delete lab logic would go here
+    toast({
+      title: "Laboratory Removed",
+      description: `${currentLab.name} has been removed from the system.`,
+    });
+    setIsConfirmDeleteLabOpen(false);
+    setIsEditLabDialogOpen(false);
+    setCurrentLab(null);
+  };
+
+  // Lab Work Type handlers
+  const handleEditLabWorkType = (workType) => {
+    setCurrentLabWorkType(workType);
+    setIsEditLabWorkTypeDialogOpen(true);
+  };
+
+  const handleUpdateLabWorkTypeConfirm = () => {
+    setIsConfirmUpdateLabWorkTypeOpen(true);
+  };
+
+  const handleUpdateLabWorkType = () => {
+    // Update lab work type logic would go here
+    toast({
+      title: "Lab Work Type Updated",
+      description: `${currentLabWorkType.name} has been updated successfully.`,
+    });
+    setIsConfirmUpdateLabWorkTypeOpen(false);
+    setIsEditLabWorkTypeDialogOpen(false);
+    setCurrentLabWorkType(null);
+  };
+
+  const handleDeleteLabWorkTypeConfirm = () => {
+    setIsConfirmDeleteLabWorkTypeOpen(true);
+  };
+
+  const handleDeleteLabWorkType = () => {
+    // Delete lab work type logic would go here
+    toast({
+      title: "Lab Work Type Removed",
+      description: `${currentLabWorkType.name} has been removed from the system.`,
+    });
+    setIsConfirmDeleteLabWorkTypeOpen(false);
+    setIsEditLabWorkTypeDialogOpen(false);
+    setCurrentLabWorkType(null);
+  };
+
+  // User handlers
+  const handleEditUser = (user) => {
+    setCurrentUser(user);
+    setIsEditUserDialogOpen(true);
+  };
+
+  const handleUpdateUserConfirm = () => {
+    setIsConfirmUpdateUserOpen(true);
+  };
+
+  const handleUpdateUser = () => {
+    // Update user logic would go here
+    toast({
+      title: "User Updated",
+      description: `${currentUser.name}'s account has been updated successfully.`,
+    });
+    setIsConfirmUpdateUserOpen(false);
+    setIsEditUserDialogOpen(false);
+    setCurrentUser(null);
+  };
+
+  const handleDeleteUserConfirm = () => {
+    setIsConfirmDeleteUserOpen(true);
+  };
+
+  const handleDeleteUser = () => {
+    // Delete user logic would go here
+    toast({
+      title: "User Removed",
+      description: `${currentUser.name}'s account has been removed from the system.`,
+    });
+    setIsConfirmDeleteUserOpen(false);
+    setIsEditUserDialogOpen(false);
+    setCurrentUser(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between">
@@ -194,7 +508,7 @@ const Settings = () => {
           <p className="text-muted-foreground">Configure and manage system settings</p>
         </div>
       </div>
-      
+
       <Tabs defaultValue="clinic" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="clinic">Clinic Details</TabsTrigger>
@@ -205,7 +519,7 @@ const Settings = () => {
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="clinic" className="space-y-6">
           <Card>
             <CardHeader>
@@ -223,86 +537,86 @@ const Settings = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="clinicName">Clinic Name</Label>
-                    <Input 
-                      id="clinicName" 
-                      defaultValue={currentClinicDetails.name} 
+                    <Input
+                      id="clinicName"
+                      defaultValue={currentClinicDetails.name}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="clinicAddress">Address</Label>
-                    <Input 
-                      id="clinicAddress" 
-                      defaultValue={currentClinicDetails.address} 
+                    <Input
+                      id="clinicAddress"
+                      defaultValue={currentClinicDetails.address}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="clinicPhone">Phone Number</Label>
-                    <Input 
+                    <Input
                       id="clinicPhone"
-                      defaultValue={currentClinicDetails.phone} 
+                      defaultValue={currentClinicDetails.phone}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="clinicEmail">Email</Label>
-                    <Input 
-                      id="clinicEmail" 
-                      type="email" 
-                      defaultValue={currentClinicDetails.email} 
+                    <Input
+                      id="clinicEmail"
+                      type="email"
+                      defaultValue={currentClinicDetails.email}
                     />
                   </div>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Operating Hours</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="mondayHours">Monday</Label>
-                    <Input 
-                      id="mondayHours" 
-                      defaultValue={currentClinicDetails.operatingHours.monday} 
+                    <Input
+                      id="mondayHours"
+                      defaultValue={currentClinicDetails.operatingHours.monday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tuesdayHours">Tuesday</Label>
-                    <Input 
-                      id="tuesdayHours" 
-                      defaultValue={currentClinicDetails.operatingHours.tuesday} 
+                    <Input
+                      id="tuesdayHours"
+                      defaultValue={currentClinicDetails.operatingHours.tuesday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="wednesdayHours">Wednesday</Label>
-                    <Input 
-                      id="wednesdayHours" 
-                      defaultValue={currentClinicDetails.operatingHours.wednesday} 
+                    <Input
+                      id="wednesdayHours"
+                      defaultValue={currentClinicDetails.operatingHours.wednesday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="thursdayHours">Thursday</Label>
-                    <Input 
-                      id="thursdayHours" 
-                      defaultValue={currentClinicDetails.operatingHours.thursday} 
+                    <Input
+                      id="thursdayHours"
+                      defaultValue={currentClinicDetails.operatingHours.thursday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="fridayHours">Friday</Label>
-                    <Input 
-                      id="fridayHours" 
-                      defaultValue={currentClinicDetails.operatingHours.friday} 
+                    <Input
+                      id="fridayHours"
+                      defaultValue={currentClinicDetails.operatingHours.friday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="saturdayHours">Saturday</Label>
-                    <Input 
-                      id="saturdayHours" 
-                      defaultValue={currentClinicDetails.operatingHours.saturday} 
+                    <Input
+                      id="saturdayHours"
+                      defaultValue={currentClinicDetails.operatingHours.saturday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="sundayHours">Sunday</Label>
-                    <Input 
-                      id="sundayHours" 
-                      defaultValue={currentClinicDetails.operatingHours.sunday} 
+                    <Input
+                      id="sundayHours"
+                      defaultValue={currentClinicDetails.operatingHours.sunday}
                     />
                   </div>
                 </div>
@@ -316,7 +630,7 @@ const Settings = () => {
             </CardFooter>
           </Card>
         </TabsContent>
-        
+
         {activeClinic === 'dental' && (
           <TabsContent value="doctors" className="space-y-6">
             <Card>
@@ -341,6 +655,8 @@ const Settings = () => {
                       <TableHead>Name</TableHead>
                       <TableHead>Specialization</TableHead>
                       <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Documents</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -350,12 +666,48 @@ const Settings = () => {
                         <TableCell className="font-medium">{doctor.name}</TableCell>
                         <TableCell>{doctor.specialization}</TableCell>
                         <TableCell>{doctor.email}</TableCell>
+                        <TableCell>{doctor.phone}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            {doctor.aadharDoc && (
+                              <a
+                                href={doctor.aadharDoc}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline flex items-center"
+                              >
+                                <FileText className="h-3 w-3 mr-1" /> Aadhar
+                              </a>
+                            )}
+                            {doctor.panDoc && (
+                              <a
+                                href={doctor.panDoc}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline flex items-center"
+                              >
+                                <FileText className="h-3 w-3 mr-1" /> PAN
+                              </a>
+                            )}
+                            {!doctor.aadharDoc && !doctor.panDoc && (
+                              <span className="text-gray-400 text-sm">No documents</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditDoctor(doctor)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => {
+                                setCurrentDoctor(doctor);
+                                setIsConfirmDeleteDoctorOpen(true);
+                              }}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -366,32 +718,108 @@ const Settings = () => {
                 </Table>
               </CardContent>
             </Card>
-            
+
+            {/* Add Doctor Dialog */}
             <Dialog open={isAddDoctorDialogOpen} onOpenChange={setIsAddDoctorDialogOpen}>
-              <DialogContent>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Add New Doctor</DialogTitle>
                   <DialogDescription>
                     Enter the details for the new doctor. All fields are required.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="doctorName">Full Name</Label>
-                      <Input id="doctorName" placeholder="Dr. Full Name" />
+                <div className="grid gap-3 py-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="doctorName" className="flex items-center">
+                        Full Name <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="doctorName"
+                        placeholder="Dr. Full Name"
+                        required
+                        value={newDoctorName}
+                        onChange={(e) => setNewDoctorName(e.target.value)}
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="doctorSpecialization">Specialization</Label>
-                      <Input id="doctorSpecialization" placeholder="e.g., Orthodontics" />
+                    <div className="space-y-1">
+                      <Label htmlFor="doctorSpecialization" className="flex items-center">
+                        Specialization <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="doctorSpecialization"
+                        placeholder="e.g., Orthodontics"
+                        required
+                        value={newDoctorSpecialization}
+                        onChange={(e) => setNewDoctorSpecialization(e.target.value)}
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="doctorEmail">Email</Label>
-                      <Input id="doctorEmail" type="email" placeholder="doctor@example.com" />
+                    <div className="space-y-1">
+                      <Label htmlFor="doctorEmail" className="flex items-center">
+                        Email <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="doctorEmail"
+                        type="email"
+                        placeholder="doctor@example.com"
+                        required
+                        pattern="[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}"
+                        title="Please enter a valid email address"
+                        value={newDoctorEmail}
+                        onChange={(e) => setNewDoctorEmail(e.target.value)}
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="doctorPhone">Phone</Label>
-                      <Input id="doctorPhone" placeholder="Contact Number" />
+                    <div className="space-y-1">
+                      <Label htmlFor="doctorPhone" className="flex items-center">
+                        Phone <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <div className="flex">
+                        <Select
+                          defaultValue="+91"
+                          value={phoneCountryCode}
+                          onValueChange={setPhoneCountryCode}
+                        >
+                          <SelectTrigger className="w-[100px] rounded-r-none border-r-0">
+                            <SelectValue placeholder="+91" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="+91">+91 (IN)</SelectItem>
+                            <SelectItem value="+1">+1 (US)</SelectItem>
+                            <SelectItem value="+44">+44 (UK)</SelectItem>
+                            <SelectItem value="+61">+61 (AU)</SelectItem>
+                            <SelectItem value="+971">+971 (UAE)</SelectItem>
+                            <SelectItem value="+65">+65 (SG)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          id="doctorPhone"
+                          className="rounded-l-none"
+                          placeholder="Contact Number"
+                          required
+                          pattern="\d+"
+                          title="Please enter only digits"
+                          value={newDoctorPhone}
+                          onChange={(e) => setNewDoctorPhone(e.target.value.replace(/\D/g, ''))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mt-1">
+                    <Label className="text-base font-medium">Document Upload</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="aadharUpload" className="flex items-center text-sm">
+                          <FileText className="h-3 w-3 mr-1" /> Aadhar Card
+                        </Label>
+                        <Input id="aadharUpload" type="file" accept=".pdf,.jpg,.jpeg,.png" className="text-sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="panUpload" className="flex items-center text-sm">
+                          <FileText className="h-3 w-3 mr-1" /> PAN Card
+                        </Label>
+                        <Input id="panUpload" type="file" accept=".pdf,.jpg,.jpeg,.png" className="text-sm" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -401,11 +829,64 @@ const Settings = () => {
                   </Button>
                   <Button className="bg-dental-primary hover:bg-dental-dark"
                     onClick={() => {
-                      toast({
-                        title: "Doctor Added",
-                        description: "The new doctor has been successfully added.",
-                      });
-                      setIsAddDoctorDialogOpen(false);
+                      // Validate email format
+                      const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+                      const isEmailValid = emailRegex.test(newDoctorEmail);
+
+                      // Validate phone number (only digits allowed)
+                      const phoneRegex = /^\d+$/;
+                      const isPhoneValid = phoneRegex.test(newDoctorPhone);
+
+                      if (!isEmailValid) {
+                        toast({
+                          title: "Invalid Email",
+                          description: "Please enter a valid email address.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      if (!isPhoneValid) {
+                        toast({
+                          title: "Invalid Phone Number",
+                          description: "Phone number should contain only digits.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      if (newDoctorName && newDoctorSpecialization && newDoctorEmail && newDoctorPhone) {
+                        // Add new doctor to the list
+                        const newDoctor = {
+                          id: dentalDoctors.length > 0 ? Math.max(...dentalDoctors.map(d => d.id)) + 1 : 1,
+                          name: newDoctorName,
+                          specialization: newDoctorSpecialization,
+                          email: newDoctorEmail,
+                          phone: `${phoneCountryCode} ${newDoctorPhone}`,
+                          aadharDoc: "",
+                          panDoc: ""
+                        };
+
+                        setDentalDoctors([...dentalDoctors, newDoctor]);
+
+                        // Reset form fields
+                        setNewDoctorName('');
+                        setNewDoctorSpecialization('');
+                        setNewDoctorEmail('');
+                        setNewDoctorPhone('');
+
+                        toast({
+                          title: "Doctor Added",
+                          description: "The new doctor has been successfully added.",
+                        });
+                        setIsAddDoctorDialogOpen(false);
+                      } else {
+                        toast({
+                          title: "Missing Information",
+                          description: "Please fill in all required fields.",
+                          variant: "destructive"
+                        });
+                      }
                     }}
                   >
                     Add Doctor
@@ -413,9 +894,181 @@ const Settings = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Edit Doctor Dialog */}
+            <Dialog open={isEditDoctorDialogOpen} onOpenChange={setIsEditDoctorDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Doctor</DialogTitle>
+                  <DialogDescription>
+                    Update doctor information or upload new documents.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentDoctor && (
+                  <div className="grid gap-3 py-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="editDoctorName">Full Name</Label>
+                        <Input
+                          id="editDoctorName"
+                          defaultValue={currentDoctor.name}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editDoctorSpecialization">Specialization</Label>
+                        <Input
+                          id="editDoctorSpecialization"
+                          defaultValue={currentDoctor.specialization}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editDoctorEmail">Email</Label>
+                        <Input
+                          id="editDoctorEmail"
+                          type="email"
+                          pattern="[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}"
+                          title="Please enter a valid email address"
+                          defaultValue={currentDoctor.email}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editDoctorPhone">Phone</Label>
+                        <div className="flex">
+                          <Select
+                            value={editPhoneCountryCode}
+                            onValueChange={setEditPhoneCountryCode}
+                          >
+                            <SelectTrigger className="w-[100px] rounded-r-none border-r-0">
+                              <SelectValue placeholder="+91" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="+91">+91 (IN)</SelectItem>
+                              <SelectItem value="+1">+1 (US)</SelectItem>
+                              <SelectItem value="+44">+44 (UK)</SelectItem>
+                              <SelectItem value="+61">+61 (AU)</SelectItem>
+                              <SelectItem value="+971">+971 (UAE)</SelectItem>
+                              <SelectItem value="+65">+65 (SG)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            id="editDoctorPhone"
+                            className="rounded-l-none"
+                            pattern="\d+"
+                            title="Please enter only digits"
+                            defaultValue={currentDoctor.phone.split(' ').slice(1).join(' ')}
+                            onInput={(e) => {
+                              const input = e.target as HTMLInputElement;
+                              input.value = input.value.replace(/\D/g, '');
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mt-1">
+                      <Label className="text-base font-medium">Document Upload</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <Label htmlFor="editAadharUpload" className="flex items-center text-sm">
+                              <FileText className="h-3 w-3 mr-1" /> Aadhar Card
+                            </Label>
+                            {currentDoctor.aadharDoc && (
+                              <a
+                                href={currentDoctor.aadharDoc}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-xs"
+                              >
+                                View Current
+                              </a>
+                            )}
+                          </div>
+                          <Input id="editAadharUpload" type="file" accept=".pdf,.jpg,.jpeg,.png" className="text-sm" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <Label htmlFor="editPanUpload" className="flex items-center text-sm">
+                              <FileText className="h-3 w-3 mr-1" /> PAN Card
+                            </Label>
+                            {currentDoctor.panDoc && (
+                              <a
+                                href={currentDoctor.panDoc}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-xs"
+                              >
+                                View Current
+                              </a>
+                            )}
+                          </div>
+                          <Input id="editPanUpload" type="file" accept=".pdf,.jpg,.jpeg,.png" className="text-sm" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditDoctorDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={handleUpdateDoctorConfirm}
+                  >
+                    <Save className="h-4 w-4 mr-2" /> Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Confirmation Dialogs */}
+            <Dialog open={isConfirmDeleteDoctorOpen} onOpenChange={setIsConfirmDeleteDoctorOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Deletion</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete this doctor? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentDoctor && (
+                  <div className="py-4">
+                    <p className="font-medium">{currentDoctor.name}</p>
+                    <p className="text-sm text-muted-foreground">{currentDoctor.specialization}</p>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmDeleteDoctorOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeleteDoctor}>
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isConfirmUpdateDoctorOpen} onOpenChange={setIsConfirmUpdateDoctorOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Update</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to save these changes?
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmUpdateDoctorOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpdateDoctor}>
+                    Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         )}
-        
+
         <TabsContent value="services" className="space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -450,10 +1103,18 @@ const Settings = () => {
                       <TableCell>₹{service.price}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditService(service)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-red-500 hover:text-red-700"
+                            onClick={() => {
+                              setCurrentService(service);
+                              setIsConfirmDeleteServiceOpen(true);
+                            }}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -464,9 +1125,10 @@ const Settings = () => {
               </Table>
             </CardContent>
           </Card>
-          
+
+          {/* Add Service Dialog */}
           <Dialog open={isAddServiceDialogOpen} onOpenChange={setIsAddServiceDialogOpen}>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Service</DialogTitle>
                 <DialogDescription>
@@ -497,7 +1159,7 @@ const Settings = () => {
                 <Button variant="outline" onClick={() => setIsAddServiceDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   className={activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
                   onClick={() => {
                     toast({
@@ -512,8 +1174,113 @@ const Settings = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Service Dialog */}
+          <Dialog open={isEditServiceDialogOpen} onOpenChange={setIsEditServiceDialogOpen}>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Edit Service</DialogTitle>
+                <DialogDescription>
+                  Update service details.
+                </DialogDescription>
+              </DialogHeader>
+              {currentService && (
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editServiceName">Service Name</Label>
+                      <Input
+                        id="editServiceName"
+                        defaultValue={currentService.name}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editServiceDuration">Duration (minutes)</Label>
+                      <Input
+                        id="editServiceDuration"
+                        type="number"
+                        defaultValue={currentService.duration}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editServicePrice">Price (₹)</Label>
+                      <Input
+                        id="editServicePrice"
+                        type="number"
+                        defaultValue={currentService.price}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editServiceDescription">Description (Optional)</Label>
+                      <Textarea
+                        id="editServiceDescription"
+                        defaultValue={currentService.description || ''}
+                        placeholder="Brief description of the service"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditServiceDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className={activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
+                  onClick={handleUpdateServiceConfirm}
+                >
+                  <Save className="h-4 w-4 mr-2" /> Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Confirmation Dialogs */}
+          <Dialog open={isConfirmDeleteServiceOpen} onOpenChange={setIsConfirmDeleteServiceOpen}>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Confirm Deletion</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete this service? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              {currentService && (
+                <div className="py-4">
+                  <p className="font-medium">{currentService.name}</p>
+                  <p className="text-sm text-muted-foreground">₹{currentService.price} - {currentService.duration} mins</p>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsConfirmDeleteServiceOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteService}>
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isConfirmUpdateServiceOpen} onOpenChange={setIsConfirmUpdateServiceOpen}>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Confirm Update</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to save these changes?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsConfirmUpdateServiceOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateService}>
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
-        
+
         {activeClinic === 'dental' && (
           <TabsContent value="labs" className="space-y-6">
             <Card>
@@ -551,10 +1318,18 @@ const Settings = () => {
                         <TableCell>{lab.specialization}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditLab(lab)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => {
+                                setCurrentLab(lab);
+                                setIsConfirmDeleteLabOpen(true);
+                              }}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -565,9 +1340,10 @@ const Settings = () => {
                 </Table>
               </CardContent>
             </Card>
-            
+
+            {/* Add Lab Dialog */}
             <Dialog open={isAddLabDialogOpen} onOpenChange={setIsAddLabDialogOpen}>
-              <DialogContent>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Add New Laboratory</DialogTitle>
                   <DialogDescription>
@@ -612,9 +1388,94 @@ const Settings = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Edit Lab Dialog */}
+            <Dialog open={isEditLabDialogOpen} onOpenChange={setIsEditLabDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Laboratory</DialogTitle>
+                  <DialogDescription>
+                    Update laboratory information.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentLab && (
+                  <div className="grid gap-3 py-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="editLabName">Laboratory Name</Label>
+                        <Input
+                          id="editLabName"
+                          defaultValue={currentLab.name}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editLabContact">Contact Number</Label>
+                        <Input
+                          id="editLabContact"
+                          defaultValue={currentLab.contact}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editLabAddress">Address/Location</Label>
+                        <Input
+                          id="editLabAddress"
+                          defaultValue={currentLab.address}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editLabSpecialization">Specialization</Label>
+                        <Input
+                          id="editLabSpecialization"
+                          defaultValue={currentLab.specialization}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditLabDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={handleUpdateLabConfirm}
+                  >
+                    <Save className="h-4 w-4 mr-2" /> Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Confirmation Dialogs */}
+            <Dialog open={isConfirmDeleteLabOpen} onOpenChange={setIsConfirmDeleteLabOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Deletion</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete this laboratory? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentLab && (
+                  <div className="py-4">
+                    <p className="font-medium">{currentLab.name}</p>
+                    <p className="text-sm text-muted-foreground">{currentLab.specialization}</p>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmDeleteLabOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeleteLab}>
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+
           </TabsContent>
         )}
-        
+
         {activeClinic === 'dental' && (
           <TabsContent value="labwork" className="space-y-6">
             <Card>
@@ -648,10 +1509,18 @@ const Settings = () => {
                         <TableCell>{workType.turnaround}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditLabWorkType(workType)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => {
+                                setCurrentLabWorkType(workType);
+                                setIsConfirmDeleteLabWorkTypeOpen(true);
+                              }}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -662,9 +1531,10 @@ const Settings = () => {
                 </Table>
               </CardContent>
             </Card>
-            
+
+            {/* Add Lab Work Type Dialog */}
             <Dialog open={isAddLabWorkTypeDialogOpen} onOpenChange={setIsAddLabWorkTypeDialogOpen}>
-              <DialogContent>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Add New Lab Work Type</DialogTitle>
                   <DialogDescription>
@@ -705,9 +1575,105 @@ const Settings = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Edit Lab Work Type Dialog */}
+            <Dialog open={isEditLabWorkTypeDialogOpen} onOpenChange={setIsEditLabWorkTypeDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Lab Work Type</DialogTitle>
+                  <DialogDescription>
+                    Update lab work type information.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentLabWorkType && (
+                  <div className="grid gap-3 py-3">
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="editWorkTypeName">Work Type Name</Label>
+                        <Input
+                          id="editWorkTypeName"
+                          defaultValue={currentLabWorkType.name}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editTurnaroundTime">Average Turnaround Time</Label>
+                        <Input
+                          id="editTurnaroundTime"
+                          defaultValue={currentLabWorkType.turnaround}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editWorkTypeNotes">Additional Notes (Optional)</Label>
+                        <Textarea
+                          id="editWorkTypeNotes"
+                          defaultValue={currentLabWorkType.notes || ''}
+                          placeholder="Any special handling instructions or notes"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditLabWorkTypeDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={handleUpdateLabWorkTypeConfirm}
+                  >
+                    <Save className="h-4 w-4 mr-2" /> Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Confirmation Dialogs */}
+            <Dialog open={isConfirmDeleteLabWorkTypeOpen} onOpenChange={setIsConfirmDeleteLabWorkTypeOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Deletion</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete this lab work type? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentLabWorkType && (
+                  <div className="py-4">
+                    <p className="font-medium">{currentLabWorkType.name}</p>
+                    <p className="text-sm text-muted-foreground">{currentLabWorkType.turnaround}</p>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmDeleteLabWorkTypeOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeleteLabWorkType}>
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isConfirmUpdateLabWorkTypeOpen} onOpenChange={setIsConfirmUpdateLabWorkTypeOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Update</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to save these changes?
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmUpdateLabWorkTypeOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpdateLabWorkType}>
+                    Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         )}
-        
+
         <TabsContent value="notifications" className="space-y-6">
           <Card>
             <CardHeader>
@@ -737,7 +1703,7 @@ const Settings = () => {
                       <Label htmlFor="confirmation-whatsapp">WhatsApp</Label>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">Appointment Reminder</h4>
@@ -752,7 +1718,7 @@ const Settings = () => {
                       <Label htmlFor="reminder-whatsapp">WhatsApp</Label>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">Appointment Changes</h4>
@@ -768,7 +1734,7 @@ const Settings = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <h3 className="text-lg font-semibold pt-4">Staff Notifications</h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -781,7 +1747,7 @@ const Settings = () => {
                       <Label htmlFor="schedule-email">Email</Label>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">Stock Alerts</h4>
@@ -792,7 +1758,7 @@ const Settings = () => {
                       <Label htmlFor="stock-email">Email</Label>
                     </div>
                   </div>
-                  
+
                   {activeClinic === 'dental' && (
                     <div className="flex items-center justify-between">
                       <div>
@@ -806,7 +1772,7 @@ const Settings = () => {
                     </div>
                   )}
                 </div>
-                
+
                 <h3 className="text-lg font-semibold pt-4">Template Customization</h3>
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
@@ -815,8 +1781,8 @@ const Settings = () => {
                   </p>
                   <div className="space-y-2">
                     <Label htmlFor="appointmentConfirmationTemplate">Appointment Confirmation Template</Label>
-                    <Textarea 
-                      id="appointmentConfirmationTemplate" 
+                    <Textarea
+                      id="appointmentConfirmationTemplate"
                       rows={3}
                       defaultValue={`Dear {patient_name}, your appointment at {clinic_name} has been confirmed for {appointment_date} at {appointment_time}. Thank you for choosing us!`}
                     />
@@ -825,7 +1791,7 @@ const Settings = () => {
               </div>
             </CardContent>
             <CardFooter>
-              <Button 
+              <Button
                 className={`${activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}`}
                 onClick={() => {
                   toast({
@@ -839,7 +1805,7 @@ const Settings = () => {
             </CardFooter>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="users" className="space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -886,10 +1852,18 @@ const Settings = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-red-500 hover:text-red-700"
+                            onClick={() => {
+                              setCurrentUser(user);
+                              setIsConfirmDeleteUserOpen(true);
+                            }}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -900,9 +1874,10 @@ const Settings = () => {
               </Table>
             </CardContent>
           </Card>
-          
+
+          {/* Add User Dialog */}
           <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New User</DialogTitle>
                 <DialogDescription>
@@ -955,6 +1930,127 @@ const Settings = () => {
                   setIsAddUserDialogOpen(false);
                 }}>
                   Create User
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit User Dialog */}
+          <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Edit User</DialogTitle>
+                <DialogDescription>
+                  Update user account information and permissions.
+                </DialogDescription>
+              </DialogHeader>
+              {currentUser && (
+                <div className="grid gap-3 py-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="editUserName">Full Name</Label>
+                      <Input
+                        id="editUserName"
+                        defaultValue={currentUser.name}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="editUserEmail">Email</Label>
+                      <Input
+                        id="editUserEmail"
+                        type="email"
+                        defaultValue={currentUser.email}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="editUserRole">Role</Label>
+                      <Select defaultValue={currentUser.role}>
+                        <SelectTrigger id="editUserRole">
+                          <SelectValue placeholder="Select Role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="doctor">Doctor</SelectItem>
+                          <SelectItem value="receptionist">Receptionist</SelectItem>
+                          <SelectItem value="inventory">Inventory Manager</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="editUserStatus">Status</Label>
+                      <Select defaultValue={currentUser.status}>
+                        <SelectTrigger id="editUserStatus">
+                          <SelectValue placeholder="Select Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-1 mt-2">
+                    <div className="flex items-center space-x-2">
+                      <Switch id="resetPassword" />
+                      <Label htmlFor="resetPassword">Reset password and require change on next login</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditUserDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdateUserConfirm}
+                >
+                  <Save className="h-4 w-4 mr-2" /> Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Confirmation Dialogs */}
+          <Dialog open={isConfirmDeleteUserOpen} onOpenChange={setIsConfirmDeleteUserOpen}>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Confirm Deletion</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete this user? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              {currentUser && (
+                <div className="py-4">
+                  <p className="font-medium">{currentUser.name}</p>
+                  <p className="text-sm text-muted-foreground">{currentUser.email}</p>
+                  <Badge variant="outline" className="mt-2 capitalize">{currentUser.role}</Badge>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsConfirmDeleteUserOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteUser}>
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isConfirmUpdateUserOpen} onOpenChange={setIsConfirmUpdateUserOpen}>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Confirm Update</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to save these changes?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsConfirmUpdateUserOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateUser}>
+                  Save Changes
                 </Button>
               </DialogFooter>
             </DialogContent>
