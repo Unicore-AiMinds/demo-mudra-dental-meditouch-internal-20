@@ -1,7 +1,7 @@
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -14,7 +14,8 @@ import {
   Clock,
   CalendarRange,
   Filter,
-  MoreVertical
+  MoreVertical,
+  Trash
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -193,7 +194,10 @@ const CalendarAppointmentItem = ({ appointment, isDental, onClick }: {
   return (
     <div
       className={`px-1.5 py-0.5 text-xs rounded mb-0.5 border-l-2 ${bgColor} ${borderColor} ${textColor} cursor-pointer`}
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation(); // Stop event from bubbling up to parent
+        onClick(); // Call the provided onClick handler
+      }}
     >
       <div className="font-medium truncate">{appointment.time} | {appointment.patient}</div>
     </div>
@@ -210,7 +214,10 @@ const TimeSlotAppointment = ({ appointment, isDental, onClick }: {
   return (
     <div
       className={`${bgColor} text-white rounded p-1 text-xs cursor-pointer hover:opacity-90 transition-opacity`}
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation(); // Stop event from bubbling up to parent
+        onClick(); // Call the provided onClick handler
+      }}
     >
       <div className="font-medium">{appointment.patient}</div>
       <div className="text-white/90 text-[10px]">{appointment.service}</div>
@@ -227,6 +234,7 @@ const weekDaysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const Appointments = () => {
   const { activeClinic, isDental } = useClinic();
   const navigate = useNavigate();
+  const location = useLocation();
   const [view, setView] = useState('daily');
   const [date, setDate] = useState<Date>(new Date());
   const [selectedDoctor, setSelectedDoctor] = useState<string | undefined>(undefined);
@@ -234,7 +242,7 @@ const Appointments = () => {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
   const [isEditAppointmentOpen, setIsEditAppointmentOpen] = useState(false);
-  const [editingAppointment, setEditingAppointment] = useState<any>(null);
+  const [editingAppointment, setEditingAppointment] = useState<AppointmentType | null>(null);
   const isMobile = useIsMobile();
 
   const [appointmentPatient, setAppointmentPatient] = useState("");
@@ -242,6 +250,67 @@ const Appointments = () => {
   const [appointmentTime, setAppointmentTime] = useState("");
   const [appointmentDoctor, setAppointmentDoctor] = useState("");
   const [appointmentDate, setAppointmentDate] = useState<Date | undefined>(undefined);
+
+  // Monitor edit dialog state changes
+  useEffect(() => {
+    console.log('Edit dialog state changed:', isEditAppointmentOpen);
+    if (isEditAppointmentOpen) {
+      console.log('Edit dialog opened with appointment:', editingAppointment);
+    }
+  }, [isEditAppointmentOpen, editingAppointment]);
+
+  // Load appointments from localStorage on component mount or when navigating back
+  useEffect(() => {
+    // Check if we need to refresh (coming back from new appointment form)
+    const needsRefresh = location.state?.refresh;
+
+    // Load dental appointments from localStorage
+    try {
+      const dentalAppointmentsJson = localStorage.getItem('dentalAppointments');
+      if (dentalAppointmentsJson) {
+        const loadedAppointments = JSON.parse(dentalAppointmentsJson);
+        // Merge with existing appointments, avoiding duplicates
+        const mergedAppointments = [...dentalAppointments];
+
+        loadedAppointments.forEach((loadedApp: DentalAppointment) => {
+          // Check if this appointment already exists
+          const exists = mergedAppointments.some(app => app.id === loadedApp.id);
+          if (!exists) {
+            mergedAppointments.push(loadedApp);
+          }
+        });
+
+        setDentalAppointments(mergedAppointments);
+        console.log('Loaded dental appointments:', mergedAppointments);
+      }
+    } catch (error) {
+      console.error('Error loading dental appointments:', error);
+    }
+
+    // Load meditouch appointments from localStorage
+    try {
+      const meditouchAppointmentsJson = localStorage.getItem('meditouchAppointments');
+      if (meditouchAppointmentsJson) {
+        const loadedAppointments = JSON.parse(meditouchAppointmentsJson);
+        // Merge with existing appointments, avoiding duplicates
+        const mergedAppointments = [...meditouchAppointments];
+
+        loadedAppointments.forEach((loadedApp: MeditouchAppointment) => {
+          // Check if this appointment already exists
+          const exists = mergedAppointments.some(app => app.id === loadedApp.id);
+          if (!exists) {
+            mergedAppointments.push(loadedApp);
+          }
+        });
+
+        setMeditouchAppointments(mergedAppointments);
+        console.log('Loaded meditouch appointments:', mergedAppointments);
+      }
+    } catch (error) {
+      console.error('Error loading meditouch appointments:', error);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Group time slots by hour for the timeline display - moved inside component
   const hourlyTimeSlots = useMemo(() => {
@@ -368,7 +437,7 @@ const Appointments = () => {
     return appointments.filter(app => {
       const matchesDate = app.date === format(date, 'yyyy-MM-dd');
       const matchesSearch = !searchTerm || app.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (app as any).secondPatient?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (isDental && 'secondPatient' in app && typeof app.secondPatient === 'string' ? app.secondPatient.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
         app.service.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesDoctor = !selectedDoctor || isDental && (app as DentalAppointment).doctor === selectedDoctor;
       const isNotCancelled = app.status !== 'cancelled';
@@ -398,27 +467,56 @@ const Appointments = () => {
   };
 
   const handleNewAppointmentForTimeSlot = (time: string) => {
-    setAppointmentTime(time);
-    setAppointmentDate(date);
-    setIsNewAppointmentOpen(true);
+    // Navigate to the global new appointment form with pre-filled time and date
+    navigate('/appointments/new', {
+      state: {
+        time: time,
+        date: format(date, 'yyyy-MM-dd'),
+        doctor: selectedDoctor !== 'all' ? selectedDoctor : undefined
+      }
+    });
   };
 
-  const handleEditAppointment = (appointment: any) => {
+  const handleEditAppointment = (appointment: AppointmentType) => {
+    console.log('Editing appointment:', appointment);
+    console.log('Opening edit dialog for appointment:', appointment.id, appointment.patient);
+
+    // Store the full appointment object for reference
     setEditingAppointment(appointment);
+
+    // Pre-fill all the form fields
     setAppointmentPatient(appointment.patient);
     setAppointmentService(appointment.service);
     setAppointmentTime(appointment.time);
+
+    // Parse and set the date
     if (appointment.date) {
-      const parsedDate = new Date(appointment.date);
-      setAppointmentDate(parsedDate);
+      try {
+        const parsedDate = new Date(appointment.date);
+        if (!isNaN(parsedDate.getTime())) {
+          setAppointmentDate(parsedDate);
+        }
+      } catch (error) {
+        console.error('Error parsing appointment date:', error);
+      }
     }
+
+    // Set doctor if it's a dental appointment
     if (isDental && 'doctor' in appointment) {
       setAppointmentDoctor((appointment as DentalAppointment).doctor);
     }
+
+    // Open the dialog
+    console.log('Setting isEditAppointmentOpen to true');
     setIsEditAppointmentOpen(true);
+
+    // Add a timeout to check if the dialog is actually open
+    setTimeout(() => {
+      console.log('Is edit dialog open after timeout:', isEditAppointmentOpen);
+    }, 100);
   };
 
-  const handleReschedule = (appointment: any) => {
+  const handleReschedule = (appointment: AppointmentType) => {
     setEditingAppointment(appointment);
     setAppointmentPatient(appointment.patient);
     setAppointmentService(appointment.service);
@@ -439,25 +537,44 @@ const Appointments = () => {
         service: appointment.service,
         time: appointment.time,
         date: appointment.date,
-        doctor: isDental ? appointment.doctor : undefined
+        doctor: isDental && 'doctor' in appointment ? (appointment as DentalAppointment).doctor : undefined
       }
     });
   };
 
-  const handleDirectReschedule = (appointment: any) => {
+  const handleDirectReschedule = (appointment: AppointmentType) => {
     handleReschedule(appointment);
   };
 
-  const handleDirectCancel = (appointment: any) => {
+  const handleDirectCancel = (appointment: AppointmentType) => {
+    let updatedAppointments;
+
     if (isDental) {
-      setDentalAppointments(dentalAppointments.map(app =>
+      updatedAppointments = dentalAppointments.map(app =>
         app.id === appointment.id ? { ...app, status: 'cancelled' as const } : app
-      ));
+      );
+      setDentalAppointments(updatedAppointments);
+
+      // Save to localStorage
+      try {
+        localStorage.setItem('dentalAppointments', JSON.stringify(updatedAppointments));
+      } catch (error) {
+        console.error('Error saving cancelled dental appointment to localStorage:', error);
+      }
     } else {
-      setMeditouchAppointments(meditouchAppointments.map(app =>
+      updatedAppointments = meditouchAppointments.map(app =>
         app.id === appointment.id ? { ...app, status: 'cancelled' as const } : app
-      ));
+      );
+      setMeditouchAppointments(updatedAppointments);
+
+      // Save to localStorage
+      try {
+        localStorage.setItem('meditouchAppointments', JSON.stringify(updatedAppointments));
+      } catch (error) {
+        console.error('Error saving cancelled meditouch appointment to localStorage:', error);
+      }
     }
+
     toast({
       title: "Appointment Cancelled",
       description: `${appointment.patient}'s appointment has been cancelled.`
@@ -491,8 +608,22 @@ const Appointments = () => {
 
       if (isDental) {
         setDentalAppointments(updatedAppointments as DentalAppointment[]);
+
+        // Save to localStorage
+        try {
+          localStorage.setItem('dentalAppointments', JSON.stringify(updatedAppointments));
+        } catch (error) {
+          console.error('Error saving updated dental appointments to localStorage:', error);
+        }
       } else {
         setMeditouchAppointments(updatedAppointments as MeditouchAppointment[]);
+
+        // Save to localStorage
+        try {
+          localStorage.setItem('meditouchAppointments', JSON.stringify(updatedAppointments));
+        } catch (error) {
+          console.error('Error saving updated meditouch appointments to localStorage:', error);
+        }
       }
 
       toast({
@@ -516,8 +647,22 @@ const Appointments = () => {
 
       if (isDental) {
         setDentalAppointments(updatedAppointments as DentalAppointment[]);
+
+        // Save to localStorage
+        try {
+          localStorage.setItem('dentalAppointments', JSON.stringify(updatedAppointments));
+        } catch (error) {
+          console.error('Error saving cancelled dental appointment to localStorage:', error);
+        }
       } else {
         setMeditouchAppointments(updatedAppointments as MeditouchAppointment[]);
+
+        // Save to localStorage
+        try {
+          localStorage.setItem('meditouchAppointments', JSON.stringify(updatedAppointments));
+        } catch (error) {
+          console.error('Error saving cancelled meditouch appointment to localStorage:', error);
+        }
       }
 
       toast({
@@ -540,28 +685,47 @@ const Appointments = () => {
     }
 
     const newId = `${isDental ? 'd' : 'm'}${Math.floor(Math.random() * 10000)}`;
+    let newAppointment: DentalAppointment | MeditouchAppointment;
 
     if (isDental) {
-      const newAppointment: DentalAppointment = {
+      newAppointment = {
         id: newId,
         time: appointmentTime,
         patient: appointmentPatient,
         service: appointmentService,
         doctor: appointmentDoctor || 'Dr. Khanna',
         date: format(appointmentDate, 'yyyy-MM-dd'),
-        status: 'confirmed'
+        status: 'confirmed' as const
       };
       setDentalAppointments([...dentalAppointments, newAppointment]);
+
+      // Save to localStorage
+      try {
+        const existingJson = localStorage.getItem('dentalAppointments');
+        const existingAppointments = existingJson ? JSON.parse(existingJson) : [];
+        localStorage.setItem('dentalAppointments', JSON.stringify([...existingAppointments, newAppointment]));
+      } catch (error) {
+        console.error('Error saving dental appointment to localStorage:', error);
+      }
     } else {
-      const newAppointment: MeditouchAppointment = {
+      newAppointment = {
         id: newId,
         time: appointmentTime,
         patient: appointmentPatient,
         service: appointmentService,
         date: format(appointmentDate, 'yyyy-MM-dd'),
-        status: 'confirmed'
+        status: 'confirmed' as const
       };
       setMeditouchAppointments([...meditouchAppointments, newAppointment]);
+
+      // Save to localStorage
+      try {
+        const existingJson = localStorage.getItem('meditouchAppointments');
+        const existingAppointments = existingJson ? JSON.parse(existingJson) : [];
+        localStorage.setItem('meditouchAppointments', JSON.stringify([...existingAppointments, newAppointment]));
+      } catch (error) {
+        console.error('Error saving meditouch appointment to localStorage:', error);
+      }
     }
 
     toast({
@@ -757,7 +921,12 @@ const Appointments = () => {
                                     <div
                                       key={slot}
                                       className={`p-1 cursor-pointer hover:bg-gray-50 h-full ${appointments.length === 0 ? 'border-dashed border-gray-200 border' : ''}`}
-                                      onClick={() => handleNewAppointmentForTimeSlot(slot)}
+                                      onClick={() => {
+                                        // Only handle click if there are no appointments in this slot
+                                        if (appointments.length === 0) {
+                                          handleNewAppointmentForTimeSlot(slot);
+                                        }
+                                      }}
                                     >
                                       {appointments.length === 0 ? (
                                         <div className="h-full w-full flex items-center justify-center">
@@ -863,13 +1032,22 @@ const Appointments = () => {
                           <div
                             key={idx}
                             className={cn(
-                              "border rounded-lg h-full overflow-y-auto p-1",
+                              "border rounded-lg h-full overflow-y-auto p-1 cursor-pointer",
                               isCurrentDay && "border-primary bg-primary/5",
                               !isSameMonth(day, date) && "opacity-50"
                             )}
+                            onClick={() => {
+                              // Navigate to new appointment form with the selected date
+                              navigate('/appointments/new', {
+                                state: {
+                                  date: format(day, 'yyyy-MM-dd'),
+                                  doctor: selectedDoctor !== 'all' ? selectedDoctor : undefined
+                                }
+                              });
+                            }}
                           >
                             <div className={cn(
-                              "text-xs font-medium p-1 text-center rounded-md mb-1",
+                              "text-xs font-medium p-1 text-center rounded-md mb-1 date-header",
                               isCurrentDay ? isDental ? "bg-dental-primary text-white" : "bg-meditouch-primary text-white" : "bg-muted"
                             )}>
                               {format(day, 'd')}
@@ -971,16 +1149,27 @@ const Appointments = () => {
                           <div
                             key={idx}
                             className={cn(
-                              "border rounded-lg min-h-[100px] max-h-[120px] overflow-y-auto p-1",
+                              "border rounded-lg min-h-[100px] max-h-[120px] overflow-y-auto p-1 cursor-pointer",
                               isCurrentDay && "border-primary bg-primary/5"
                             )}
-                            onClick={() => {
-                              setDate(day);
-                              setView('daily');
+                            onClick={(e) => {
+                              // If the user clicks on an empty area or the date header, navigate to new appointment
+                              if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('date-header')) {
+                                navigate('/appointments/new', {
+                                  state: {
+                                    date: format(day, 'yyyy-MM-dd'),
+                                    doctor: selectedDoctor !== 'all' ? selectedDoctor : undefined
+                                  }
+                                });
+                              } else {
+                                // Otherwise, just switch to daily view for that day
+                                setDate(day);
+                                setView('daily');
+                              }
                             }}
                           >
                             <div className={cn(
-                              "text-xs font-medium p-1 text-center rounded-md",
+                              "text-xs font-medium p-1 text-center rounded-md date-header",
                               isCurrentDay ? isDental ? "bg-dental-primary text-white" : "bg-meditouch-primary text-white" : ""
                             )}>
                               {format(day, 'd')}
@@ -1144,12 +1333,13 @@ const Appointments = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditAppointmentOpen} onOpenChange={setIsEditAppointmentOpen}>
+      {/* Add a key to force re-render of the dialog */}
+      <Dialog key={`edit-dialog-${editingAppointment?.id || 'none'}`} open={isEditAppointmentOpen} onOpenChange={setIsEditAppointmentOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Edit Appointment</DialogTitle>
+            <DialogTitle>Appointment Options</DialogTitle>
             <DialogDescription>
-              Reschedule or cancel the appointment.
+              Reschedule or delete this appointment for {appointmentPatient}.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1250,17 +1440,17 @@ const Appointments = () => {
           </div>
           <DialogFooter className="flex justify-between">
             <Button variant="destructive" onClick={handleCancelAppointment}>
-              <X className="h-4 w-4 mr-2" /> Cancel Appointment
+              <Trash className="h-4 w-4 mr-2" /> Delete Appointment
             </Button>
             <div className="space-x-2">
               <Button variant="outline" onClick={() => setIsEditAppointmentOpen(false)}>
-                Close
+                Cancel
               </Button>
               <Button
                 onClick={handleRescheduleSubmit}
                 className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
               >
-                Update Appointment
+                Reschedule
               </Button>
             </div>
           </DialogFooter>
