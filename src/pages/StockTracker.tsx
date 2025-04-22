@@ -38,6 +38,7 @@ interface StockItem {
   subItem?: string;
   itemType: 'Consumable' | 'Inventory';
   dealer?: string;
+  rate?: number; // Price/rate per unit
   description: string;
   unit: string;
   currentQuantity: number;
@@ -65,6 +66,7 @@ const StockTracker = () => {
       subItem: 'Filtek Supreme Ultra',
       itemType: 'Consumable',
       dealer: 'Dental Depot',
+      rate: 1250,
       description: 'A2 Shade - Universal',
       unit: 'syringe',
       currentQuantity: 2,
@@ -78,6 +80,7 @@ const StockTracker = () => {
       subItem: 'Jeltrate Plus',
       itemType: 'Consumable',
       dealer: 'Henry Schein',
+      rate: 850,
       description: 'Alginate - Medium Set',
       unit: 'pack',
       currentQuantity: 3,
@@ -91,6 +94,7 @@ const StockTracker = () => {
       subItem: 'Ormco NiTi',
       itemType: 'Inventory',
       dealer: 'Ormco Direct',
+      rate: 3200,
       description: '0.016 inch - NiTi',
       unit: 'spool',
       currentQuantity: 4,
@@ -103,6 +107,7 @@ const StockTracker = () => {
       subItem: 'GC Fuji II LC',
       itemType: 'Consumable',
       dealer: 'GC India',
+      rate: 1450,
       description: 'Glass Ionomer - Light Cure',
       unit: 'bottle',
       currentQuantity: 8,
@@ -116,6 +121,7 @@ const StockTracker = () => {
       subItem: 'Mani Diamond',
       itemType: 'Inventory',
       dealer: 'Mani Inc',
+      rate: 2100,
       description: 'Diamond - Assorted',
       unit: 'pack',
       currentQuantity: 12,
@@ -128,6 +134,7 @@ const StockTracker = () => {
       subItem: 'Benzodent',
       itemType: 'Consumable',
       dealer: 'Patterson Dental',
+      rate: 550,
       description: 'Benzocaine 20%',
       unit: 'jar',
       currentQuantity: 6,
@@ -141,6 +148,7 @@ const StockTracker = () => {
       subItem: '3M Earloop',
       itemType: 'Consumable',
       dealer: '3M Healthcare',
+      rate: 750,
       description: 'Surgical - Level 3',
       unit: 'box',
       currentQuantity: 15,
@@ -154,6 +162,7 @@ const StockTracker = () => {
     subItem: '',
     itemType: 'Consumable',
     dealer: '',
+    rate: 0,
     description: '',
     unit: '',
     currentQuantity: 0,
@@ -206,10 +215,19 @@ const StockTracker = () => {
   };
 
   const handleSaveNewItem = () => {
-    if (!newItem.name || !newItem.unit) {
+    if (
+      !newItem.name ||
+      !newItem.itemType ||
+      !newItem.dealer ||
+      newItem.rate <= 0 ||
+      !newItem.unit ||
+      newItem.currentQuantity < 0 ||
+      newItem.minimumThreshold < 0 ||
+      !newItem.nearestExpiryDate
+    ) {
       toast({
         title: "Validation Error",
-        description: "Please fill in the required fields.",
+        description: "Please fill in all required fields marked with *.",
         variant: "destructive"
       });
       return;
@@ -218,7 +236,7 @@ const StockTracker = () => {
     const newId = `${stockItems.length + 1}`;
     const itemToAdd = { id: newId, ...newItem };
 
-    setStockItems(prev => [...prev, itemToAdd]);
+    setStockItems(prev => [itemToAdd, ...prev]);
     toast({
       title: "Item Added",
       description: `${newItem.name} has been added to inventory.`,
@@ -229,6 +247,7 @@ const StockTracker = () => {
       subItem: '',
       itemType: 'Consumable',
       dealer: '',
+      rate: 0,
       description: '',
       unit: '',
       currentQuantity: 0,
@@ -269,10 +288,19 @@ const StockTracker = () => {
   const handleUpdateItem = () => {
     if (!currentEditItem) return;
 
-    if (!currentEditItem.name || !currentEditItem.unit) {
+    if (
+      !currentEditItem.name ||
+      !currentEditItem.itemType ||
+      !currentEditItem.dealer ||
+      !currentEditItem.rate || currentEditItem.rate <= 0 ||
+      !currentEditItem.unit ||
+      currentEditItem.currentQuantity < 0 ||
+      currentEditItem.minimumThreshold < 0 ||
+      !currentEditItem.nearestExpiryDate
+    ) {
       toast({
         title: "Validation Error",
-        description: "Please fill in the required fields.",
+        description: "Please fill in all required fields marked with *.",
         variant: "destructive"
       });
       return;
@@ -331,36 +359,36 @@ const StockTracker = () => {
               Add New Item
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Inventory Item</DialogTitle>
               <DialogDescription>
-                Enter details for the new inventory item.
+                Enter details for the new inventory item. Fields marked with * are required.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="itemName" className="text-right">Name</Label>
+            <div className="grid gap-2 py-2">
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="itemName" className="text-right text-xs">Name *</Label>
                 <Input
                   id="itemName"
                   value={newItem.name}
                   onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                  className="col-span-3"
+                  className="col-span-3 h-8"
                   placeholder="Item name"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="subItem" className="text-right">Sub-item</Label>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="subItem" className="text-right text-xs">Sub-item</Label>
                 <Input
                   id="subItem"
                   value={newItem.subItem}
                   onChange={(e) => setNewItem({...newItem, subItem: e.target.value})}
-                  className="col-span-3"
+                  className="col-span-3 h-8"
                   placeholder="Sub-item or brand name"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="itemType" className="text-right">Item Type</Label>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="itemType" className="text-right text-xs">Item Type *</Label>
                 <div className="col-span-3 flex gap-4">
                   <div className="flex items-center">
                     <input
@@ -388,66 +416,111 @@ const StockTracker = () => {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="dealer" className="text-right">Dealer</Label>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="dealer" className="text-right text-xs">Dealer *</Label>
                 <Input
                   id="dealer"
                   value={newItem.dealer}
                   onChange={(e) => setNewItem({...newItem, dealer: e.target.value})}
-                  className="col-span-3"
+                  className="col-span-3 h-8"
                   placeholder="Supplier or dealer name"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="description" className="text-right">Description</Label>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="rate" className="text-right text-xs">Rate (₹) *</Label>
+                <Input
+                  id="rate"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newItem.rate === 0 && document.activeElement !== document.getElementById('rate') ? '' : newItem.rate}
+                  onChange={(e) => {
+                    // Only allow numeric input
+                    const numericValue = e.target.value.replace(/[^0-9.]/g, '');
+                    const value = numericValue === '' ? 0 : parseFloat(numericValue);
+                    setNewItem({...newItem, rate: value});
+                  }}
+                  onFocus={(e) => {
+                    if (newItem.rate === 0) {
+                      e.target.value = '';
+                    }
+                  }}
+                  className="col-span-3 h-8"
+                  placeholder="Price per unit"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="description" className="text-right text-xs">Description</Label>
                 <Input
                   id="description"
                   value={newItem.description}
                   onChange={(e) => setNewItem({...newItem, description: e.target.value})}
-                  className="col-span-3"
+                  className="col-span-3 h-8"
                   placeholder="Item description"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="unit" className="text-right">Unit</Label>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="unit" className="text-right text-xs">Unit *</Label>
                 <Input
                   id="unit"
                   value={newItem.unit}
                   onChange={(e) => setNewItem({...newItem, unit: e.target.value})}
-                  className="col-span-3"
+                  className="col-span-3 h-8"
                   placeholder="e.g., pack, bottle"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="quantity" className="text-right">Quantity</Label>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="quantity" className="text-right text-xs">Quantity *</Label>
                 <Input
                   id="quantity"
-                  type="number"
-                  value={newItem.currentQuantity}
-                  onChange={(e) => setNewItem({...newItem, currentQuantity: Number(e.target.value)})}
-                  className="col-span-3"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newItem.currentQuantity === 0 && document.activeElement !== document.getElementById('quantity') ? '' : newItem.currentQuantity}
+                  onChange={(e) => {
+                    // Only allow numeric input
+                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                    const value = numericValue === '' ? 0 : parseInt(numericValue, 10);
+                    setNewItem({...newItem, currentQuantity: value});
+                  }}
+                  onFocus={(e) => {
+                    if (newItem.currentQuantity === 0) {
+                      e.target.value = '';
+                    }
+                  }}
+                  className="col-span-3 h-8"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="threshold" className="text-right">Min. Threshold</Label>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="threshold" className="text-right text-xs">Min. Threshold *</Label>
                 <Input
                   id="threshold"
-                  type="number"
-                  value={newItem.minimumThreshold}
-                  onChange={(e) => setNewItem({...newItem, minimumThreshold: Number(e.target.value)})}
-                  className="col-span-3"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newItem.minimumThreshold === 0 && document.activeElement !== document.getElementById('threshold') ? '' : newItem.minimumThreshold}
+                  onChange={(e) => {
+                    // Only allow numeric input
+                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                    const value = numericValue === '' ? 0 : parseInt(numericValue, 10);
+                    setNewItem({...newItem, minimumThreshold: value});
+                  }}
+                  onFocus={(e) => {
+                    if (newItem.minimumThreshold === 0) {
+                      e.target.value = '';
+                    }
+                  }}
+                  className="col-span-3 h-8"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="expiry" className="text-right">Expiry Date</Label>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="expiry" className="text-right text-xs">Expiry Date *</Label>
                 <Input
                   id="expiry"
                   type="date"
                   value={newItem.nearestExpiryDate}
                   onChange={(e) => setNewItem({...newItem, nearestExpiryDate: e.target.value})}
-                  className="col-span-3"
+                  className="col-span-3 h-8"
                 />
               </div>
             </div>
@@ -460,37 +533,37 @@ const StockTracker = () => {
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Inventory Item</DialogTitle>
               <DialogDescription>
-                Update details for the inventory item.
+                Update details for the inventory item. Fields marked with * are required.
               </DialogDescription>
             </DialogHeader>
             {currentEditItem && (
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="editItemName" className="text-right">Name</Label>
+              <div className="grid gap-2 py-2">
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editItemName" className="text-right text-xs">Name *</Label>
                   <Input
                     id="editItemName"
                     value={currentEditItem.name}
                     onChange={(e) => setCurrentEditItem({...currentEditItem, name: e.target.value})}
-                    className="col-span-3"
+                    className="col-span-3 h-8"
                     placeholder="Item name"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="editSubItem" className="text-right">Sub-item</Label>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editSubItem" className="text-right text-xs">Sub-item</Label>
                   <Input
                     id="editSubItem"
                     value={currentEditItem.subItem || ''}
                     onChange={(e) => setCurrentEditItem({...currentEditItem, subItem: e.target.value})}
-                    className="col-span-3"
+                    className="col-span-3 h-8"
                     placeholder="Sub-item or brand name"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="editItemType" className="text-right">Item Type</Label>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editItemType" className="text-right text-xs">Item Type *</Label>
                   <div className="col-span-3 flex gap-4">
                     <div className="flex items-center">
                       <input
@@ -518,66 +591,111 @@ const StockTracker = () => {
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="editDealer" className="text-right">Dealer</Label>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editDealer" className="text-right text-xs">Dealer *</Label>
                   <Input
                     id="editDealer"
                     value={currentEditItem.dealer || ''}
                     onChange={(e) => setCurrentEditItem({...currentEditItem, dealer: e.target.value})}
-                    className="col-span-3"
+                    className="col-span-3 h-8"
                     placeholder="Supplier or dealer name"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="editDescription" className="text-right">Description</Label>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editRate" className="text-right text-xs">Rate (₹) *</Label>
+                  <Input
+                    id="editRate"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={(currentEditItem.rate === 0 || !currentEditItem.rate) && document.activeElement !== document.getElementById('editRate') ? '' : currentEditItem.rate}
+                    onChange={(e) => {
+                      // Only allow numeric input
+                      const numericValue = e.target.value.replace(/[^0-9.]/g, '');
+                      const value = numericValue === '' ? 0 : parseFloat(numericValue);
+                      setCurrentEditItem({...currentEditItem, rate: value});
+                    }}
+                    onFocus={(e) => {
+                      if (currentEditItem.rate === 0 || !currentEditItem.rate) {
+                        e.target.value = '';
+                      }
+                    }}
+                    className="col-span-3 h-8"
+                    placeholder="Price per unit"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editDescription" className="text-right text-xs">Description</Label>
                   <Input
                     id="editDescription"
                     value={currentEditItem.description}
                     onChange={(e) => setCurrentEditItem({...currentEditItem, description: e.target.value})}
-                    className="col-span-3"
+                    className="col-span-3 h-8"
                     placeholder="Item description"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="editUnit" className="text-right">Unit</Label>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editUnit" className="text-right text-xs">Unit *</Label>
                   <Input
                     id="editUnit"
                     value={currentEditItem.unit}
                     onChange={(e) => setCurrentEditItem({...currentEditItem, unit: e.target.value})}
-                    className="col-span-3"
+                    className="col-span-3 h-8"
                     placeholder="e.g., pack, bottle"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="editQuantity" className="text-right">Quantity</Label>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editQuantity" className="text-right text-xs">Quantity *</Label>
                   <Input
                     id="editQuantity"
-                    type="number"
-                    value={currentEditItem.currentQuantity}
-                    onChange={(e) => setCurrentEditItem({...currentEditItem, currentQuantity: Number(e.target.value)})}
-                    className="col-span-3"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={currentEditItem.currentQuantity === 0 && document.activeElement !== document.getElementById('editQuantity') ? '' : currentEditItem.currentQuantity}
+                    onChange={(e) => {
+                      // Only allow numeric input
+                      const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                      const value = numericValue === '' ? 0 : parseInt(numericValue, 10);
+                      setCurrentEditItem({...currentEditItem, currentQuantity: value});
+                    }}
+                    onFocus={(e) => {
+                      if (currentEditItem.currentQuantity === 0) {
+                        e.target.value = '';
+                      }
+                    }}
+                    className="col-span-3 h-8"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="editThreshold" className="text-right">Min. Threshold</Label>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editThreshold" className="text-right text-xs">Min. Threshold *</Label>
                   <Input
                     id="editThreshold"
-                    type="number"
-                    value={currentEditItem.minimumThreshold}
-                    onChange={(e) => setCurrentEditItem({...currentEditItem, minimumThreshold: Number(e.target.value)})}
-                    className="col-span-3"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={currentEditItem.minimumThreshold === 0 && document.activeElement !== document.getElementById('editThreshold') ? '' : currentEditItem.minimumThreshold}
+                    onChange={(e) => {
+                      // Only allow numeric input
+                      const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                      const value = numericValue === '' ? 0 : parseInt(numericValue, 10);
+                      setCurrentEditItem({...currentEditItem, minimumThreshold: value});
+                    }}
+                    onFocus={(e) => {
+                      if (currentEditItem.minimumThreshold === 0) {
+                        e.target.value = '';
+                      }
+                    }}
+                    className="col-span-3 h-8"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="editExpiry" className="text-right">Expiry Date</Label>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editExpiry" className="text-right text-xs">Expiry Date *</Label>
                   <Input
                     id="editExpiry"
                     type="date"
                     value={currentEditItem.nearestExpiryDate || ''}
                     onChange={(e) => setCurrentEditItem({...currentEditItem, nearestExpiryDate: e.target.value})}
-                    className="col-span-3"
+                    className="col-span-3 h-8"
                   />
                 </div>
               </div>
@@ -715,7 +833,7 @@ const StockTracker = () => {
               className="flex gap-2 items-center"
               onClick={() => {
                 // Create CSV content from the filtered and sorted data
-                const headers = ['Item', 'Sub-item', 'Item Type', 'Dealer', 'Description', 'Quantity', 'Unit', 'Min Threshold', 'Expiry', 'Status', 'Date Added'];
+                const headers = ['Item', 'Sub-item', 'Item Type', 'Dealer', 'Rate', 'Description', 'Quantity', 'Unit', 'Min Threshold', 'Expiry', 'Status', 'Date Added'];
 
                 const csvContent = [
                   headers.join(','),
@@ -726,6 +844,7 @@ const StockTracker = () => {
                       `"${item.subItem || ''}"`,
                       `"${item.itemType}"`,
                       `"${item.dealer || ''}"`,
+                      `"${item.rate ? '₹' + item.rate.toLocaleString() : ''}"`,
                       `"${item.description}"`,
                       item.currentQuantity,
                       `"${item.unit}"`,
@@ -764,103 +883,122 @@ const StockTracker = () => {
             </Button>
           </div>
 
-          <div className="border rounded-md overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="hidden md:table-cell">Sub-item</TableHead>
-                  <TableHead className="hidden md:table-cell">Item Type</TableHead>
-                  <TableHead className="hidden lg:table-cell">Dealer</TableHead>
-                  <TableHead className="hidden sm:table-cell">Description</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead className="hidden md:table-cell">Expiry</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedAndFilteredItems.length === 0 ? (
+          <div className="border rounded-md overflow-x-auto max-w-[calc(100vw-3rem)]">
+            <div className="min-w-[900px]">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                      No items match your search criteria
-                    </TableCell>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="hidden md:table-cell">Sub-item</TableHead>
+                    <TableHead className="hidden md:table-cell">Item Type</TableHead>
+                    <TableHead className="hidden lg:table-cell">Dealer</TableHead>
+                    <TableHead className="hidden lg:table-cell">Rate</TableHead>
+                    <TableHead className="hidden sm:table-cell">Description</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead className="hidden md:table-cell">Expiry</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  sortedAndFilteredItems.map((item: StockItem) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="hidden md:table-cell">{item.subItem || '-'}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="outline" className={item.itemType === 'Consumable' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-teal-50 text-teal-700 border-teal-200'}>
-                          {item.itemType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">{item.dealer || '-'}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{item.description}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <span>{item.currentQuantity} {item.unit}{item.currentQuantity !== 1 ? 's' : ''}</span>
-                          {isLowStock(item) && (
-                            <AlertTriangle className="h-3 w-3 text-amber-500" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {item.nearestExpiryDate ? (
-                          <div className="flex items-center gap-1">
-                            {new Date(item.nearestExpiryDate).toLocaleDateString()}
-                            {isExpiringSoon(item) && (
-                              <AlertTriangle className="h-3 w-3 text-red-500" />
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">N/A</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {isLowStock(item) ? (
-                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                            Low
-                          </Badge>
-                        ) : isExpiringSoon(item) ? (
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                            Expiring
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            OK
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-more-horizontal">
-                                <circle cx="12" cy="12" r="1"></circle>
-                                <circle cx="19" cy="12" r="1"></circle>
-                                <circle cx="5" cy="12" r="1"></circle>
-                              </svg>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleIncomingStock(item.id)}>
-                              Record Incoming
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleConsumeStock(item.id)}>
-                              Record Consumption
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditItem(item)}>Edit Item</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                </TableHeader>
+                <TableBody>
+                  {sortedAndFilteredItems.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                        No items match your search criteria
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
+                  ) : (
+                    sortedAndFilteredItems.map((item: StockItem) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="hidden md:table-cell">{item.subItem || '-'}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant="outline" className={item.itemType === 'Consumable' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-teal-50 text-teal-700 border-teal-200'}>
+                            {item.itemType}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">{item.dealer || '-'}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {item.rate ? `₹${item.rate.toLocaleString()}` : '-'}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">{item.description}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <span>{item.currentQuantity} {item.unit}{item.currentQuantity !== 1 ? 's' : ''}</span>
+                            {isLowStock(item) && (
+                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {item.nearestExpiryDate ? (
+                            <div className="flex items-center gap-1">
+                              {new Date(item.nearestExpiryDate).toLocaleDateString()}
+                              {isExpiringSoon(item) && (
+                                <AlertTriangle className="h-3 w-3 text-red-500" />
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isLowStock(item) ? (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              Low
+                            </Badge>
+                          ) : isExpiringSoon(item) ? (
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                              Expiring
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              OK
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2 text-xs"
+                              onClick={() => handleEditItem(item)}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                              Edit
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Open menu</span>
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-more-horizontal">
+                                    <circle cx="12" cy="12" r="1"></circle>
+                                    <circle cx="19" cy="12" r="1"></circle>
+                                    <circle cx="5" cy="12" r="1"></circle>
+                                  </svg>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleIncomingStock(item.id)}>
+                                  Record Incoming
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleConsumeStock(item.id)}>
+                                  Record Consumption
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
               </TableBody>
             </Table>
+            </div>
           </div>
         </CardContent>
       </Card>
