@@ -57,6 +57,8 @@ interface LabJob {
   expectedDelivery: string;
   paymentStatus: 'paid' | 'unpaid';
   status: 'pending-send' | 'sent' | 'received' | 'ready' | 'completed';
+  materialSpecs?: string;
+  notes?: string;
 }
 
 const demoLabJobs: LabJob[] = [
@@ -194,6 +196,30 @@ const LabWork = () => {
   const [editingJob, setEditingJob] = useState<LabJob | null>(null);
   const { toast } = useToast();
 
+  // Form state for new lab entry
+  const [newPatient, setNewPatient] = useState<string>("");
+  const [newService, setNewService] = useState<string>("");
+  const [newLabWorkType, setNewLabWorkType] = useState<string>("");
+  const [newAssignedLab, setNewAssignedLab] = useState<string>("");
+  const [newDateSent, setNewDateSent] = useState<string>("");
+  const [newExpectedDelivery, setNewExpectedDelivery] = useState<string>("");
+  const [newStatus, setNewStatus] = useState<LabJob['status']>("pending-send");
+  const [newPaymentStatus, setNewPaymentStatus] = useState<LabJob['paymentStatus']>("unpaid");
+  const [newMaterialSpecs, setNewMaterialSpecs] = useState<string>("");
+  const [newNotes, setNewNotes] = useState<string>("");
+
+  // Form state for edit lab entry
+  const [editPatient, setEditPatient] = useState<string>("");
+  const [editService, setEditService] = useState<string>("");
+  const [editLabWorkType, setEditLabWorkType] = useState<string>("");
+  const [editAssignedLab, setEditAssignedLab] = useState<string>("");
+  const [editDateSent, setEditDateSent] = useState<string>("");
+  const [editExpectedDelivery, setEditExpectedDelivery] = useState<string>("");
+  const [editStatus, setEditStatus] = useState<LabJob['status']>("pending-send");
+  const [editPaymentStatus, setEditPaymentStatus] = useState<LabJob['paymentStatus']>("unpaid");
+  const [editMaterialSpecs, setEditMaterialSpecs] = useState<string>("");
+  const [editNotes, setEditNotes] = useState<string>("");
+
   // Define the sorting and filtering logic outside the conditional rendering
   const sortedAndFilteredLabJobs = useMemo(() => {
     // First filter the jobs
@@ -307,7 +333,7 @@ const LabWork = () => {
 
   const exportToCSV = () => {
     // Create CSV content from the filtered and sorted data
-    const headers = ['Patient', 'Service', 'Lab Work Type', 'Date Sent', 'Laboratory', 'Expected Delivery', 'Payment Status', 'Status'];
+    const headers = ['Patient', 'Service', 'Lab Work Type', 'Material/Shade Specifications', 'Date Sent', 'Laboratory', 'Notes', 'Expected Delivery', 'Payment Status', 'Status'];
 
     const csvContent = [
       headers.join(','),
@@ -316,8 +342,10 @@ const LabWork = () => {
           `"${job.patient}"`,
           `"${job.service}"`,
           `"${job.labWorkType}"`,
+          `"${job.materialSpecs || ''}"`,
           job.dateSent,
           `"${job.assignedLab}"`,
+          `"${job.notes || ''}"`,
           job.expectedDelivery,
           job.paymentStatus,
           job.status
@@ -348,6 +376,50 @@ const LabWork = () => {
   };
 
   const handleCreateLabEntry = () => {
+    // Validate required fields
+    if (!newPatient || !newService || !newLabWorkType || !newAssignedLab || !newDateSent || !newExpectedDelivery) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Generate a unique ID
+    const newId = `LJ${String(labJobs.length + 1).padStart(3, '0')}`;
+
+    // Create new lab job
+    const newLabJob: LabJob = {
+      id: newId,
+      patient: newPatient,
+      service: newService,
+      labWorkType: newLabWorkType,
+      dateSent: newDateSent,
+      assignedLab: newAssignedLab,
+      expectedDelivery: newExpectedDelivery,
+      paymentStatus: newPaymentStatus,
+      status: newStatus,
+      materialSpecs: newMaterialSpecs,
+      notes: newNotes
+    };
+
+    // Add to the list
+    setLabJobs([newLabJob, ...labJobs]);
+
+    // Reset form fields
+    setNewPatient("");
+    setNewService("");
+    setNewLabWorkType("");
+    setNewAssignedLab("");
+    setNewDateSent("");
+    setNewExpectedDelivery("");
+    setNewStatus("pending-send");
+    setNewPaymentStatus("unpaid");
+    setNewMaterialSpecs("");
+    setNewNotes("");
+
+    // Close dialog and show success message
     setIsNewLabDialogOpen(false);
     toast({
       title: "Lab Entry Created",
@@ -357,6 +429,19 @@ const LabWork = () => {
 
   const openEditDialog = (job: LabJob) => {
     setEditingJob(job);
+
+    // Set edit form state variables
+    setEditPatient(job.patient);
+    setEditService(job.service);
+    setEditLabWorkType(job.labWorkType);
+    setEditAssignedLab(job.assignedLab);
+    setEditDateSent(job.dateSent);
+    setEditExpectedDelivery(job.expectedDelivery);
+    setEditStatus(job.status);
+    setEditPaymentStatus(job.paymentStatus);
+    setEditMaterialSpecs(job.materialSpecs || "");
+    setEditNotes(job.notes || "");
+
     setIsEditLabDialogOpen(true);
   };
 
@@ -369,10 +454,25 @@ const LabWork = () => {
 
   const handleUpdateLabEntry = () => {
     if (editingJob) {
-      // In a real app, we would update the job with form values
+      // Create updated job object using state variables
+      const updatedJob: LabJob = {
+        ...editingJob,
+        patient: editPatient,
+        service: editService,
+        labWorkType: editLabWorkType,
+        assignedLab: editAssignedLab,
+        dateSent: editDateSent,
+        expectedDelivery: editExpectedDelivery,
+        status: editStatus,
+        paymentStatus: editPaymentStatus,
+        materialSpecs: editMaterialSpecs,
+        notes: editNotes
+      };
+
+      // Update the job in the list
       setLabJobs(prevJobs =>
         prevJobs.map(job =>
-          job.id === editingJob.id ? editingJob : job
+          job.id === editingJob.id ? updatedJob : job
         )
       );
 
@@ -515,9 +615,17 @@ const LabWork = () => {
                   <TableRow key={job.id} className="group">
                     <TableCell className="font-medium">{job.patient}</TableCell>
                     <TableCell className="hidden md:table-cell">{job.service}</TableCell>
-                    <TableCell>{job.labWorkType}</TableCell>
+                    <TableCell>
+                      <div className="cursor-help" title={job.materialSpecs ? `Material/Shade: ${job.materialSpecs}` : 'No material/shade specifications'}>
+                        {job.labWorkType}
+                      </div>
+                    </TableCell>
                     <TableCell className="hidden lg:table-cell">{job.dateSent}</TableCell>
-                    <TableCell className="hidden md:table-cell">{job.assignedLab}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="cursor-help" title={job.notes ? `Notes: ${job.notes}` : 'No additional notes'}>
+                        {job.assignedLab}
+                      </div>
+                    </TableCell>
                     <TableCell>{job.expectedDelivery}</TableCell>
                     <TableCell>
                       <Badge
@@ -580,82 +688,95 @@ const LabWork = () => {
       </Card>
 
       <Dialog open={isNewLabDialogOpen} onOpenChange={setIsNewLabDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Lab Entry</DialogTitle>
             <DialogDescription>
               Enter the details for the new lab work order. Fields marked with * are required.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+          <div className="grid gap-3 py-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
                 <Label htmlFor="patient">Patient Name *</Label>
-                <Select>
+                <Select value={newPatient} onValueChange={setNewPatient}>
                   <SelectTrigger id="patient">
                     <SelectValue placeholder="Select Patient" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="aarav-sharma">Aarav Sharma</SelectItem>
-                    <SelectItem value="priya-patel">Priya Patel</SelectItem>
-                    <SelectItem value="vikram-singh">Vikram Singh</SelectItem>
-                    <SelectItem value="neha-kapoor">Neha Kapoor</SelectItem>
+                    <SelectItem value="Aarav Sharma">Aarav Sharma</SelectItem>
+                    <SelectItem value="Priya Patel">Priya Patel</SelectItem>
+                    <SelectItem value="Vikram Singh">Vikram Singh</SelectItem>
+                    <SelectItem value="Neha Kapoor">Neha Kapoor</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="service">Service *</Label>
-                <Select>
+                <Select value={newService} onValueChange={setNewService}>
                   <SelectTrigger id="service">
                     <SelectValue placeholder="Select Service" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="crown-placement">Crown Placement</SelectItem>
-                    <SelectItem value="bridge-procedure">Bridge Procedure</SelectItem>
-                    <SelectItem value="complete-denture">Complete Denture</SelectItem>
-                    <SelectItem value="implant-restoration">Implant Restoration</SelectItem>
+                    <SelectItem value="Crown Placement">Crown Placement</SelectItem>
+                    <SelectItem value="Bridge Procedure">Bridge Procedure</SelectItem>
+                    <SelectItem value="Complete Denture">Complete Denture</SelectItem>
+                    <SelectItem value="Implant Restoration">Implant Restoration</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="labWorkType">Lab Work Type *</Label>
-                <Select>
+                <Select value={newLabWorkType} onValueChange={setNewLabWorkType}>
                   <SelectTrigger id="labWorkType">
                     <SelectValue placeholder="Select Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pfm-crown">PFM Crown</SelectItem>
-                    <SelectItem value="ceramic-bridge">Ceramic Bridge</SelectItem>
-                    <SelectItem value="acrylic-denture">Acrylic Denture</SelectItem>
-                    <SelectItem value="custom-abutment">Custom Abutment</SelectItem>
+                    <SelectItem value="PFM Crown">PFM Crown</SelectItem>
+                    <SelectItem value="Ceramic Bridge">Ceramic Bridge</SelectItem>
+                    <SelectItem value="Acrylic Denture">Acrylic Denture</SelectItem>
+                    <SelectItem value="Custom Abutment">Custom Abutment</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="assignedLab">Assigned Lab *</Label>
-                <Select>
+                <Select value={newAssignedLab} onValueChange={setNewAssignedLab}>
                   <SelectTrigger id="assignedLab">
                     <SelectValue placeholder="Select Lab" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="precision-dental-lab">Precision Dental Lab</SelectItem>
-                    <SelectItem value="nova-dental-solutions">Nova Dental Solutions</SelectItem>
-                    <SelectItem value="dent-creations-india">Dent Creations India</SelectItem>
-                    <SelectItem value="implant-specialists">Implant Specialists</SelectItem>
+                    <SelectItem value="Precision Dental Lab">Precision Dental Lab</SelectItem>
+                    <SelectItem value="Nova Dental Solutions">Nova Dental Solutions</SelectItem>
+                    <SelectItem value="Dent Creations India">Dent Creations India</SelectItem>
+                    <SelectItem value="Implant Specialists">Implant Specialists</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dateSent">Date Sent *</Label>
-                <Input type="date" id="dateSent" />
+                <Input
+                  type="date"
+                  id="dateSent"
+                  value={newDateSent}
+                  onChange={(e) => setNewDateSent(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="expectedDelivery">Expected Delivery *</Label>
-                <Input type="date" id="expectedDelivery" />
+                <Input
+                  type="date"
+                  id="expectedDelivery"
+                  value={newExpectedDelivery}
+                  onChange={(e) => setNewExpectedDelivery(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select defaultValue="pending-send">
+                <Select
+                  value={newStatus}
+                  onValueChange={(value: LabJob['status']) => setNewStatus(value)}
+                >
                   <SelectTrigger id="status">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
@@ -670,7 +791,10 @@ const LabWork = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="paymentStatus">Payment Status</Label>
-                <Select defaultValue="unpaid">
+                <Select
+                  value={newPaymentStatus}
+                  onValueChange={(value: LabJob['paymentStatus']) => setNewPaymentStatus(value)}
+                >
                   <SelectTrigger id="paymentStatus">
                     <SelectValue placeholder="Select Payment Status" />
                   </SelectTrigger>
@@ -680,13 +804,23 @@ const LabWork = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="materialSpecs">Material/Shade Specifications</Label>
-                <Input id="materialSpecs" placeholder="e.g., A2 Shade, Metal-free" />
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="materialSpecs">Material/Shade Specifications (Lab Work)</Label>
+                <Input
+                  id="materialSpecs"
+                  placeholder="e.g., A2 Shade, Metal-free"
+                  value={newMaterialSpecs}
+                  onChange={(e) => setNewMaterialSpecs(e.target.value)}
+                />
               </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Input id="notes" placeholder="Additional instructions for the lab" />
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="notes">Notes (Laboratory)</Label>
+                <Input
+                  id="notes"
+                  placeholder="Additional instructions for the lab"
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                />
               </div>
             </div>
           </div>
@@ -777,7 +911,7 @@ const LabWork = () => {
       </Dialog>
 
       <Dialog open={isEditLabDialogOpen} onOpenChange={setIsEditLabDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Lab Entry</DialogTitle>
             <DialogDescription>
@@ -785,11 +919,11 @@ const LabWork = () => {
             </DialogDescription>
           </DialogHeader>
           {editingJob && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+            <div className="grid gap-3 py-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
                   <Label htmlFor="edit-patient">Patient Name *</Label>
-                  <Select defaultValue={editingJob.patient}>
+                  <Select value={editPatient} onValueChange={setEditPatient}>
                     <SelectTrigger id="edit-patient">
                       <SelectValue placeholder="Select Patient" />
                     </SelectTrigger>
@@ -801,9 +935,9 @@ const LabWork = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="edit-service">Service *</Label>
-                  <Select defaultValue={editingJob.service}>
+                  <Select value={editService} onValueChange={setEditService}>
                     <SelectTrigger id="edit-service">
                       <SelectValue placeholder="Select Service" />
                     </SelectTrigger>
@@ -817,7 +951,7 @@ const LabWork = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-labWorkType">Lab Work Type *</Label>
-                  <Select defaultValue={editingJob.labWorkType}>
+                  <Select value={editLabWorkType} onValueChange={setEditLabWorkType}>
                     <SelectTrigger id="edit-labWorkType">
                       <SelectValue placeholder="Select Type" />
                     </SelectTrigger>
@@ -831,7 +965,7 @@ const LabWork = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-assignedLab">Assigned Lab *</Label>
-                  <Select defaultValue={editingJob.assignedLab}>
+                  <Select value={editAssignedLab} onValueChange={setEditAssignedLab}>
                     <SelectTrigger id="edit-assignedLab">
                       <SelectValue placeholder="Select Lab" />
                     </SelectTrigger>
@@ -845,15 +979,28 @@ const LabWork = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-dateSent">Date Sent *</Label>
-                  <Input type="date" id="edit-dateSent" defaultValue={editingJob.dateSent} />
+                  <Input
+                    type="date"
+                    id="edit-dateSent"
+                    value={editDateSent}
+                    onChange={(e) => setEditDateSent(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-expectedDelivery">Expected Delivery *</Label>
-                  <Input type="date" id="edit-expectedDelivery" defaultValue={editingJob.expectedDelivery} />
+                  <Input
+                    type="date"
+                    id="edit-expectedDelivery"
+                    value={editExpectedDelivery}
+                    onChange={(e) => setEditExpectedDelivery(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-status">Status</Label>
-                  <Select defaultValue={editingJob.status}>
+                  <Select
+                    value={editStatus}
+                    onValueChange={(value: LabJob['status']) => setEditStatus(value)}
+                  >
                     <SelectTrigger id="edit-status">
                       <SelectValue placeholder="Select Status" />
                     </SelectTrigger>
@@ -868,7 +1015,10 @@ const LabWork = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-paymentStatus">Payment Status</Label>
-                  <Select defaultValue={editingJob.paymentStatus}>
+                  <Select
+                    value={editPaymentStatus}
+                    onValueChange={(value: LabJob['paymentStatus']) => setEditPaymentStatus(value)}
+                  >
                     <SelectTrigger id="edit-paymentStatus">
                       <SelectValue placeholder="Select Payment Status" />
                     </SelectTrigger>
@@ -878,13 +1028,23 @@ const LabWork = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="edit-materialSpecs">Material/Shade Specifications</Label>
-                  <Input id="edit-materialSpecs" placeholder="e.g., A2 Shade, Metal-free" />
+                <div className="space-y-1 md:col-span-2">
+                  <Label htmlFor="edit-materialSpecs">Material/Shade Specifications (Lab Work)</Label>
+                  <Input
+                    id="edit-materialSpecs"
+                    placeholder="e.g., A2 Shade, Metal-free"
+                    value={editMaterialSpecs}
+                    onChange={(e) => setEditMaterialSpecs(e.target.value)}
+                  />
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="edit-notes">Notes</Label>
-                  <Input id="edit-notes" placeholder="Additional instructions for the lab" />
+                <div className="space-y-1 md:col-span-2">
+                  <Label htmlFor="edit-notes">Notes (Laboratory)</Label>
+                  <Input
+                    id="edit-notes"
+                    placeholder="Additional instructions for the lab"
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                  />
                 </div>
               </div>
             </div>
