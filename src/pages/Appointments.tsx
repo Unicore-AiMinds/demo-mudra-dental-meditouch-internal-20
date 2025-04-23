@@ -1,7 +1,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -14,8 +14,7 @@ import {
   Clock,
   CalendarRange,
   Filter,
-  MoreVertical,
-  Trash
+  MoreVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,11 +22,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
 import { Calendar } from '@/components/ui/calendar';
 import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from '@/components/ui/use-toast';
 import {
   DropdownMenu,
@@ -182,50 +183,114 @@ const AppointmentCard = ({
   );
 };
 
-const CalendarAppointmentItem = ({ appointment, isDental, onClick }: {
+const CalendarAppointmentItem = ({ appointment, isDental, onClick, isCompact = false }: {
   appointment: DentalAppointment | MeditouchAppointment,
   isDental: boolean,
-  onClick: () => void
+  onClick: () => void,
+  isCompact?: boolean
 }) => {
   const bgColor = isDental ? 'bg-dental-light' : 'bg-meditouch-light';
   const borderColor = isDental ? 'border-dental-primary' : 'border-meditouch-primary';
   const textColor = isDental ? 'text-dental-primary' : 'text-meditouch-primary';
 
-  return (
+  // Create tooltip content for appointment details
+  const tooltipContent = (
+    <div className="text-xs">
+      <div className="font-bold">{appointment.patient}</div>
+      <div>{appointment.service}</div>
+      {isDental && (appointment as DentalAppointment).doctor && (
+        <div>Doctor: {(appointment as DentalAppointment).doctor}</div>
+      )}
+      <div>Time: {appointment.time}</div>
+    </div>
+  );
+
+  const appointmentContent = (
     <div
       className={`px-1.5 py-0.5 text-xs rounded mb-0.5 border-l-2 ${bgColor} ${borderColor} ${textColor} cursor-pointer`}
       onClick={(e) => {
         e.stopPropagation(); // Stop event from bubbling up to parent
-        onClick(); // Call the provided onClick handler
+        onClick();
       }}
     >
-      <div className="font-medium truncate">{appointment.time} | {appointment.patient}</div>
-    </div>
-  );
-};
-
-const TimeSlotAppointment = ({ appointment, isDental, onClick }: {
-  appointment: DentalAppointment | MeditouchAppointment,
-  isDental: boolean,
-  onClick: () => void
-}) => {
-  const bgColor = isDental ? 'bg-dental-primary' : 'bg-meditouch-primary';
-
-  return (
-    <div
-      className={`${bgColor} text-white rounded p-1 text-xs cursor-pointer hover:opacity-90 transition-opacity`}
-      onClick={(e) => {
-        e.stopPropagation(); // Stop event from bubbling up to parent
-        onClick(); // Call the provided onClick handler
-      }}
-    >
-      <div className="font-medium">{appointment.patient}</div>
-      <div className="text-white/90 text-[10px]">{appointment.service}</div>
-      {isDental && (appointment as DentalAppointment).doctor && (
-        <div className="text-white/90 text-[10px] font-medium">{(appointment as DentalAppointment).doctor}</div>
+      {isCompact ? (
+        // Compact view - only show patient name
+        <div className="font-medium truncate">{appointment.patient}</div>
+      ) : (
+        // Full view - show time and patient
+        <div className="font-medium truncate">{appointment.time} | {appointment.patient}</div>
       )}
     </div>
   );
+
+  // If compact, wrap in tooltip, otherwise just return the content
+  return isCompact ? (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {appointmentContent}
+        </TooltipTrigger>
+        <TooltipContent>
+          {tooltipContent}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : appointmentContent;
+};
+
+const TimeSlotAppointment = ({ appointment, isDental, onClick, isCompact = false }: {
+  appointment: DentalAppointment | MeditouchAppointment,
+  isDental: boolean,
+  onClick: () => void,
+  isCompact?: boolean
+}) => {
+  const bgColor = isDental ? 'bg-dental-primary' : 'bg-meditouch-primary';
+
+  // Create tooltip content for compact view
+  const tooltipContent = (
+    <div className="text-xs">
+      <div className="font-bold">{appointment.patient}</div>
+      <div>{appointment.service}</div>
+      {isDental && (appointment as DentalAppointment).doctor && (
+        <div>Doctor: {(appointment as DentalAppointment).doctor}</div>
+      )}
+      <div>Time: {appointment.time}</div>
+    </div>
+  );
+
+  const appointmentContent = (
+    <div
+      className={`${bgColor} text-white rounded p-1 text-xs cursor-pointer hover:opacity-90 transition-opacity mb-1`}
+      onClick={(e) => {
+        e.stopPropagation(); // Stop event from bubbling up to parent
+        onClick();
+      }}
+    >
+      <div className="font-medium">{appointment.patient}</div>
+      {!isCompact && (
+        <>
+          <div className="text-white/90 text-[10px]">{appointment.service}</div>
+          {isDental && (appointment as DentalAppointment).doctor && (
+            <div className="text-white/90 text-[10px] font-medium">{(appointment as DentalAppointment).doctor}</div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  // If compact, wrap in tooltip, otherwise just return the content
+  return isCompact ? (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {appointmentContent}
+        </TooltipTrigger>
+        <TooltipContent>
+          {tooltipContent}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : appointmentContent;
 };
 
 const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -234,7 +299,6 @@ const weekDaysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const Appointments = () => {
   const { activeClinic, isDental } = useClinic();
   const navigate = useNavigate();
-  const location = useLocation();
   const [view, setView] = useState('daily');
   const [date, setDate] = useState<Date>(new Date());
   const [selectedDoctor, setSelectedDoctor] = useState<string | undefined>(undefined);
@@ -242,75 +306,31 @@ const Appointments = () => {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
   const [isEditAppointmentOpen, setIsEditAppointmentOpen] = useState(false);
-  const [editingAppointment, setEditingAppointment] = useState<AppointmentType | null>(null);
+  const [isConfirmUpdateOpen, setIsConfirmUpdateOpen] = useState(false);
+  const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<any>(null);
   const isMobile = useIsMobile();
 
   const [appointmentPatient, setAppointmentPatient] = useState("");
+  const [filteredPatients, setFilteredPatients] = useState(registeredPatients);
   const [appointmentService, setAppointmentService] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
   const [appointmentDoctor, setAppointmentDoctor] = useState("");
   const [appointmentDate, setAppointmentDate] = useState<Date | undefined>(undefined);
 
-  // Monitor edit dialog state changes
-  useEffect(() => {
-    console.log('Edit dialog state changed:', isEditAppointmentOpen);
-    if (isEditAppointmentOpen) {
-      console.log('Edit dialog opened with appointment:', editingAppointment);
-    }
-  }, [isEditAppointmentOpen, editingAppointment]);
+  // State for expanded days in weekly and monthly views
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);
+  const [expandedMonthDay, setExpandedMonthDay] = useState<string | null>(null);
 
-  // Load appointments from localStorage on component mount or when navigating back
-  useEffect(() => {
-    // Check if we need to refresh (coming back from new appointment form)
-    const needsRefresh = location.state?.refresh;
-
-    // Load dental appointments from localStorage
-    try {
-      const dentalAppointmentsJson = localStorage.getItem('dentalAppointments');
-      if (dentalAppointmentsJson) {
-        const loadedAppointments = JSON.parse(dentalAppointmentsJson);
-        // Merge with existing appointments, avoiding duplicates
-        const mergedAppointments = [...dentalAppointments];
-
-        loadedAppointments.forEach((loadedApp: DentalAppointment) => {
-          // Check if this appointment already exists
-          const exists = mergedAppointments.some(app => app.id === loadedApp.id);
-          if (!exists) {
-            mergedAppointments.push(loadedApp);
-          }
-        });
-
-        setDentalAppointments(mergedAppointments);
-        console.log('Loaded dental appointments:', mergedAppointments);
-      }
-    } catch (error) {
-      console.error('Error loading dental appointments:', error);
-    }
-
-    // Load meditouch appointments from localStorage
-    try {
-      const meditouchAppointmentsJson = localStorage.getItem('meditouchAppointments');
-      if (meditouchAppointmentsJson) {
-        const loadedAppointments = JSON.parse(meditouchAppointmentsJson);
-        // Merge with existing appointments, avoiding duplicates
-        const mergedAppointments = [...meditouchAppointments];
-
-        loadedAppointments.forEach((loadedApp: MeditouchAppointment) => {
-          // Check if this appointment already exists
-          const exists = mergedAppointments.some(app => app.id === loadedApp.id);
-          if (!exists) {
-            mergedAppointments.push(loadedApp);
-          }
-        });
-
-        setMeditouchAppointments(mergedAppointments);
-        console.log('Loaded meditouch appointments:', mergedAppointments);
-      }
-    } catch (error) {
-      console.error('Error loading meditouch appointments:', error);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // State for appointment creation confirmation dialog
+  const [isConfirmCreateOpen, setIsConfirmCreateOpen] = useState(false);
+  const [pendingAppointment, setPendingAppointment] = useState<{
+    patient: string;
+    service: string;
+    time: string;
+    date: Date | undefined;
+    doctor?: string;
+  } | null>(null);
 
   // Group time slots by hour for the timeline display - moved inside component
   const hourlyTimeSlots = useMemo(() => {
@@ -428,18 +448,57 @@ const Appointments = () => {
 
   const appointments = isDental ? dentalAppointments : meditouchAppointments;
 
-  const getAppointmentsForDate = (date: Date) => {
+  // Memoize the getAppointmentsForDate function to avoid recalculating on every render
+  const getAppointmentsForDate = useCallback((date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
-    return appointments.filter(app => app.date === dateString && app.status !== 'cancelled');
-  };
+
+    // Get all appointments for this date
+    const allAppointmentsForDate = appointments.filter(app => app.date === dateString && app.status !== 'cancelled');
+
+    // Apply doctor filter if needed
+    const filteredByDoctor = allAppointmentsForDate.filter(app => {
+      // Check if the doctor matches (or if 'all' is selected)
+      const matchesDoctor =
+        selectedDoctor === 'all' || // Always match if 'all' is selected
+        !selectedDoctor || // Always match if no doctor is selected
+        (isDental && 'doctor' in app && (app as DentalAppointment).doctor === selectedDoctor); // Match specific doctor
+
+      return matchesDoctor;
+    });
+
+    // Apply search filter if needed
+    const filteredBySearch = filteredByDoctor.filter(app => {
+      // Check if the search term matches
+      const matchesSearch = !searchTerm ||
+        app.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        app.service.toLowerCase().includes(searchTerm.toLowerCase());
+
+      return matchesSearch;
+    });
+
+    // Log filtering results for debugging
+    if (allAppointmentsForDate.length > 0) {
+      console.log(`Date ${dateString}: ${allAppointmentsForDate.length} appointments → ${filteredByDoctor.length} after doctor filter → ${filteredBySearch.length} after search filter`);
+    }
+
+    return filteredBySearch;
+  }, [appointments, selectedDoctor, searchTerm, isDental]);
 
   const filteredAppointments = useMemo(() => {
-    return appointments.filter(app => {
+    console.log('Filtering appointments with selectedDoctor:', selectedDoctor);
+
+    const filtered = appointments.filter(app => {
       const matchesDate = app.date === format(date, 'yyyy-MM-dd');
       const matchesSearch = !searchTerm || app.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (isDental && 'secondPatient' in app && typeof app.secondPatient === 'string' ? app.secondPatient.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+        (app as any).secondPatient?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         app.service.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesDoctor = !selectedDoctor || isDental && (app as DentalAppointment).doctor === selectedDoctor;
+
+      // Handle doctor filtering properly
+      const matchesDoctor =
+        selectedDoctor === 'all' || // Always match if 'all' is selected
+        !selectedDoctor || // Always match if no doctor is selected
+        (isDental && 'doctor' in app && (app as DentalAppointment).doctor === selectedDoctor); // Match specific doctor
+
       const isNotCancelled = app.status !== 'cancelled';
 
       if (view === 'daily') {
@@ -448,6 +507,9 @@ const Appointments = () => {
         return matchesSearch && matchesDoctor && isNotCancelled;
       }
     });
+
+    console.log(`Filtered ${appointments.length} appointments down to ${filtered.length}`);
+    return filtered;
   }, [appointments, date, searchTerm, selectedDoctor, isDental, view]);
 
   const getAppointmentsForTimeSlot = useCallback((timeSlot: string) => {
@@ -455,68 +517,117 @@ const Appointments = () => {
   }, [filteredAppointments]);
 
   const getBookedTimeSlots = () => {
-    const bookedSlots = appointments
-      .filter(app => app.date === format(date, 'yyyy-MM-dd') && app.status !== 'cancelled')
-      .map(app => app.time);
-    return bookedSlots;
+    // Get all appointments for the current date that aren't cancelled
+    const dateAppointments = appointments
+      .filter(app => app.date === format(date, 'yyyy-MM-dd') && app.status !== 'cancelled');
+
+    // Count appointments per time slot
+    const slotCounts: Record<string, number> = {};
+    dateAppointments.forEach(app => {
+      if (!slotCounts[app.time]) {
+        slotCounts[app.time] = 0;
+      }
+      slotCounts[app.time]++;
+    });
+
+    return slotCounts;
   };
 
   const getAvailableTimeSlots = () => {
-    const bookedSlots = getBookedTimeSlots();
-    return timeSlots.filter(time => !bookedSlots.includes(time));
-  };
+    const slotCounts = getBookedTimeSlots();
 
-  const handleNewAppointmentForTimeSlot = (time: string) => {
-    // Navigate to the global new appointment form with pre-filled time and date
-    navigate('/appointments/new', {
-      state: {
-        time: time,
-        date: format(date, 'yyyy-MM-dd'),
-        doctor: selectedDoctor !== 'all' ? selectedDoctor : undefined
-      }
+    // Filter time slots based on clinic type and current booking count
+    return timeSlots.filter(time => {
+      const currentCount = slotCounts[time] || 0;
+
+      // For Dental Metrix: allow up to 2 appointments per slot
+      // For Meditouch: allow only 1 appointment per slot
+      const maxAllowed = isDental ? 2 : 1;
+
+      return currentCount < maxAllowed;
     });
   };
 
-  const handleEditAppointment = (appointment: AppointmentType) => {
+  const handleNewAppointmentForTimeSlot = (time: string) => {
+    // Check if the slot is available based on clinic type
+    const slotCounts = getBookedTimeSlots();
+    const currentCount = slotCounts[time] || 0;
+    const maxAllowed = isDental ? 2 : 1;
+
+    if (currentCount >= maxAllowed) {
+      // Slot is already fully booked
+      toast({
+        title: "Time Slot Unavailable",
+        description: `This time slot is already fully booked. Please select another time.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Make sure we're not already editing and close any open new appointment dialog
+    setIsNewAppointmentOpen(false);
+
+    // Reset all form fields
+    resetAppointmentForm();
+
+    // Set only the time and date from the clicked slot
+    setAppointmentTime(time);
+    setAppointmentDate(date);
+
+    // Debug log
+    console.log('Setting appointment date from time slot:', format(date, 'yyyy-MM-dd'));
+
+    // Reset filtered patients list
+    setFilteredPatients(registeredPatients);
+
+    // Open the dialog
+    setTimeout(() => {
+      setIsNewAppointmentOpen(true);
+      console.log('Opening new appointment form with reset fields');
+    }, 50);
+  };
+
+  const handleEditAppointment = (appointment: any) => {
     console.log('Editing appointment:', appointment);
-    console.log('Opening edit dialog for appointment:', appointment.id, appointment.patient);
 
-    // Store the full appointment object for reference
-    setEditingAppointment(appointment);
+    // Close the new appointment form if it's open
+    setIsNewAppointmentOpen(false);
 
-    // Pre-fill all the form fields
+    // Pre-fill form fields with appointment data
     setAppointmentPatient(appointment.patient);
     setAppointmentService(appointment.service);
     setAppointmentTime(appointment.time);
 
     // Parse and set the date
     if (appointment.date) {
-      try {
-        const parsedDate = new Date(appointment.date);
-        if (!isNaN(parsedDate.getTime())) {
-          setAppointmentDate(parsedDate);
-        }
-      } catch (error) {
-        console.error('Error parsing appointment date:', error);
-      }
+      const parsedDate = new Date(appointment.date);
+      setAppointmentDate(parsedDate);
     }
 
-    // Set doctor if it's a dental appointment
+    // Set doctor for dental appointments
     if (isDental && 'doctor' in appointment) {
       setAppointmentDoctor((appointment as DentalAppointment).doctor);
     }
 
+    // Reset filtered patients list for the search
+    setFilteredPatients(registeredPatients);
+
+    // Set the editing appointment object
+    setEditingAppointment(appointment);
+
     // Open the dialog
-    console.log('Setting isEditAppointmentOpen to true');
     setIsEditAppointmentOpen(true);
 
-    // Add a timeout to check if the dialog is actually open
-    setTimeout(() => {
-      console.log('Is edit dialog open after timeout:', isEditAppointmentOpen);
-    }, 100);
+    console.log('Edit form opened with values:', {
+      patient: appointment.patient,
+      service: appointment.service,
+      time: appointment.time,
+      date: appointment.date,
+      doctor: isDental && 'doctor' in appointment ? appointment.doctor : 'N/A'
+    });
   };
 
-  const handleReschedule = (appointment: AppointmentType) => {
+  const handleReschedule = (appointment: any) => {
     setEditingAppointment(appointment);
     setAppointmentPatient(appointment.patient);
     setAppointmentService(appointment.service);
@@ -537,48 +648,37 @@ const Appointments = () => {
         service: appointment.service,
         time: appointment.time,
         date: appointment.date,
-        doctor: isDental && 'doctor' in appointment ? (appointment as DentalAppointment).doctor : undefined
+        doctor: isDental ? appointment.doctor : undefined
       }
     });
   };
 
-  const handleDirectReschedule = (appointment: AppointmentType) => {
-    handleReschedule(appointment);
+  const handleDirectReschedule = (appointment: any) => {
+    // Use the edit appointment function directly
+    handleEditAppointment(appointment);
   };
 
-  const handleDirectCancel = (appointment: AppointmentType) => {
-    let updatedAppointments;
-
+  const handleDirectCancel = (appointment: any) => {
     if (isDental) {
-      updatedAppointments = dentalAppointments.map(app =>
+      setDentalAppointments(dentalAppointments.map(app =>
         app.id === appointment.id ? { ...app, status: 'cancelled' as const } : app
-      );
-      setDentalAppointments(updatedAppointments);
-
-      // Save to localStorage
-      try {
-        localStorage.setItem('dentalAppointments', JSON.stringify(updatedAppointments));
-      } catch (error) {
-        console.error('Error saving cancelled dental appointment to localStorage:', error);
-      }
+      ));
     } else {
-      updatedAppointments = meditouchAppointments.map(app =>
+      setMeditouchAppointments(meditouchAppointments.map(app =>
         app.id === appointment.id ? { ...app, status: 'cancelled' as const } : app
-      );
-      setMeditouchAppointments(updatedAppointments);
-
-      // Save to localStorage
-      try {
-        localStorage.setItem('meditouchAppointments', JSON.stringify(updatedAppointments));
-      } catch (error) {
-        console.error('Error saving cancelled meditouch appointment to localStorage:', error);
-      }
+      ));
     }
-
     toast({
       title: "Appointment Cancelled",
       description: `${appointment.patient}'s appointment has been cancelled.`
     });
+  };
+
+  const openUpdateConfirmation = () => {
+    if (editingAppointment) {
+      setIsEditAppointmentOpen(false);
+      setIsConfirmUpdateOpen(true);
+    }
   };
 
   const handleRescheduleSubmit = () => {
@@ -608,22 +708,8 @@ const Appointments = () => {
 
       if (isDental) {
         setDentalAppointments(updatedAppointments as DentalAppointment[]);
-
-        // Save to localStorage
-        try {
-          localStorage.setItem('dentalAppointments', JSON.stringify(updatedAppointments));
-        } catch (error) {
-          console.error('Error saving updated dental appointments to localStorage:', error);
-        }
       } else {
         setMeditouchAppointments(updatedAppointments as MeditouchAppointment[]);
-
-        // Save to localStorage
-        try {
-          localStorage.setItem('meditouchAppointments', JSON.stringify(updatedAppointments));
-        } catch (error) {
-          console.error('Error saving updated meditouch appointments to localStorage:', error);
-        }
       }
 
       toast({
@@ -631,7 +717,20 @@ const Appointments = () => {
         description: `${editingAppointment.patient}'s appointment has been rescheduled to ${format(appointmentDate || new Date(), 'PP')} at ${appointmentTime}`
       });
 
+      setIsConfirmUpdateOpen(false);
+      setEditingAppointment(null);
+    }
+  };
+
+  const cancelUpdate = () => {
+    setIsConfirmUpdateOpen(false);
+    setIsEditAppointmentOpen(true); // Go back to edit dialog
+  };
+
+  const openCancelConfirmation = () => {
+    if (editingAppointment) {
       setIsEditAppointmentOpen(false);
+      setIsConfirmCancelOpen(true);
     }
   };
 
@@ -647,22 +746,8 @@ const Appointments = () => {
 
       if (isDental) {
         setDentalAppointments(updatedAppointments as DentalAppointment[]);
-
-        // Save to localStorage
-        try {
-          localStorage.setItem('dentalAppointments', JSON.stringify(updatedAppointments));
-        } catch (error) {
-          console.error('Error saving cancelled dental appointment to localStorage:', error);
-        }
       } else {
         setMeditouchAppointments(updatedAppointments as MeditouchAppointment[]);
-
-        // Save to localStorage
-        try {
-          localStorage.setItem('meditouchAppointments', JSON.stringify(updatedAppointments));
-        } catch (error) {
-          console.error('Error saving cancelled meditouch appointment to localStorage:', error);
-        }
       }
 
       toast({
@@ -670,8 +755,33 @@ const Appointments = () => {
         description: `${editingAppointment.patient}'s appointment has been cancelled`
       });
 
-      setIsEditAppointmentOpen(false);
+      setIsConfirmCancelOpen(false);
+      setEditingAppointment(null);
     }
+  };
+
+  const cancelCancel = () => {
+    setIsConfirmCancelOpen(false);
+    setIsEditAppointmentOpen(true); // Go back to edit dialog
+  };
+
+  const handlePatientSearch = (value: string) => {
+    // If value is empty or undefined, show all patients
+    if (!value || value.trim() === '') {
+      setFilteredPatients(registeredPatients);
+      return;
+    }
+
+    // Convert to lowercase for case-insensitive search
+    const searchTerm = value.toLowerCase().trim();
+
+    // Filter patients whose name contains the search term
+    const filtered = registeredPatients.filter(patient =>
+      patient.name.toLowerCase().includes(searchTerm)
+    );
+
+    console.log(`Found ${filtered.length} patients matching "${searchTerm}"`);
+    setFilteredPatients(filtered);
   };
 
   const handleCreateAppointment = () => {
@@ -684,72 +794,145 @@ const Appointments = () => {
       return;
     }
 
+    // Check if the slot is still available (in case it was booked while the form was open)
+    const formattedDate = format(appointmentDate, 'yyyy-MM-dd');
+    const dateAppointments = appointments.filter(app =>
+      app.date === formattedDate &&
+      app.time === appointmentTime &&
+      app.status !== 'cancelled'
+    );
+
+    const slotCount = dateAppointments.length;
+    const maxAllowed = isDental ? 2 : 1;
+
+    if (slotCount >= maxAllowed) {
+      toast({
+        title: "Time Slot No Longer Available",
+        description: `This time slot has been booked while you were filling the form. Please select another time.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Store the pending appointment data and open confirmation dialog
+    setPendingAppointment({
+      patient: appointmentPatient,
+      service: appointmentService,
+      time: appointmentTime,
+      date: appointmentDate,
+      doctor: isDental ? appointmentDoctor : undefined
+    });
+
+    // Close the new appointment form and open the confirmation dialog
+    setIsNewAppointmentOpen(false);
+    setIsConfirmCreateOpen(true);
+  };
+
+  // Function to actually create the appointment after confirmation
+  const confirmCreateAppointment = () => {
+    if (!pendingAppointment || !pendingAppointment.date) return;
+
+    // Debug logs
+    console.log('Creating confirmed appointment:', pendingAppointment);
+
+    const formattedDate = format(pendingAppointment.date, 'yyyy-MM-dd');
     const newId = `${isDental ? 'd' : 'm'}${Math.floor(Math.random() * 10000)}`;
-    let newAppointment: DentalAppointment | MeditouchAppointment;
 
     if (isDental) {
-      newAppointment = {
+      const newAppointment: DentalAppointment = {
         id: newId,
-        time: appointmentTime,
-        patient: appointmentPatient,
-        service: appointmentService,
-        doctor: appointmentDoctor || 'Dr. Khanna',
-        date: format(appointmentDate, 'yyyy-MM-dd'),
-        status: 'confirmed' as const
+        time: pendingAppointment.time,
+        patient: pendingAppointment.patient,
+        service: pendingAppointment.service,
+        doctor: pendingAppointment.doctor || 'Dr. Khanna',
+        date: formattedDate,
+        status: 'confirmed'
       };
       setDentalAppointments([...dentalAppointments, newAppointment]);
-
-      // Save to localStorage
-      try {
-        const existingJson = localStorage.getItem('dentalAppointments');
-        const existingAppointments = existingJson ? JSON.parse(existingJson) : [];
-        localStorage.setItem('dentalAppointments', JSON.stringify([...existingAppointments, newAppointment]));
-      } catch (error) {
-        console.error('Error saving dental appointment to localStorage:', error);
-      }
     } else {
-      newAppointment = {
+      const newAppointment: MeditouchAppointment = {
         id: newId,
-        time: appointmentTime,
-        patient: appointmentPatient,
-        service: appointmentService,
-        date: format(appointmentDate, 'yyyy-MM-dd'),
-        status: 'confirmed' as const
+        time: pendingAppointment.time,
+        patient: pendingAppointment.patient,
+        service: pendingAppointment.service,
+        date: formattedDate,
+        status: 'confirmed'
       };
       setMeditouchAppointments([...meditouchAppointments, newAppointment]);
-
-      // Save to localStorage
-      try {
-        const existingJson = localStorage.getItem('meditouchAppointments');
-        const existingAppointments = existingJson ? JSON.parse(existingJson) : [];
-        localStorage.setItem('meditouchAppointments', JSON.stringify([...existingAppointments, newAppointment]));
-      } catch (error) {
-        console.error('Error saving meditouch appointment to localStorage:', error);
-      }
     }
 
     toast({
       title: "Appointment Created",
-      description: `New appointment for ${appointmentPatient} on ${format(appointmentDate, 'PP')} at ${appointmentTime}`
+      description: `New appointment for ${pendingAppointment.patient} on ${format(pendingAppointment.date, 'PP')} at ${pendingAppointment.time}`
     });
 
-    setIsNewAppointmentOpen(false);
+    // Update the UI date to match the appointment date
+    setDate(pendingAppointment.date);
+
+    // Close the confirmation dialog and reset form
+    setIsConfirmCreateOpen(false);
+    setPendingAppointment(null);
     resetAppointmentForm();
+
+    // Log that we've updated the UI date
+    console.log('Updated UI date to match appointment date:', format(pendingAppointment.date, 'yyyy-MM-dd'));
   };
 
-  const resetAppointmentForm = () => {
+  // Function to cancel appointment creation
+  const cancelCreateAppointment = () => {
+    setIsConfirmCreateOpen(false);
+    setPendingAppointment(null);
+    // Reopen the new appointment form
+    setIsNewAppointmentOpen(true);
+  };
+
+  const resetAppointmentForm = useCallback(() => {
     setAppointmentPatient("");
     setAppointmentService("");
     setAppointmentTime("");
     setAppointmentDoctor("");
     setAppointmentDate(undefined);
-  };
+  }, []);
 
   const goToNewAppointment = () => {
     navigate('/appointments/new');
   };
 
+  // Listen for the custom event to open the new appointment form
+  useEffect(() => {
+    const handleOpenNewAppointmentForm = () => {
+      // Reset all form fields
+      resetAppointmentForm();
+
+      // Set the date to the current UI date
+      setAppointmentDate(date);
+
+      // Reset filtered patients list
+      setFilteredPatients(registeredPatients);
+
+      // Open the dialog
+      setIsNewAppointmentOpen(true);
+    };
+
+    // Add event listener
+    window.addEventListener('openNewAppointmentForm', handleOpenNewAppointmentForm);
+
+    // Clean up
+    return () => {
+      window.removeEventListener('openNewAppointmentForm', handleOpenNewAppointmentForm);
+    };
+  }, [date, resetAppointmentForm]);
+
+  // Helper function to reset expanded states
+  const resetExpandedStates = () => {
+    setExpandedDay(null);
+    setExpandedMonthDay(null);
+  };
+
   const handlePreviousClick = () => {
+    // Reset expanded states when navigating
+    resetExpandedStates();
+
     if (view === 'daily') {
       setDate(prev => addDays(prev, -1));
     } else if (view === 'weekly') {
@@ -764,6 +947,9 @@ const Appointments = () => {
   };
 
   const handleNextClick = () => {
+    // Reset expanded states when navigating
+    resetExpandedStates();
+
     if (view === 'daily') {
       setDate(prev => addDays(prev, 1));
     } else if (view === 'weekly') {
@@ -777,28 +963,37 @@ const Appointments = () => {
     }
   };
 
+  // Memoize the week dates to avoid recalculating them on every render
   const weekDates = useMemo(() => {
+    console.log('Recalculating week dates');
     const start = startOfWeek(date);
     return eachDayOfInterval({ start, end: addDays(start, 6) });
   }, [date]);
 
+  // Memoize the month dates to avoid recalculating them on every render
   const monthDates = useMemo(() => {
+    console.log('Recalculating month dates');
     const start = startOfMonth(date);
     const end = endOfMonth(date);
     return eachDayOfInterval({ start, end });
   }, [date]);
 
-  const morningAppointments = filteredAppointments.filter(a => {
-    const hour = parseInt(a.time.split(':')[0]);
-    const isPM = a.time.includes('PM');
-    return !isPM || hour === 12;
-  });
+  // Group appointments by time of day (not currently used but kept for future features)
+  const groupAppointmentsByTimeOfDay = () => {
+    const morning = filteredAppointments.filter(a => {
+      const hour = parseInt(a.time.split(':')[0]);
+      const isPM = a.time.includes('PM');
+      return !isPM || hour === 12;
+    });
 
-  const afternoonAppointments = filteredAppointments.filter(a => {
-    const hour = parseInt(a.time.split(':')[0]);
-    const isPM = a.time.includes('PM');
-    return isPM && hour !== 12;
-  });
+    const afternoon = filteredAppointments.filter(a => {
+      const hour = parseInt(a.time.split(':')[0]);
+      const isPM = a.time.includes('PM');
+      return isPM && hour !== 12;
+    });
+
+    return { morning, afternoon };
+  };
 
   return (
     <div className="space-y-6">
@@ -809,19 +1004,6 @@ const Appointments = () => {
             Manage and schedule {isDental ? 'Dental Metrix' : 'Meditouch'} appointments
           </p>
         </div>
-        <div className="flex space-x-2">
-          <Button
-            className={`${
-              activeClinic === 'dental'
-                ? 'bg-dental-primary hover:bg-dental-dark text-white'
-                : 'bg-meditouch-primary hover:bg-meditouch-dark text-white'
-            }`}
-            onClick={() => setIsNewAppointmentOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Appointment
-          </Button>
-        </div>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -829,7 +1011,14 @@ const Appointments = () => {
           <Card className="w-full">
             <CardContent className="p-4">
               <div className="flex justify-center items-center mb-4">
-                <Tabs defaultValue="daily" value={view} onValueChange={setView} className="w-full">
+                <Tabs
+                  defaultValue="daily"
+                  value={view}
+                  onValueChange={(newView) => {
+                    resetExpandedStates();
+                    setView(newView);
+                  }}
+                  className="w-full">
                   <TabsList className="mx-auto">
                     <TabsTrigger value="daily">Daily</TabsTrigger>
                     <TabsTrigger value="weekly">Weekly</TabsTrigger>
@@ -872,7 +1061,13 @@ const Appointments = () => {
                         </div>
                         <div className="flex items-center gap-4 pl-4">
                           <div className="w-48">
-                            <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+                            <Select
+                              value={selectedDoctor || 'all'}
+                              onValueChange={(value) => {
+                                console.log('Doctor selection changed to:', value);
+                                setSelectedDoctor(value);
+                              }}
+                            >
                               <SelectTrigger>
                                 <SelectValue placeholder="All Doctors" />
                               </SelectTrigger>
@@ -922,10 +1117,11 @@ const Appointments = () => {
                                       key={slot}
                                       className={`p-1 cursor-pointer hover:bg-gray-50 h-full ${appointments.length === 0 ? 'border-dashed border-gray-200 border' : ''}`}
                                       onClick={() => {
-                                        // Only handle click if there are no appointments in this slot
+                                        // Only open new appointment dialog if there are no appointments for this slot
                                         if (appointments.length === 0) {
                                           handleNewAppointmentForTimeSlot(slot);
                                         }
+                                        // Otherwise, the click will be handled by the appointment item
                                       }}
                                     >
                                       {appointments.length === 0 ? (
@@ -939,6 +1135,7 @@ const Appointments = () => {
                                               key={appointment.id}
                                               appointment={appointment}
                                               isDental={isDental}
+                                              isCompact={appointments.length > 1}
                                               onClick={() => {
                                                 handleEditAppointment(appointment);
                                               }}
@@ -993,7 +1190,13 @@ const Appointments = () => {
                         </div>
                         <div className="flex items-center gap-4 pl-4">
                           <div className="w-48">
-                            <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+                            <Select
+                              value={selectedDoctor || 'all'}
+                              onValueChange={(value) => {
+                                console.log('Doctor selection changed to:', value);
+                                setSelectedDoctor(value);
+                              }}
+                            >
                               <SelectTrigger>
                                 <SelectValue placeholder="All Doctors" />
                               </SelectTrigger>
@@ -1018,49 +1221,109 @@ const Appointments = () => {
                       </div>
                     </div>
                     <div className="grid grid-cols-7 gap-1 text-center border-b pb-2 mb-2">
-                      {weekDaysShort.map((day, index) => (
+                      {weekDaysShort.map((day) => (
                         <div key={day} className="text-xs font-medium text-muted-foreground">
                           {day}
                         </div>
                       ))}
                     </div>
-                    <div className="grid grid-cols-7 gap-1 h-[500px]">
+                    <div className="grid grid-cols-7 gap-1 h-[600px]">
                       {weekDates.map((day, idx) => {
                         const dayAppointments = getAppointmentsForDate(day);
                         const isCurrentDay = isToday(day);
+
+                        // State for expanded view (using local variable since this is inside a map function)
+                        const isExpanded = expandedDay === format(day, 'yyyy-MM-dd');
+
+                        // Determine how many appointments to show initially - based on space analysis
+                        const initialAppointmentsToShow = 12; // Show up to 12 appointments before needing to expand
+                        const hasMoreAppointments = dayAppointments.length > initialAppointmentsToShow;
+
                         return (
                           <div
                             key={idx}
                             className={cn(
-                              "border rounded-lg h-full overflow-y-auto p-1 cursor-pointer",
+                              "border rounded-lg h-full p-1 relative",
                               isCurrentDay && "border-primary bg-primary/5",
                               !isSameMonth(day, date) && "opacity-50"
                             )}
                             onClick={() => {
-                              // Navigate to new appointment form with the selected date
-                              navigate('/appointments/new', {
-                                state: {
-                                  date: format(day, 'yyyy-MM-dd'),
-                                  doctor: selectedDoctor !== 'all' ? selectedDoctor : undefined
-                                }
-                              });
+                              // Toggle expand/collapse for this day
+                              if (isExpanded) {
+                                setExpandedDay(null);
+                              } else {
+                                setExpandedDay(format(day, 'yyyy-MM-dd'));
+                              }
                             }}
                           >
-                            <div className={cn(
-                              "text-xs font-medium p-1 text-center rounded-md mb-1 date-header",
-                              isCurrentDay ? isDental ? "bg-dental-primary text-white" : "bg-meditouch-primary text-white" : "bg-muted"
-                            )}>
-                              {format(day, 'd')}
+                            <div className="flex items-center justify-between mb-1 sticky top-0 bg-white z-10">
+                              <div
+                                className={cn(
+                                  "text-xs font-medium p-1 text-center rounded-md flex-grow cursor-pointer",
+                                  isCurrentDay ? isDental ? "bg-dental-primary text-white" : "bg-meditouch-primary text-white" : "bg-muted"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent the day cell click handler from firing
+                                  setDate(day);
+                                  setView('daily');
+                                }}
+                                title="Click to view this day in daily view"
+                              >
+                                {format(day, 'd')}
+                              </div>
+
+                              {/* Capacity indicator */}
+                              {dayAppointments.length > 0 && (
+                                <div
+                                  className={cn(
+                                    "text-xs px-1 rounded-full ml-1",
+                                    dayAppointments.length >= (isDental ? 10 : 5) ? "bg-red-100 text-red-800" :
+                                    dayAppointments.length >= (isDental ? 5 : 3) ? "bg-yellow-100 text-yellow-800" :
+                                    "bg-green-100 text-green-800"
+                                  )}
+                                  title={`${dayAppointments.length} appointment${dayAppointments.length !== 1 ? 's' : ''}`}
+                                >
+                                  {dayAppointments.length}
+                                </div>
+                              )}
                             </div>
-                            <div className="space-y-1">
-                              {dayAppointments.map(appointment => (
+
+                            {/* Scrollable container for appointments */}
+                            <div className={cn(
+                              "space-y-1 overflow-y-auto pr-1",
+                              isExpanded ? "max-h-[300px]" : "max-h-[180px]" // Taller container in weekly view
+                            )}>
+                              {/* Show all appointments if expanded, otherwise show limited number */}
+                              {(isExpanded ? dayAppointments : dayAppointments.slice(0, initialAppointmentsToShow)).map(appointment => (
                                 <CalendarAppointmentItem
                                   key={appointment.id}
                                   appointment={appointment}
                                   isDental={isDental}
+                                  isCompact={dayAppointments.length > 1} // Use compact view if multiple appointments
                                   onClick={() => handleEditAppointment(appointment)}
                                 />
                               ))}
+
+                              {/* Show More / Show Less button */}
+                              {hasMoreAppointments && (
+                                <div className="flex justify-center mt-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs py-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (isExpanded) {
+                                        setExpandedDay(null);
+                                      } else {
+                                        setExpandedDay(format(day, 'yyyy-MM-dd'));
+                                      }
+                                    }}
+                                  >
+                                    {isExpanded ? 'Collapse' : `+${dayAppointments.length - initialAppointmentsToShow} more`}
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -1104,7 +1367,13 @@ const Appointments = () => {
                         </div>
                         <div className="flex items-center gap-4 pl-4">
                           <div className="w-48">
-                            <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+                            <Select
+                              value={selectedDoctor || 'all'}
+                              onValueChange={(value) => {
+                                console.log('Doctor selection changed to:', value);
+                                setSelectedDoctor(value);
+                              }}
+                            >
                               <SelectTrigger>
                                 <SelectValue placeholder="All Doctors" />
                               </SelectTrigger>
@@ -1149,45 +1418,107 @@ const Appointments = () => {
                           <div
                             key={idx}
                             className={cn(
-                              "border rounded-lg min-h-[100px] max-h-[120px] overflow-y-auto p-1 cursor-pointer",
-                              isCurrentDay && "border-primary bg-primary/5"
+                              "border rounded-lg min-h-[100px] p-1 relative",
+                              isCurrentDay && "border-primary bg-primary/5",
+                              expandedMonthDay === format(day, 'yyyy-MM-dd') && "max-h-[250px] z-10 shadow-lg bg-white",
+                              !expandedMonthDay && "max-h-[120px]"
                             )}
-                            onClick={(e) => {
-                              // If the user clicks on an empty area or the date header, navigate to new appointment
-                              if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('date-header')) {
-                                navigate('/appointments/new', {
-                                  state: {
-                                    date: format(day, 'yyyy-MM-dd'),
-                                    doctor: selectedDoctor !== 'all' ? selectedDoctor : undefined
-                                  }
-                                });
+                            onClick={() => {
+                              // Toggle expand/collapse for this day
+                              if (expandedMonthDay === format(day, 'yyyy-MM-dd')) {
+                                setExpandedMonthDay(null);
                               } else {
-                                // Otherwise, just switch to daily view for that day
-                                setDate(day);
-                                setView('daily');
+                                setExpandedMonthDay(format(day, 'yyyy-MM-dd'));
                               }
                             }}
                           >
-                            <div className={cn(
-                              "text-xs font-medium p-1 text-center rounded-md date-header",
-                              isCurrentDay ? isDental ? "bg-dental-primary text-white" : "bg-meditouch-primary text-white" : ""
-                            )}>
-                              {format(day, 'd')}
+                            {/* Day header with capacity indicator */}
+                            <div className="flex items-center justify-between mb-1">
+                              <div
+                                className={cn(
+                                  "text-xs font-medium p-1 text-center rounded-md flex-grow cursor-pointer",
+                                  isCurrentDay ? isDental ? "bg-dental-primary text-white" : "bg-meditouch-primary text-white" : ""
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent the day cell click handler from firing
+                                  setDate(day);
+                                  setView('daily');
+                                }}
+                                title="Click to view this day in daily view"
+                              >
+                                {format(day, 'd')}
+                              </div>
+
+                              {/* Capacity indicator */}
+                              {dayAppointments.length > 0 && (
+                                <div
+                                  className={cn(
+                                    "text-xs px-1 rounded-full ml-1",
+                                    dayAppointments.length >= (isDental ? 10 : 5) ? "bg-red-100 text-red-800" :
+                                    dayAppointments.length >= (isDental ? 5 : 3) ? "bg-yellow-100 text-yellow-800" :
+                                    "bg-green-100 text-green-800"
+                                  )}
+                                  title={`${dayAppointments.length} appointment${dayAppointments.length !== 1 ? 's' : ''}`}
+                                >
+                                  {dayAppointments.length}
+                                </div>
+                              )}
                             </div>
-                            <div className="space-y-0.5 mt-1">
-                              {dayAppointments.slice(0, 3).map(appointment => (
+
+                            {/* Scrollable appointments container */}
+                            <div className={cn(
+                              "space-y-0.5 mt-1 overflow-y-auto pr-1",
+                              expandedMonthDay === format(day, 'yyyy-MM-dd') ? "max-h-[200px]" : "max-h-[70px]"
+                            )}>
+                              {/* Show all appointments if expanded, otherwise show limited number */}
+                              {(expandedMonthDay === format(day, 'yyyy-MM-dd') ?
+                                dayAppointments :
+                                dayAppointments.slice(0, 3)
+                              ).map(appointment => (
                                 <CalendarAppointmentItem
                                   key={appointment.id}
                                   appointment={appointment}
                                   isDental={isDental}
+                                  isCompact={dayAppointments.length > 1} // Use compact view if multiple appointments
                                   onClick={() => {
-                                    handleEditAppointment(appointment);
+                                    // We need to handle this in a way that stops propagation
+                                    // but the CalendarAppointmentItem component expects a function with no parameters
+                                    setTimeout(() => {
+                                      handleEditAppointment(appointment);
+                                    }, 0);
                                   }}
                                 />
                               ))}
-                              {dayAppointments.length > 3 && (
-                                <div className="text-xs text-center text-muted-foreground pt-1">
+
+                              {/* Show more/less button */}
+                              {dayAppointments.length > 3 && !expandedMonthDay && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full text-xs py-0 mt-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedMonthDay(format(day, 'yyyy-MM-dd'));
+                                  }}
+                                >
                                   +{dayAppointments.length - 3} more
+                                </Button>
+                              )}
+
+                              {/* Show collapse button when expanded */}
+                              {expandedMonthDay === format(day, 'yyyy-MM-dd') && (
+                                <div className="flex justify-center mt-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs py-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setExpandedMonthDay(null);
+                                    }}
+                                  >
+                                    Collapse
+                                  </Button>
                                 </div>
                               )}
                             </div>
@@ -1209,7 +1540,17 @@ const Appointments = () => {
         </div>
       </div>
 
-      <Dialog open={isNewAppointmentOpen} onOpenChange={setIsNewAppointmentOpen}>
+      <Dialog
+        open={isNewAppointmentOpen}
+        onOpenChange={(open) => {
+          setIsNewAppointmentOpen(open);
+          if (!open) {
+            // Reset when dialog closes
+            resetAppointmentForm();
+            setFilteredPatients(registeredPatients);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Create New Appointment</DialogTitle>
@@ -1221,16 +1562,88 @@ const Appointments = () => {
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="patient">Patient</Label>
-                <Select value={appointmentPatient} onValueChange={setAppointmentPatient}>
+                <Select
+                  value={appointmentPatient}
+                  onValueChange={setAppointmentPatient}
+                  // Keep the dropdown open when clicking inside it
+                  onOpenChange={(open) => {
+                    if (open) {
+                      // When opening, reset the filtered patients
+                      setFilteredPatients(registeredPatients);
+                    }
+                  }}
+                >
                   <SelectTrigger id="patient">
                     <SelectValue placeholder="Select patient" />
                   </SelectTrigger>
                   <SelectContent>
-                    {registeredPatients.map(patient => (
-                      <SelectItem key={patient.id} value={patient.name}>
-                        {patient.name}
-                      </SelectItem>
-                    ))}
+                    <div className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative">
+                        <Input
+                          placeholder="Search patients..."
+                          className="mb-2 pr-8"
+                          onChange={(e) => {
+                            // Immediately filter as the user types
+                            const value = e.target.value;
+                            console.log('Searching for:', value);
+                            handlePatientSearch(value);
+                          }}
+                          // Add autofocus to automatically focus the search input when dropdown opens
+                          autoFocus
+                          id="patient-search"
+                          // Prevent the dropdown from closing when typing
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            // Prevent the dropdown from closing when pressing keys
+                            e.stopPropagation();
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={(e) => {
+                            // Prevent the dropdown from closing
+                            e.stopPropagation();
+
+                            // Clear the search input
+                            const input = document.getElementById('patient-search') as HTMLInputElement;
+                            if (input) {
+                              input.value = '';
+                              handlePatientSearch('');
+                              // Re-focus the input after clearing
+                              input.focus();
+                            }
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    {filteredPatients.length === 0 ? (
+                      <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                        No patient found
+                      </div>
+                    ) : (
+                      // Wrap in a div to prevent event propagation issues
+                      <div onClick={(e) => e.stopPropagation()}>
+                        {filteredPatients.map(patient => (
+                          <SelectItem
+                            key={patient.id}
+                            value={patient.name}
+                            // Prevent the dropdown from closing immediately
+                            onSelect={(e) => {
+                              // This ensures the value is set but the dropdown doesn't close immediately
+                              e.preventDefault();
+                              setAppointmentPatient(patient.name);
+                            }}
+                          >
+                            {patient.name}
+                          </SelectItem>
+                        ))}
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -1290,14 +1703,28 @@ const Appointments = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="time">Time Slot</Label>
-                <Select value={appointmentTime} onValueChange={setAppointmentTime}>
+                <Select
+                  value={appointmentTime}
+                  onValueChange={setAppointmentTime}
+                  onOpenChange={(open) => {
+                    if (open && appointmentDate) {
+                      // When opening, make sure we're using the current date for available slots
+                      console.log('Opening time slot dropdown with date:', format(appointmentDate, 'yyyy-MM-dd'));
+                    }
+                  }}
+                >
                   <SelectTrigger id="time">
                     <SelectValue placeholder="Select time slot" />
                   </SelectTrigger>
                   <SelectContent>
-                    {timeSlots.map(time => (
+                    {getAvailableTimeSlots().map(time => (
                       <SelectItem key={time} value={time}>{time}</SelectItem>
                     ))}
+                    {getAvailableTimeSlots().length === 0 && (
+                      <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                        No available time slots for this date
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -1320,38 +1747,132 @@ const Appointments = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsNewAppointmentOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateAppointment}
-              className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
-            >
-              Create Appointment
-            </Button>
+            <div className="flex space-x-2 ml-auto">
+              <Button
+                onClick={handleCreateAppointment}
+                className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
+              >
+                Create Appointment
+              </Button>
+              <Button variant="outline" onClick={() => setIsNewAppointmentOpen(false)}>
+                Cancel
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Add a key to force re-render of the dialog */}
-      <Dialog key={`edit-dialog-${editingAppointment?.id || 'none'}`} open={isEditAppointmentOpen} onOpenChange={setIsEditAppointmentOpen}>
+      <Dialog
+        open={isEditAppointmentOpen}
+        onOpenChange={(open) => {
+          setIsEditAppointmentOpen(open);
+          if (open) {
+            // Reset filtered patients when opening the dialog
+            setFilteredPatients(registeredPatients);
+          } else {
+            // When closing, make sure we don't open the new appointment dialog
+            setEditingAppointment(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Appointment Options</DialogTitle>
+            <DialogTitle>Edit Appointment</DialogTitle>
             <DialogDescription>
-              Reschedule or delete this appointment for {appointmentPatient}.
+              Reschedule or cancel the appointment.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-1 gap-4">
-              <div>
-                <Label>Patient</Label>
-                <p className="font-medium mt-1">{appointmentPatient}</p>
+              <div className="space-y-2">
+                <Label htmlFor="edit-patient">Patient</Label>
+                <Select
+                  value={appointmentPatient || ''}
+                  onValueChange={setAppointmentPatient}
+                  defaultValue={appointmentPatient || ''}
+                >
+                  <SelectTrigger id="edit-patient">
+                    <SelectValue placeholder="Select patient" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative">
+                        <Input
+                          placeholder="Search patients..."
+                          className="mb-2 pr-8"
+                          onChange={(e) => {
+                            // Immediately filter as the user types
+                            const value = e.target.value;
+                            console.log('Searching for:', value);
+                            handlePatientSearch(value);
+                          }}
+                          // Add autofocus to automatically focus the search input when dropdown opens
+                          autoFocus
+                          id="edit-patient-search"
+                          // Prevent the dropdown from closing when typing
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            // Prevent the dropdown from closing when pressing keys
+                            e.stopPropagation();
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={(e) => {
+                            // Prevent the dropdown from closing
+                            e.stopPropagation();
+
+                            // Clear the search input
+                            const input = document.getElementById('edit-patient-search') as HTMLInputElement;
+                            if (input) {
+                              input.value = '';
+                              handlePatientSearch('');
+                              // Re-focus the input after clearing
+                              input.focus();
+                            }
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    {filteredPatients.length === 0 ? (
+                      <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                        No patient found
+                      </div>
+                    ) : (
+                      // Wrap in a div to prevent event propagation issues
+                      <div onClick={(e) => e.stopPropagation()}>
+                        {filteredPatients.map(patient => (
+                          <SelectItem
+                            key={patient.id}
+                            value={patient.name}
+                            // Prevent the dropdown from closing immediately
+                            onSelect={(e) => {
+                              // This ensures the value is set but the dropdown doesn't close immediately
+                              e.preventDefault();
+                              setAppointmentPatient(patient.name);
+                            }}
+                          >
+                            {patient.name}
+                          </SelectItem>
+                        ))}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="edit-service">Service</Label>
-                <Select value={appointmentService} onValueChange={setAppointmentService}>
+                <Select
+                  value={appointmentService || ''}
+                  onValueChange={setAppointmentService}
+                  defaultValue={appointmentService || ''}
+                >
                   <SelectTrigger id="edit-service">
                     <SelectValue placeholder="Select service" />
                   </SelectTrigger>
@@ -1404,18 +1925,41 @@ const Appointments = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="edit-time">Time Slot</Label>
-                <Select value={appointmentTime} onValueChange={setAppointmentTime}>
+                <Select
+                  value={appointmentTime || ''}
+                  onValueChange={setAppointmentTime}
+                  defaultValue={appointmentTime || ''}
+                  onOpenChange={(open) => {
+                    if (open && appointmentDate) {
+                      // When opening, make sure we're using the current date for available slots
+                      console.log('Opening time slot dropdown with date:', format(appointmentDate, 'yyyy-MM-dd'));
+                    }
+                  }}
+                >
                   <SelectTrigger id="edit-time">
                     <SelectValue placeholder="Select time slot" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={appointmentTime}>
-                      {appointmentTime} (Current)
-                    </SelectItem>
-                    {timeSlots.map(time =>
-                      time !== appointmentTime && (
+                    {/* Always show the current time slot */}
+                    {appointmentTime && (
+                      <SelectItem value={appointmentTime}>
+                        {appointmentTime} (Current)
+                      </SelectItem>
+                    )}
+
+                    {/* Show available time slots */}
+                    {getAvailableTimeSlots()
+                      .filter(time => time !== appointmentTime) // Filter out current time to avoid duplication
+                      .map(time => (
                         <SelectItem key={time} value={time}>{time}</SelectItem>
-                      )
+                      ))
+                    }
+
+                    {/* Show message if no available slots */}
+                    {getAvailableTimeSlots().length === 0 && !appointmentTime && (
+                      <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                        No available time slots for this date
+                      </div>
                     )}
                   </SelectContent>
                 </Select>
@@ -1423,7 +1967,11 @@ const Appointments = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="edit-doctor">Doctor</Label>
-                <Select value={appointmentDoctor} onValueChange={setAppointmentDoctor}>
+                <Select
+                  value={appointmentDoctor || ''}
+                  onValueChange={setAppointmentDoctor}
+                  defaultValue={appointmentDoctor || ''}
+                >
                   <SelectTrigger id="edit-doctor">
                     <SelectValue placeholder="Select doctor" />
                   </SelectTrigger>
@@ -1439,20 +1987,126 @@ const Appointments = () => {
             </div>
           </div>
           <DialogFooter className="flex justify-between">
-            <Button variant="destructive" onClick={handleCancelAppointment}>
-              <Trash className="h-4 w-4 mr-2" /> Delete Appointment
-            </Button>
             <div className="space-x-2">
-              <Button variant="outline" onClick={() => setIsEditAppointmentOpen(false)}>
-                Cancel
-              </Button>
               <Button
-                onClick={handleRescheduleSubmit}
+                onClick={openUpdateConfirmation}
                 className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
               >
-                Reschedule
+                Update
+              </Button>
+              <Button variant="destructive" onClick={openCancelConfirmation}>
+                Cancel
+              </Button>
+              <Button variant="outline" onClick={() => setIsEditAppointmentOpen(false)}>
+                Close
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Confirmation Dialog */}
+      <Dialog open={isConfirmUpdateOpen} onOpenChange={setIsConfirmUpdateOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Update</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to update this appointment?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {editingAppointment && (
+              <p className="text-sm text-muted-foreground">
+                You are about to update the appointment for <span className="font-semibold">{editingAppointment.patient}</span> on {format(appointmentDate || new Date(), 'PP')} at {appointmentTime}.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelUpdate}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRescheduleSubmit}
+              className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
+            >
+              Confirm Update
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={isConfirmCancelOpen} onOpenChange={setIsConfirmCancelOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Cancellation</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this appointment? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {editingAppointment && (
+              <p className="text-sm text-muted-foreground">
+                You are about to cancel the appointment for <span className="font-semibold">{editingAppointment.patient}</span> on {format(new Date(editingAppointment.date), 'PP')} at {editingAppointment.time}.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelCancel}>
+              Go Back
+            </Button>
+            <Button
+              onClick={handleCancelAppointment}
+              variant="destructive"
+            >
+              Cancel Appointment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Appointment Creation Confirmation Dialog */}
+      <Dialog open={isConfirmCreateOpen} onOpenChange={setIsConfirmCreateOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Appointment</DialogTitle>
+            <DialogDescription>
+              Please confirm that you want to schedule this appointment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {pendingAppointment && (
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <span className="font-semibold">Patient:</span> {pendingAppointment.patient}
+                </p>
+                <p className="text-sm">
+                  <span className="font-semibold">Service:</span> {pendingAppointment.service}
+                </p>
+                <p className="text-sm">
+                  <span className="font-semibold">Date:</span> {pendingAppointment.date ? format(pendingAppointment.date, 'PP') : ''}
+                </p>
+                <p className="text-sm">
+                  <span className="font-semibold">Time:</span> {pendingAppointment.time}
+                </p>
+                {isDental && pendingAppointment.doctor && (
+                  <p className="text-sm">
+                    <span className="font-semibold">Doctor:</span> {pendingAppointment.doctor}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelCreateAppointment}>
+              Back
+            </Button>
+            <Button
+              onClick={confirmCreateAppointment}
+              className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
+            >
+              Confirm Appointment
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
