@@ -333,6 +333,8 @@ const Settings = () => {
       const updatedSpecialization = document.getElementById('editDoctorSpecialization') as HTMLInputElement;
       const updatedEmail = document.getElementById('editDoctorEmail') as HTMLInputElement;
       const updatedPhone = document.getElementById('editDoctorPhone') as HTMLInputElement;
+      const updatedAadhar = document.getElementById('editAadharUpload') as HTMLInputElement;
+      const updatedPan = document.getElementById('editPanUpload') as HTMLInputElement;
 
       // Validate email format
       const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
@@ -361,6 +363,22 @@ const Settings = () => {
       }
 
       if (updatedName && updatedSpecialization && updatedEmail && updatedPhone) {
+        // Process document uploads
+        let aadharPath = currentDoctor.aadharDoc || "";
+        let panPath = currentDoctor.panDoc || "";
+
+        if (updatedAadhar && updatedAadhar.files && updatedAadhar.files.length > 0) {
+          // In a real app, you would upload the file and get a URL back
+          // For demo purposes, we'll create a fake path
+          aadharPath = `/docs/aadhar_${updatedName.value.replace(/\s+/g, '_').toLowerCase()}.${updatedAadhar.files[0].name.split('.').pop()}`;
+        }
+
+        if (updatedPan && updatedPan.files && updatedPan.files.length > 0) {
+          // In a real app, you would upload the file and get a URL back
+          // For demo purposes, we'll create a fake path
+          panPath = `/docs/pan_${updatedName.value.replace(/\s+/g, '_').toLowerCase()}.${updatedPan.files[0].name.split('.').pop()}`;
+        }
+
         // Update doctor in the list
         const updatedDoctors = dentalDoctors.map(doctor => {
           if (doctor.id === currentDoctor.id) {
@@ -370,7 +388,8 @@ const Settings = () => {
               specialization: updatedSpecialization.value,
               email: updatedEmail.value,
               phone: `${editPhoneCountryCode} ${updatedPhone.value}`,
-              // Keep existing document links
+              aadharDoc: aadharPath,
+              panDoc: panPath
             };
           }
           return doctor;
@@ -1267,6 +1286,26 @@ const Settings = () => {
                       }
 
                       if (newDoctorName && newDoctorSpecialization && newDoctorEmail && newDoctorPhone) {
+                        // Get file inputs
+                        const aadharInput = document.getElementById('aadharUpload') as HTMLInputElement;
+                        const panInput = document.getElementById('panUpload') as HTMLInputElement;
+
+                        // Create file paths for documents (in a real app, these would be uploaded to a server)
+                        let aadharPath = "";
+                        let panPath = "";
+
+                        if (aadharInput && aadharInput.files && aadharInput.files.length > 0) {
+                          // In a real app, you would upload the file and get a URL back
+                          // For demo purposes, we'll create a fake path
+                          aadharPath = `/docs/aadhar_${newDoctorName.replace(/\s+/g, '_').toLowerCase()}.${aadharInput.files[0].name.split('.').pop()}`;
+                        }
+
+                        if (panInput && panInput.files && panInput.files.length > 0) {
+                          // In a real app, you would upload the file and get a URL back
+                          // For demo purposes, we'll create a fake path
+                          panPath = `/docs/pan_${newDoctorName.replace(/\s+/g, '_').toLowerCase()}.${panInput.files[0].name.split('.').pop()}`;
+                        }
+
                         // Add new doctor to the list
                         const newDoctor = {
                           id: dentalDoctors.length > 0 ? Math.max(...dentalDoctors.map(d => d.id)) + 1 : 1,
@@ -1274,11 +1313,11 @@ const Settings = () => {
                           specialization: newDoctorSpecialization,
                           email: newDoctorEmail,
                           phone: `${phoneCountryCode} ${newDoctorPhone}`,
-                          aadharDoc: "",
-                          panDoc: ""
+                          aadharDoc: aadharPath,
+                          panDoc: panPath
                         };
 
-                        setDentalDoctors([...dentalDoctors, newDoctor]);
+                        setDentalDoctors([newDoctor, ...dentalDoctors]);
 
                         // Reset form fields
                         setNewDoctorName('');
