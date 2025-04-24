@@ -31,6 +31,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface StockItem {
   id: string;
@@ -47,17 +48,77 @@ interface StockItem {
   createdAt: string; // Date when the item was added to inventory
 }
 
+// Stock items from Settings page
+const initialStockItems = [
+  {
+    id: 1,
+    name: "Dental Composite",
+    subItems: ["Filtek Supreme Ultra", "3M Z350", "Tetric N-Ceram"],
+    description: "Light-cured restorative material for anterior and posterior restorations",
+    itemType: "Consumable"
+  },
+  {
+    id: 2,
+    name: "Impression Material",
+    subItems: ["Jeltrate Plus", "Alginate Regular", "Speedex"],
+    description: "Alginate impression material for preliminary impressions",
+    itemType: "Consumable"
+  },
+  {
+    id: 3,
+    name: "Orthodontic Wire",
+    subItems: ["Ormco NiTi", "3M Unitek", "G&H Wire"],
+    description: "Nickel titanium archwires for orthodontic treatment",
+    itemType: "Inventory"
+  },
+  {
+    id: 4,
+    name: "Dental Cement",
+    subItems: ["GC Fuji II LC", "RelyX", "Ketac Cem"],
+    description: "Light-cured glass ionomer restorative cement",
+    itemType: "Consumable"
+  },
+  {
+    id: 5,
+    name: "Dental Burs",
+    subItems: ["Mani Diamond", "SS White", "Dentsply Carbide"],
+    description: "Diamond dental burs for cavity preparation",
+    itemType: "Inventory"
+  }
+];
+
+// Dealers from Settings page
+const initialDealers = [
+  { id: 1, name: "Dental Depot", contact: "+91 98765 43210", city: "Mumbai" },
+  { id: 2, name: "Henry Schein", contact: "+91 87654 32109", city: "Delhi" },
+  { id: 3, name: "Ormco Direct", contact: "+91 76543 21098", city: "Bangalore" },
+  { id: 4, name: "GC India", contact: "+91 65432 10987", city: "Chennai" },
+  { id: 5, name: "Mani Inc", contact: "+91 54321 09876", city: "Hyderabad" },
+  { id: 6, name: "Patterson Dental", contact: "+91 43210 98765", city: "Pune" },
+  { id: 7, name: "3M Healthcare", contact: "+91 32109 87654", city: "Kolkata" }
+];
+
 const StockTracker = () => {
   const { activeClinic, isDental } = useClinic();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Stock items list for dropdown
+  const stockItemsList = initialStockItems;
+
+  // Dealers list for dropdown
+  const dealersList = initialDealers;
+
+  // State for selected item's sub-items
+  const [selectedItemSubItems, setSelectedItemSubItems] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterItemType, setFilterItemType] = useState('all'); // 'all', 'Consumable', or 'Inventory'
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentEditItem, setCurrentEditItem] = useState<StockItem | null>(null);
+  const [editSelectedItemSubItems, setEditSelectedItemSubItems] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
   const [stockItems, setStockItems] = useState<StockItem[]>([
     {
@@ -275,6 +336,15 @@ const StockTracker = () => {
 
   const handleEditItem = (item: StockItem) => {
     setCurrentEditItem(item);
+
+    // Find the corresponding stock item to get sub-items
+    const stockItem = stockItemsList.find(si => si.name === item.name);
+    if (stockItem && stockItem.subItems) {
+      setEditSelectedItemSubItems(stockItem.subItems);
+    } else {
+      setEditSelectedItemSubItems([]);
+    }
+
     setIsEditDialogOpen(true);
   };
 
@@ -369,22 +439,80 @@ const StockTracker = () => {
             <div className="grid gap-2 py-2">
               <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="itemName" className="text-right text-xs">Name *</Label>
-                <Input
-                  id="itemName"
-                  value={newItem.name}
-                  onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                  className="col-span-3 h-8"
-                  placeholder="Item name"
-                />
+                <div className="col-span-3">
+                  <Select
+                    value={newItem.name || undefined}
+                    onValueChange={(value) => {
+                      // Find the selected stock item
+                      const selectedItem = stockItemsList.find(item => item.name === value);
+                      if (selectedItem) {
+                        // Update the selected item's sub-items
+                        setSelectedItemSubItems(selectedItem.subItems || []);
+
+                        // Update the form with the selected item's details
+                        // Description is pre-populated but can be edited by the user
+                        setNewItem({
+                          ...newItem,
+                          name: selectedItem.name,
+                          subItem: selectedItem.subItems && selectedItem.subItems.length > 0 ? selectedItem.subItems[0] : '',
+                          itemType: selectedItem.itemType as 'Consumable' | 'Inventory',
+                          description: selectedItem.description || ''
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select an item" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stockItemsList.map((item) => (
+                        <SelectItem key={item.id} value={item.name}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="subItem" className="text-right text-xs">Sub-item</Label>
+                <div className="col-span-3">
+                  <Select
+                    value={newItem.subItem || undefined}
+                    onValueChange={(value) => {
+                      setNewItem({
+                        ...newItem,
+                        subItem: value
+                      });
+                    }}
+                    disabled={selectedItemSubItems.length === 0}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder={selectedItemSubItems.length === 0 ? "Select an item first" : "Select a sub-item"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedItemSubItems.map((subItem) => (
+                        <SelectItem key={subItem} value={subItem}>
+                          {subItem}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="description" className="text-right text-xs">Description</Label>
                 <Input
-                  id="subItem"
-                  value={newItem.subItem}
-                  onChange={(e) => setNewItem({...newItem, subItem: e.target.value})}
+                  id="description"
+                  value={newItem.description}
+                  onChange={(e) => {
+                    // Capitalize the first letter of each sentence
+                    const value = e.target.value;
+                    const capitalizedValue = value.replace(/(^\s*\w|[.!?]\s*\w)/g, c => c.toUpperCase());
+                    setNewItem({...newItem, description: capitalizedValue});
+                  }}
                   className="col-span-3 h-8"
-                  placeholder="Sub-item or brand name"
+                  placeholder="Item description"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
@@ -397,10 +525,10 @@ const StockTracker = () => {
                       name="itemType"
                       value="Consumable"
                       checked={newItem.itemType === 'Consumable'}
-                      onChange={() => setNewItem({...newItem, itemType: 'Consumable'})}
+                      disabled
                       className="mr-2"
                     />
-                    <label htmlFor="consumable">Consumable</label>
+                    <label htmlFor="consumable" className={newItem.itemType === 'Consumable' ? 'font-medium' : 'text-gray-500'}>Consumable</label>
                   </div>
                   <div className="flex items-center">
                     <input
@@ -409,65 +537,12 @@ const StockTracker = () => {
                       name="itemType"
                       value="Inventory"
                       checked={newItem.itemType === 'Inventory'}
-                      onChange={() => setNewItem({...newItem, itemType: 'Inventory'})}
+                      disabled
                       className="mr-2"
                     />
-                    <label htmlFor="inventory">Inventory</label>
+                    <label htmlFor="inventory" className={newItem.itemType === 'Inventory' ? 'font-medium' : 'text-gray-500'}>Inventory</label>
                   </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="dealer" className="text-right text-xs">Dealer *</Label>
-                <Input
-                  id="dealer"
-                  value={newItem.dealer}
-                  onChange={(e) => setNewItem({...newItem, dealer: e.target.value})}
-                  className="col-span-3 h-8"
-                  placeholder="Supplier or dealer name"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="rate" className="text-right text-xs">Rate (₹) *</Label>
-                <Input
-                  id="rate"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={newItem.rate === 0 && document.activeElement !== document.getElementById('rate') ? '' : newItem.rate}
-                  onChange={(e) => {
-                    // Only allow numeric input
-                    const numericValue = e.target.value.replace(/[^0-9.]/g, '');
-                    const value = numericValue === '' ? 0 : parseFloat(numericValue);
-                    setNewItem({...newItem, rate: value});
-                  }}
-                  onFocus={(e) => {
-                    if (newItem.rate === 0) {
-                      e.target.value = '';
-                    }
-                  }}
-                  className="col-span-3 h-8"
-                  placeholder="Price per unit"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="description" className="text-right text-xs">Description</Label>
-                <Input
-                  id="description"
-                  value={newItem.description}
-                  onChange={(e) => setNewItem({...newItem, description: e.target.value})}
-                  className="col-span-3 h-8"
-                  placeholder="Item description"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="unit" className="text-right text-xs">Unit *</Label>
-                <Input
-                  id="unit"
-                  value={newItem.unit}
-                  onChange={(e) => setNewItem({...newItem, unit: e.target.value})}
-                  className="col-span-3 h-8"
-                  placeholder="e.g., pack, bottle"
-                />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="quantity" className="text-right text-xs">Quantity *</Label>
@@ -492,6 +567,21 @@ const StockTracker = () => {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="unit" className="text-right text-xs">Unit *</Label>
+                <Input
+                  id="unit"
+                  value={newItem.unit}
+                  onChange={(e) => {
+                    // Capitalize the first letter
+                    const value = e.target.value;
+                    const capitalizedValue = value.charAt(0).toUpperCase() + value.slice(1);
+                    setNewItem({...newItem, unit: capitalizedValue});
+                  }}
+                  className="col-span-3 h-8"
+                  placeholder="e.g., Pack, Bottle"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="threshold" className="text-right text-xs">Min. Threshold *</Label>
                 <Input
                   id="threshold"
@@ -511,6 +601,54 @@ const StockTracker = () => {
                     }
                   }}
                   className="col-span-3 h-8"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="dealer" className="text-right text-xs">Dealer *</Label>
+                <div className="col-span-3">
+                  <Select
+                    value={newItem.dealer || undefined}
+                    onValueChange={(value) => {
+                      setNewItem({
+                        ...newItem,
+                        dealer: value
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select a dealer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dealersList.map((dealer) => (
+                        <SelectItem key={dealer.id} value={dealer.name}>
+                          {dealer.name} ({dealer.city})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="rate" className="text-right text-xs">Rate (₹) *</Label>
+                <Input
+                  id="rate"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newItem.rate === 0 && document.activeElement !== document.getElementById('rate') ? '' : newItem.rate}
+                  onChange={(e) => {
+                    // Only allow numeric input
+                    const numericValue = e.target.value.replace(/[^0-9.]/g, '');
+                    const value = numericValue === '' ? 0 : parseFloat(numericValue);
+                    setNewItem({...newItem, rate: value});
+                  }}
+                  onFocus={(e) => {
+                    if (newItem.rate === 0) {
+                      e.target.value = '';
+                    }
+                  }}
+                  className="col-span-3 h-8"
+                  placeholder="Price per unit"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
@@ -544,22 +682,80 @@ const StockTracker = () => {
               <div className="grid gap-2 py-2">
                 <div className="grid grid-cols-4 items-center gap-2">
                   <Label htmlFor="editItemName" className="text-right text-xs">Name *</Label>
-                  <Input
-                    id="editItemName"
-                    value={currentEditItem.name}
-                    onChange={(e) => setCurrentEditItem({...currentEditItem, name: e.target.value})}
-                    className="col-span-3 h-8"
-                    placeholder="Item name"
-                  />
+                  <div className="col-span-3">
+                    <Select
+                      value={currentEditItem.name || undefined}
+                      onValueChange={(value) => {
+                        // Find the selected stock item
+                        const selectedItem = stockItemsList.find(item => item.name === value);
+                        if (selectedItem) {
+                          // Update the selected item's sub-items
+                          setEditSelectedItemSubItems(selectedItem.subItems || []);
+
+                          // Update the form with the selected item's details
+                          // Description is pre-populated but can be edited by the user
+                          setCurrentEditItem({
+                            ...currentEditItem,
+                            name: selectedItem.name,
+                            subItem: selectedItem.subItems && selectedItem.subItems.length > 0 ? selectedItem.subItems[0] : '',
+                            itemType: selectedItem.itemType as 'Consumable' | 'Inventory',
+                            description: selectedItem.description || ''
+                          });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select an item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stockItemsList.map((item) => (
+                          <SelectItem key={item.id} value={item.name}>
+                            {item.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
                   <Label htmlFor="editSubItem" className="text-right text-xs">Sub-item</Label>
+                  <div className="col-span-3">
+                    <Select
+                      value={currentEditItem.subItem || undefined}
+                      onValueChange={(value) => {
+                        setCurrentEditItem({
+                          ...currentEditItem,
+                          subItem: value
+                        });
+                      }}
+                      disabled={editSelectedItemSubItems.length === 0}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder={editSelectedItemSubItems.length === 0 ? "Select an item first" : "Select a sub-item"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {editSelectedItemSubItems.map((subItem) => (
+                          <SelectItem key={subItem} value={subItem}>
+                            {subItem}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editDescription" className="text-right text-xs">Description</Label>
                   <Input
-                    id="editSubItem"
-                    value={currentEditItem.subItem || ''}
-                    onChange={(e) => setCurrentEditItem({...currentEditItem, subItem: e.target.value})}
+                    id="editDescription"
+                    value={currentEditItem.description}
+                    onChange={(e) => {
+                      // Capitalize the first letter of each sentence
+                      const value = e.target.value;
+                      const capitalizedValue = value.replace(/(^\s*\w|[.!?]\s*\w)/g, c => c.toUpperCase());
+                      setCurrentEditItem({...currentEditItem, description: capitalizedValue});
+                    }}
                     className="col-span-3 h-8"
-                    placeholder="Sub-item or brand name"
+                    placeholder="Item description"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
@@ -572,10 +768,10 @@ const StockTracker = () => {
                         name="editItemType"
                         value="Consumable"
                         checked={currentEditItem.itemType === 'Consumable'}
-                        onChange={() => setCurrentEditItem({...currentEditItem, itemType: 'Consumable'})}
+                        disabled
                         className="mr-2"
                       />
-                      <label htmlFor="editConsumable">Consumable</label>
+                      <label htmlFor="editConsumable" className={currentEditItem.itemType === 'Consumable' ? 'font-medium' : 'text-gray-500'}>Consumable</label>
                     </div>
                     <div className="flex items-center">
                       <input
@@ -584,65 +780,12 @@ const StockTracker = () => {
                         name="editItemType"
                         value="Inventory"
                         checked={currentEditItem.itemType === 'Inventory'}
-                        onChange={() => setCurrentEditItem({...currentEditItem, itemType: 'Inventory'})}
+                        disabled
                         className="mr-2"
                       />
-                      <label htmlFor="editInventory">Inventory</label>
+                      <label htmlFor="editInventory" className={currentEditItem.itemType === 'Inventory' ? 'font-medium' : 'text-gray-500'}>Inventory</label>
                     </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editDealer" className="text-right text-xs">Dealer *</Label>
-                  <Input
-                    id="editDealer"
-                    value={currentEditItem.dealer || ''}
-                    onChange={(e) => setCurrentEditItem({...currentEditItem, dealer: e.target.value})}
-                    className="col-span-3 h-8"
-                    placeholder="Supplier or dealer name"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editRate" className="text-right text-xs">Rate (₹) *</Label>
-                  <Input
-                    id="editRate"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={(currentEditItem.rate === 0 || !currentEditItem.rate) && document.activeElement !== document.getElementById('editRate') ? '' : currentEditItem.rate}
-                    onChange={(e) => {
-                      // Only allow numeric input
-                      const numericValue = e.target.value.replace(/[^0-9.]/g, '');
-                      const value = numericValue === '' ? 0 : parseFloat(numericValue);
-                      setCurrentEditItem({...currentEditItem, rate: value});
-                    }}
-                    onFocus={(e) => {
-                      if (currentEditItem.rate === 0 || !currentEditItem.rate) {
-                        e.target.value = '';
-                      }
-                    }}
-                    className="col-span-3 h-8"
-                    placeholder="Price per unit"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editDescription" className="text-right text-xs">Description</Label>
-                  <Input
-                    id="editDescription"
-                    value={currentEditItem.description}
-                    onChange={(e) => setCurrentEditItem({...currentEditItem, description: e.target.value})}
-                    className="col-span-3 h-8"
-                    placeholder="Item description"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editUnit" className="text-right text-xs">Unit *</Label>
-                  <Input
-                    id="editUnit"
-                    value={currentEditItem.unit}
-                    onChange={(e) => setCurrentEditItem({...currentEditItem, unit: e.target.value})}
-                    className="col-span-3 h-8"
-                    placeholder="e.g., pack, bottle"
-                  />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
                   <Label htmlFor="editQuantity" className="text-right text-xs">Quantity *</Label>
@@ -667,6 +810,21 @@ const StockTracker = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editUnit" className="text-right text-xs">Unit *</Label>
+                  <Input
+                    id="editUnit"
+                    value={currentEditItem.unit}
+                    onChange={(e) => {
+                      // Capitalize the first letter
+                      const value = e.target.value;
+                      const capitalizedValue = value.charAt(0).toUpperCase() + value.slice(1);
+                      setCurrentEditItem({...currentEditItem, unit: capitalizedValue});
+                    }}
+                    className="col-span-3 h-8"
+                    placeholder="e.g., Pack, Bottle"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-2">
                   <Label htmlFor="editThreshold" className="text-right text-xs">Min. Threshold *</Label>
                   <Input
                     id="editThreshold"
@@ -686,6 +844,54 @@ const StockTracker = () => {
                       }
                     }}
                     className="col-span-3 h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editDealer" className="text-right text-xs">Dealer *</Label>
+                  <div className="col-span-3">
+                    <Select
+                      value={currentEditItem.dealer || undefined}
+                      onValueChange={(value) => {
+                        setCurrentEditItem({
+                          ...currentEditItem,
+                          dealer: value
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select a dealer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dealersList.map((dealer) => (
+                          <SelectItem key={dealer.id} value={dealer.name}>
+                            {dealer.name} ({dealer.city})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor="editRate" className="text-right text-xs">Rate (₹) *</Label>
+                  <Input
+                    id="editRate"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={(currentEditItem.rate === 0 || !currentEditItem.rate) && document.activeElement !== document.getElementById('editRate') ? '' : currentEditItem.rate}
+                    onChange={(e) => {
+                      // Only allow numeric input
+                      const numericValue = e.target.value.replace(/[^0-9.]/g, '');
+                      const value = numericValue === '' ? 0 : parseFloat(numericValue);
+                      setCurrentEditItem({...currentEditItem, rate: value});
+                    }}
+                    onFocus={(e) => {
+                      if (currentEditItem.rate === 0 || !currentEditItem.rate) {
+                        e.target.value = '';
+                      }
+                    }}
+                    className="col-span-3 h-8"
+                    placeholder="Price per unit"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
@@ -833,21 +1039,28 @@ const StockTracker = () => {
               className="flex gap-2 items-center"
               onClick={() => {
                 // Create CSV content from the filtered and sorted data
-                const headers = ['Item', 'Sub-item', 'Item Type', 'Dealer', 'Rate', 'Description', 'Quantity', 'Unit', 'Min Threshold', 'Expiry', 'Status', 'Date Added'];
+                const headers = ['Item', 'Sub-item', 'Description', 'Item Type', 'Quantity', 'Unit', 'Dealer', 'Rate', 'Min Threshold', 'Expiry', 'Status', 'Date Added'];
 
                 const csvContent = [
                   headers.join(','),
                   ...sortedAndFilteredItems.map((item: StockItem) => {
-                    const status = isLowStock(item) ? 'Low' : isExpiringSoon(item) ? 'Expiring' : 'OK';
+                    let status = 'OK';
+                    if (isLowStock(item) && isExpiringSoon(item)) {
+                      status = 'Low, Expiring';
+                    } else if (isLowStock(item)) {
+                      status = 'Low';
+                    } else if (isExpiringSoon(item)) {
+                      status = 'Expiring';
+                    }
                     return [
                       `"${item.name}"`,
                       `"${item.subItem || ''}"`,
-                      `"${item.itemType}"`,
-                      `"${item.dealer || ''}"`,
-                      `"${item.rate ? '₹' + item.rate.toLocaleString() : ''}"`,
                       `"${item.description}"`,
+                      `"${item.itemType}"`,
                       item.currentQuantity,
                       `"${item.unit}"`,
+                      `"${item.dealer || ''}"`,
+                      `"${item.rate ? '₹' + item.rate.toLocaleString() : ''}"`,
                       item.minimumThreshold,
                       `"${item.nearestExpiryDate || ''}"`,
                       `"${status}"`,
@@ -890,11 +1103,13 @@ const StockTracker = () => {
                   <TableRow>
                     <TableHead>Item</TableHead>
                     <TableHead className="hidden md:table-cell">Sub-item</TableHead>
+                    <TableHead className="hidden sm:table-cell">Description</TableHead>
                     <TableHead className="hidden md:table-cell">Item Type</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead className="hidden sm:table-cell">Unit</TableHead>
                     <TableHead className="hidden lg:table-cell">Dealer</TableHead>
                     <TableHead className="hidden lg:table-cell">Rate</TableHead>
-                    <TableHead className="hidden sm:table-cell">Description</TableHead>
-                    <TableHead>Quantity</TableHead>
+                    <TableHead className="hidden md:table-cell">Min Threshold</TableHead>
                     <TableHead className="hidden md:table-cell">Expiry</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -903,7 +1118,7 @@ const StockTracker = () => {
                 <TableBody>
                   {sortedAndFilteredItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                         No items match your search criteria
                       </TableCell>
                     </TableRow>
@@ -912,23 +1127,29 @@ const StockTracker = () => {
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell className="hidden md:table-cell">{item.subItem || '-'}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{item.description}</TableCell>
                         <TableCell className="hidden md:table-cell">
                           <Badge variant="outline" className={item.itemType === 'Consumable' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-teal-50 text-teal-700 border-teal-200'}>
                             {item.itemType}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell">{item.dealer || '-'}</TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          {item.rate ? `₹${item.rate.toLocaleString()}` : '-'}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">{item.description}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <span>{item.currentQuantity} {item.unit}{item.currentQuantity !== 1 ? 's' : ''}</span>
+                            <span>{item.currentQuantity}</span>
                             {isLowStock(item) && (
                               <AlertTriangle className="h-3 w-3 text-amber-500" />
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {item.unit}{item.currentQuantity !== 1 ? 's' : ''}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">{item.dealer || '-'}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {item.rate ? `₹${item.rate.toLocaleString()}` : '-'}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {item.minimumThreshold}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {item.nearestExpiryDate ? (
@@ -943,19 +1164,23 @@ const StockTracker = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {isLowStock(item) ? (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                              Low
-                            </Badge>
-                          ) : isExpiringSoon(item) ? (
-                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                              Expiring
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                              OK
-                            </Badge>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {isLowStock(item) && (
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                                Low
+                              </Badge>
+                            )}
+                            {isExpiringSoon(item) && (
+                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                Expiring
+                              </Badge>
+                            )}
+                            {!isLowStock(item) && !isExpiringSoon(item) && (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                OK
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">

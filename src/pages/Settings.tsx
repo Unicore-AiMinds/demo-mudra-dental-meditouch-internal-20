@@ -58,7 +58,8 @@ import {
   AlertCircle,
   FileText,
   Microscope,
-  RefreshCw
+  RefreshCw,
+  Package
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -155,20 +156,35 @@ const services = {
   ]
 };
 
-const dentalLabs = [
+const initialDentalLabs = [
   { id: 1, name: "Precision Dental Lab", contact: "+91 98765 43210", address: "Mumbai", specialization: "Crowns & Bridges" },
   { id: 2, name: "Nova Dental Solutions", contact: "+91 87654 32109", address: "Delhi", specialization: "Dentures" },
   { id: 3, name: "Dent Creations India", contact: "+91 76543 21098", address: "Bangalore", specialization: "Implants" },
   { id: 4, name: "Implant Specialists", contact: "+91 65432 10987", address: "Chennai", specialization: "Custom Abutments" }
 ];
 
-const labWorkTypes = [
+const initialDealers = [
+  { id: 1, name: "Dental Supplies Co.", email: "contact@dentalsupplies.com", contact: "+91 98765 43210", city: "Mumbai" },
+  { id: 2, name: "MediDent Distributors", email: "info@medident.com", contact: "+91 87654 32109", city: "Delhi" },
+  { id: 3, name: "Prime Dental Products", email: "sales@primedentalproducts.com", contact: "+91 76543 21098", city: "Bangalore" },
+  { id: 4, name: "Dental Depot", email: "support@dentaldepot.com", contact: "+91 65432 10987", city: "Chennai" }
+];
+
+const initialLabWorkTypes = [
   { id: 1, name: "PFM Crown", turnaround: "7-10 days" },
   { id: 2, name: "Ceramic Bridge", turnaround: "8-12 days" },
   { id: 3, name: "Acrylic Denture", turnaround: "10-14 days" },
   { id: 4, name: "Cast Partial Framework", turnaround: "12-15 days" },
   { id: 5, name: "Custom Abutment", turnaround: "5-7 days" },
   { id: 6, name: "Hard Acrylic Splint", turnaround: "3-5 days" }
+];
+
+const initialStockItems = [
+  { id: 1, name: "Dental Composite", subItem: "Filtek Supreme Ultra", description: "Light-cured restorative material for anterior and posterior restorations", itemType: "Consumable" },
+  { id: 2, name: "Impression Material", subItem: "Jeltrate Plus", description: "Alginate impression material for preliminary impressions", itemType: "Consumable" },
+  { id: 3, name: "Orthodontic Wire", subItem: "Ormco NiTi", description: "Nickel titanium archwires for orthodontic treatment", itemType: "Inventory" },
+  { id: 4, name: "Dental Cement", subItem: "GC Fuji II LC", description: "Light-cured glass ionomer restorative cement", itemType: "Consumable" },
+  { id: 5, name: "Dental Burs", subItem: "Mani Diamond", description: "Diamond dental burs for cavity preparation", itemType: "Inventory" }
 ];
 
 const systemUsers = [
@@ -188,6 +204,8 @@ const Settings = () => {
   const [isAddLabDialogOpen, setIsAddLabDialogOpen] = useState(false);
   const [isAddLabWorkTypeDialogOpen, setIsAddLabWorkTypeDialogOpen] = useState(false);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [isAddStockItemDialogOpen, setIsAddStockItemDialogOpen] = useState(false);
+  const [isAddDealerDialogOpen, setIsAddDealerDialogOpen] = useState(false);
 
   // Edit dialogs
   const [isEditDoctorDialogOpen, setIsEditDoctorDialogOpen] = useState(false);
@@ -195,6 +213,8 @@ const Settings = () => {
   const [isEditLabDialogOpen, setIsEditLabDialogOpen] = useState(false);
   const [isEditLabWorkTypeDialogOpen, setIsEditLabWorkTypeDialogOpen] = useState(false);
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
+  const [isEditStockItemDialogOpen, setIsEditStockItemDialogOpen] = useState(false);
+  const [isEditDealerDialogOpen, setIsEditDealerDialogOpen] = useState(false);
 
   // Confirmation dialogs
   const [isConfirmDeleteDoctorOpen, setIsConfirmDeleteDoctorOpen] = useState(false);
@@ -202,12 +222,16 @@ const Settings = () => {
   const [isConfirmDeleteLabOpen, setIsConfirmDeleteLabOpen] = useState(false);
   const [isConfirmDeleteLabWorkTypeOpen, setIsConfirmDeleteLabWorkTypeOpen] = useState(false);
   const [isConfirmDeleteUserOpen, setIsConfirmDeleteUserOpen] = useState(false);
+  const [isConfirmDeleteStockItemOpen, setIsConfirmDeleteStockItemOpen] = useState(false);
+  const [isConfirmDeleteDealerOpen, setIsConfirmDeleteDealerOpen] = useState(false);
 
   const [isConfirmUpdateDoctorOpen, setIsConfirmUpdateDoctorOpen] = useState(false);
   const [isConfirmUpdateServiceOpen, setIsConfirmUpdateServiceOpen] = useState(false);
   const [isConfirmUpdateLabOpen, setIsConfirmUpdateLabOpen] = useState(false);
   const [isConfirmUpdateLabWorkTypeOpen, setIsConfirmUpdateLabWorkTypeOpen] = useState(false);
   const [isConfirmUpdateUserOpen, setIsConfirmUpdateUserOpen] = useState(false);
+  const [isConfirmUpdateStockItemOpen, setIsConfirmUpdateStockItemOpen] = useState(false);
+  const [isConfirmUpdateDealerOpen, setIsConfirmUpdateDealerOpen] = useState(false);
 
   // Current edit items
   const [currentDoctor, setCurrentDoctor] = useState(null);
@@ -218,11 +242,33 @@ const Settings = () => {
   const [phoneCountryCode, setPhoneCountryCode] = useState('+91');
   const [editPhoneCountryCode, setEditPhoneCountryCode] = useState('+91');
   const [dentalDoctors, setDentalDoctors] = useState(initialDoctors);
+  const [stockItems, setStockItems] = useState(initialStockItems);
+  const [dealers, setDealers] = useState(initialDealers);
+  const [dentalServices, setDentalServices] = useState(services.dental);
+  const [meditouchServices, setMeditouchServices] = useState(services.meditouch);
+  const [dentalLabs, setDentalLabs] = useState(initialDentalLabs);
+  const [labWorkTypes, setLabWorkTypes] = useState(initialLabWorkTypes);
   const [currentService, setCurrentService] = useState(null);
   const [currentLab, setCurrentLab] = useState(null);
   const [currentLabWorkType, setCurrentLabWorkType] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentStockItem, setCurrentStockItem] = useState(null);
+  const [currentDealer, setCurrentDealer] = useState(null);
 
+  // Stock item form states
+  const [newStockItemName, setNewStockItemName] = useState('');
+  const [newStockItemSubItem, setNewStockItemSubItem] = useState('');
+  const [newStockItemDescription, setNewStockItemDescription] = useState('');
+  const [newStockItemType, setNewStockItemType] = useState('Consumable');
+
+  // Dealer form states
+  const [newDealerName, setNewDealerName] = useState('');
+  const [newDealerEmail, setNewDealerEmail] = useState('');
+  const [newDealerContact, setNewDealerContact] = useState('');
+  const [newDealerContactCountryCode, setNewDealerContactCountryCode] = useState('+91');
+  const [newDealerCity, setNewDealerCity] = useState('');
+
+  // Check if user is admin
   if (user?.role !== 'admin') {
     return (
       <div className="flex flex-col items-center justify-center h-96">
@@ -243,8 +289,17 @@ const Settings = () => {
     : clinicDetails.meditouch;
 
   const currentServices = activeClinic === 'dental'
-    ? services.dental
-    : services.meditouch;
+    ? dentalServices
+    : meditouchServices;
+
+  // Helper function to capitalize the first letter of each word
+  const capitalizeWords = (str) => {
+    if (!str) return '';
+    return str
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
 
   const handleSaveClinicDetails = () => {
     toast({
@@ -369,27 +424,91 @@ const Settings = () => {
   };
 
   const handleUpdateService = () => {
-    // Update service logic would go here
-    toast({
-      title: "Service Updated",
-      description: `${currentService.name} service has been updated successfully.`,
-    });
-    setIsConfirmUpdateServiceOpen(false);
-    setIsEditServiceDialogOpen(false);
-    setCurrentService(null);
+    if (currentService) {
+      // Get updated values from form fields
+      const updatedName = document.getElementById('editServiceName') as HTMLInputElement;
+      const updatedDuration = document.getElementById('editServiceDuration') as HTMLInputElement;
+      const updatedPrice = document.getElementById('editServicePrice') as HTMLInputElement;
+      const updatedDescription = document.getElementById('editServiceDescription') as HTMLTextAreaElement;
+
+      // Validate required fields
+      if (!updatedName.value.trim()) {
+        toast({
+          title: "Error",
+          description: "Service name is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!updatedDuration.value || parseInt(updatedDuration.value) <= 0) {
+        toast({
+          title: "Error",
+          description: "Duration must be a positive number.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!updatedPrice.value || parseInt(updatedPrice.value) < 0) {
+        toast({
+          title: "Error",
+          description: "Price must be a non-negative number.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update the services state
+      const updateFunction = (services) =>
+        services.map(service =>
+          service.id === currentService.id
+            ? {
+                ...service,
+                name: capitalizeWords(updatedName.value.trim()),
+                duration: parseInt(updatedDuration.value),
+                price: parseInt(updatedPrice.value),
+                description: updatedDescription?.value?.trim() || ''
+              }
+            : service
+        );
+
+      if (activeClinic === 'dental') {
+        setDentalServices(updateFunction);
+      } else {
+        setMeditouchServices(updateFunction);
+      }
+
+      toast({
+        title: "Service Updated",
+        description: `${capitalizeWords(updatedName.value.trim())} service has been updated successfully.`,
+      });
+      setIsConfirmUpdateServiceOpen(false);
+      setIsEditServiceDialogOpen(false);
+      setCurrentService(null);
+    }
   };
 
-  // This function is now only used directly in the UI, not in the edit form
-
   const handleDeleteService = () => {
-    // Delete service logic would go here
-    toast({
-      title: "Service Removed",
-      description: `${currentService.name} service has been removed from the system.`,
-    });
-    setIsConfirmDeleteServiceOpen(false);
-    setIsEditServiceDialogOpen(false);
-    setCurrentService(null);
+    if (currentService) {
+      // Remove the service from the services state
+      const filterFunction = (services) =>
+        services.filter(service => service.id !== currentService.id);
+
+      if (activeClinic === 'dental') {
+        setDentalServices(filterFunction);
+      } else {
+        setMeditouchServices(filterFunction);
+      }
+
+      toast({
+        title: "Service Removed",
+        description: `${currentService.name} service has been removed from the system.`,
+      });
+      setIsConfirmDeleteServiceOpen(false);
+      setIsEditServiceDialogOpen(false);
+      setCurrentService(null);
+    }
   };
 
   // Lab handlers
@@ -403,29 +522,83 @@ const Settings = () => {
   };
 
   const handleUpdateLab = () => {
-    // Update lab logic would go here
-    toast({
-      title: "Laboratory Updated",
-      description: `${currentLab.name} information has been updated successfully.`,
-    });
-    setIsConfirmUpdateLabOpen(false);
-    setIsEditLabDialogOpen(false);
-    setCurrentLab(null);
-  };
+    if (currentLab) {
+      // Get updated values from form fields
+      const updatedName = document.getElementById('editLabName') as HTMLInputElement;
+      const updatedContact = document.getElementById('editLabContact') as HTMLInputElement;
+      const updatedAddress = document.getElementById('editLabAddress') as HTMLInputElement;
+      const updatedSpecialization = document.getElementById('editLabSpecialization') as HTMLInputElement;
 
-  const handleDeleteLabConfirm = () => {
-    setIsConfirmDeleteLabOpen(true);
+      // Validate required fields
+      if (!updatedName.value.trim()) {
+        toast({
+          title: "Error",
+          description: "Laboratory name is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!updatedContact.value.trim()) {
+        toast({
+          title: "Error",
+          description: "Contact number is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Get the country code from the temporary element
+      let countryCode = '+91';
+      const tempElement = document.getElementById('tempLabContactCountryCode');
+      if (tempElement) {
+        countryCode = tempElement.getAttribute('data-value') || '+91';
+        tempElement.remove();
+      }
+
+      // Format the contact number with country code
+      const formattedContact = `${countryCode} ${updatedContact.value.trim()}`;
+
+      // Update the labs state
+      setDentalLabs(prevLabs =>
+        prevLabs.map(lab =>
+          lab.id === currentLab.id
+            ? {
+                ...lab,
+                name: capitalizeWords(updatedName.value.trim()),
+                contact: formattedContact,
+                address: capitalizeWords(updatedAddress.value.trim()),
+                specialization: capitalizeWords(updatedSpecialization.value.trim())
+              }
+            : lab
+        )
+      );
+
+      toast({
+        title: "Laboratory Updated",
+        description: `${capitalizeWords(updatedName.value.trim())} information has been updated successfully.`,
+      });
+      setIsConfirmUpdateLabOpen(false);
+      setIsEditLabDialogOpen(false);
+      setCurrentLab(null);
+    }
   };
 
   const handleDeleteLab = () => {
-    // Delete lab logic would go here
-    toast({
-      title: "Laboratory Removed",
-      description: `${currentLab.name} has been removed from the system.`,
-    });
-    setIsConfirmDeleteLabOpen(false);
-    setIsEditLabDialogOpen(false);
-    setCurrentLab(null);
+    if (currentLab) {
+      // Remove the lab from the labs state
+      setDentalLabs(prevLabs =>
+        prevLabs.filter(lab => lab.id !== currentLab.id)
+      );
+
+      toast({
+        title: "Laboratory Removed",
+        description: `${currentLab.name} has been removed from the system.`,
+      });
+      setIsConfirmDeleteLabOpen(false);
+      setIsEditLabDialogOpen(false);
+      setCurrentLab(null);
+    }
   };
 
   // Lab Work Type handlers
@@ -439,29 +612,68 @@ const Settings = () => {
   };
 
   const handleUpdateLabWorkType = () => {
-    // Update lab work type logic would go here
-    toast({
-      title: "Lab Work Type Updated",
-      description: `${currentLabWorkType.name} has been updated successfully.`,
-    });
-    setIsConfirmUpdateLabWorkTypeOpen(false);
-    setIsEditLabWorkTypeDialogOpen(false);
-    setCurrentLabWorkType(null);
-  };
+    if (currentLabWorkType) {
+      // Get updated values from form fields
+      const updatedName = document.getElementById('editWorkTypeName') as HTMLInputElement;
+      const updatedTurnaround = document.getElementById('editTurnaroundTime') as HTMLInputElement;
 
-  const handleDeleteLabWorkTypeConfirm = () => {
-    setIsConfirmDeleteLabWorkTypeOpen(true);
+      // Validate required fields
+      if (!updatedName.value.trim()) {
+        toast({
+          title: "Error",
+          description: "Work type name is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!updatedTurnaround.value.trim()) {
+        toast({
+          title: "Error",
+          description: "Turnaround time is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update the lab work types state
+      setLabWorkTypes(prevTypes =>
+        prevTypes.map(type =>
+          type.id === currentLabWorkType.id
+            ? {
+                ...type,
+                name: capitalizeWords(updatedName.value.trim()),
+                turnaround: updatedTurnaround.value.trim()
+              }
+            : type
+        )
+      );
+
+      toast({
+        title: "Lab Work Type Updated",
+        description: `${capitalizeWords(updatedName.value.trim())} has been updated successfully.`,
+      });
+      setIsConfirmUpdateLabWorkTypeOpen(false);
+      setIsEditLabWorkTypeDialogOpen(false);
+      setCurrentLabWorkType(null);
+    }
   };
 
   const handleDeleteLabWorkType = () => {
-    // Delete lab work type logic would go here
-    toast({
-      title: "Lab Work Type Removed",
-      description: `${currentLabWorkType.name} has been removed from the system.`,
-    });
-    setIsConfirmDeleteLabWorkTypeOpen(false);
-    setIsEditLabWorkTypeDialogOpen(false);
-    setCurrentLabWorkType(null);
+    if (currentLabWorkType) {
+      // Remove the lab work type from the state
+      setLabWorkTypes(prevTypes =>
+        prevTypes.filter(type => type.id !== currentLabWorkType.id)
+      );
+
+      toast({
+        title: "Lab Work Type Removed",
+        description: `${currentLabWorkType.name} has been removed from the system.`,
+      });
+      setIsConfirmDeleteLabWorkTypeOpen(false);
+      setIsEditLabWorkTypeDialogOpen(false);
+      setCurrentLabWorkType(null);
+    }
   };
 
   // User handlers
@@ -500,6 +712,203 @@ const Settings = () => {
     setCurrentUser(null);
   };
 
+  // Stock Item handlers
+  const handleEditStockItem = (item) => {
+    setCurrentStockItem(item);
+    setIsEditStockItemDialogOpen(true);
+  };
+
+  const handleUpdateStockItemConfirm = () => {
+    setIsConfirmUpdateStockItemOpen(true);
+  };
+
+  const handleUpdateStockItem = () => {
+    if (currentStockItem) {
+      // Get updated values from form fields
+      const updatedName = document.getElementById('editStockItemName') as HTMLInputElement;
+      const updatedSubItem = document.getElementById('editStockItemSubItem') as HTMLInputElement;
+      const updatedDescription = document.getElementById('editStockItemDescription') as HTMLTextAreaElement;
+
+      // For the Select component, we need to get the value differently
+      // We'll use the current item type as a fallback if we can't get the updated value
+      let updatedItemType = currentStockItem.itemType;
+
+      // Try to get the selected value from our temporary element
+      const tempElement = document.getElementById('tempEditStockItemType');
+      if (tempElement) {
+        updatedItemType = tempElement.getAttribute('data-value') || currentStockItem.itemType;
+        // Clean up the temporary element
+        tempElement.remove();
+      }
+
+      if (!updatedName.value.trim()) {
+        toast({
+          title: "Error",
+          description: "Item name is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update the stock items state
+      setStockItems(prevItems =>
+        prevItems.map(item =>
+          item.id === currentStockItem.id
+            ? {
+                ...item,
+                name: updatedName.value,
+                subItem: updatedSubItem.value,
+                description: updatedDescription.value,
+                itemType: updatedItemType
+              }
+            : item
+        )
+      );
+
+      toast({
+        title: "Stock Item Updated",
+        description: `${updatedName.value} has been updated successfully.`,
+      });
+      setIsConfirmUpdateStockItemOpen(false);
+      setIsEditStockItemDialogOpen(false);
+      setCurrentStockItem(null);
+    }
+  };
+
+  const handleDeleteStockItem = () => {
+    if (currentStockItem) {
+      // Remove the item from the stock items state
+      setStockItems(prevItems =>
+        prevItems.filter(item => item.id !== currentStockItem.id)
+      );
+
+      toast({
+        title: "Stock Item Removed",
+        description: `${currentStockItem.name} has been removed from the system.`,
+      });
+      setIsConfirmDeleteStockItemOpen(false);
+      setIsEditStockItemDialogOpen(false);
+      setCurrentStockItem(null);
+    }
+  };
+
+  // Dealer handlers
+  const handleEditDealer = (dealer) => {
+    setCurrentDealer(dealer);
+    setIsEditDealerDialogOpen(true);
+
+    // Extract country code from contact number if it exists
+    if (dealer.contact && dealer.contact.startsWith('+')) {
+      const parts = dealer.contact.split(' ');
+      if (parts.length > 1) {
+        setNewDealerContactCountryCode(parts[0]);
+        setNewDealerContact(parts.slice(1).join(' '));
+      } else {
+        setNewDealerContact(dealer.contact);
+      }
+    } else {
+      setNewDealerContact(dealer.contact || '');
+      setNewDealerContactCountryCode('+91');
+    }
+  };
+
+  const handleUpdateDealerConfirm = () => {
+    setIsConfirmUpdateDealerOpen(true);
+  };
+
+  const handleUpdateDealer = () => {
+    if (currentDealer) {
+      // Get updated values from form fields
+      const updatedName = document.getElementById('editDealerName') as HTMLInputElement;
+      const updatedEmail = document.getElementById('editDealerEmail') as HTMLInputElement;
+      const updatedContact = document.getElementById('editDealerContact') as HTMLInputElement;
+      const updatedCity = document.getElementById('editDealerCity') as HTMLInputElement;
+
+      // Validate required fields
+      if (!updatedName.value.trim()) {
+        toast({
+          title: "Error",
+          description: "Dealer name is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!updatedContact.value.trim()) {
+        toast({
+          title: "Error",
+          description: "Contact number is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (updatedEmail.value.trim() && !emailRegex.test(updatedEmail.value.trim())) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid email address.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Get the country code from the temporary element
+      let countryCode = '+91';
+      const tempElement = document.getElementById('tempDealerCountryCode');
+      if (tempElement) {
+        countryCode = tempElement.getAttribute('data-value') || '+91';
+        tempElement.remove();
+      }
+
+      // Format the contact number with country code
+      const formattedContact = `${countryCode} ${updatedContact.value.trim()}`;
+
+      // Update the dealers state
+      setDealers(prevDealers =>
+        prevDealers.map(dealer =>
+          dealer.id === currentDealer.id
+            ? {
+                ...dealer,
+                name: capitalizeWords(updatedName.value.trim()),
+                email: updatedEmail.value.trim(),
+                contact: formattedContact,
+                city: capitalizeWords(updatedCity.value.trim())
+              }
+            : dealer
+        )
+      );
+
+      toast({
+        title: "Dealer Updated",
+        description: `${updatedName.value} has been updated successfully.`,
+      });
+      setIsConfirmUpdateDealerOpen(false);
+      setIsEditDealerDialogOpen(false);
+      setCurrentDealer(null);
+    }
+  };
+
+  const handleDeleteDealer = () => {
+    if (currentDealer) {
+      // Remove the dealer from the dealers state
+      setDealers(prevDealers =>
+        prevDealers.filter(dealer => dealer.id !== currentDealer.id)
+      );
+
+      toast({
+        title: "Dealer Removed",
+        description: `${currentDealer.name} has been removed from the system.`,
+      });
+      setIsConfirmDeleteDealerOpen(false);
+      setIsEditDealerDialogOpen(false);
+      setCurrentDealer(null);
+    }
+  };
+
+  console.log("Rendering Settings page", { activeClinic, user });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between">
@@ -516,6 +925,8 @@ const Settings = () => {
           <TabsTrigger value="services">Services</TabsTrigger>
           {activeClinic === 'dental' && <TabsTrigger value="labs">Labs</TabsTrigger>}
           {activeClinic === 'dental' && <TabsTrigger value="labwork">Lab Work Types</TabsTrigger>}
+          {activeClinic === 'dental' && <TabsTrigger value="stock">Stock</TabsTrigger>}
+          {activeClinic === 'dental' && <TabsTrigger value="dealers">Dealers</TabsTrigger>}
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
         </TabsList>
@@ -1162,10 +1573,67 @@ const Settings = () => {
                 <Button
                   className={activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
                   onClick={() => {
+                    // Get values from form fields
+                    const serviceName = document.getElementById('serviceName') as HTMLInputElement;
+                    const serviceDuration = document.getElementById('serviceDuration') as HTMLInputElement;
+                    const servicePrice = document.getElementById('servicePrice') as HTMLInputElement;
+                    const serviceDescription = document.getElementById('serviceDescription') as HTMLTextAreaElement;
+
+                    // Validate required fields
+                    if (!serviceName.value.trim()) {
+                      toast({
+                        title: "Error",
+                        description: "Service name is required.",
+                        variant: "destructive"
+                      });
+                      return;
+                    }
+
+                    if (!serviceDuration.value || parseInt(serviceDuration.value) <= 0) {
+                      toast({
+                        title: "Error",
+                        description: "Duration must be a positive number.",
+                        variant: "destructive"
+                      });
+                      return;
+                    }
+
+                    if (!servicePrice.value || parseInt(servicePrice.value) < 0) {
+                      toast({
+                        title: "Error",
+                        description: "Price must be a non-negative number.",
+                        variant: "destructive"
+                      });
+                      return;
+                    }
+
+                    // Create new service object
+                    const newService = {
+                      id: Math.floor(Math.random() * 10000), // Generate a random ID (in a real app, this would come from the backend)
+                      name: capitalizeWords(serviceName.value.trim()),
+                      duration: parseInt(serviceDuration.value),
+                      price: parseInt(servicePrice.value),
+                      description: serviceDescription?.value?.trim() || ''
+                    };
+
+                    // Add the new service to the appropriate state
+                    if (activeClinic === 'dental') {
+                      setDentalServices(prev => [newService, ...prev]);
+                    } else {
+                      setMeditouchServices(prev => [newService, ...prev]);
+                    }
+
                     toast({
                       title: "Service Added",
                       description: "The new service has been successfully added.",
                     });
+
+                    // Reset form fields
+                    serviceName.value = '';
+                    serviceDuration.value = '';
+                    servicePrice.value = '';
+                    if (serviceDescription) serviceDescription.value = '';
+
                     setIsAddServiceDialogOpen(false);
                   }}
                 >
@@ -1357,8 +1825,38 @@ const Settings = () => {
                       <Input id="labName" placeholder="Enter lab name" />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="labContact">Contact Number</Label>
-                      <Input id="labContact" placeholder="e.g., +91 98765 43210" />
+                      <Label htmlFor="labContact" className="flex items-center">
+                        Contact Number <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <div className="flex">
+                        <Select
+                          defaultValue="+91"
+                          id="labContactCountryCode"
+                        >
+                          <SelectTrigger className="w-[100px] rounded-r-none border-r-0">
+                            <SelectValue placeholder="+91" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="+91">+91 (IN)</SelectItem>
+                            <SelectItem value="+1">+1 (US)</SelectItem>
+                            <SelectItem value="+44">+44 (UK)</SelectItem>
+                            <SelectItem value="+61">+61 (AU)</SelectItem>
+                            <SelectItem value="+971">+971 (UAE)</SelectItem>
+                            <SelectItem value="+65">+65 (SG)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          id="labContact"
+                          className="rounded-l-none"
+                          placeholder="Contact Number"
+                          pattern="\d+"
+                          title="Please enter only digits"
+                          onInput={(e) => {
+                            const input = e.target as HTMLInputElement;
+                            input.value = input.value.replace(/\D/g, '');
+                          }}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="labAddress">Address/Location</Label>
@@ -1376,10 +1874,61 @@ const Settings = () => {
                   </Button>
                   <Button className="bg-dental-primary hover:bg-dental-dark"
                     onClick={() => {
+                      // Get values from form fields
+                      const labName = document.getElementById('labName') as HTMLInputElement;
+                      const labContact = document.getElementById('labContact') as HTMLInputElement;
+                      const labAddress = document.getElementById('labAddress') as HTMLInputElement;
+                      const labSpecialization = document.getElementById('labSpecialization') as HTMLInputElement;
+
+                      // Validate required fields
+                      if (!labName.value.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "Laboratory name is required.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      if (!labContact.value.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "Contact number is required.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      // Get the country code from the dropdown
+                      const countryCodeSelect = document.getElementById('labContactCountryCode') as HTMLSelectElement;
+                      const countryCode = countryCodeSelect ? countryCodeSelect.value : '+91';
+
+                      // Format phone number with country code
+                      const formattedContact = `${countryCode} ${labContact.value.trim()}`;
+
+                      // Create new lab object
+                      const newLab = {
+                        id: Math.max(...dentalLabs.map(lab => lab.id)) + 1,
+                        name: capitalizeWords(labName.value.trim()),
+                        contact: formattedContact,
+                        address: capitalizeWords(labAddress.value.trim()),
+                        specialization: capitalizeWords(labSpecialization.value.trim())
+                      };
+
+                      // Add the new lab to the state
+                      setDentalLabs(prev => [newLab, ...prev]);
+
                       toast({
                         title: "Laboratory Added",
                         description: "The new dental laboratory has been successfully added.",
                       });
+
+                      // Reset form fields
+                      labName.value = '';
+                      labContact.value = '';
+                      labAddress.value = '';
+                      labSpecialization.value = '';
+
                       setIsAddLabDialogOpen(false);
                     }}
                   >
@@ -1409,11 +1958,44 @@ const Settings = () => {
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="editLabContact">Contact Number</Label>
-                        <Input
-                          id="editLabContact"
-                          defaultValue={currentLab.contact}
-                        />
+                        <Label htmlFor="editLabContact" className="flex items-center">
+                          Contact Number <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <div className="flex">
+                          <Select
+                            defaultValue="+91"
+                            onValueChange={(value) => {
+                              // Create a temporary element to store the selected value
+                              const tempElement = document.createElement('div');
+                              tempElement.id = 'tempLabContactCountryCode';
+                              tempElement.setAttribute('data-value', value);
+                              document.body.appendChild(tempElement);
+                            }}
+                          >
+                            <SelectTrigger className="w-[100px] rounded-r-none border-r-0">
+                              <SelectValue placeholder="+91" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="+91">+91 (IN)</SelectItem>
+                              <SelectItem value="+1">+1 (US)</SelectItem>
+                              <SelectItem value="+44">+44 (UK)</SelectItem>
+                              <SelectItem value="+61">+61 (AU)</SelectItem>
+                              <SelectItem value="+971">+971 (UAE)</SelectItem>
+                              <SelectItem value="+65">+65 (SG)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            id="editLabContact"
+                            className="rounded-l-none"
+                            defaultValue={currentLab.contact.split(' ').slice(1).join(' ')}
+                            pattern="\d+"
+                            title="Please enter only digits"
+                            onInput={(e) => {
+                              const input = e.target as HTMLInputElement;
+                              input.value = input.value.replace(/\D/g, '');
+                            }}
+                          />
+                        </div>
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="editLabAddress">Address/Location</Label>
@@ -1551,10 +2133,7 @@ const Settings = () => {
                       <Label htmlFor="turnaroundTime">Average Turnaround Time</Label>
                       <Input id="turnaroundTime" placeholder="e.g., 7-10 days" />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="workTypeNotes">Additional Notes (Optional)</Label>
-                      <Textarea id="workTypeNotes" placeholder="Any special handling instructions or notes" />
-                    </div>
+
                   </div>
                 </div>
                 <DialogFooter>
@@ -1563,10 +2142,48 @@ const Settings = () => {
                   </Button>
                   <Button className="bg-dental-primary hover:bg-dental-dark"
                     onClick={() => {
+                      // Get values from form fields
+                      const workTypeName = document.getElementById('workTypeName') as HTMLInputElement;
+                      const turnaroundTime = document.getElementById('turnaroundTime') as HTMLInputElement;
+
+                      // Validate required fields
+                      if (!workTypeName.value.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "Work type name is required.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      if (!turnaroundTime.value.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "Turnaround time is required.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      // Create new lab work type object
+                      const newWorkType = {
+                        id: Math.max(...labWorkTypes.map(type => type.id)) + 1,
+                        name: capitalizeWords(workTypeName.value.trim()),
+                        turnaround: turnaroundTime.value.trim()
+                      };
+
+                      // Add the new lab work type to the state
+                      setLabWorkTypes(prev => [newWorkType, ...prev]);
+
                       toast({
                         title: "Lab Work Type Added",
-                        description: "The new lab work type has been successfully added.",
+                        description: "The new laboratory work type has been successfully added.",
                       });
+
+                      // Reset form fields
+                      workTypeName.value = '';
+                      turnaroundTime.value = '';
+
                       setIsAddLabWorkTypeDialogOpen(false);
                     }}
                   >
@@ -1602,14 +2219,7 @@ const Settings = () => {
                           defaultValue={currentLabWorkType.turnaround}
                         />
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="editWorkTypeNotes">Additional Notes (Optional)</Label>
-                        <Textarea
-                          id="editWorkTypeNotes"
-                          defaultValue={currentLabWorkType.notes || ''}
-                          placeholder="Any special handling instructions or notes"
-                        />
-                      </div>
+
                     </div>
                   </div>
                 )}
@@ -1666,6 +2276,668 @@ const Settings = () => {
                     Cancel
                   </Button>
                   <Button onClick={handleUpdateLabWorkType}>
+                    Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+        )}
+
+        {activeClinic === 'dental' && (
+          <TabsContent value="dealers" className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <User className="mr-2 h-5 w-5" />
+                    Manage Dealers
+                  </CardTitle>
+                  <CardDescription>
+                    Add and manage dealers for Dental Metrix Clinic
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setIsAddDealerDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Dealer
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Address/Location</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[...dealers]
+                      .sort((a, b) => b.id - a.id) // Sort by ID in descending order (newest first)
+                      .map((dealer) => (
+                        <TableRow key={dealer.id}>
+                          <TableCell className="font-medium">{dealer.name}</TableCell>
+                          <TableCell>{dealer.email || '-'}</TableCell>
+                          <TableCell>{dealer.contact}</TableCell>
+                          <TableCell>{dealer.city}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditDealer(dealer)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-500 hover:text-red-700"
+                                onClick={() => {
+                                  setCurrentDealer(dealer);
+                                  setIsConfirmDeleteDealerOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Add Dealer Dialog */}
+            <Dialog open={isAddDealerDialogOpen} onOpenChange={setIsAddDealerDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Dealer</DialogTitle>
+                  <DialogDescription>
+                    Enter the details for the new dealer. Name and contact number are required.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="dealerName" className="flex items-center">
+                        Dealer Name <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="dealerName"
+                        placeholder="e.g., Dental Supplies Co."
+                        value={newDealerName}
+                        onChange={(e) => setNewDealerName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dealerEmail">
+                        Email
+                      </Label>
+                      <Input
+                        id="dealerEmail"
+                        type="email"
+                        placeholder="e.g., contact@dentalsupplies.com"
+                        value={newDealerEmail}
+                        onChange={(e) => setNewDealerEmail(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dealerContact" className="flex items-center">
+                        Contact Number <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <div className="flex">
+                        <Select
+                          defaultValue="+91"
+                          value={newDealerContactCountryCode}
+                          onValueChange={setNewDealerContactCountryCode}
+                        >
+                          <SelectTrigger className="w-[100px] rounded-r-none border-r-0">
+                            <SelectValue placeholder="+91" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="+91">+91 (IN)</SelectItem>
+                            <SelectItem value="+1">+1 (US)</SelectItem>
+                            <SelectItem value="+44">+44 (UK)</SelectItem>
+                            <SelectItem value="+61">+61 (AU)</SelectItem>
+                            <SelectItem value="+971">+971 (UAE)</SelectItem>
+                            <SelectItem value="+65">+65 (SG)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          id="dealerContact"
+                          className="rounded-l-none"
+                          placeholder="Contact Number"
+                          required
+                          pattern="\d+"
+                          title="Please enter only digits"
+                          value={newDealerContact}
+                          onChange={(e) => setNewDealerContact(e.target.value.replace(/\D/g, ''))}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dealerCity">
+                        Address/Location
+                      </Label>
+                      <Input
+                        id="dealerCity"
+                        placeholder="e.g., Mumbai or full address"
+                        value={newDealerCity}
+                        onChange={(e) => setNewDealerCity(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddDealerDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={() => {
+                      // Validate required fields
+                      if (!newDealerName.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "Dealer name is required.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      if (!newDealerContact.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "Contact number is required.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      // Validate email format if provided
+                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                      if (newDealerEmail.trim() && !emailRegex.test(newDealerEmail.trim())) {
+                        toast({
+                          title: "Error",
+                          description: "Please enter a valid email address.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      // Generate a new ID
+                      const newId = Math.max(...dealers.map(dealer => dealer.id)) + 1;
+
+                      // Format the contact number with country code
+                      const formattedContact = `${newDealerContactCountryCode} ${newDealerContact.trim()}`;
+
+                      // Add the new dealer to the dealers state
+                      setDealers(prevDealers => [
+                        {
+                          id: newId,
+                          name: capitalizeWords(newDealerName.trim()),
+                          email: newDealerEmail.trim(),
+                          contact: formattedContact,
+                          city: capitalizeWords(newDealerCity.trim())
+                        },
+                        ...prevDealers
+                      ]);
+
+                      toast({
+                        title: "Dealer Added",
+                        description: "The new dealer has been successfully added.",
+                      });
+                      setNewDealerName('');
+                      setNewDealerEmail('');
+                      setNewDealerContact('');
+                      setNewDealerCity('');
+                      setNewDealerContactCountryCode('+91');
+                      setIsAddDealerDialogOpen(false);
+                    }}
+                  >
+                    Add Dealer
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Dealer Dialog */}
+            <Dialog open={isEditDealerDialogOpen} onOpenChange={setIsEditDealerDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Dealer</DialogTitle>
+                  <DialogDescription>
+                    Update dealer information.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentDealer && (
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="editDealerName" className="flex items-center">
+                          Dealer Name <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <Input
+                          id="editDealerName"
+                          defaultValue={currentDealer.name}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="editDealerEmail">
+                          Email
+                        </Label>
+                        <Input
+                          id="editDealerEmail"
+                          type="email"
+                          defaultValue={currentDealer.email || ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="editDealerContact" className="flex items-center">
+                          Contact Number <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <div className="flex">
+                          <Select
+                            defaultValue="+91"
+                            onValueChange={(value) => {
+                              // Create a temporary element to store the selected value
+                              const tempElement = document.createElement('div');
+                              tempElement.id = 'tempDealerCountryCode';
+                              tempElement.setAttribute('data-value', value);
+                              document.body.appendChild(tempElement);
+                            }}
+                          >
+                            <SelectTrigger className="w-[100px] rounded-r-none border-r-0">
+                              <SelectValue placeholder="+91" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="+91">+91 (IN)</SelectItem>
+                              <SelectItem value="+1">+1 (US)</SelectItem>
+                              <SelectItem value="+44">+44 (UK)</SelectItem>
+                              <SelectItem value="+61">+61 (AU)</SelectItem>
+                              <SelectItem value="+971">+971 (UAE)</SelectItem>
+                              <SelectItem value="+65">+65 (SG)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            id="editDealerContact"
+                            className="rounded-l-none"
+                            defaultValue={newDealerContact}
+                            pattern="\d+"
+                            title="Please enter only digits"
+                            onInput={(e) => {
+                              const input = e.target as HTMLInputElement;
+                              input.value = input.value.replace(/\D/g, '');
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="editDealerCity">
+                          Address/Location
+                        </Label>
+                        <Input
+                          id="editDealerCity"
+                          defaultValue={currentDealer.city || ''}
+                          placeholder="e.g., Mumbai or full address"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditDealerDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={handleUpdateDealerConfirm}
+                  >
+                    <Save className="h-4 w-4 mr-2" /> Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Confirmation Dialogs */}
+            <Dialog open={isConfirmDeleteDealerOpen} onOpenChange={setIsConfirmDeleteDealerOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Deletion</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete this dealer? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentDealer && (
+                  <div className="py-4">
+                    <p className="font-medium">{currentDealer.name}</p>
+                    <p className="text-sm text-muted-foreground">{currentDealer.contact}</p>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmDeleteDealerOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeleteDealer}>
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isConfirmUpdateDealerOpen} onOpenChange={setIsConfirmUpdateDealerOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Update</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to save these changes?
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmUpdateDealerOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpdateDealer}>
+                    Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+        )}
+
+        {activeClinic === 'dental' && (
+          <TabsContent value="stock" className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Package className="mr-2 h-5 w-5" />
+                    Manage Stock Items
+                  </CardTitle>
+                  <CardDescription>
+                    Configure stock items, sub-items, and item types for Dental Metrix Clinic
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setIsAddStockItemDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Stock Item
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Sub-item</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Item Type</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[...stockItems]
+                      .sort((a, b) => b.id - a.id) // Sort by ID in descending order (newest first)
+                      .map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>{item.subItem || '-'}</TableCell>
+                          <TableCell className="max-w-xs truncate" title={item.description}>
+                            {item.description || '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={item.itemType === 'Consumable' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-teal-50 text-teal-700 border-teal-200'}>
+                              {item.itemType}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditStockItem(item)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-500 hover:text-red-700"
+                                onClick={() => {
+                                  setCurrentStockItem(item);
+                                  setIsConfirmDeleteStockItemOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Add Stock Item Dialog */}
+            <Dialog open={isAddStockItemDialogOpen} onOpenChange={setIsAddStockItemDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Stock Item</DialogTitle>
+                  <DialogDescription>
+                    Enter the details for the new stock item. Item name is required.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="stockItemName" className="flex items-center">
+                        Item Name <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="stockItemName"
+                        placeholder="e.g., Dental Composite"
+                        value={newStockItemName}
+                        onChange={(e) => setNewStockItemName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="stockItemSubItem">Sub-item</Label>
+                      <Input
+                        id="stockItemSubItem"
+                        placeholder="e.g., Filtek Supreme Ultra"
+                        value={newStockItemSubItem}
+                        onChange={(e) => setNewStockItemSubItem(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="stockItemDescription">Description</Label>
+                      <Textarea
+                        id="stockItemDescription"
+                        placeholder="e.g., Light-cured restorative material for anterior and posterior restorations"
+                        value={newStockItemDescription}
+                        onChange={(e) => setNewStockItemDescription(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="stockItemType" className="flex items-center">
+                        Item Type <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Select
+                        value={newStockItemType}
+                        onValueChange={setNewStockItemType}
+                      >
+                        <SelectTrigger id="stockItemType">
+                          <SelectValue placeholder="Select Item Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Consumable">Consumable</SelectItem>
+                          <SelectItem value="Inventory">Inventory</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddStockItemDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={() => {
+                      if (!newStockItemName.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "Item name is required.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      // Generate a new ID (in a real app, this would come from the backend)
+                      const newId = Math.max(...stockItems.map(item => item.id)) + 1;
+
+                      // Add the new item to the stock items state
+                      // New item is added to the array, and will appear at the top due to our sorting
+                      setStockItems(prevItems => [
+                        {
+                          id: newId,
+                          name: newStockItemName,
+                          subItem: newStockItemSubItem,
+                          description: newStockItemDescription,
+                          itemType: newStockItemType
+                        },
+                        ...prevItems
+                      ]);
+
+                      toast({
+                        title: "Stock Item Added",
+                        description: "The new stock item has been successfully added.",
+                      });
+                      setNewStockItemName('');
+                      setNewStockItemSubItem('');
+                      setNewStockItemDescription('');
+                      setNewStockItemType('Consumable');
+                      setIsAddStockItemDialogOpen(false);
+                    }}
+                  >
+                    Add Stock Item
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Stock Item Dialog */}
+            <Dialog open={isEditStockItemDialogOpen} onOpenChange={setIsEditStockItemDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Stock Item</DialogTitle>
+                  <DialogDescription>
+                    Update stock item information.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentStockItem && (
+                  <div className="grid gap-3 py-3">
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="editStockItemName" className="flex items-center">
+                          Item Name <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <Input
+                          id="editStockItemName"
+                          defaultValue={currentStockItem.name}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editStockItemSubItem">Sub-item</Label>
+                        <Input
+                          id="editStockItemSubItem"
+                          defaultValue={currentStockItem.subItem || ''}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editStockItemDescription">Description</Label>
+                        <Textarea
+                          id="editStockItemDescription"
+                          defaultValue={currentStockItem.description || ''}
+                          placeholder="Enter item description"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editStockItemType" className="flex items-center">
+                          Item Type <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <Select
+                          defaultValue={currentStockItem.itemType}
+                          onValueChange={(value) => {
+                            // Create a temporary element to store the selected value
+                            const tempElement = document.createElement('div');
+                            tempElement.id = 'tempEditStockItemType';
+                            tempElement.setAttribute('data-value', value);
+                            document.body.appendChild(tempElement);
+                          }}
+                        >
+                          <SelectTrigger id="editStockItemType">
+                            <SelectValue placeholder="Select Item Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Consumable">Consumable</SelectItem>
+                            <SelectItem value="Inventory">Inventory</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditStockItemDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={handleUpdateStockItemConfirm}
+                  >
+                    <Save className="h-4 w-4 mr-2" /> Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Confirmation Dialogs */}
+            <Dialog open={isConfirmDeleteStockItemOpen} onOpenChange={setIsConfirmDeleteStockItemOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Deletion</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete this stock item? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentStockItem && (
+                  <div className="py-4">
+                    <p className="font-medium">{currentStockItem.name}</p>
+                    <p className="text-sm text-muted-foreground">{currentStockItem.subItem || ''}</p>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmDeleteStockItemOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeleteStockItem}>
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isConfirmUpdateStockItemOpen} onOpenChange={setIsConfirmUpdateStockItemOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Update</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to save these changes?
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmUpdateStockItemOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpdateStockItem}>
                     Save Changes
                   </Button>
                 </DialogFooter>
