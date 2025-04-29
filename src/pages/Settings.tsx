@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
+import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
+import { demoFollowUpRules } from '@/data/demo-dental-history';
 import {
   Card,
   CardContent,
@@ -206,6 +208,7 @@ const Settings = () => {
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isAddStockItemDialogOpen, setIsAddStockItemDialogOpen] = useState(false);
   const [isAddDealerDialogOpen, setIsAddDealerDialogOpen] = useState(false);
+  const [isAddFollowUpRuleDialogOpen, setIsAddFollowUpRuleDialogOpen] = useState(false);
 
   // Edit dialogs
   const [isEditDoctorDialogOpen, setIsEditDoctorDialogOpen] = useState(false);
@@ -215,6 +218,7 @@ const Settings = () => {
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [isEditStockItemDialogOpen, setIsEditStockItemDialogOpen] = useState(false);
   const [isEditDealerDialogOpen, setIsEditDealerDialogOpen] = useState(false);
+  const [isEditFollowUpRuleDialogOpen, setIsEditFollowUpRuleDialogOpen] = useState(false);
 
   // Confirmation dialogs
   const [isConfirmDeleteDoctorOpen, setIsConfirmDeleteDoctorOpen] = useState(false);
@@ -224,6 +228,7 @@ const Settings = () => {
   const [isConfirmDeleteUserOpen, setIsConfirmDeleteUserOpen] = useState(false);
   const [isConfirmDeleteStockItemOpen, setIsConfirmDeleteStockItemOpen] = useState(false);
   const [isConfirmDeleteDealerOpen, setIsConfirmDeleteDealerOpen] = useState(false);
+  const [isConfirmDeleteFollowUpRuleOpen, setIsConfirmDeleteFollowUpRuleOpen] = useState(false);
 
   const [isConfirmUpdateDoctorOpen, setIsConfirmUpdateDoctorOpen] = useState(false);
   const [isConfirmUpdateServiceOpen, setIsConfirmUpdateServiceOpen] = useState(false);
@@ -232,6 +237,7 @@ const Settings = () => {
   const [isConfirmUpdateUserOpen, setIsConfirmUpdateUserOpen] = useState(false);
   const [isConfirmUpdateStockItemOpen, setIsConfirmUpdateStockItemOpen] = useState(false);
   const [isConfirmUpdateDealerOpen, setIsConfirmUpdateDealerOpen] = useState(false);
+  const [isConfirmUpdateFollowUpRuleOpen, setIsConfirmUpdateFollowUpRuleOpen] = useState(false);
 
   // Current edit items
   const [currentDoctor, setCurrentDoctor] = useState(null);
@@ -248,12 +254,20 @@ const Settings = () => {
   const [meditouchServices, setMeditouchServices] = useState(services.meditouch);
   const [dentalLabs, setDentalLabs] = useState(initialDentalLabs);
   const [labWorkTypes, setLabWorkTypes] = useState(initialLabWorkTypes);
+  const [followUpRules, setFollowUpRules] = useState<ServiceFollowUpRule[]>(demoFollowUpRules);
   const [currentService, setCurrentService] = useState(null);
   const [currentLab, setCurrentLab] = useState(null);
   const [currentLabWorkType, setCurrentLabWorkType] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentStockItem, setCurrentStockItem] = useState(null);
   const [currentDealer, setCurrentDealer] = useState(null);
+  const [currentFollowUpRule, setCurrentFollowUpRule] = useState<ServiceFollowUpRule | null>(null);
+
+  // Follow-up rule form states
+  const [newTriggeringService, setNewTriggeringService] = useState('');
+  const [newFollowUpSteps, setNewFollowUpSteps] = useState<FollowUpStep[]>([
+    { sequence: 1, intervalDays: 180, suggestedServiceName: '', notes: '' }
+  ]);
 
   // Stock item form states
   const [newStockItemName, setNewStockItemName] = useState('');
@@ -926,6 +940,145 @@ const Settings = () => {
     }
   };
 
+  // Follow-up rule handlers
+  const handleEditFollowUpRule = (rule: ServiceFollowUpRule) => {
+    setCurrentFollowUpRule(rule);
+    setNewTriggeringService(rule.triggeringServiceName);
+    setNewFollowUpSteps([...rule.followUps]);
+    setIsEditFollowUpRuleDialogOpen(true);
+  };
+
+  const handleUpdateFollowUpRuleConfirm = () => {
+    setIsConfirmUpdateFollowUpRuleOpen(true);
+  };
+
+  const handleUpdateFollowUpRule = () => {
+    if (currentFollowUpRule) {
+      // Validate required fields
+      if (!newTriggeringService) {
+        toast({
+          title: "Error",
+          description: "Triggering service name is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (newFollowUpSteps.length === 0) {
+        toast({
+          title: "Error",
+          description: "At least one follow-up step is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      for (const step of newFollowUpSteps) {
+        if (!step.suggestedServiceName) {
+          toast({
+            title: "Error",
+            description: "Suggested service name is required for all steps.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (step.intervalDays <= 0) {
+          toast({
+            title: "Error",
+            description: "Interval days must be a positive number for all steps.",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+
+      // Update the follow-up rule
+      setFollowUpRules(prevRules =>
+        prevRules.map(rule =>
+          rule.ruleId === currentFollowUpRule.ruleId
+            ? {
+                ...rule,
+                triggeringServiceName: newTriggeringService,
+                followUps: newFollowUpSteps.map((step, index) => ({
+                  ...step,
+                  sequence: index + 1
+                }))
+              }
+            : rule
+        )
+      );
+
+      toast({
+        title: "Follow-up Rule Updated",
+        description: `Follow-up rule for ${newTriggeringService} has been updated successfully.`,
+      });
+      setIsConfirmUpdateFollowUpRuleOpen(false);
+      setIsEditFollowUpRuleDialogOpen(false);
+      setCurrentFollowUpRule(null);
+      setNewTriggeringService('');
+      setNewFollowUpSteps([{ sequence: 1, intervalDays: 180, suggestedServiceName: '', notes: '' }]);
+    }
+  };
+
+  const handleDeleteFollowUpRule = () => {
+    if (currentFollowUpRule) {
+      // Remove the follow-up rule
+      setFollowUpRules(prevRules =>
+        prevRules.filter(rule => rule.ruleId !== currentFollowUpRule.ruleId)
+      );
+
+      toast({
+        title: "Follow-up Rule Removed",
+        description: `Follow-up rule for ${currentFollowUpRule.triggeringServiceName} has been removed.`,
+      });
+      setIsConfirmDeleteFollowUpRuleOpen(false);
+      setIsEditFollowUpRuleDialogOpen(false);
+      setCurrentFollowUpRule(null);
+    }
+  };
+
+  const handleAddFollowUpStep = () => {
+    setNewFollowUpSteps(prevSteps => [
+      ...prevSteps,
+      {
+        sequence: prevSteps.length + 1,
+        intervalDays: 180,
+        suggestedServiceName: '',
+        notes: ''
+      }
+    ]);
+  };
+
+  const handleRemoveFollowUpStep = (index: number) => {
+    if (newFollowUpSteps.length > 1) {
+      setNewFollowUpSteps(prevSteps => {
+        const updatedSteps = prevSteps.filter((_, i) => i !== index);
+        // Update sequences
+        return updatedSteps.map((step, i) => ({
+          ...step,
+          sequence: i + 1
+        }));
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "At least one follow-up step is required.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleFollowUpStepChange = (index: number, field: keyof FollowUpStep, value: string | number) => {
+    setNewFollowUpSteps(prevSteps =>
+      prevSteps.map((step, i) =>
+        i === index
+          ? { ...step, [field]: value }
+          : step
+      )
+    );
+  };
+
   console.log("Rendering Settings page", { activeClinic, user });
 
   return (
@@ -942,6 +1095,7 @@ const Settings = () => {
           <TabsTrigger value="clinic">Clinic Details</TabsTrigger>
           {activeClinic === 'dental' && <TabsTrigger value="doctors">Doctors</TabsTrigger>}
           <TabsTrigger value="services">Services</TabsTrigger>
+          {activeClinic === 'dental' && <TabsTrigger value="service-followups">Service Follow-ups</TabsTrigger>}
           {activeClinic === 'dental' && <TabsTrigger value="labs">Labs</TabsTrigger>}
           {activeClinic === 'dental' && <TabsTrigger value="labwork">Lab Work Types</TabsTrigger>}
           {activeClinic === 'dental' && <TabsTrigger value="stock">Stock</TabsTrigger>}
@@ -1787,6 +1941,420 @@ const Settings = () => {
             </DialogContent>
           </Dialog>
         </TabsContent>
+
+        {activeClinic === 'dental' && (
+          <TabsContent value="service-followups" className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <RefreshCw className="mr-2 h-5 w-5" />
+                    Service Follow-ups
+                  </CardTitle>
+                  <CardDescription>
+                    Configure follow-up protocols for dental services
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setIsAddFollowUpRuleDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Follow-up Rule
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Triggering Service</TableHead>
+                      <TableHead>Follow-up Sequence</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {followUpRules.map((rule) => (
+                      <TableRow key={rule.ruleId}>
+                        <TableCell className="font-medium">{rule.triggeringServiceName}</TableCell>
+                        <TableCell>
+                          {rule.followUps.map((step, index) => (
+                            <div key={index} className="mb-1 last:mb-0">
+                              <Badge variant="outline" className="mr-2">
+                                {index + 1}
+                              </Badge>
+                              {step.intervalDays} days
+                              <span className="mx-1">→</span>
+                              <span className="font-medium">{step.suggestedServiceName}</span>
+                            </div>
+                          ))}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditFollowUpRule(rule)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => {
+                                setCurrentFollowUpRule(rule);
+                                setIsConfirmDeleteFollowUpRuleOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {followUpRules.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="h-24 text-center">
+                          No follow-up rules defined
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Add Follow-up Rule Dialog */}
+            <Dialog open={isAddFollowUpRuleDialogOpen} onOpenChange={setIsAddFollowUpRuleDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Follow-up Rule</DialogTitle>
+                  <DialogDescription>
+                    Define a follow-up protocol for a dental service
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="triggeringService">Triggering Service *</Label>
+                    <Select
+                      value={newTriggeringService}
+                      onValueChange={setNewTriggeringService}
+                    >
+                      <SelectTrigger id="triggeringService">
+                        <SelectValue placeholder="Select a service" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dentalServices.map(service => (
+                          <SelectItem key={service.id} value={service.name}>
+                            {service.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-medium">Follow-up Steps</Label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddFollowUpStep}
+                        className="h-8"
+                      >
+                        <Plus className="h-3 w-3 mr-1" /> Add Step
+                      </Button>
+                    </div>
+
+                    {newFollowUpSteps.map((step, index) => (
+                      <div key={index} className="space-y-3 p-3 border rounded-md">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium">Step {index + 1}</h4>
+                          {newFollowUpSteps.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-red-500 hover:text-red-700"
+                              onClick={() => handleRemoveFollowUpStep(index)}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" /> Remove
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label htmlFor={`interval-${index}`}>Interval (Days) *</Label>
+                            <Input
+                              id={`interval-${index}`}
+                              type="number"
+                              value={step.intervalDays}
+                              onChange={(e) => handleFollowUpStepChange(index, 'intervalDays', parseInt(e.target.value) || 0)}
+                              min="1"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`service-${index}`}>Suggested Service *</Label>
+                            <Input
+                              id={`service-${index}`}
+                              value={step.suggestedServiceName}
+                              onChange={(e) => handleFollowUpStepChange(index, 'suggestedServiceName', e.target.value)}
+                              placeholder="e.g., Follow-up Check"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`notes-${index}`}>Notes (Optional)</Label>
+                          <Textarea
+                            id={`notes-${index}`}
+                            value={step.notes || ''}
+                            onChange={(e) => handleFollowUpStepChange(index, 'notes', e.target.value)}
+                            placeholder="Additional instructions for staff"
+                            className="min-h-[80px]"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddFollowUpRuleDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={() => {
+                      // Validate required fields
+                      if (!newTriggeringService) {
+                        toast({
+                          title: "Error",
+                          description: "Triggering service name is required.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      if (newFollowUpSteps.length === 0) {
+                        toast({
+                          title: "Error",
+                          description: "At least one follow-up step is required.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      for (const step of newFollowUpSteps) {
+                        if (!step.suggestedServiceName) {
+                          toast({
+                            title: "Error",
+                            description: "Suggested service name is required for all steps.",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+
+                        if (step.intervalDays <= 0) {
+                          toast({
+                            title: "Error",
+                            description: "Interval days must be a positive number for all steps.",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+                      }
+
+                      // Check if a rule already exists for this service
+                      const existingRule = followUpRules.find(rule => rule.triggeringServiceName === newTriggeringService);
+                      if (existingRule) {
+                        toast({
+                          title: "Error",
+                          description: `A follow-up rule already exists for ${newTriggeringService}.`,
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      // Create new follow-up rule
+                      const newRule: ServiceFollowUpRule = {
+                        ruleId: `rule${Date.now()}`,
+                        triggeringServiceName: newTriggeringService,
+                        followUps: newFollowUpSteps.map((step, index) => ({
+                          ...step,
+                          sequence: index + 1
+                        }))
+                      };
+
+                      // Add the new rule to the state
+                      setFollowUpRules(prev => [...prev, newRule]);
+
+                      toast({
+                        title: "Follow-up Rule Added",
+                        description: `Follow-up rule for ${newTriggeringService} has been added successfully.`,
+                      });
+
+                      // Reset form
+                      setNewTriggeringService('');
+                      setNewFollowUpSteps([{ sequence: 1, intervalDays: 180, suggestedServiceName: '', notes: '' }]);
+                      setIsAddFollowUpRuleDialogOpen(false);
+                    }}
+                  >
+                    Add Follow-up Rule
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Follow-up Rule Dialog */}
+            <Dialog open={isEditFollowUpRuleDialogOpen} onOpenChange={setIsEditFollowUpRuleDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Follow-up Rule</DialogTitle>
+                  <DialogDescription>
+                    Update follow-up protocol for a dental service
+                  </DialogDescription>
+                </DialogHeader>
+                {currentFollowUpRule && (
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editTriggeringService">Triggering Service *</Label>
+                      <Select
+                        value={newTriggeringService}
+                        onValueChange={setNewTriggeringService}
+                      >
+                        <SelectTrigger id="editTriggeringService">
+                          <SelectValue placeholder="Select a service" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {dentalServices.map(service => (
+                            <SelectItem key={service.id} value={service.name}>
+                              {service.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-medium">Follow-up Steps</Label>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAddFollowUpStep}
+                          className="h-8"
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Add Step
+                        </Button>
+                      </div>
+
+                      {newFollowUpSteps.map((step, index) => (
+                        <div key={index} className="space-y-3 p-3 border rounded-md">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium">Step {index + 1}</h4>
+                            {newFollowUpSteps.length > 1 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-red-500 hover:text-red-700"
+                                onClick={() => handleRemoveFollowUpStep(index)}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" /> Remove
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-interval-${index}`}>Interval (Days) *</Label>
+                              <Input
+                                id={`edit-interval-${index}`}
+                                type="number"
+                                value={step.intervalDays}
+                                onChange={(e) => handleFollowUpStepChange(index, 'intervalDays', parseInt(e.target.value) || 0)}
+                                min="1"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-service-${index}`}>Suggested Service *</Label>
+                              <Input
+                                id={`edit-service-${index}`}
+                                value={step.suggestedServiceName}
+                                onChange={(e) => handleFollowUpStepChange(index, 'suggestedServiceName', e.target.value)}
+                                placeholder="e.g., Follow-up Check"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`edit-notes-${index}`}>Notes (Optional)</Label>
+                            <Textarea
+                              id={`edit-notes-${index}`}
+                              value={step.notes || ''}
+                              onChange={(e) => handleFollowUpStepChange(index, 'notes', e.target.value)}
+                              placeholder="Additional instructions for staff"
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditFollowUpRuleDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={handleUpdateFollowUpRuleConfirm}
+                  >
+                    <Save className="h-4 w-4 mr-2" /> Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Confirmation Dialogs */}
+            <Dialog open={isConfirmDeleteFollowUpRuleOpen} onOpenChange={setIsConfirmDeleteFollowUpRuleOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Deletion</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete this follow-up rule? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentFollowUpRule && (
+                  <div className="py-4">
+                    <p className="font-medium">{currentFollowUpRule.triggeringServiceName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {currentFollowUpRule.followUps.length} follow-up step(s)
+                    </p>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmDeleteFollowUpRuleOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeleteFollowUpRule}>
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isConfirmUpdateFollowUpRuleOpen} onOpenChange={setIsConfirmUpdateFollowUpRuleOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Update</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to save these changes?
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmUpdateFollowUpRuleOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpdateFollowUpRule}>
+                    Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+        )}
 
         {activeClinic === 'dental' && (
           <TabsContent value="labs" className="space-y-6">

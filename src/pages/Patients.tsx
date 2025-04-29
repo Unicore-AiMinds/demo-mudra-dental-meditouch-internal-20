@@ -1,5 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Select,
   SelectContent,
@@ -43,7 +44,6 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
-  getPaginationRowModel,
   SortingState,
   getSortedRowModel,
 } from "@tanstack/react-table";
@@ -89,6 +89,7 @@ interface Patient {
   age: number;
   email: string | null;
   phone: string;
+  altPhone?: string | null; // Alternative phone number (optional)
   address: string;
   clinic: 'dental' | 'meditouch' | 'both';
   lastVisit: string | '';
@@ -101,7 +102,8 @@ const demoPatients: Patient[] = [
     gender: "male",
     age: 34,
     email: "aarav.sharma@example.com",
-    phone: "+91 98765 43210",
+    phone: "9876543210",
+    altPhone: "9876543211",
     address: "123 Modi Street, Mumbai",
     clinic: "both",
     lastVisit: "2023-10-15"
@@ -112,7 +114,8 @@ const demoPatients: Patient[] = [
     gender: "female",
     age: 28,
     email: "priya.patel@example.com",
-    phone: "+91 87654 32109",
+    phone: "8765432109",
+    altPhone: null,
     address: "456 Gandhi Road, Delhi",
     clinic: "meditouch",
     lastVisit: "2023-10-12"
@@ -123,7 +126,8 @@ const demoPatients: Patient[] = [
     gender: "male",
     age: 45,
     email: null,
-    phone: "+91 76543 21098",
+    phone: "7654321098",
+    altPhone: "7654321099",
     address: "789 Nehru Avenue, Chennai",
     clinic: "dental",
     lastVisit: "2023-10-08"
@@ -134,7 +138,7 @@ const demoPatients: Patient[] = [
     gender: "female",
     age: 31,
     email: "neha.kapoor@example.com",
-    phone: "+91 65432 10987",
+    phone: "6543210987",
     address: "234 Tagore Lane, Bangalore",
     clinic: "dental",
     lastVisit: "2023-09-30"
@@ -145,7 +149,8 @@ const demoPatients: Patient[] = [
     gender: "male",
     age: 52,
     email: "rajiv.malhotra@example.com",
-    phone: "+91 54321 09876",
+    phone: "5432109876",
+    altPhone: "5432109877",
     address: "567 Bose Street, Hyderabad",
     clinic: "both",
     lastVisit: "2023-10-02"
@@ -156,7 +161,7 @@ const demoPatients: Patient[] = [
     gender: "female",
     age: 25,
     email: "ananya.reddy@example.com",
-    phone: "+91 43210 98765",
+    phone: "4321098765",
     address: "890 Raman Road, Pune",
     clinic: "meditouch",
     lastVisit: "2023-10-10"
@@ -167,7 +172,8 @@ const demoPatients: Patient[] = [
     gender: "male",
     age: 38,
     email: null,
-    phone: "+91 32109 87654",
+    phone: "3210987654",
+    altPhone: "3210987655",
     address: "123 Krishnan Street, Kochi",
     clinic: "dental",
     lastVisit: "2023-09-25"
@@ -178,7 +184,7 @@ const demoPatients: Patient[] = [
     gender: "female",
     age: 29,
     email: "divya.menon@example.com",
-    phone: "+91 21098 76543",
+    phone: "2109876543",
     address: "456 Patel Road, Ahmedabad",
     clinic: "both",
     lastVisit: "2023-10-05"
@@ -209,34 +215,28 @@ const getClinicBadge = (clinic: Patient['clinic'], activeClinic: 'dental' | 'med
   );
 };
 
+
+
 const Patients = () => {
   const { activeClinic } = useClinic();
+  const navigate = useNavigate();
   const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
   const [isEditPatientDialogOpen, setIsEditPatientDialogOpen] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isConfirmUpdateOpen, setIsConfirmUpdateOpen] = useState(false);
+  const [isConfirmAddOpen, setIsConfirmAddOpen] = useState(false);
   const [currentEditPatient, setCurrentEditPatient] = useState<Patient | null>(null);
   const [editPhoneCountryCode, setEditPhoneCountryCode] = useState("+91");
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "id", desc: true } // Sort by ID descending to show newest records first
+  ]);
   const [currentTab, setCurrentTab] = useState<string>("all");
   const { toast } = useToast();
   const [patients, setPatients] = useState<Patient[]>(demoPatients);
   const [phoneCountryCode, setPhoneCountryCode] = useState("+91");
   const [searchValue, setSearchValue] = useState("");
 
-  // Monitor patients state changes
-  React.useEffect(() => {
-    console.log('Patients state updated:', patients);
-  }, [patients]);
-
-  // Apply search filter when searchValue changes
-  React.useEffect(() => {
-    console.log('Search value changed:', searchValue);
-    // Log the first few patients to see their structure
-    if (patients.length > 0) {
-      console.log('Sample patient data:', patients[0]);
-    }
-  }, [searchValue, patients]);
+  // These useEffect hooks were used for debugging and have been removed
 
   const [formData, setFormData] = useState({
     name: '',
@@ -244,6 +244,7 @@ const Patients = () => {
     age: '',
     email: '',
     phone: '',
+    altPhone: '', // Added alternative phone
     address: '',
     clinic: '',
     lastVisit: ''
@@ -255,6 +256,7 @@ const Patients = () => {
     age: '',
     email: '',
     phone: '',
+    altPhone: '', // Added alternative phone
     address: '',
     clinic: '',
     lastVisit: ''
@@ -268,6 +270,7 @@ const Patients = () => {
       age: '',
       email: '',
       phone: '',
+      altPhone: '', // Added alternative phone
       address: '',
       clinic: '',
       lastVisit: ''
@@ -282,6 +285,7 @@ const Patients = () => {
       age: '',
       email: '',
       phone: '',
+      altPhone: '', // Added alternative phone
       address: '',
       clinic: '',
       lastVisit: ''
@@ -295,24 +299,16 @@ const Patients = () => {
     console.log('Editing patient:', patient);
     setCurrentEditPatient(patient);
 
-    // Extract country code and phone number
-    const phoneMatch = patient.phone.match(/^(\+\d+)\s+(.*)$/);
-    let countryCode = "+91";
-    let phoneNumber = patient.phone;
-
-    if (phoneMatch && phoneMatch.length >= 3) {
-      countryCode = phoneMatch[1];
-      phoneNumber = phoneMatch[2];
-    }
-
-    setEditPhoneCountryCode(countryCode);
+    // Set default country code
+    setEditPhoneCountryCode("+91");
 
     setEditFormData({
       name: patient.name,
       gender: patient.gender,
       age: patient.age.toString(),
       email: patient.email || '',
-      phone: phoneNumber,
+      phone: patient.phone,
+      altPhone: patient.altPhone || '', // Added alternative phone
       address: patient.address,
       clinic: patient.clinic,
       lastVisit: patient.lastVisit || ''
@@ -357,7 +353,8 @@ const Patients = () => {
       gender: editFormData.gender as 'male' | 'female' | 'other',
       age: Number(editFormData.age),
       email: editFormData.email || null,
-      phone: `${editPhoneCountryCode} ${editFormData.phone}`,
+      phone: editFormData.phone,
+      altPhone: editFormData.altPhone || null, // Added alternative phone
       address: editFormData.address,
       clinic: editFormData.clinic as 'dental' | 'meditouch' | 'both',
       lastVisit: editFormData.lastVisit || ''
@@ -419,13 +416,20 @@ const Patients = () => {
     resetEditFormData();
   };
 
+  // Function to handle viewing patient details
+  const handleViewDetails = useCallback((patient: Patient) => {
+    navigate(`/patients/${patient.id}`);
+  }, [navigate]);
+
+  // We're using the onOpenChange prop of Dialog component instead of a separate close function
+
   // Direct function to handle form change
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
   };
 
-  // Direct function to add a patient without memoization
+  // Function to handle the add patient form submission
   const handleAddPatient = (e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
@@ -440,6 +444,12 @@ const Patients = () => {
       return;
     }
 
+    // Show confirmation dialog
+    setIsConfirmAddOpen(true);
+  };
+
+  // Function to confirm adding a new patient
+  const confirmAddPatient = () => {
     // Create new patient object
     const newPatient: Patient = {
       id: `PT${String(patients.length + 1).padStart(3, '0')}`,
@@ -447,20 +457,19 @@ const Patients = () => {
       gender: formData.gender as 'male' | 'female' | 'other',
       age: Number(formData.age),
       email: formData.email || null,
-      phone: `${phoneCountryCode} ${formData.phone}`,
+      phone: formData.phone,
+      altPhone: formData.altPhone || null, // Added alternative phone
       address: formData.address,
       clinic: formData.clinic as 'dental' | 'meditouch' | 'both',
       lastVisit: formData.lastVisit || ''
     };
 
-    console.log('Adding new patient:', newPatient);
-
-    // Directly update the patients array
-    const updatedPatients = [...patients, newPatient];
+    // Add to the beginning of the array to show newest first
+    const updatedPatients = [newPatient, ...patients];
     setPatients(updatedPatients);
-    console.log('Updated patients array:', updatedPatients);
 
-    // Close the dialog and show success message
+    // Close dialogs and show success message
+    setIsConfirmAddOpen(false);
     setIsAddPatientDialogOpen(false);
     toast({
       title: "Patient Added",
@@ -477,62 +486,46 @@ const Patients = () => {
     resetFormData();
   };
 
-  // Direct function to handle search
-  const handleSearch = (value: string) => {
-    console.log('handleSearch called with:', value);
-    setSearchValue(value);
-  };
-
   // Memoize the filtered patients to prevent unnecessary recalculations
   const filteredPatients = React.useMemo(() => {
-    console.log('Filtering patients:', patients);
-    console.log('Current tab:', currentTab);
-    console.log('Active clinic:', activeClinic);
-    console.log('Search value:', searchValue);
+    // Start with all patients
+    let filtered = [...patients];
 
-    // First filter by clinic/tab
-    let filtered = patients.filter(patient => {
-      const passesClinicFilter = currentTab === "all" ?
-        (patient.clinic === activeClinic || patient.clinic === 'both') :
-        (patient.clinic === currentTab || patient.clinic === 'both');
-
-      return passesClinicFilter;
-    });
-
-    // Then apply search filter if there's a search value
-    if (searchValue.trim() !== '') {
-      const searchLower = searchValue.toLowerCase().trim();
-      console.log('Applying search filter with term:', searchLower);
-
-      filtered = filtered.filter(patient => {
-        // Safely check each field
-        const nameMatch = patient.name ? patient.name.toLowerCase().includes(searchLower) : false;
-        const phoneMatch = patient.phone ? patient.phone.toLowerCase().includes(searchLower) : false;
-        const emailMatch = patient.email ? patient.email.toLowerCase().includes(searchLower) : false;
-        const addressMatch = patient.address ? patient.address.toLowerCase().includes(searchLower) : false;
-        const genderMatch = patient.gender ? patient.gender.toLowerCase().includes(searchLower) : false;
-        const ageMatch = patient.age ? String(patient.age).includes(searchLower) : false;
-        const lastVisitMatch = patient.lastVisit ? patient.lastVisit.toLowerCase().includes(searchLower) : false;
-
-        const matches = nameMatch || phoneMatch || emailMatch || addressMatch || genderMatch || ageMatch || lastVisitMatch;
-
-        // Log detailed matching info for debugging
-        if (matches) {
-          console.log(`Patient ${patient.id} (${patient.name}) matches search: ${searchLower}`);
-          console.log(`  Name match: ${nameMatch}, Phone match: ${phoneMatch}, Email match: ${emailMatch}`);
-          console.log(`  Address match: ${addressMatch}, Gender match: ${genderMatch}, Age match: ${ageMatch}`);
-          console.log(`  Last Visit match: ${lastVisitMatch}`);
-        }
-
-        return matches;
-      });
-
-      console.log(`Found ${filtered.length} matches for search term: ${searchLower}`);
+    // Apply tab filtering
+    if (currentTab !== "all") {
+      filtered = filtered.filter(patient =>
+        patient.clinic === currentTab || patient.clinic === 'both'
+      );
     }
 
-    console.log('Filtered patients after search:', filtered);
+    // Apply search filtering
+    const searchTerm = searchValue ? searchValue.trim() : '';
+    if (searchTerm !== '') {
+      const searchLower = searchTerm.toLowerCase();
+
+      filtered = filtered.filter(patient => {
+        // Format phone numbers with country code for searching
+        const formattedPhone = `+91 ${patient.phone}`;
+        const formattedAltPhone = patient.altPhone ? `+91 ${patient.altPhone}` : '';
+
+        // Check each field for a match
+        return (
+          (patient.name && patient.name.toLowerCase().includes(searchLower)) ||
+          (patient.phone && patient.phone.includes(searchLower)) ||
+          (formattedPhone && formattedPhone.includes(searchLower)) ||
+          (patient.altPhone && patient.altPhone.includes(searchLower)) ||
+          (formattedAltPhone && formattedAltPhone.includes(searchLower)) ||
+          (patient.email && patient.email?.toLowerCase().includes(searchLower)) ||
+          (patient.address && patient.address.toLowerCase().includes(searchLower)) ||
+          (patient.gender && patient.gender.toLowerCase().includes(searchLower)) ||
+          (patient.age && String(patient.age).includes(searchLower)) ||
+          (patient.lastVisit && patient.lastVisit.toLowerCase().includes(searchLower))
+        );
+      });
+    }
+
     return filtered;
-  }, [patients, currentTab, activeClinic, searchValue]);
+  }, [patients, currentTab, searchValue]);
 
   // Memoize the columns definition to prevent recreating it on every render
   const columns = useMemo<ColumnDef<Patient>[]>(() => [
@@ -560,13 +553,28 @@ const Patients = () => {
     },
     {
       accessorKey: "phone",
-      header: "Contact",
+      header: "Primary Contact",
       cell: ({ row }) => (
         <div className="flex items-center">
           <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
-          {row.getValue("phone")}
+          {`+91 ${row.getValue("phone")}`}
         </div>
       ),
+    },
+    {
+      accessorKey: "altPhone",
+      header: "Alternative Contact",
+      cell: ({ row }) => {
+        const altPhone = row.getValue("altPhone");
+        return altPhone ? (
+          <div className="flex items-center">
+            <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
+            {`+91 ${altPhone}`}
+          </div>
+        ) : (
+          <div className="text-muted-foreground italic">Not provided</div>
+        );
+      },
     },
     {
       accessorKey: "email",
@@ -582,6 +590,15 @@ const Patients = () => {
           <div className="text-muted-foreground italic">Not provided</div>
         );
       },
+    },
+    {
+      accessorKey: "address",
+      header: "Address",
+      cell: ({ row }) => (
+        <div className="max-w-[200px] truncate" title={row.getValue("address")}>
+          {row.getValue("address")}
+        </div>
+      ),
     },
     {
       accessorKey: "clinic",
@@ -614,7 +631,7 @@ const Patients = () => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => console.log("View", row.original.id)}>
+            <DropdownMenuItem onClick={() => handleViewDetails(row.original)}>
               <Eye className="mr-2 h-4 w-4" />
               View Details
             </DropdownMenuItem>
@@ -637,7 +654,7 @@ const Patients = () => {
         </DropdownMenu>
       ),
     },
-  ], [activeClinic]); // Only depend on activeClinic
+  ], [activeClinic, handleViewDetails]); // Depend on activeClinic and handleViewDetails
 
   // Memoize the table options to prevent unnecessary re-renders
   const tableOptions = useMemo(() => ({
@@ -645,8 +662,8 @@ const Patients = () => {
     columns,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    // No pagination - show all records
     state: {
       sorting,
     },
@@ -678,39 +695,35 @@ const Patients = () => {
             <Input
               placeholder="Search patients by name, phone, email..."
               value={searchValue}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(e) => setSearchValue(e.target.value)}
               className="pr-10"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleSearch(searchValue);
-                }
-              }}
             />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
             {searchValue && (
               <Button
                 variant="ghost"
                 className="absolute right-0 top-0 h-full px-3 py-2"
-                onClick={() => handleSearch('')}
+                onClick={() => setSearchValue('')}
                 type="button"
               >
                 <X className="h-4 w-4" />
               </Button>
             )}
           </div>
-          <Button
-            type="button"
-            onClick={() => handleSearch(searchValue)}
-            className={activeClinic === 'dental'
-              ? "bg-dental-primary hover:bg-dental-dark"
-              : "bg-meditouch-primary hover:bg-meditouch-dark"}
-          >
-            <Search className="h-4 w-4 mr-2" /> Search
-          </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="all" className="w-full" value={currentTab} onValueChange={setCurrentTab}>
+      <Tabs
+        defaultValue="all"
+        className="w-full"
+        value={currentTab}
+        onValueChange={(value) => {
+          setCurrentTab(value);
+          // Clear search when changing tabs
+          setSearchValue('');
+        }}>
         <TabsList className="overflow-x-auto">
           <TabsTrigger value="all">All Patients</TabsTrigger>
           <TabsTrigger value="dental">Dental Metrix</TabsTrigger>
@@ -727,49 +740,47 @@ const Patients = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              {/* Memoize the table rendering to prevent unnecessary re-renders */}
-              {useMemo(() => (
-                <Table>
-                  <TableHeader>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => (
-                          <TableHead key={header.id}>
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                          </TableHead>
+              {/* Render the table directly without useMemo */}
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() && "selected"}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
                         ))}
                       </TableRow>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {table.getRowModel().rows?.length ? (
-                      table.getRowModel().rows.map((row) => (
-                        <TableRow
-                          key={row.id}
-                          data-state={row.getIsSelected() && "selected"}
-                        >
-                          {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id}>
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={columns.length} className="h-24 text-center">
-                          No patients found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              ), [table, columns.length])}
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="h-24 text-center">
+                        No patients found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </div>
@@ -794,6 +805,7 @@ const Patients = () => {
                     value={formData.name}
                     onChange={handleFormChange}
                     required
+                    className="h-10"
                   />
                 </div>
                 <div className="space-y-2">
@@ -811,61 +823,113 @@ const Patients = () => {
                     <option value="other">Other</option>
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="age">Age *</Label>
-                  <Input
-                    id="age"
-                    type="number"
-                    placeholder="Enter age"
-                    value={formData.age}
-                    onChange={handleFormChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number *</Label>
-                  <div className="flex">
-                    <Select
-                      defaultValue="+91"
-                      value={phoneCountryCode}
-                      onValueChange={setPhoneCountryCode}
-                    >
-                      <SelectTrigger className="w-[100px] rounded-r-none border-r-0">
-                        <SelectValue placeholder="+91" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="+91">+91 (IN)</SelectItem>
-                        <SelectItem value="+1">+1 (US)</SelectItem>
-                        <SelectItem value="+44">+44 (UK)</SelectItem>
-                        <SelectItem value="+61">+61 (AU)</SelectItem>
-                        <SelectItem value="+971">+971 (UAE)</SelectItem>
-                        <SelectItem value="+65">+65 (SG)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
+                  <div className="space-y-2 flex-1">
+                    <Label htmlFor="age">Age *</Label>
                     <Input
-                      id="phone"
-                      className="rounded-l-none"
-                      placeholder="Contact Number"
-                      value={formData.phone}
-                      onChange={(e) => {
-                        // Only allow digits
-                        const numericValue = e.target.value.replace(/\D/g, '');
-                        setFormData({...formData, phone: numericValue});
-                      }}
+                      id="age"
+                      type="number"
+                      placeholder="Enter age"
+                      value={formData.age}
+                      onChange={handleFormChange}
                       required
-                      pattern="\d+"
-                      title="Please enter only digits"
+                      className="h-10 w-full"
+                    />
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Email address"
+                      value={formData.email}
+                      onChange={handleFormChange}
+                      className="h-10 w-full"
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
+                  <div className="space-y-2 flex-1">
+                    <Label htmlFor="phone">Phone Number *</Label>
+                    <div className="flex">
+                      <Select
+                        defaultValue="+91"
+                        value={phoneCountryCode}
+                        onValueChange={setPhoneCountryCode}
+                      >
+                        <SelectTrigger className="w-[100px] rounded-r-none border-r-0 h-10">
+                          <SelectValue placeholder="+91" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="+91">+91 (IN)</SelectItem>
+                          <SelectItem value="+1">+1 (US)</SelectItem>
+                          <SelectItem value="+44">+44 (UK)</SelectItem>
+                          <SelectItem value="+61">+61 (AU)</SelectItem>
+                          <SelectItem value="+971">+971 (UAE)</SelectItem>
+                          <SelectItem value="+65">+65 (SG)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        id="phone"
+                        className="rounded-l-none h-10 w-full"
+                        placeholder="Contact Number"
+                        value={formData.phone}
+                        onChange={(e) => {
+                          // Only allow digits
+                          const numericValue = e.target.value.replace(/\D/g, '');
+                          setFormData({...formData, phone: numericValue});
+                        }}
+                        required
+                        pattern="\d+"
+                        title="Please enter only digits"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <Label htmlFor="altPhone">Alternative Phone Number</Label>
+                    <div className="flex">
+                      <Select
+                        defaultValue="+91"
+                        value={phoneCountryCode}
+                        onValueChange={setPhoneCountryCode}
+                      >
+                        <SelectTrigger className="w-[100px] rounded-r-none border-r-0 h-10">
+                          <SelectValue placeholder="+91" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="+91">+91 (IN)</SelectItem>
+                          <SelectItem value="+1">+1 (US)</SelectItem>
+                          <SelectItem value="+44">+44 (UK)</SelectItem>
+                          <SelectItem value="+61">+61 (AU)</SelectItem>
+                          <SelectItem value="+971">+971 (UAE)</SelectItem>
+                          <SelectItem value="+65">+65 (SG)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        id="altPhone"
+                        className="rounded-l-none h-10 w-full"
+                        placeholder="Alternative Contact Number"
+                        value={formData.altPhone}
+                        onChange={(e) => {
+                          // Only allow digits
+                          const numericValue = e.target.value.replace(/\D/g, '');
+                          setFormData({...formData, altPhone: numericValue});
+                        }}
+                        pattern="\d+"
+                        title="Please enter only digits"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="address">Address *</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="patient@example.com"
-                    value={formData.email}
+                    id="address"
+                    placeholder="Enter patient's address"
+                    value={formData.address}
                     onChange={handleFormChange}
+                    required
+                    className="h-10"
                   />
                 </div>
                 <div className="space-y-2">
@@ -883,16 +947,6 @@ const Patients = () => {
                     <option value="both">Both Clinics</option>
                   </select>
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="address">Address *</Label>
-                  <Input
-                    id="address"
-                    placeholder="Enter patient's address"
-                    value={formData.address}
-                    onChange={handleFormChange}
-                    required
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastVisit">Last Visit</Label>
                   <Input
@@ -901,6 +955,7 @@ const Patients = () => {
                     value={formData.lastVisit}
                     onChange={handleFormChange}
                     max={new Date().toISOString().split('T')[0]} // Limit to today or earlier
+                    className="h-10"
                   />
                 </div>
 
@@ -944,6 +999,7 @@ const Patients = () => {
                       value={editFormData.name}
                       onChange={handleEditFormChange}
                       required
+                      className="h-10"
                     />
                   </div>
                   <div className="space-y-2">
@@ -961,61 +1017,113 @@ const Patients = () => {
                       <option value="other">Other</option>
                     </select>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="age">Age *</Label>
-                    <Input
-                      id="age"
-                      type="number"
-                      placeholder="Enter age"
-                      value={editFormData.age}
-                      onChange={handleEditFormChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number *</Label>
-                    <div className="flex">
-                      <Select
-                        defaultValue="+91"
-                        value={editPhoneCountryCode}
-                        onValueChange={setEditPhoneCountryCode}
-                      >
-                        <SelectTrigger className="w-[100px] rounded-r-none border-r-0">
-                          <SelectValue placeholder="+91" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="+91">+91 (IN)</SelectItem>
-                          <SelectItem value="+1">+1 (US)</SelectItem>
-                          <SelectItem value="+44">+44 (UK)</SelectItem>
-                          <SelectItem value="+61">+61 (AU)</SelectItem>
-                          <SelectItem value="+971">+971 (UAE)</SelectItem>
-                          <SelectItem value="+65">+65 (SG)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
+                    <div className="space-y-2 flex-1">
+                      <Label htmlFor="age">Age *</Label>
                       <Input
-                        id="phone"
-                        className="rounded-l-none"
-                        placeholder="Contact Number"
-                        value={editFormData.phone}
-                        onChange={(e) => {
-                          // Only allow digits
-                          const numericValue = e.target.value.replace(/\D/g, '');
-                          setEditFormData({...editFormData, phone: numericValue});
-                        }}
+                        id="age"
+                        type="number"
+                        placeholder="Enter age"
+                        value={editFormData.age}
+                        onChange={handleEditFormChange}
                         required
-                        pattern="\d+"
-                        title="Please enter only digits"
+                        className="h-10 w-full"
+                      />
+                    </div>
+                    <div className="space-y-2 flex-1">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="Email address"
+                        value={editFormData.email}
+                        onChange={handleEditFormChange}
+                        className="h-10 w-full"
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                  <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
+                    <div className="space-y-2 flex-1">
+                      <Label htmlFor="phone">Phone Number *</Label>
+                      <div className="flex">
+                        <Select
+                          defaultValue="+91"
+                          value={editPhoneCountryCode}
+                          onValueChange={setEditPhoneCountryCode}
+                        >
+                          <SelectTrigger className="w-[100px] rounded-r-none border-r-0 h-10">
+                            <SelectValue placeholder="+91" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="+91">+91 (IN)</SelectItem>
+                            <SelectItem value="+1">+1 (US)</SelectItem>
+                            <SelectItem value="+44">+44 (UK)</SelectItem>
+                            <SelectItem value="+61">+61 (AU)</SelectItem>
+                            <SelectItem value="+971">+971 (UAE)</SelectItem>
+                            <SelectItem value="+65">+65 (SG)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          id="phone"
+                          className="rounded-l-none h-10 w-full"
+                          placeholder="Contact Number"
+                          value={editFormData.phone}
+                          onChange={(e) => {
+                            // Only allow digits
+                            const numericValue = e.target.value.replace(/\D/g, '');
+                            setEditFormData({...editFormData, phone: numericValue});
+                          }}
+                          required
+                          pattern="\d+"
+                          title="Please enter only digits"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2 flex-1">
+                      <Label htmlFor="altPhone">Alternative Phone Number</Label>
+                      <div className="flex">
+                        <Select
+                          defaultValue="+91"
+                          value={editPhoneCountryCode}
+                          onValueChange={setEditPhoneCountryCode}
+                        >
+                          <SelectTrigger className="w-[100px] rounded-r-none border-r-0 h-10">
+                            <SelectValue placeholder="+91" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="+91">+91 (IN)</SelectItem>
+                            <SelectItem value="+1">+1 (US)</SelectItem>
+                            <SelectItem value="+44">+44 (UK)</SelectItem>
+                            <SelectItem value="+61">+61 (AU)</SelectItem>
+                            <SelectItem value="+971">+971 (UAE)</SelectItem>
+                            <SelectItem value="+65">+65 (SG)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          id="altPhone"
+                          className="rounded-l-none h-10 w-full"
+                          placeholder="Alternative Contact Number"
+                          value={editFormData.altPhone}
+                          onChange={(e) => {
+                            // Only allow digits
+                            const numericValue = e.target.value.replace(/\D/g, '');
+                            setEditFormData({...editFormData, altPhone: numericValue});
+                          }}
+                          pattern="\d+"
+                          title="Please enter only digits"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="address">Address *</Label>
                     <Input
-                      id="email"
-                      type="email"
-                      placeholder="patient@example.com"
-                      value={editFormData.email}
+                      id="address"
+                      placeholder="Enter patient's address"
+                      value={editFormData.address}
                       onChange={handleEditFormChange}
+                      required
+                      className="h-10"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1033,16 +1141,6 @@ const Patients = () => {
                       <option value="both">Both Clinics</option>
                     </select>
                   </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="address">Address *</Label>
-                    <Input
-                      id="address"
-                      placeholder="Enter patient's address"
-                      value={editFormData.address}
-                      onChange={handleEditFormChange}
-                      required
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastVisit">Last Visit</Label>
                     <Input
@@ -1051,6 +1149,7 @@ const Patients = () => {
                       value={editFormData.lastVisit}
                       onChange={handleEditFormChange}
                       max={new Date().toISOString().split('T')[0]} // Limit to today or earlier
+                      className="h-10"
                     />
                   </div>
                 </div>
@@ -1105,6 +1204,24 @@ const Patients = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmUpdatePatient}>
               Update
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Add Dialog */}
+      <AlertDialog open={isConfirmAddOpen} onOpenChange={setIsConfirmAddOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Add Patient</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to add {formData.name} to the patient registry?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAddPatient}>
+              Add Patient
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

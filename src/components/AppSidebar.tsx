@@ -26,7 +26,8 @@ import {
   FileText,
   Settings,
   AlertCircle,
-  LogOut
+  LogOut,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DentalMetrixLogo, MeditouchLogo } from '@/assets/logos';
@@ -56,6 +57,11 @@ const navItems: NavItem[] = [
     title: 'Patients',
     icon: Users,
     path: '/patients',
+  },
+  {
+    title: 'Recall List',
+    icon: Clock,
+    path: '/recall-list',
   },
   {
     title: 'Lab Work',

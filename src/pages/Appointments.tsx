@@ -2,6 +2,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useNavigate } from 'react-router-dom';
+import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -138,7 +139,8 @@ const AppointmentCard = ({
   isDental = true,
   onEdit,
   onReschedule,
-  onCancel
+  onCancel,
+  onComplete
 }: {
   time: string;
   patient: string;
@@ -150,6 +152,7 @@ const AppointmentCard = ({
   onEdit: () => void;
   onReschedule: () => void;
   onCancel: () => void;
+  onComplete?: () => void;
 }) => {
   if (status === 'cancelled') {
     return null;
@@ -167,6 +170,11 @@ const AppointmentCard = ({
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
             <DropdownMenuItem onClick={onReschedule}>Reschedule</DropdownMenuItem>
+            {status !== 'completed' && onComplete && (
+              <DropdownMenuItem onClick={onComplete} className="text-green-600">
+                Mark as Completed
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={onCancel} className="text-red-500">
               Cancel
             </DropdownMenuItem>
@@ -308,7 +316,7 @@ const Appointments = () => {
   const [isEditAppointmentOpen, setIsEditAppointmentOpen] = useState(false);
   const [isConfirmUpdateOpen, setIsConfirmUpdateOpen] = useState(false);
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
-  const [editingAppointment, setEditingAppointment] = useState<any>(null);
+  const [editingAppointment, setEditingAppointment] = useState<AppointmentType | null>(null);
   const isMobile = useIsMobile();
 
   const [appointmentPatient, setAppointmentPatient] = useState("");
@@ -490,7 +498,7 @@ const Appointments = () => {
     const filtered = appointments.filter(app => {
       const matchesDate = app.date === format(date, 'yyyy-MM-dd');
       const matchesSearch = !searchTerm || app.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (app as any).secondPatient?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (isDental && 'secondPatient' in app && app.secondPatient ? app.secondPatient.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
         app.service.toLowerCase().includes(searchTerm.toLowerCase());
 
       // Handle doctor filtering properly
@@ -587,7 +595,7 @@ const Appointments = () => {
     }, 50);
   };
 
-  const handleEditAppointment = (appointment: any) => {
+  const handleEditAppointment = (appointment: AppointmentType) => {
     console.log('Editing appointment:', appointment);
 
     // Close the new appointment form if it's open
@@ -627,7 +635,7 @@ const Appointments = () => {
     });
   };
 
-  const handleReschedule = (appointment: any) => {
+  const handleReschedule = (appointment: AppointmentType) => {
     setEditingAppointment(appointment);
     setAppointmentPatient(appointment.patient);
     setAppointmentService(appointment.service);
@@ -653,12 +661,12 @@ const Appointments = () => {
     });
   };
 
-  const handleDirectReschedule = (appointment: any) => {
+  const handleDirectReschedule = (appointment: AppointmentType) => {
     // Use the edit appointment function directly
     handleEditAppointment(appointment);
   };
 
-  const handleDirectCancel = (appointment: any) => {
+  const handleDirectCancel = (appointment: AppointmentType) => {
     if (isDental) {
       setDentalAppointments(dentalAppointments.map(app =>
         app.id === appointment.id ? { ...app, status: 'cancelled' as const } : app
@@ -763,6 +771,41 @@ const Appointments = () => {
   const cancelCancel = () => {
     setIsConfirmCancelOpen(false);
     setIsEditAppointmentOpen(true); // Go back to edit dialog
+  };
+
+  // Handle marking an appointment as completed
+  const { markAppointmentCompleted } = useDentalHistory();
+
+  const handleCompleteAppointment = (appointment: AppointmentType) => {
+    // Update the appointment status to completed
+    if (isDental) {
+      setDentalAppointments(dentalAppointments.map(app =>
+        app.id === appointment.id ? { ...app, status: 'completed' as const } : app
+      ));
+    } else {
+      setMeditouchAppointments(meditouchAppointments.map(app =>
+        app.id === appointment.id ? { ...app, status: 'completed' as const } : app
+      ));
+    }
+
+    // Get patient ID from the patient name (in a real app, this would be stored with the appointment)
+    // For demo purposes, we'll extract the ID from the demo patients array
+    const patientId = `PT00${appointment.patient.charAt(0)}`;
+
+    // Add to dental history and generate follow-up if needed
+    markAppointmentCompleted(
+      appointment.id,
+      patientId,
+      appointment.patient,
+      appointment.service,
+      isDental ? (appointment as DentalAppointment).doctor || 'Unknown Doctor' : 'Unknown Doctor',
+      appointment.date || format(new Date(), 'yyyy-MM-dd')
+    );
+
+    toast({
+      title: "Appointment Completed",
+      description: `${appointment.patient}'s appointment has been marked as completed.`
+    });
   };
 
   const handlePatientSearch = (value: string) => {
@@ -922,6 +965,56 @@ const Appointments = () => {
       window.removeEventListener('openNewAppointmentForm', handleOpenNewAppointmentForm);
     };
   }, [date, resetAppointmentForm]);
+
+  // Listen for the custom event to open the new appointment form with pre-filled data
+  useEffect(() => {
+    const handleOpenNewAppointmentFormWithData = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        patientName: string;
+        patientId: string;
+        serviceName: string;
+        date: string;
+        followUpId: string;
+      }>;
+
+      // Get the data from the event
+      const { patientName, serviceName, date, followUpId } = customEvent.detail;
+
+      // Reset form first
+      resetAppointmentForm();
+
+      // Set the form fields with the data from the event
+      setAppointmentPatient(patientName);
+      setAppointmentService(serviceName);
+
+      // Parse the date
+      if (date) {
+        const parsedDate = parseISO(date);
+        setAppointmentDate(parsedDate);
+        setDate(parsedDate); // Also update the UI date
+      }
+
+      // Reset filtered patients list
+      setFilteredPatients(registeredPatients);
+
+      // Show toast notification
+      toast({
+        title: "Follow-up Appointment",
+        description: `Creating appointment for ${patientName} based on a follow-up reminder.`,
+      });
+
+      // Open the dialog
+      setIsNewAppointmentOpen(true);
+    };
+
+    // Add event listener
+    window.addEventListener('openNewAppointmentFormWithData', handleOpenNewAppointmentFormWithData);
+
+    // Clean up
+    return () => {
+      window.removeEventListener('openNewAppointmentFormWithData', handleOpenNewAppointmentFormWithData);
+    };
+  }, [resetAppointmentForm]);
 
   // Helper function to reset expanded states
   const resetExpandedStates = () => {
@@ -1994,6 +2087,20 @@ const Appointments = () => {
               >
                 Update
               </Button>
+              {editingAppointment && editingAppointment.status !== 'completed' && (
+                <Button
+                  variant="outline"
+                  className="text-green-600 border-green-600 hover:bg-green-50"
+                  onClick={() => {
+                    if (editingAppointment) {
+                      handleCompleteAppointment(editingAppointment);
+                      setIsEditAppointmentOpen(false);
+                    }
+                  }}
+                >
+                  Mark as Completed
+                </Button>
+              )}
               <Button variant="destructive" onClick={openCancelConfirmation}>
                 Cancel
               </Button>

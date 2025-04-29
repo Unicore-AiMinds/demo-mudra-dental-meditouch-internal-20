@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ClinicProvider } from "@/contexts/ClinicContext";
+import { DentalHistoryProvider } from "@/contexts/DentalHistoryContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Login from "@/pages/Login";
@@ -15,9 +16,11 @@ import NewAppointment from "@/pages/NewAppointment";
 import StockTracker from "@/pages/StockTracker";
 import LabWork from "@/pages/LabWork";
 import Patients from "@/pages/Patients";
+import PatientDetails from "@/pages/PatientDetails";
 import Reports from "@/pages/Reports";
 import AuditLog from "@/pages/AuditLog";
 import Settings from "@/pages/Settings";
+import RecallList from "@/pages/RecallList";
 import Unauthorized from "@/pages/Unauthorized";
 import NotFound from "@/pages/NotFound";
 
@@ -31,12 +34,13 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <ClinicProvider>
-            <Routes>
+            <DentalHistoryProvider>
+              <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
-              
+
               {/* Protected Routes */}
-              <Route 
+              <Route
                 element={
                   <ProtectedRoute>
                     <AppLayout />
@@ -46,55 +50,58 @@ const App = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/appointments" element={<Appointments />} />
                 <Route path="/appointments/new" element={<NewAppointment />} />
-                <Route 
-                  path="/stock" 
+                <Route
+                  path="/stock"
                   element={
                     <ProtectedRoute allowedRoles={['admin', 'inventory']}>
                       <StockTracker />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/lab" 
+                <Route
+                  path="/lab"
                   element={
                     <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
                       <LabWork />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
                 <Route path="/patients" element={<Patients />} />
-                <Route 
-                  path="/reports" 
+                <Route path="/patients/:patientId" element={<PatientDetails />} />
+                <Route path="/recall-list" element={<RecallList />} />
+                <Route
+                  path="/reports"
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
                       <Reports />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/audit" 
+                <Route
+                  path="/audit"
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
                       <AuditLog />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/settings" 
+                <Route
+                  path="/settings"
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
                       <Settings />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
               </Route>
-              
+
               {/* Redirect root to dashboard if logged in, otherwise to login */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              
+
               {/* 404 route */}
               <Route path="*" element={<NotFound />} />
-            </Routes>
+              </Routes>
+            </DentalHistoryProvider>
           </ClinicProvider>
         </AuthProvider>
       </BrowserRouter>
