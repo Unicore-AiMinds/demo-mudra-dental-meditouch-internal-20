@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useNavigate } from 'react-router-dom';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
+import AppointmentCompletionDialog from '@/components/AppointmentCompletionDialog';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -171,7 +172,13 @@ const AppointmentCard = ({
             <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
             <DropdownMenuItem onClick={onReschedule}>Reschedule</DropdownMenuItem>
             {status !== 'completed' && onComplete && (
-              <DropdownMenuItem onClick={onComplete} className="text-green-600">
+              <DropdownMenuItem
+                onClick={() => {
+                  console.log("Mark as Completed clicked in dropdown menu");
+                  onComplete();
+                }}
+                className="text-green-600"
+              >
                 Mark as Completed
               </DropdownMenuItem>
             )}
@@ -460,8 +467,12 @@ const Appointments = () => {
   const getAppointmentsForDate = useCallback((date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
 
-    // Get all appointments for this date
-    const allAppointmentsForDate = appointments.filter(app => app.date === dateString && app.status !== 'cancelled');
+    // Get all active appointments for this date (not cancelled or completed)
+    const allAppointmentsForDate = appointments.filter(app =>
+      app.date === dateString &&
+      app.status !== 'cancelled' &&
+      app.status !== 'completed'
+    );
 
     // Apply doctor filter if needed
     const filteredByDoctor = allAppointmentsForDate.filter(app => {
@@ -507,12 +518,12 @@ const Appointments = () => {
         !selectedDoctor || // Always match if no doctor is selected
         (isDental && 'doctor' in app && (app as DentalAppointment).doctor === selectedDoctor); // Match specific doctor
 
-      const isNotCancelled = app.status !== 'cancelled';
+      const isActive = app.status !== 'cancelled' && app.status !== 'completed';
 
       if (view === 'daily') {
-        return matchesDate && matchesSearch && matchesDoctor && isNotCancelled;
+        return matchesDate && matchesSearch && matchesDoctor && isActive;
       } else {
-        return matchesSearch && matchesDoctor && isNotCancelled;
+        return matchesSearch && matchesDoctor && isActive;
       }
     });
 
@@ -525,9 +536,13 @@ const Appointments = () => {
   }, [filteredAppointments]);
 
   const getBookedTimeSlots = () => {
-    // Get all appointments for the current date that aren't cancelled
+    // Get all active appointments for the current date (not cancelled or completed)
     const dateAppointments = appointments
-      .filter(app => app.date === format(date, 'yyyy-MM-dd') && app.status !== 'cancelled');
+      .filter(app =>
+        app.date === format(date, 'yyyy-MM-dd') &&
+        app.status !== 'cancelled' &&
+        app.status !== 'completed'
+      );
 
     // Count appointments per time slot
     const slotCounts: Record<string, number> = {};
@@ -775,6 +790,8 @@ const Appointments = () => {
 
   // Handle marking an appointment as completed
   const { markAppointmentCompleted } = useDentalHistory();
+  const [completedAppointment, setCompletedAppointment] = useState<AppointmentType | null>(null);
+  const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
 
   const handleCompleteAppointment = (appointment: AppointmentType) => {
     // Update the appointment status to completed
@@ -802,10 +819,17 @@ const Appointments = () => {
       appointment.date || format(new Date(), 'yyyy-MM-dd')
     );
 
-    toast({
-      title: "Appointment Completed",
-      description: `${appointment.patient}'s appointment has been marked as completed.`
-    });
+    // Prepare the appointment data for the completion dialog
+    const appointmentWithPatientId = {
+      ...appointment,
+      patientId
+    };
+
+    // Show the completion dialog instead of a toast notification
+    console.log("Setting completed appointment:", appointmentWithPatientId);
+    setCompletedAppointment(appointmentWithPatientId);
+    setIsCompletionDialogOpen(true);
+    console.log("Dialog should be open now");
   };
 
   const handlePatientSearch = (value: string) => {
@@ -1062,6 +1086,8 @@ const Appointments = () => {
     const start = startOfWeek(date);
     return eachDayOfInterval({ start, end: addDays(start, 6) });
   }, [date]);
+
+
 
   // Memoize the month dates to avoid recalculating them on every render
   const monthDates = useMemo(() => {
@@ -2093,6 +2119,7 @@ const Appointments = () => {
                   className="text-green-600 border-green-600 hover:bg-green-50"
                   onClick={() => {
                     if (editingAppointment) {
+                      console.log("Mark as Completed button clicked in edit dialog");
                       handleCompleteAppointment(editingAppointment);
                       setIsEditAppointmentOpen(false);
                     }
@@ -2217,6 +2244,15 @@ const Appointments = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Appointment Completion Dialog */}
+      {completedAppointment && (
+        <AppointmentCompletionDialog
+          isOpen={isCompletionDialogOpen}
+          onClose={() => setIsCompletionDialogOpen(false)}
+          appointment={completedAppointment}
+        />
+      )}
     </div>
   );
 };

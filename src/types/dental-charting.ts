@@ -5,9 +5,16 @@ export interface ChartingEntry {
   dateRecorded: string;      // YYYY-MM-DD HH:MM:SS format
   toothNumbers: string[];    // Array of selected tooth numbers ['14', '15']
   surfaces?: string[];       // Optional array e.g., ['M', 'O']
-  findingTreatment: string;  // e.g., 'Caries', 'Composite Filling'
+  finding?: string;          // Pre-existing condition e.g., 'Caries', 'Missing Tooth'
+  service?: string;          // Treatment e.g., 'Composite Filling', 'Root Canal'
   status: 'Existing' | 'Planned' | 'Completed';
-  notes?: string;            // Optional notes
+  notes?: string;            // Optional notes - can include treatment plan information
+  // References to follow-ups generated from this charting entry
+  followUpIds?: string[];
+  // If this is a planned treatment that was completed, reference to the completion entry
+  completedByEntryId?: string;
+  // If this is a completion entry, reference to the original planned entry
+  completesEntryId?: string;
 }
 
 // Define the tooth numbering system using FDI/ISO 3950 notation
@@ -35,25 +42,26 @@ export const toothNumbersList: string[] = [
 // Define the tooth surfaces
 export const surfacesList: string[] = ['M', 'O', 'D', 'B/F', 'L'];
 
-// Define the findings and treatments list
-export const findingsTreatmentsList: string[] = [
-  'Caries',
+// Findings are now entered as free text rather than selected from a list
+
+// Define the dental services list (treatments)
+export const servicesList: string[] = [
   'Composite Filling',
   'Amalgam Filling',
   'PFM Crown',
   'Zirconia Crown',
-  'RCT Completed',
-  'RCT Planned',
-  'Missing Tooth',
-  'Impacted Tooth',
-  'Extraction Planned',
-  'Extraction Completed',
+  'Root Canal',
+  'Extraction',
   'Sealant',
   'Veneer',
-  'Bridge Abutment',
+  'Bridge',
   'Pontic',
   'Implant',
-  'Denture'
+  'Denture',
+  'Scaling',
+  'Root Planing',
+  'Fluoride Treatment',
+  'Orthodontic Treatment'
 ];
 
 // Define the status options

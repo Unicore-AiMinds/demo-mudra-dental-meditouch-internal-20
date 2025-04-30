@@ -20,6 +20,15 @@ interface DentalHistoryContextType {
   ) => void;
   updateFollowUpStatus: (followUpId: string, status: TentativeFollowUp['status']) => void;
   getPendingFollowUps: () => TentativeFollowUp[];
+  // New functions for integration
+  addTentativeFollowUps: (followUps: TentativeFollowUp[]) => void;
+  getPatientName: (patientId: string) => string | undefined;
+  getFollowUpsForChartingEntry: (chartingEntryId: string) => TentativeFollowUp[];
+  linkFollowUpToAppointment: (followUpId: string, appointmentId: string) => void;
+  // Functions for snoozing and notes
+  snoozeFollowUp: (followUpId: string, snoozeUntilDate: string, notes?: string) => void;
+  updateFollowUpNotes: (followUpId: string, notes: string) => void;
+  getSnoozedFollowUps: () => TentativeFollowUp[];
 }
 
 const DentalHistoryContext = createContext<DentalHistoryContextType | undefined>(undefined);
@@ -37,8 +46,8 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
 
   // Update service follow-up configuration
   const updateServiceFollowUpConfig = (serviceId: number, config: Partial<ServiceWithFollowUp>) => {
-    setServicesWithFollowUp(prevServices => 
-      prevServices.map(service => 
+    setServicesWithFollowUp(prevServices =>
+      prevServices.map(service =>
         service.id === serviceId ? { ...service, ...config } : service
       )
     );
@@ -55,7 +64,7 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
   ) => {
     // Find the service configuration
     const serviceConfig = servicesWithFollowUp.find(s => s.name === service);
-    
+
     // Add to dental history
     const newHistoryEntry: DentalHistoryEntry = {
       appointmentId,
@@ -90,6 +99,7 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
         basedOnAppointmentId: appointmentId,
         tentativeDate,
         followUpSequence: 1,
+        totalStepsInSequence: serviceConfig.numberOfFollowUps || 1,
         suggestedServiceName: serviceConfig.followUpServiceName,
         originalService: service,
         originalDoctor: doctor,
@@ -107,11 +117,84 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
     }
   };
 
+  // Add multiple tentative follow-ups (used by integration service)
+  const addTentativeFollowUps = (followUps: TentativeFollowUp[]) => {
+    if (followUps.length === 0) return;
+
+    setTentativeFollowUps(prev => [...prev, ...followUps]);
+  };
+
+  // Get patient name from patient ID
+  const getPatientName = (patientId: string): string | undefined => {
+    // This is a simplified implementation - in a real app, you would look up the patient in a database
+    const demoPatientNames: Record<string, string> = {
+      'PT001': 'Aarav Sharma',
+      'PT002': 'Priya Patel',
+      'PT003': 'Vikram Singh',
+      'PT004': 'Neha Kapoor',
+      'PT005': 'Rajiv Malhotra',
+      'PT006': 'Ananya Reddy',
+      'PT007': 'Arjun Nair',
+      'PT008': 'Divya Menon',
+    };
+
+    return demoPatientNames[patientId];
+  };
+
+  // Get follow-ups related to a specific charting entry
+  const getFollowUpsForChartingEntry = (chartingEntryId: string): TentativeFollowUp[] => {
+    return tentativeFollowUps.filter(
+      followUp => followUp.basedOnChartingEntryId === chartingEntryId
+    );
+  };
+
+  // Link a follow-up to an appointment
+  const linkFollowUpToAppointment = (followUpId: string, appointmentId: string) => {
+    setTentativeFollowUps(prev =>
+      prev.map(followUp =>
+        followUp.followUpId === followUpId
+          ? {
+              ...followUp,
+              status: 'Scheduled',
+              scheduledAppointmentId: appointmentId
+            }
+          : followUp
+      )
+    );
+  };
+
   // Update follow-up status
   const updateFollowUpStatus = (followUpId: string, status: TentativeFollowUp['status']) => {
-    setTentativeFollowUps(prev => 
-      prev.map(followUp => 
+    setTentativeFollowUps(prev =>
+      prev.map(followUp =>
         followUp.followUpId === followUpId ? { ...followUp, status } : followUp
+      )
+    );
+  };
+
+  // Snooze a follow-up until a specific date
+  const snoozeFollowUp = (followUpId: string, snoozeUntilDate: string, notes?: string) => {
+    setTentativeFollowUps(prev =>
+      prev.map(followUp =>
+        followUp.followUpId === followUpId
+          ? {
+              ...followUp,
+              status: 'Snoozed',
+              snoozedUntil: snoozeUntilDate,
+              specialNotes: notes || followUp.specialNotes
+            }
+          : followUp
+      )
+    );
+  };
+
+  // Update special notes for a follow-up
+  const updateFollowUpNotes = (followUpId: string, notes: string) => {
+    setTentativeFollowUps(prev =>
+      prev.map(followUp =>
+        followUp.followUpId === followUpId
+          ? { ...followUp, specialNotes: notes }
+          : followUp
       )
     );
   };
@@ -119,6 +202,11 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
   // Get pending follow-ups
   const getPendingFollowUps = (): TentativeFollowUp[] => {
     return tentativeFollowUps.filter(followUp => followUp.status === 'Pending');
+  };
+
+  // Get snoozed follow-ups
+  const getSnoozedFollowUps = (): TentativeFollowUp[] => {
+    return tentativeFollowUps.filter(followUp => followUp.status === 'Snoozed');
   };
 
   return (
@@ -131,7 +219,16 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
         updateServiceFollowUpConfig,
         markAppointmentCompleted,
         updateFollowUpStatus,
-        getPendingFollowUps
+        getPendingFollowUps,
+        // New functions for integration
+        addTentativeFollowUps,
+        getPatientName,
+        getFollowUpsForChartingEntry,
+        linkFollowUpToAppointment,
+        // New functions for snoozing and notes
+        snoozeFollowUp,
+        updateFollowUpNotes,
+        getSnoozedFollowUps
       }}
     >
       {children}

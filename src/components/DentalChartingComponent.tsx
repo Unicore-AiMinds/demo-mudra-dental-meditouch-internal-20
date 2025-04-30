@@ -34,13 +34,15 @@ import {
   ChartingEntry,
   toothNumbersList,
   surfacesList,
-  findingsTreatmentsList,
+  servicesList,
   statusOptions
 } from '@/types/dental-charting';
 import { demoChartingHistory } from '@/data/demo-dental-charting';
 import VisualToothChart from './VisualToothChart';
 import ToothIndicator from './ToothIndicator';
 import SurfaceIndicator from './SurfaceIndicator';
+import { generateFollowUpsFromChartingEntry } from '@/services/integration-service';
+import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 
 interface DentalChartingComponentProps {
   patientId: string;
@@ -48,6 +50,7 @@ interface DentalChartingComponentProps {
 
 const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patientId }) => {
   const { toast } = useToast();
+  const { addTentativeFollowUps, getPatientName } = useDentalHistory();
 
   // State for the patient's charting history
   const [patientChartingHistory, setPatientChartingHistory] = useState<ChartingEntry[]>([]);
@@ -56,8 +59,12 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
   const [selectedTeeth, setSelectedTeeth] = useState<string[]>([]);
   const [selectedSurfaces, setSelectedSurfaces] = useState<string[]>([]);
   const [selectedFinding, setSelectedFinding] = useState<string>('');
+  const [selectedService, setSelectedService] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<'Existing' | 'Planned' | 'Completed'>('Existing');
   const [currentNotes, setCurrentNotes] = useState<string>('');
+
+  // Get patient name for follow-ups
+  const patientName = getPatientName(patientId) || "Unknown Patient";
 
   // Load the patient's charting history when the component mounts or patientId changes
   useEffect(() => {
@@ -99,10 +106,20 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
       return;
     }
 
-    if (!selectedFinding) {
+    // Validate based on status
+    if (selectedStatus === 'Existing' && !selectedFinding) {
       toast({
         title: "Validation Error",
-        description: "Please select a finding or treatment.",
+        description: "Please select a finding for the existing condition.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if ((selectedStatus === 'Planned' || selectedStatus === 'Completed') && !selectedService) {
+      toast({
+        title: "Validation Error",
+        description: `Please select a service for the ${selectedStatus.toLowerCase()} treatment.`,
         variant: "destructive",
       });
       return;
@@ -114,9 +131,16 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
       patientId,
       dateRecorded: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
       toothNumbers: [...selectedTeeth].sort((a, b) => parseInt(a) - parseInt(b)),
-      findingTreatment: selectedFinding,
       status: selectedStatus,
+      followUpIds: [], // Initialize empty array for follow-up references
     };
+
+    // Add finding or service based on status
+    if (selectedStatus === 'Existing') {
+      newEntry.finding = selectedFinding;
+    } else {
+      newEntry.service = selectedService;
+    }
 
     // Add surfaces if selected
     if (selectedSurfaces.length > 0) {
@@ -130,6 +154,26 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
 
     // Add the new entry to the history
     setPatientChartingHistory(prev => [newEntry, ...prev]);
+
+    // Generate follow-ups if this is a planned treatment
+    if (selectedStatus === 'Planned' && newEntry.service) {
+      // Generate follow-ups using the integration service
+      const followUps = generateFollowUpsFromChartingEntry(newEntry, patientName);
+
+      if (followUps.length > 0) {
+        // Store the follow-up IDs in the charting entry
+        newEntry.followUpIds = followUps.map(fu => fu.followUpId);
+
+        // Add the follow-ups to the dental history context
+        addTentativeFollowUps(followUps);
+
+        // Show a message about the follow-ups
+        toast({
+          title: "Follow-ups Generated",
+          description: `${followUps.length} follow-up(s) have been added to the recall list.`,
+        });
+      }
+    }
 
     // Reset the form
     resetForm();
@@ -146,6 +190,7 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
     setSelectedTeeth([]);
     setSelectedSurfaces([]);
     setSelectedFinding('');
+    setSelectedService('');
     setSelectedStatus('Existing');
     setCurrentNotes('');
   };
@@ -243,26 +288,6 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
             </div>
           </div>
 
-          {/* Finding/Treatment Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="finding-treatment" className="font-medium">Finding/Treatment *</Label>
-            <Select
-              value={selectedFinding}
-              onValueChange={setSelectedFinding}
-            >
-              <SelectTrigger id="finding-treatment">
-                <SelectValue placeholder="Select a finding or treatment" />
-              </SelectTrigger>
-              <SelectContent>
-                {findingsTreatmentsList.map(item => (
-                  <SelectItem key={item} value={item}>
-                    {item}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Status Selection */}
           <div className="space-y-2">
             <Label htmlFor="status" className="font-medium">Status *</Label>
@@ -283,22 +308,76 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
             </Select>
           </div>
 
+          {/* Finding Input - Only shown for Existing status */}
+          {selectedStatus === 'Existing' && (
+            <div className="space-y-2">
+              <Label htmlFor="finding" className="font-medium">Finding/Condition *</Label>
+              <input
+                id="finding"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter the finding or condition (e.g., Caries, Fractured Tooth, etc.)"
+                value={selectedFinding}
+                onChange={(e) => setSelectedFinding(e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* Service Selection - Only shown for Planned or Completed status */}
+          {(selectedStatus === 'Planned' || selectedStatus === 'Completed') && (
+            <div className="space-y-2">
+              <Label htmlFor="service" className="font-medium">Service *</Label>
+              <Select
+                value={selectedService}
+                onValueChange={setSelectedService}
+              >
+                <SelectTrigger id="service">
+                  <SelectValue placeholder="Select a service" />
+                </SelectTrigger>
+                <SelectContent>
+                  {servicesList.map(item => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+
+
           {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes" className="font-medium">Notes (Optional)</Label>
             <Textarea
               id="notes"
-              placeholder="Add any additional notes here..."
+              placeholder={selectedStatus === 'Existing'
+                ? "Add notes about the existing condition (e.g., 'Present since 2 years', 'Sensitive to cold')"
+                : selectedStatus === 'Planned'
+                  ? "Add notes about the treatment plan or patient availability (e.g., 'Part of mouth rehabilitation - Step 1', 'Patient not available until January')"
+                  : "Add notes about the treatment (e.g., 'Part of mouth rehabilitation - Step 1', 'Follow-up needed in 2 weeks')"
+              }
               value={currentNotes}
               onChange={(e) => setCurrentNotes(e.target.value)}
               className="min-h-[80px]"
             />
+            {selectedStatus === 'Planned' && (
+              <p className="text-xs text-muted-foreground">
+                <strong>Note:</strong> If the patient has scheduling constraints, please add them here.
+                These notes will be visible to staff in the recall list when scheduling follow-ups.
+              </p>
+            )}
           </div>
 
           {/* Add Entry Button */}
           <Button
             onClick={handleAddChartingEntry}
             className="w-full md:w-auto"
+            disabled={
+              selectedTeeth.length === 0 ||
+              (selectedStatus === 'Existing' && !selectedFinding) ||
+              ((selectedStatus === 'Planned' || selectedStatus === 'Completed') && !selectedService)
+            }
           >
             Add Charting Entry
           </Button>
@@ -317,7 +396,7 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
                     <TableHead>Teeth</TableHead>
                     <TableHead>Tooth #</TableHead>
                     <TableHead>Surface(s)</TableHead>
-                    <TableHead>Finding/Treatment</TableHead>
+                    <TableHead>Finding/Service</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Notes</TableHead>
                   </TableRow>
@@ -348,7 +427,12 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{entry.findingTreatment}</TableCell>
+                      <TableCell>
+                        {entry.status === 'Existing'
+                          ? <span className="text-amber-600">{entry.finding}</span>
+                          : <span className="text-blue-600">{entry.service}</span>
+                        }
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -360,7 +444,7 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
                           {entry.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
+                      <TableCell className="max-w-[300px] truncate">
                         {entry.notes || 'N/A'}
                       </TableCell>
                     </TableRow>

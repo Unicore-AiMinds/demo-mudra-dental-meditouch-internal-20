@@ -23,7 +23,17 @@ export interface TentativeFollowUp {
   suggestedServiceName: string;
   originalService: string;
   originalDoctor: string;
-  status: 'Pending' | 'Scheduled' | 'Completed' | 'Cancelled';
+  status: 'Pending' | 'Scheduled' | 'Completed' | 'Cancelled' | 'Snoozed';
+  // Reference to the dental charting entry that generated this follow-up
+  basedOnChartingEntryId?: string;
+  // Reference to the appointment scheduled for this follow-up
+  scheduledAppointmentId?: string;
+  // Type of follow-up (for filtering and display purposes)
+  followUpType?: 'Treatment' | 'Check' | 'Maintenance';
+  // Special notes for staff about patient availability
+  specialNotes?: string;
+  // If snoozed, the date until which it's snoozed
+  snoozedUntil?: string; // YYYY-MM-DD format
 }
 
 export interface ServiceWithFollowUp {

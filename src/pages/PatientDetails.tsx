@@ -1,19 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
+import {
+  Card,
+  CardContent,
+  CardHeader,
   CardTitle,
   CardDescription
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from '@/components/ui/tabs';
 import { ArrowLeft, Edit } from 'lucide-react';
 import PatientDentalHistory from '@/components/PatientDentalHistory';
 import DentalChartingComponent from '@/components/DentalChartingComponent';
+import PatientUpcomingAppointments from '@/components/PatientUpcomingAppointments';
 
 // Import the Patient interface and demo data
 interface Patient {
@@ -122,6 +129,51 @@ const demoPatients: Patient[] = [
     address: "456 Patel Road, Ahmedabad",
     clinic: "both",
     lastVisit: "2023-10-05"
+  },
+  // Additional patients referenced in the Dashboard
+  {
+    id: "123",
+    name: "Aisha Khan",
+    gender: "female",
+    age: 27,
+    email: "aisha.khan@example.com",
+    phone: "9876543212",
+    address: "789 Jinnah Road, Mumbai",
+    clinic: "meditouch",
+    lastVisit: "2023-10-14"
+  },
+  {
+    id: "124",
+    name: "Rajiv Malhotra",
+    gender: "male",
+    age: 42,
+    email: "rajiv.malhotra2@example.com",
+    phone: "9876543213",
+    address: "101 Gandhi Street, Delhi",
+    clinic: "meditouch",
+    lastVisit: "2023-10-13"
+  },
+  {
+    id: "125",
+    name: "Priya Sharma",
+    gender: "female",
+    age: 31,
+    email: "priya.sharma@example.com",
+    phone: "9876543214",
+    address: "202 Nehru Avenue, Bangalore",
+    clinic: "meditouch",
+    lastVisit: "2023-10-12"
+  },
+  {
+    id: "126",
+    name: "Karan Kapoor",
+    gender: "male",
+    age: 35,
+    email: "karan.kapoor@example.com",
+    phone: "9876543215",
+    address: "303 Tagore Lane, Chennai",
+    clinic: "meditouch",
+    lastVisit: "2023-10-12"
   }
 ];
 
@@ -150,24 +202,61 @@ const getClinicBadge = (clinic: Patient['clinic'], activeClinic: 'dental' | 'med
   );
 };
 
+// Helper function to check if a tab is valid for a patient based on their clinic
+const isValidTab = (tab: string, clinic: string): boolean => {
+  const allTabs = ['overview', 'appointments'];
+  const dentalTabs = ['dental-history', 'dental-charting'];
+
+  if (allTabs.includes(tab)) {
+    return true;
+  }
+
+  if (dentalTabs.includes(tab) && (clinic === 'dental' || clinic === 'both')) {
+    return true;
+  }
+
+  return false;
+};
+
 const PatientDetails = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeClinic } = useClinic();
   const [patient, setPatient] = useState<Patient | null>(null);
+
+  // Get the tab parameter from the URL query string
+  const searchParams = new URLSearchParams(location.search);
+  const tabFromUrl = searchParams.get('tab');
+
+  // State to track the active tab
+  const [activeTab, setActiveTab] = useState<string>("overview");
 
   // Find the patient data when the component mounts
   useEffect(() => {
     if (patientId) {
-      const foundPatient = demoPatients.find(p => p.id === patientId);
-      if (foundPatient) {
-        setPatient(foundPatient);
-      } else {
-        // If patient not found, navigate back to patients list
-        navigate('/patients');
-      }
+      // Add a small delay to simulate loading from a database
+      const timer = setTimeout(() => {
+        const foundPatient = demoPatients.find(p => p.id === patientId);
+        if (foundPatient) {
+          setPatient(foundPatient);
+        } else {
+          // If patient not found, navigate back to patients list
+          console.error(`Patient with ID ${patientId} not found`);
+          navigate('/patients');
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
   }, [patientId, navigate]);
+
+  // Set the active tab based on the URL parameter when the component mounts or URL changes
+  useEffect(() => {
+    if (patient && tabFromUrl && isValidTab(tabFromUrl, patient.clinic)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [patient, tabFromUrl]);
 
   // Handle edit patient click
   const handleEditPatient = () => {
@@ -178,8 +267,9 @@ const PatientDetails = () => {
 
   if (!patient) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <p>Loading patient details...</p>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-dental-primary mb-4"></div>
+        <p className="text-lg text-muted-foreground">Loading patient details...</p>
       </div>
     );
   }
@@ -189,22 +279,25 @@ const PatientDetails = () => {
       {/* Header with back button and actions */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => navigate('/patients')}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h1 className="text-3xl font-display font-bold tracking-tight">{patient.name}</h1>
-            <p className="text-muted-foreground">
-              Patient ID: {patient.id}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-muted-foreground">
+                Patient ID: {patient.id}
+              </p>
+              {getClinicBadge(patient.clinic, activeClinic)}
+            </div>
           </div>
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={handleEditPatient}
           className="flex items-center gap-2"
         >
@@ -213,68 +306,96 @@ const PatientDetails = () => {
         </Button>
       </div>
 
-      {/* Patient Information Card */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>Personal Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <h3 className="font-medium text-sm text-muted-foreground">Full Name</h3>
-              <p className="text-base">{patient.name}</p>
-            </div>
-            <div>
-              <h3 className="font-medium text-sm text-muted-foreground">Gender</h3>
-              <p className="text-base capitalize">{patient.gender}</p>
-            </div>
-            <div>
-              <h3 className="font-medium text-sm text-muted-foreground">Age</h3>
-              <p className="text-base">{patient.age} years</p>
-            </div>
-            <div>
-              <h3 className="font-medium text-sm text-muted-foreground">Email</h3>
-              <p className="text-base">{patient.email || 'Not provided'}</p>
-            </div>
-            <div>
-              <h3 className="font-medium text-sm text-muted-foreground">Phone</h3>
-              <p className="text-base">+91 {patient.phone}</p>
-            </div>
-            {patient.altPhone && (
-              <div>
-                <h3 className="font-medium text-sm text-muted-foreground">Alternative Phone</h3>
-                <p className="text-base">+91 {patient.altPhone}</p>
-              </div>
-            )}
-            <div className="md:col-span-2 lg:col-span-3">
-              <h3 className="font-medium text-sm text-muted-foreground">Address</h3>
-              <p className="text-base">{patient.address}</p>
-            </div>
-            <div>
-              <h3 className="font-medium text-sm text-muted-foreground">Registered Clinic</h3>
-              <div className="mt-1">
-                {getClinicBadge(patient.clinic, activeClinic)}
-              </div>
-            </div>
-            <div>
-              <h3 className="font-medium text-sm text-muted-foreground">Last Visit</h3>
-              <p className="text-base">
-                {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'No previous visits'}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tabbed Interface for Patient Information */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full">
+        <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 lg:flex lg:flex-wrap">
+          <TabsTrigger value="overview">Patient Info</TabsTrigger>
+          <TabsTrigger value="appointments">Appointments</TabsTrigger>
+          {(patient.clinic === 'dental' || patient.clinic === 'both') && (
+            <TabsTrigger value="dental-history">Dental History</TabsTrigger>
+          )}
+          {(patient.clinic === 'dental' || patient.clinic === 'both') && (
+            <TabsTrigger value="dental-charting">Dental Charting</TabsTrigger>
+          )}
+        </TabsList>
 
-      {/* Dental History - Only show for dental patients */}
-      {(patient.clinic === 'dental' || patient.clinic === 'both') && (
-        <PatientDentalHistoryWrapper patientId={patient.id} />
-      )}
-      
-      {/* Dental Charting - Only show for dental patients */}
-      {(patient.clinic === 'dental' || patient.clinic === 'both') && (
-        <DentalChartingComponent patientId={patient.id} />
-      )}
+        {/* Patient Info Tab - Personal Information */}
+        <TabsContent value="overview" className="mt-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>Personal Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground">Full Name</h3>
+                  <p className="text-base">{patient.name}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground">Gender</h3>
+                  <p className="text-base capitalize">{patient.gender}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground">Age</h3>
+                  <p className="text-base">{patient.age} years</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground">Email</h3>
+                  <p className="text-base">{patient.email || 'Not provided'}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground">Phone</h3>
+                  <p className="text-base">+91 {patient.phone}</p>
+                </div>
+                {patient.altPhone && (
+                  <div>
+                    <h3 className="font-medium text-sm text-muted-foreground">Alternative Phone</h3>
+                    <p className="text-base">+91 {patient.altPhone}</p>
+                  </div>
+                )}
+                <div className="md:col-span-2 lg:col-span-3">
+                  <h3 className="font-medium text-sm text-muted-foreground">Address</h3>
+                  <p className="text-base">{patient.address}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground">Last Visit</h3>
+                  <p className="text-base">
+                    {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'No previous visits'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Appointments Tab - Dental Only */}
+        <TabsContent value="appointments" className="mt-6">
+          <PatientUpcomingAppointments
+            patientId={patient.id}
+            patientName={patient.name}
+            clinic={patient.clinic}
+            title="Upcoming Dental Appointments"
+            dentalOnly={true}
+          />
+        </TabsContent>
+
+        {/* Dental History Tab */}
+        {(patient.clinic === 'dental' || patient.clinic === 'both') && (
+          <TabsContent value="dental-history" className="mt-6">
+            <PatientDentalHistoryWrapper patientId={patient.id} />
+          </TabsContent>
+        )}
+
+        {/* Dental Charting Tab */}
+        {(patient.clinic === 'dental' || patient.clinic === 'both') && (
+          <TabsContent value="dental-charting" className="mt-6">
+            <DentalChartingComponent patientId={patient.id} />
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 };
@@ -283,7 +404,7 @@ const PatientDetails = () => {
 const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
   const { getPatientHistory } = useDentalHistory();
   const patientHistory = getPatientHistory(patientId);
-  
+
   return (
     <Card>
       <CardHeader className="pb-2">
