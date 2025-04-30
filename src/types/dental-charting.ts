@@ -10,12 +10,26 @@ export interface ChartingEntry {
   notes?: string;            // Optional notes
 }
 
-// Define the tooth numbering system (Universal 1-32)
+// Define the tooth numbering system using FDI/ISO 3950 notation
+// Format: Quadrant (1-4) + Tooth position (1-8)
+// Quadrant 1: Upper Right, Quadrant 2: Upper Left
+// Quadrant 3: Lower Left, Quadrant 4: Lower Right
+
+// Upper Right (Quadrant 1)
+const upperRightTeeth = ['18', '17', '16', '15', '14', '13', '12', '11'];
+// Upper Left (Quadrant 2)
+const upperLeftTeeth = ['21', '22', '23', '24', '25', '26', '27', '28'];
+// Lower Left (Quadrant 3)
+const lowerLeftTeeth = ['31', '32', '33', '34', '35', '36', '37', '38'];
+// Lower Right (Quadrant 4)
+const lowerRightTeeth = ['48', '47', '46', '45', '44', '43', '42', '41'];
+
+// Combined list of all teeth in FDI notation
 export const toothNumbersList: string[] = [
-  '1', '2', '3', '4', '5', '6', '7', '8',
-  '9', '10', '11', '12', '13', '14', '15', '16',
-  '17', '18', '19', '20', '21', '22', '23', '24',
-  '25', '26', '27', '28', '29', '30', '31', '32'
+  ...upperRightTeeth,
+  ...upperLeftTeeth,
+  ...lowerLeftTeeth,
+  ...lowerRightTeeth
 ];
 
 // Define the tooth surfaces
