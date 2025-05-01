@@ -4,6 +4,7 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { useNavigate } from 'react-router-dom';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import AppointmentCompletionDialog from '@/components/AppointmentCompletionDialog';
+import { getLighterColor } from '@/utils/doctorColors';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -83,13 +84,16 @@ const registeredPatients = [{
 
 const doctors = [{
   id: 'dr1',
-  name: 'Dr. Khanna'
+  name: 'Dr. Khanna',
+  color: '#4A90E2' // Sky blue
 }, {
   id: 'dr2',
-  name: 'Dr. Sharma'
+  name: 'Dr. Sharma',
+  color: '#2ECC71' // Emerald green
 }, {
   id: 'dr3',
-  name: 'Dr. Desai'
+  name: 'Dr. Desai',
+  color: '#9B59B6' // Amethyst
 }];
 
 const timeSlots = ['9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM', '10:00 AM', '10:15 AM', '10:30 AM', '10:45 AM', '11:00 AM', '11:15 AM', '11:30 AM', '11:45 AM', '12:00 PM', '12:15 PM', '12:30 PM', '12:45 PM', '2:00 PM', '2:15 PM', '2:30 PM', '2:45 PM', '3:00 PM', '3:15 PM', '3:30 PM', '3:45 PM', '4:00 PM', '4:15 PM', '4:30 PM', '4:45 PM', '5:00 PM', '5:15 PM', '5:30 PM', '5:45 PM'];
@@ -204,9 +208,29 @@ const CalendarAppointmentItem = ({ appointment, isDental, onClick, isCompact = f
   onClick: () => void,
   isCompact?: boolean
 }) => {
-  const bgColor = isDental ? 'bg-dental-light' : 'bg-meditouch-light';
-  const borderColor = isDental ? 'border-dental-primary' : 'border-meditouch-primary';
-  const textColor = isDental ? 'text-dental-primary' : 'text-meditouch-primary';
+  // Default colors
+  let bgColor = isDental ? 'bg-dental-light' : 'bg-meditouch-light';
+  let borderColor = isDental ? 'border-dental-primary' : 'border-meditouch-primary';
+  let textColor = isDental ? 'text-dental-primary' : 'text-meditouch-primary';
+
+  // Custom styles for inline styling with doctor colors
+  let customStyles = {};
+
+  // If it's a dental appointment, try to find the doctor's color
+  if (isDental && 'doctor' in appointment) {
+    const doctorName = appointment.doctor;
+    // Find the doctor in the doctors array
+    const doctor = doctors.find(d => d.name === doctorName);
+    if (doctor && 'color' in doctor) {
+      // Use the doctor's color for styling
+      const doctorColor = doctor.color;
+      customStyles = {
+        backgroundColor: getLighterColor(doctorColor, 0.15),
+        borderLeftColor: doctorColor,
+        color: doctorColor
+      };
+    }
+  }
 
   // Create tooltip content for appointment details
   const tooltipContent = (
@@ -227,6 +251,7 @@ const CalendarAppointmentItem = ({ appointment, isDental, onClick, isCompact = f
         e.stopPropagation(); // Stop event from bubbling up to parent
         onClick();
       }}
+      style={customStyles}
     >
       {isCompact ? (
         // Compact view - only show patient name
@@ -259,7 +284,19 @@ const TimeSlotAppointment = ({ appointment, isDental, onClick, isCompact = false
   onClick: () => void,
   isCompact?: boolean
 }) => {
-  const bgColor = isDental ? 'bg-dental-primary' : 'bg-meditouch-primary';
+  // Get doctor color from the doctors array if it's a dental appointment
+  let bgColor = isDental ? 'bg-dental-primary' : 'bg-meditouch-primary';
+
+  // If it's a dental appointment, try to find the doctor's color
+  if (isDental && 'doctor' in appointment) {
+    const doctorName = appointment.doctor;
+    // Find the doctor in the doctors array
+    const doctor = doctors.find(d => d.name === doctorName);
+    if (doctor && 'color' in doctor) {
+      // Use the doctor's color if available
+      bgColor = `bg-[${doctor.color}]`;
+    }
+  }
 
   // Create tooltip content for compact view
   const tooltipContent = (
@@ -279,6 +316,12 @@ const TimeSlotAppointment = ({ appointment, isDental, onClick, isCompact = false
       onClick={(e) => {
         e.stopPropagation(); // Stop event from bubbling up to parent
         onClick();
+      }}
+      style={{
+        backgroundColor: isDental && 'doctor' in appointment ?
+          doctors.find(d => d.name === appointment.doctor)?.color ||
+          (isDental ? '#4A90E2' : '#16A085') :
+          (isDental ? '#4A90E2' : '#16A085')
       }}
     >
       <div className="font-medium">{appointment.patient}</div>

@@ -53,35 +53,55 @@ const initialStockItems = [
   {
     id: 1,
     name: "Dental Composite",
-    subItems: ["Filtek Supreme Ultra", "3M Z350", "Tetric N-Ceram"],
+    subItems: [
+      { name: "Filtek Supreme Ultra", minimumThreshold: 5 },
+      { name: "3M Z350", minimumThreshold: 4 },
+      { name: "Tetric N-Ceram", minimumThreshold: 6 }
+    ],
     description: "Light-cured restorative material for anterior and posterior restorations",
     itemType: "Consumable"
   },
   {
     id: 2,
     name: "Impression Material",
-    subItems: ["Jeltrate Plus", "Alginate Regular", "Speedex"],
+    subItems: [
+      { name: "Jeltrate Plus", minimumThreshold: 3 },
+      { name: "Alginate Regular", minimumThreshold: 5 },
+      { name: "Speedex", minimumThreshold: 2 }
+    ],
     description: "Alginate impression material for preliminary impressions",
     itemType: "Consumable"
   },
   {
     id: 3,
     name: "Orthodontic Wire",
-    subItems: ["Ormco NiTi", "3M Unitek", "G&H Wire"],
+    subItems: [
+      { name: "Ormco NiTi", minimumThreshold: 6 },
+      { name: "3M Unitek", minimumThreshold: 8 },
+      { name: "G&H Wire", minimumThreshold: 7 }
+    ],
     description: "Nickel titanium archwires for orthodontic treatment",
     itemType: "Inventory"
   },
   {
     id: 4,
     name: "Dental Cement",
-    subItems: ["GC Fuji II LC", "RelyX", "Ketac Cem"],
+    subItems: [
+      { name: "GC Fuji II LC", minimumThreshold: 4 },
+      { name: "RelyX", minimumThreshold: 3 },
+      { name: "Ketac Cem", minimumThreshold: 5 }
+    ],
     description: "Light-cured glass ionomer restorative cement",
     itemType: "Consumable"
   },
   {
     id: 5,
     name: "Dental Burs",
-    subItems: ["Mani Diamond", "SS White", "Dentsply Carbide"],
+    subItems: [
+      { name: "Mani Diamond", minimumThreshold: 10 },
+      { name: "SS White", minimumThreshold: 12 },
+      { name: "Dentsply Carbide", minimumThreshold: 8 }
+    ],
     description: "Diamond dental burs for cavity preparation",
     itemType: "Inventory"
   }
@@ -204,6 +224,49 @@ const StockTracker = () => {
       createdAt: '2023-10-12',
     },
     {
+      id: '8',
+      name: 'Disposable Gloves',
+      subItem: 'Latex Free',
+      itemType: 'Consumable',
+      dealer: 'Dental Depot',
+      rate: 450,
+      description: 'Medium size - Powder free',
+      unit: 'box',
+      currentQuantity: 10,
+      minimumThreshold: 5,
+      nearestExpiryDate: '2023-10-15', // Expired item
+      createdAt: '2023-08-01',
+    },
+    {
+      id: '9',
+      name: 'Dental Floss',
+      subItem: 'Waxed',
+      itemType: 'Consumable',
+      dealer: 'GC India',
+      rate: 120,
+      description: 'Mint flavored',
+      unit: 'pack',
+      currentQuantity: 3,
+      minimumThreshold: 5, // Low stock item
+      nearestExpiryDate: '2024-01-20', // Expired item
+      createdAt: '2023-07-15',
+    },
+    {
+      id: '10',
+      name: 'Dental Sealant',
+      subItem: 'Light Cure',
+      itemType: 'Consumable',
+      dealer: 'Henry Schein',
+      rate: 850,
+      description: 'Clear - For pits and fissures',
+      unit: 'syringe',
+      currentQuantity: 8,
+      minimumThreshold: 4,
+      // Calculate a date that's 30 days from now for "expiring soon"
+      nearestExpiryDate: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0],
+      createdAt: '2023-09-05',
+    },
+    {
       id: '7',
       name: 'Face Masks',
       subItem: '3M Earloop',
@@ -236,6 +299,38 @@ const StockTracker = () => {
     navigate('/dashboard');
   }
 
+  const isLowStock = (item: StockItem) => item.currentQuantity <= item.minimumThreshold;
+
+  // Check if item is expiring soon (within 60 days)
+  const isExpiringSoon = (item: StockItem) => {
+    if (!item.nearestExpiryDate) return false;
+
+    const expiryDate = new Date(item.nearestExpiryDate);
+    const today = new Date();
+
+    // Calculate the difference in days
+    const differenceInTime = expiryDate.getTime() - today.getTime();
+    const differenceInDays = differenceInTime / (1000 * 3600 * 24);
+
+    // Return true if expiring within 60 days but not expired yet
+    return differenceInDays > 0 && differenceInDays <= 60;
+  };
+
+  // Check if item is expired (expiry date is today or in the past)
+  const isExpired = (item: StockItem) => {
+    if (!item.nearestExpiryDate) return false;
+
+    const expiryDate = new Date(item.nearestExpiryDate);
+    const today = new Date();
+
+    // Set both dates to midnight to compare just the dates
+    expiryDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    // Return true if expiry date is today or in the past
+    return expiryDate <= today;
+  };
+
   const sortedAndFilteredItems = useMemo(() => {
     // First filter the items
     const filtered = stockItems.filter(item => {
@@ -245,8 +340,9 @@ const StockTracker = () => {
       // Filter by status
       const matchesStatus =
         filterStatus === 'all' ||
-        (filterStatus === 'low' && item.currentQuantity <= item.minimumThreshold) ||
-        (filterStatus === 'expiring' && item.nearestExpiryDate && new Date(item.nearestExpiryDate) < new Date('2025-06-01'));
+        (filterStatus === 'low' && isLowStock(item)) ||
+        (filterStatus === 'expiring' && isExpiringSoon(item)) ||
+        (filterStatus === 'expired' && isExpired(item));
 
       // Filter by item type
       const matchesItemType =
@@ -263,9 +359,6 @@ const StockTracker = () => {
       return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
     });
   }, [stockItems, searchQuery, filterStatus, filterItemType, sortOrder]);
-
-  const isLowStock = (item: StockItem) => item.currentQuantity <= item.minimumThreshold;
-  const isExpiringSoon = (item: StockItem) => item.nearestExpiryDate && new Date(item.nearestExpiryDate) < new Date('2025-06-01');
 
   const toggleSortOrder = () => {
     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -340,7 +433,8 @@ const StockTracker = () => {
     // Find the corresponding stock item to get sub-items
     const stockItem = stockItemsList.find(si => si.name === item.name);
     if (stockItem && stockItem.subItems) {
-      setEditSelectedItemSubItems(stockItem.subItems);
+      // Map the subItems objects to just their names for the dropdown
+      setEditSelectedItemSubItems(stockItem.subItems.map(subItem => subItem.name));
     } else {
       setEditSelectedItemSubItems([]);
     }
@@ -447,16 +541,27 @@ const StockTracker = () => {
                       const selectedItem = stockItemsList.find(item => item.name === value);
                       if (selectedItem) {
                         // Update the selected item's sub-items
-                        setSelectedItemSubItems(selectedItem.subItems || []);
+                        setSelectedItemSubItems(selectedItem.subItems.map(subItem => subItem.name) || []);
+
+                        // Get the first sub-item if available
+                        const firstSubItem = selectedItem.subItems && selectedItem.subItems.length > 0
+                          ? selectedItem.subItems[0].name
+                          : '';
+
+                        // Get the minimum threshold for the first sub-item if available
+                        const firstSubItemThreshold = selectedItem.subItems && selectedItem.subItems.length > 0
+                          ? selectedItem.subItems[0].minimumThreshold
+                          : 0;
 
                         // Update the form with the selected item's details
                         // Description is pre-populated but can be edited by the user
                         setNewItem({
                           ...newItem,
                           name: selectedItem.name,
-                          subItem: selectedItem.subItems && selectedItem.subItems.length > 0 ? selectedItem.subItems[0] : '',
+                          subItem: firstSubItem,
                           itemType: selectedItem.itemType as 'Consumable' | 'Inventory',
-                          description: selectedItem.description || ''
+                          description: selectedItem.description || '',
+                          minimumThreshold: firstSubItemThreshold
                         });
                       }
                     }}
@@ -480,10 +585,30 @@ const StockTracker = () => {
                   <Select
                     value={newItem.subItem || undefined}
                     onValueChange={(value) => {
-                      setNewItem({
-                        ...newItem,
-                        subItem: value
-                      });
+                      // Find the selected stock item
+                      const selectedItem = stockItemsList.find(item => item.name === newItem.name);
+                      if (selectedItem) {
+                        // Find the selected sub-item
+                        const selectedSubItem = selectedItem.subItems.find(subItem => subItem.name === value);
+                        if (selectedSubItem) {
+                          // Update the form with the selected sub-item's minimum threshold
+                          setNewItem({
+                            ...newItem,
+                            subItem: value,
+                            minimumThreshold: selectedSubItem.minimumThreshold
+                          });
+                        } else {
+                          setNewItem({
+                            ...newItem,
+                            subItem: value
+                          });
+                        }
+                      } else {
+                        setNewItem({
+                          ...newItem,
+                          subItem: value
+                        });
+                      }
                     }}
                     disabled={selectedItemSubItems.length === 0}
                   >
@@ -590,17 +715,20 @@ const StockTracker = () => {
                   pattern="[0-9]*"
                   value={newItem.minimumThreshold === 0 && document.activeElement !== document.getElementById('threshold') ? '' : newItem.minimumThreshold}
                   onChange={(e) => {
-                    // Only allow numeric input
-                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                    const value = numericValue === '' ? 0 : parseInt(numericValue, 10);
-                    setNewItem({...newItem, minimumThreshold: value});
+                    // Only allow numeric input if no item is selected
+                    if (!newItem.name) {
+                      const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                      const value = numericValue === '' ? 0 : parseInt(numericValue, 10);
+                      setNewItem({...newItem, minimumThreshold: value});
+                    }
                   }}
                   onFocus={(e) => {
-                    if (newItem.minimumThreshold === 0) {
+                    if (newItem.minimumThreshold === 0 && !newItem.name) {
                       e.target.value = '';
                     }
                   }}
-                  className="col-span-3 h-8"
+                  className={`col-span-3 h-8 ${newItem.name && newItem.subItem ? 'bg-gray-100' : ''}`}
+                  readOnly={!!(newItem.name && newItem.subItem)}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
@@ -690,16 +818,27 @@ const StockTracker = () => {
                         const selectedItem = stockItemsList.find(item => item.name === value);
                         if (selectedItem) {
                           // Update the selected item's sub-items
-                          setEditSelectedItemSubItems(selectedItem.subItems || []);
+                          setEditSelectedItemSubItems(selectedItem.subItems.map(subItem => subItem.name) || []);
+
+                          // Get the first sub-item if available
+                          const firstSubItem = selectedItem.subItems && selectedItem.subItems.length > 0
+                            ? selectedItem.subItems[0].name
+                            : '';
+
+                          // Get the minimum threshold for the first sub-item if available
+                          const firstSubItemThreshold = selectedItem.subItems && selectedItem.subItems.length > 0
+                            ? selectedItem.subItems[0].minimumThreshold
+                            : 0;
 
                           // Update the form with the selected item's details
                           // Description is pre-populated but can be edited by the user
                           setCurrentEditItem({
                             ...currentEditItem,
                             name: selectedItem.name,
-                            subItem: selectedItem.subItems && selectedItem.subItems.length > 0 ? selectedItem.subItems[0] : '',
+                            subItem: firstSubItem,
                             itemType: selectedItem.itemType as 'Consumable' | 'Inventory',
-                            description: selectedItem.description || ''
+                            description: selectedItem.description || '',
+                            minimumThreshold: firstSubItemThreshold
                           });
                         }
                       }}
@@ -723,10 +862,30 @@ const StockTracker = () => {
                     <Select
                       value={currentEditItem.subItem || undefined}
                       onValueChange={(value) => {
-                        setCurrentEditItem({
-                          ...currentEditItem,
-                          subItem: value
-                        });
+                        // Find the selected stock item
+                        const selectedItem = stockItemsList.find(item => item.name === currentEditItem.name);
+                        if (selectedItem) {
+                          // Find the selected sub-item
+                          const selectedSubItem = selectedItem.subItems.find(subItem => subItem.name === value);
+                          if (selectedSubItem) {
+                            // Update the form with the selected sub-item's minimum threshold
+                            setCurrentEditItem({
+                              ...currentEditItem,
+                              subItem: value,
+                              minimumThreshold: selectedSubItem.minimumThreshold
+                            });
+                          } else {
+                            setCurrentEditItem({
+                              ...currentEditItem,
+                              subItem: value
+                            });
+                          }
+                        } else {
+                          setCurrentEditItem({
+                            ...currentEditItem,
+                            subItem: value
+                          });
+                        }
                       }}
                       disabled={editSelectedItemSubItems.length === 0}
                     >
@@ -833,17 +992,20 @@ const StockTracker = () => {
                     pattern="[0-9]*"
                     value={currentEditItem.minimumThreshold === 0 && document.activeElement !== document.getElementById('editThreshold') ? '' : currentEditItem.minimumThreshold}
                     onChange={(e) => {
-                      // Only allow numeric input
-                      const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                      const value = numericValue === '' ? 0 : parseInt(numericValue, 10);
-                      setCurrentEditItem({...currentEditItem, minimumThreshold: value});
+                      // Only allow numeric input if no item is selected from the dropdown
+                      if (!currentEditItem.name) {
+                        const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                        const value = numericValue === '' ? 0 : parseInt(numericValue, 10);
+                        setCurrentEditItem({...currentEditItem, minimumThreshold: value});
+                      }
                     }}
                     onFocus={(e) => {
-                      if (currentEditItem.minimumThreshold === 0) {
+                      if (currentEditItem.minimumThreshold === 0 && !currentEditItem.name) {
                         e.target.value = '';
                       }
                     }}
-                    className="col-span-3 h-8"
+                    className={`col-span-3 h-8 ${currentEditItem.name && currentEditItem.subItem ? 'bg-gray-100' : ''}`}
+                    readOnly={!!(currentEditItem.name && currentEditItem.subItem)}
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
@@ -953,7 +1115,7 @@ const StockTracker = () => {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
         <Card className="card-shadow">
           <div className="p-4 flex items-center space-x-4">
             <div className="bg-blue-50 p-2 rounded-full">
@@ -987,8 +1149,21 @@ const StockTracker = () => {
             </div>
             <div>
               <div className="text-sm font-medium text-muted-foreground">Expiring Soon</div>
-              <div className="text-2xl font-bold">{stockItems.filter(item => item.nearestExpiryDate && new Date(item.nearestExpiryDate) < new Date('2025-06-01')).length}</div>
-              <div className="text-xs text-muted-foreground">Items expiring within 30 days</div>
+              <div className="text-2xl font-bold">{stockItems.filter(item => isExpiringSoon(item)).length}</div>
+              <div className="text-xs text-muted-foreground">Items expiring within 60 days</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="card-shadow">
+          <div className="p-4 flex items-center space-x-4">
+            <div className="bg-red-100 p-2 rounded-full">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-muted-foreground">Expired</div>
+              <div className="text-2xl font-bold">{stockItems.filter(item => isExpired(item)).length}</div>
+              <div className="text-xs text-muted-foreground">Items that have expired</div>
             </div>
           </div>
         </Card>
@@ -1017,6 +1192,7 @@ const StockTracker = () => {
                   <TabsTrigger value="all">All Status</TabsTrigger>
                   <TabsTrigger value="low">Low Stock</TabsTrigger>
                   <TabsTrigger value="expiring">Expiring Soon</TabsTrigger>
+                  <TabsTrigger value="expired">Expired</TabsTrigger>
                 </TabsList>
               </Tabs>
 
@@ -1045,7 +1221,9 @@ const StockTracker = () => {
                   headers.join(','),
                   ...sortedAndFilteredItems.map((item: StockItem) => {
                     let status = 'OK';
-                    if (isLowStock(item) && isExpiringSoon(item)) {
+                    if (isExpired(item)) {
+                      status = 'Expired';
+                    } else if (isLowStock(item) && isExpiringSoon(item)) {
                       status = 'Low, Expiring';
                     } else if (isLowStock(item)) {
                       status = 'Low';
@@ -1124,7 +1302,10 @@ const StockTracker = () => {
                     </TableRow>
                   ) : (
                     sortedAndFilteredItems.map((item: StockItem) => (
-                      <TableRow key={item.id}>
+                      <TableRow
+                        key={item.id}
+                        className={isExpired(item) ? "bg-red-50" : ""}
+                      >
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell className="hidden md:table-cell">{item.subItem || '-'}</TableCell>
                         <TableCell className="hidden sm:table-cell">{item.description}</TableCell>
@@ -1154,9 +1335,14 @@ const StockTracker = () => {
                         <TableCell className="hidden md:table-cell">
                           {item.nearestExpiryDate ? (
                             <div className="flex items-center gap-1">
-                              {new Date(item.nearestExpiryDate).toLocaleDateString()}
-                              {isExpiringSoon(item) && (
-                                <AlertTriangle className="h-3 w-3 text-red-500" />
+                              <span className={isExpired(item) ? "text-red-600 font-medium" : ""}>
+                                {new Date(item.nearestExpiryDate).toLocaleDateString()}
+                              </span>
+                              {isExpired(item) && (
+                                <AlertTriangle className="h-3 w-3 text-red-600" />
+                              )}
+                              {isExpiringSoon(item) && !isExpired(item) && (
+                                <AlertTriangle className="h-3 w-3 text-amber-500" />
                               )}
                             </div>
                           ) : (
@@ -1170,12 +1356,17 @@ const StockTracker = () => {
                                 Low
                               </Badge>
                             )}
-                            {isExpiringSoon(item) && (
+                            {isExpired(item) && (
+                              <Badge variant="outline" className="bg-red-100 text-red-700 border-red-300 font-medium">
+                                Expired
+                              </Badge>
+                            )}
+                            {isExpiringSoon(item) && !isExpired(item) && (
                               <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
                                 Expiring
                               </Badge>
                             )}
-                            {!isLowStock(item) && !isExpiringSoon(item) && (
+                            {!isLowStock(item) && !isExpiringSoon(item) && !isExpired(item) && (
                               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                                 OK
                               </Badge>

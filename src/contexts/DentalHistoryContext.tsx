@@ -174,18 +174,51 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
 
   // Snooze a follow-up until a specific date
   const snoozeFollowUp = (followUpId: string, snoozeUntilDate: string, notes?: string) => {
-    setTentativeFollowUps(prev =>
-      prev.map(followUp =>
-        followUp.followUpId === followUpId
-          ? {
-              ...followUp,
-              status: 'Snoozed',
-              snoozedUntil: snoozeUntilDate,
-              specialNotes: notes || followUp.specialNotes
-            }
-          : followUp
-      )
-    );
+    // First, find the follow-up to be snoozed
+    const followUpToSnooze = tentativeFollowUps.find(fu => fu.followUpId === followUpId);
+
+    if (!followUpToSnooze) return;
+
+    // Calculate the difference in days between original date and snooze date
+    const originalDate = new Date(followUpToSnooze.tentativeDate);
+    const snoozeDate = new Date(snoozeUntilDate);
+    const daysDifference = Math.floor((snoozeDate.getTime() - originalDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    setTentativeFollowUps(prev => {
+      return prev.map(followUp => {
+        // If this is the follow-up to be snoozed
+        if (followUp.followUpId === followUpId) {
+          return {
+            ...followUp,
+            status: 'Snoozed',
+            snoozedUntil: snoozeUntilDate,
+            specialNotes: notes || followUp.specialNotes
+          };
+        }
+
+        // If this is a subsequent step in the same sequence
+        if (
+          followUp.sequenceGroupId === followUpToSnooze.sequenceGroupId &&
+          followUp.followUpSequence > followUpToSnooze.followUpSequence &&
+          followUp.status === 'Pending'
+        ) {
+          // Calculate new date by adding the same number of days
+          const currentDate = new Date(followUp.tentativeDate);
+          const newDate = new Date(currentDate);
+          newDate.setDate(currentDate.getDate() + daysDifference);
+
+          return {
+            ...followUp,
+            tentativeDate: format(newDate, 'yyyy-MM-dd'),
+            specialNotes: followUp.specialNotes ||
+              `Rescheduled due to patient unavailability for step ${followUpToSnooze.followUpSequence}`
+          };
+        }
+
+        // Otherwise, return the follow-up unchanged
+        return followUp;
+      });
+    });
   };
 
   // Update special notes for a follow-up

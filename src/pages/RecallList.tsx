@@ -188,14 +188,26 @@ const RecallList = () => {
 
     const formattedDate = format(snoozeDate, 'yyyy-MM-dd');
 
+    // Check if this is part of a sequence with multiple steps
+    const isPartOfSequence = selectedFollowUp.sequenceGroupId &&
+                            selectedFollowUp.totalStepsInSequence > 1 &&
+                            selectedFollowUp.followUpSequence < selectedFollowUp.totalStepsInSequence;
+
     // Snooze the follow-up
     snoozeFollowUp(selectedFollowUp.followUpId, formattedDate, snoozeNotes);
 
     // Show toast notification
-    toast({
-      title: "Follow-up Snoozed",
-      description: `The follow-up for ${selectedFollowUp.patientName} has been snoozed until ${format(snoozeDate, 'dd MMM yyyy')}.`,
-    });
+    if (isPartOfSequence) {
+      toast({
+        title: "Follow-up Sequence Updated",
+        description: `The follow-up for ${selectedFollowUp.patientName} has been snoozed until ${format(snoozeDate, 'dd MMM yyyy')}. All subsequent steps in this sequence have been rescheduled accordingly.`,
+      });
+    } else {
+      toast({
+        title: "Follow-up Snoozed",
+        description: `The follow-up for ${selectedFollowUp.patientName} has been snoozed until ${format(snoozeDate, 'dd MMM yyyy')}.`,
+      });
+    }
 
     // Close the dialog
     setIsSnoozeDialogOpen(false);
@@ -206,14 +218,26 @@ const RecallList = () => {
 
   // Handle unsnoozing a follow-up
   const handleUnsnoozeFollowUp = (followUp: TentativeFollowUp) => {
+    // Check if this is part of a sequence with multiple steps
+    const isPartOfSequence = followUp.sequenceGroupId &&
+                            followUp.totalStepsInSequence > 1 &&
+                            followUp.followUpSequence < followUp.totalStepsInSequence;
+
     // Update the follow-up status back to Pending
     updateFollowUpStatus(followUp.followUpId, 'Pending');
 
     // Show toast notification
-    toast({
-      title: "Follow-up Activated",
-      description: `The follow-up for ${followUp.patientName} has been moved back to the pending list.`,
-    });
+    if (isPartOfSequence) {
+      toast({
+        title: "Follow-up Activated",
+        description: `The follow-up for ${followUp.patientName} has been moved back to the pending list. Note that subsequent steps in the sequence may still need to be adjusted.`,
+      });
+    } else {
+      toast({
+        title: "Follow-up Activated",
+        description: `The follow-up for ${followUp.patientName} has been moved back to the pending list.`,
+      });
+    }
   };
 
   return (
@@ -342,7 +366,16 @@ const RecallList = () => {
 
                     return (
                       <TableRow key={followUp.followUpId}>
-                        <TableCell className="font-medium">{followUp.patientName}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <span className="font-medium">{followUp.patientName}</span>
+                            {followUp.sequenceGroupId && followUp.totalStepsInSequence > 1 && (
+                              <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">
+                                Sequence
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -485,6 +518,14 @@ const RecallList = () => {
             <DialogTitle>Snooze Follow-up</DialogTitle>
             <DialogDescription>
               Temporarily hide this follow-up until the patient is available.
+              {selectedFollowUp && selectedFollowUp.sequenceGroupId && selectedFollowUp.totalStepsInSequence > 1 && (
+                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs">
+                  <strong>Note:</strong> This follow-up is step {selectedFollowUp.followUpSequence} of {selectedFollowUp.totalStepsInSequence} in a sequence.
+                  {selectedFollowUp.followUpSequence < selectedFollowUp.totalStepsInSequence && (
+                    <span> All subsequent steps will also be rescheduled accordingly.</span>
+                  )}
+                </div>
+              )}
             </DialogDescription>
           </DialogHeader>
 

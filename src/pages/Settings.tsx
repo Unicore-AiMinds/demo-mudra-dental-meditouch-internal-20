@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { demoFollowUpRules } from '@/data/demo-dental-history';
+import { getRandomDentalColor } from '@/utils/doctorColors';
 import {
   Card,
   CardContent,
@@ -108,7 +109,8 @@ const initialDoctors = [
     email: "rajan.khanna@dentalmetrix.com",
     phone: "+91 98765 43210",
     aadharDoc: "/docs/aadhar_rajan.pdf",
-    panDoc: "/docs/pan_rajan.pdf"
+    panDoc: "/docs/pan_rajan.pdf",
+    color: "#4A90E2" // Sky blue
   },
   {
     id: 2,
@@ -117,7 +119,8 @@ const initialDoctors = [
     email: "priya.desai@dentalmetrix.com",
     phone: "+91 87654 32109",
     aadharDoc: "/docs/aadhar_priya.pdf",
-    panDoc: ""
+    panDoc: "",
+    color: "#2ECC71" // Emerald green
   },
   {
     id: 3,
@@ -126,7 +129,8 @@ const initialDoctors = [
     email: "vikram.mehta@dentalmetrix.com",
     phone: "+91 76543 21098",
     aadharDoc: "",
-    panDoc: "/docs/pan_vikram.pdf"
+    panDoc: "/docs/pan_vikram.pdf",
+    color: "#9B59B6" // Amethyst
   },
   {
     id: 4,
@@ -135,7 +139,8 @@ const initialDoctors = [
     email: "ananya.sharma@dentalmetrix.com",
     phone: "+91 65432 10987",
     aadharDoc: "/docs/aadhar_ananya.pdf",
-    panDoc: "/docs/pan_ananya.pdf"
+    panDoc: "/docs/pan_ananya.pdf",
+    color: "#E74C3C" // Alizarin
   }
 ];
 
@@ -182,11 +187,11 @@ const initialLabWorkTypes = [
 ];
 
 const initialStockItems = [
-  { id: 1, name: "Dental Composite", subItem: "Filtek Supreme Ultra", description: "Light-cured restorative material for anterior and posterior restorations", itemType: "Consumable" },
-  { id: 2, name: "Impression Material", subItem: "Jeltrate Plus", description: "Alginate impression material for preliminary impressions", itemType: "Consumable" },
-  { id: 3, name: "Orthodontic Wire", subItem: "Ormco NiTi", description: "Nickel titanium archwires for orthodontic treatment", itemType: "Inventory" },
-  { id: 4, name: "Dental Cement", subItem: "GC Fuji II LC", description: "Light-cured glass ionomer restorative cement", itemType: "Consumable" },
-  { id: 5, name: "Dental Burs", subItem: "Mani Diamond", description: "Diamond dental burs for cavity preparation", itemType: "Inventory" }
+  { id: 1, name: "Dental Composite", subItem: "Filtek Supreme Ultra", description: "Light-cured restorative material for anterior and posterior restorations", itemType: "Consumable", minimumThreshold: 5 },
+  { id: 2, name: "Impression Material", subItem: "Jeltrate Plus", description: "Alginate impression material for preliminary impressions", itemType: "Consumable", minimumThreshold: 3 },
+  { id: 3, name: "Orthodontic Wire", subItem: "Ormco NiTi", description: "Nickel titanium archwires for orthodontic treatment", itemType: "Inventory", minimumThreshold: 2 },
+  { id: 4, name: "Dental Cement", subItem: "GC Fuji II LC", description: "Light-cured glass ionomer restorative cement", itemType: "Consumable", minimumThreshold: 4 },
+  { id: 5, name: "Dental Burs", subItem: "Mani Diamond", description: "Diamond dental burs for cavity preparation", itemType: "Inventory", minimumThreshold: 10 }
 ];
 
 const systemUsers = [
@@ -274,6 +279,7 @@ const Settings = () => {
   const [newStockItemSubItem, setNewStockItemSubItem] = useState('');
   const [newStockItemDescription, setNewStockItemDescription] = useState('');
   const [newStockItemType, setNewStockItemType] = useState('Consumable');
+  const [newStockItemMinThreshold, setNewStockItemMinThreshold] = useState<number>(0);
 
   // Dealer form states
   const [newDealerName, setNewDealerName] = useState('');
@@ -403,7 +409,8 @@ const Settings = () => {
               email: updatedEmail.value,
               phone: `${editPhoneCountryCode} ${updatedPhone.value}`,
               aadharDoc: aadharPath,
-              panDoc: panPath
+              panDoc: panPath,
+              color: doctor.color // Preserve the doctor's color
             };
           }
           return doctor;
@@ -761,6 +768,7 @@ const Settings = () => {
       const updatedName = document.getElementById('editStockItemName') as HTMLInputElement;
       const updatedSubItem = document.getElementById('editStockItemSubItem') as HTMLInputElement;
       const updatedDescription = document.getElementById('editStockItemDescription') as HTMLTextAreaElement;
+      const updatedMinThreshold = document.getElementById('editStockItemMinThreshold') as HTMLInputElement;
 
       // For the Select component, we need to get the value differently
       // We'll use the current item type as a fallback if we can't get the updated value
@@ -783,6 +791,15 @@ const Settings = () => {
         return;
       }
 
+      if (!updatedMinThreshold.value || parseInt(updatedMinThreshold.value) < 0) {
+        toast({
+          title: "Error",
+          description: "Minimum threshold is required and must be a positive number.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       // Update the stock items state
       setStockItems(prevItems =>
         prevItems.map(item =>
@@ -792,7 +809,8 @@ const Settings = () => {
                 name: updatedName.value,
                 subItem: updatedSubItem.value,
                 description: updatedDescription.value,
-                itemType: updatedItemType
+                itemType: updatedItemType,
+                minimumThreshold: parseInt(updatedMinThreshold.value)
               }
             : item
         )
@@ -1241,6 +1259,7 @@ const Settings = () => {
                       <TableHead>Email</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Documents</TableHead>
+                      <TableHead>Color</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1277,6 +1296,13 @@ const Settings = () => {
                               <span className="text-gray-400 text-sm">No documents</span>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <div
+                            className="w-6 h-6 rounded-full border border-gray-200"
+                            style={{ backgroundColor: doctor.color }}
+                            title={doctor.color}
+                          ></div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -1460,7 +1486,7 @@ const Settings = () => {
                           panPath = `/docs/pan_${newDoctorName.replace(/\s+/g, '_').toLowerCase()}.${panInput.files[0].name.split('.').pop()}`;
                         }
 
-                        // Add new doctor to the list
+                        // Add new doctor to the list with a random color
                         const newDoctor = {
                           id: dentalDoctors.length > 0 ? Math.max(...dentalDoctors.map(d => d.id)) + 1 : 1,
                           name: newDoctorName,
@@ -1468,7 +1494,8 @@ const Settings = () => {
                           email: newDoctorEmail,
                           phone: `${phoneCountryCode} ${newDoctorPhone}`,
                           aadharDoc: aadharPath,
-                          panDoc: panPath
+                          panDoc: panPath,
+                          color: getRandomDentalColor() // Assign a random dental-themed color
                         };
 
                         setDentalDoctors([newDoctor, ...dentalDoctors]);
@@ -1524,6 +1551,19 @@ const Settings = () => {
                           id="editDoctorSpecialization"
                           defaultValue={currentDoctor.specialization}
                         />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="doctorColor">Color</Label>
+                        <div className="flex items-center h-10 px-3 py-2 rounded-md border border-input bg-background">
+                          <div
+                            className="w-6 h-6 rounded-full border border-gray-200"
+                            style={{ backgroundColor: currentDoctor.color }}
+                            title={currentDoctor.color}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Color is assigned automatically and cannot be changed
+                        </p>
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="editDoctorEmail">Email</Label>
@@ -1637,7 +1677,14 @@ const Settings = () => {
                 </DialogHeader>
                 {currentDoctor && (
                   <div className="py-4">
-                    <p className="font-medium">{currentDoctor.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{currentDoctor.name}</p>
+                      <div
+                        className="w-4 h-4 rounded-full border border-gray-200"
+                        style={{ backgroundColor: currentDoctor.color }}
+                        title={currentDoctor.color}
+                      ></div>
+                    </div>
                     <p className="text-sm text-muted-foreground">{currentDoctor.specialization}</p>
                   </div>
                 )}
@@ -3277,6 +3324,7 @@ const Settings = () => {
                       <TableHead>Sub-item</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Item Type</TableHead>
+                      <TableHead>Min Threshold</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -3295,6 +3343,7 @@ const Settings = () => {
                               {item.itemType}
                             </Badge>
                           </TableCell>
+                          <TableCell>{item.minimumThreshold || '-'}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button variant="ghost" size="icon" onClick={() => handleEditStockItem(item)}>
@@ -3378,6 +3427,22 @@ const Settings = () => {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="stockItemMinThreshold" className="flex items-center">
+                        Minimum Threshold <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="stockItemMinThreshold"
+                        type="number"
+                        min="0"
+                        placeholder="Minimum quantity to maintain"
+                        value={newStockItemMinThreshold}
+                        onChange={(e) => setNewStockItemMinThreshold(parseInt(e.target.value))}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Items will be marked as low stock when quantity falls below this threshold
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <DialogFooter>
@@ -3399,6 +3464,16 @@ const Settings = () => {
                       // Generate a new ID (in a real app, this would come from the backend)
                       const newId = Math.max(...stockItems.map(item => item.id)) + 1;
 
+                      // Validate minimum threshold
+                      if (!newStockItemMinThreshold || newStockItemMinThreshold < 0) {
+                        toast({
+                          title: "Error",
+                          description: "Minimum threshold is required and must be a positive number.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
                       // Add the new item to the stock items state
                       // New item is added to the array, and will appear at the top due to our sorting
                       setStockItems(prevItems => [
@@ -3407,7 +3482,8 @@ const Settings = () => {
                           name: newStockItemName,
                           subItem: newStockItemSubItem,
                           description: newStockItemDescription,
-                          itemType: newStockItemType
+                          itemType: newStockItemType,
+                          minimumThreshold: newStockItemMinThreshold
                         },
                         ...prevItems
                       ]);
@@ -3420,6 +3496,7 @@ const Settings = () => {
                       setNewStockItemSubItem('');
                       setNewStockItemDescription('');
                       setNewStockItemType('Consumable');
+                      setNewStockItemMinThreshold(0);
                       setIsAddStockItemDialogOpen(false);
                     }}
                   >
@@ -3488,6 +3565,21 @@ const Settings = () => {
                             <SelectItem value="Inventory">Inventory</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editStockItemMinThreshold" className="flex items-center">
+                          Minimum Threshold <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <Input
+                          id="editStockItemMinThreshold"
+                          type="number"
+                          min="0"
+                          defaultValue={currentStockItem.minimumThreshold}
+                          placeholder="Minimum quantity to maintain"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Items will be marked as low stock when quantity falls below this threshold
+                        </p>
                       </div>
                     </div>
                   </div>
