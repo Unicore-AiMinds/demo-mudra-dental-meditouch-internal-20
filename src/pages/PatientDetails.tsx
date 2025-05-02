@@ -28,10 +28,15 @@ interface Patient {
   name: string;
   gender: 'male' | 'female' | 'other';
   age: number;
+  dateOfBirth?: string; // Added DOB field
   email: string | null;
   phone: string;
   altPhone?: string | null;
-  address: string;
+  address?: string;
+  city?: string;
+  pincode?: string;
+  bloodGroup?: string;
+  referredBy?: string;
   clinic: 'dental' | 'meditouch' | 'both';
   lastVisit: string | '';
 }
@@ -42,10 +47,15 @@ const demoPatients: Patient[] = [
     name: "Aarav Sharma",
     gender: "male",
     age: 34,
+    dateOfBirth: "1989-05-15", // Added DOB
     email: "aarav.sharma@example.com",
     phone: "9876543210",
     altPhone: "9876543211",
-    address: "123 Modi Street, Mumbai",
+    address: "123 Modi Street",
+    city: "Mumbai",
+    pincode: "400001",
+    bloodGroup: "O+",
+    referredBy: "Dr. Khanna",
     clinic: "both",
     lastVisit: "2023-10-15"
   },
@@ -57,7 +67,11 @@ const demoPatients: Patient[] = [
     email: "priya.patel@example.com",
     phone: "8765432109",
     altPhone: null,
-    address: "456 Gandhi Road, Delhi",
+    address: "456 Gandhi Road",
+    city: "Delhi",
+    pincode: "110001",
+    bloodGroup: "A+",
+    referredBy: "Dr. Sharma",
     clinic: "meditouch",
     lastVisit: "2023-10-12"
   },
@@ -66,10 +80,15 @@ const demoPatients: Patient[] = [
     name: "Vikram Singh",
     gender: "male",
     age: 45,
+    dateOfBirth: "1978-09-23", // Added DOB
     email: null,
     phone: "7654321098",
     altPhone: "7654321099",
-    address: "789 Nehru Avenue, Chennai",
+    address: "789 Nehru Avenue",
+    city: "Chennai",
+    pincode: "600001",
+    bloodGroup: "B-",
+    referredBy: "Patient Referral",
     clinic: "dental",
     lastVisit: "2023-10-08"
   },
@@ -80,7 +99,11 @@ const demoPatients: Patient[] = [
     age: 31,
     email: "neha.kapoor@example.com",
     phone: "6543210987",
-    address: "234 Tagore Lane, Bangalore",
+    address: "234 Tagore Lane",
+    city: "Bangalore",
+    pincode: "560001",
+    bloodGroup: "AB+",
+    referredBy: "Website",
     clinic: "dental",
     lastVisit: "2023-09-30"
   },
@@ -92,7 +115,11 @@ const demoPatients: Patient[] = [
     email: "rajiv.malhotra@example.com",
     phone: "5432109876",
     altPhone: "5432109877",
-    address: "567 Bose Street, Hyderabad",
+    address: "567 Bose Street",
+    city: "Hyderabad",
+    pincode: "500001",
+    bloodGroup: "A-",
+    referredBy: "Dr. Patel",
     clinic: "both",
     lastVisit: "2023-10-02"
   },
@@ -103,7 +130,11 @@ const demoPatients: Patient[] = [
     age: 25,
     email: "ananya.reddy@example.com",
     phone: "4321098765",
-    address: "890 Raman Road, Pune",
+    address: "890 Raman Road",
+    city: "Pune",
+    pincode: "411001",
+    bloodGroup: "O-",
+    referredBy: "Family Member",
     clinic: "meditouch",
     lastVisit: "2023-10-10"
   },
@@ -115,7 +146,11 @@ const demoPatients: Patient[] = [
     email: null,
     phone: "3210987654",
     altPhone: "3210987655",
-    address: "123 Krishnan Street, Kochi",
+    address: "123 Krishnan Street",
+    city: "Kochi",
+    pincode: "682001",
+    bloodGroup: "B+",
+    referredBy: "Social Media",
     clinic: "dental",
     lastVisit: "2023-09-25"
   },
@@ -126,7 +161,11 @@ const demoPatients: Patient[] = [
     age: 29,
     email: "divya.menon@example.com",
     phone: "2109876543",
-    address: "456 Patel Road, Ahmedabad",
+    address: "456 Patel Road",
+    city: "Ahmedabad",
+    pincode: "380001",
+    bloodGroup: "AB-",
+    referredBy: "Dr. Sharma",
     clinic: "both",
     lastVisit: "2023-10-05"
   },
@@ -138,7 +177,11 @@ const demoPatients: Patient[] = [
     age: 27,
     email: "aisha.khan@example.com",
     phone: "9876543212",
-    address: "789 Jinnah Road, Mumbai",
+    address: "789 Jinnah Road",
+    city: "Mumbai",
+    pincode: "400002",
+    bloodGroup: "O+",
+    referredBy: "Online Advertisement",
     clinic: "meditouch",
     lastVisit: "2023-10-14"
   },
@@ -342,6 +385,12 @@ const PatientDetails = () => {
                   <h3 className="font-medium text-sm text-muted-foreground">Age</h3>
                   <p className="text-base">{patient.age} years</p>
                 </div>
+                {patient.dateOfBirth && (
+                  <div>
+                    <h3 className="font-medium text-sm text-muted-foreground">Date of Birth</h3>
+                    <p className="text-base">{new Date(patient.dateOfBirth).toLocaleDateString()}</p>
+                  </div>
+                )}
                 <div>
                   <h3 className="font-medium text-sm text-muted-foreground">Email</h3>
                   <p className="text-base">{patient.email || 'Not provided'}</p>
@@ -356,9 +405,25 @@ const PatientDetails = () => {
                     <p className="text-base">+91 {patient.altPhone}</p>
                   </div>
                 )}
-                <div className="md:col-span-2 lg:col-span-3">
+                <div>
                   <h3 className="font-medium text-sm text-muted-foreground">Address</h3>
                   <p className="text-base">{patient.address}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground">City</h3>
+                  <p className="text-base">{patient.city || 'Not provided'}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground">Pincode</h3>
+                  <p className="text-base">{patient.pincode || 'Not provided'}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground">Blood Group</h3>
+                  <p className="text-base">{patient.bloodGroup || 'Not provided'}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground">Referred By</h3>
+                  <p className="text-base">{patient.referredBy || 'Not provided'}</p>
                 </div>
                 <div>
                   <h3 className="font-medium text-sm text-muted-foreground">Last Visit</h3>

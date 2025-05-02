@@ -87,10 +87,15 @@ interface Patient {
   name: string;
   gender: 'male' | 'female' | 'other';
   age: number;
+  dateOfBirth?: string; // Store DOB as string in YYYY-MM-DD format
   email: string | null;
   phone: string;
   altPhone?: string | null; // Alternative phone number (optional)
-  address: string;
+  address?: string; // Now optional as we'll use structured address
+  city?: string;
+  pincode?: string;
+  bloodGroup?: string;
+  referredBy?: string;
   clinic: 'dental' | 'meditouch' | 'both';
   lastVisit: string | '';
 }
@@ -101,10 +106,15 @@ const demoPatients: Patient[] = [
     name: "Aarav Sharma",
     gender: "male",
     age: 34,
+    dateOfBirth: "1989-05-15", // Added DOB
     email: "aarav.sharma@example.com",
     phone: "9876543210",
     altPhone: "9876543211",
-    address: "123 Modi Street, Mumbai",
+    address: "123 Modi Street",
+    city: "Mumbai",
+    pincode: "400001",
+    bloodGroup: "O+",
+    referredBy: "Dr. Khanna",
     clinic: "both",
     lastVisit: "2023-10-15"
   },
@@ -116,7 +126,11 @@ const demoPatients: Patient[] = [
     email: "priya.patel@example.com",
     phone: "8765432109",
     altPhone: null,
-    address: "456 Gandhi Road, Delhi",
+    address: "456 Gandhi Road",
+    city: "Delhi",
+    pincode: "110001",
+    bloodGroup: "A+",
+    referredBy: "Dr. Sharma",
     clinic: "meditouch",
     lastVisit: "2023-10-12"
   },
@@ -125,10 +139,15 @@ const demoPatients: Patient[] = [
     name: "Vikram Singh",
     gender: "male",
     age: 45,
+    dateOfBirth: "1978-09-23", // Added DOB
     email: null,
     phone: "7654321098",
     altPhone: "7654321099",
-    address: "789 Nehru Avenue, Chennai",
+    address: "789 Nehru Avenue",
+    city: "Chennai",
+    pincode: "600001",
+    bloodGroup: "B-",
+    referredBy: "Patient Referral",
     clinic: "dental",
     lastVisit: "2023-10-08"
   },
@@ -139,7 +158,11 @@ const demoPatients: Patient[] = [
     age: 31,
     email: "neha.kapoor@example.com",
     phone: "6543210987",
-    address: "234 Tagore Lane, Bangalore",
+    address: "234 Tagore Lane",
+    city: "Bangalore",
+    pincode: "560001",
+    bloodGroup: "AB+",
+    referredBy: "Website",
     clinic: "dental",
     lastVisit: "2023-09-30"
   },
@@ -151,7 +174,11 @@ const demoPatients: Patient[] = [
     email: "rajiv.malhotra@example.com",
     phone: "5432109876",
     altPhone: "5432109877",
-    address: "567 Bose Street, Hyderabad",
+    address: "567 Bose Street",
+    city: "Hyderabad",
+    pincode: "500001",
+    bloodGroup: "A-",
+    referredBy: "Dr. Patel",
     clinic: "both",
     lastVisit: "2023-10-02"
   },
@@ -162,7 +189,11 @@ const demoPatients: Patient[] = [
     age: 25,
     email: "ananya.reddy@example.com",
     phone: "4321098765",
-    address: "890 Raman Road, Pune",
+    address: "890 Raman Road",
+    city: "Pune",
+    pincode: "411001",
+    bloodGroup: "O-",
+    referredBy: "Family Member",
     clinic: "meditouch",
     lastVisit: "2023-10-10"
   },
@@ -174,7 +205,11 @@ const demoPatients: Patient[] = [
     email: null,
     phone: "3210987654",
     altPhone: "3210987655",
-    address: "123 Krishnan Street, Kochi",
+    address: "123 Krishnan Street",
+    city: "Kochi",
+    pincode: "682001",
+    bloodGroup: "B+",
+    referredBy: "Social Media",
     clinic: "dental",
     lastVisit: "2023-09-25"
   },
@@ -185,7 +220,11 @@ const demoPatients: Patient[] = [
     age: 29,
     email: "divya.menon@example.com",
     phone: "2109876543",
-    address: "456 Patel Road, Ahmedabad",
+    address: "456 Patel Road",
+    city: "Ahmedabad",
+    pincode: "380001",
+    bloodGroup: "AB-",
+    referredBy: "Dr. Sharma",
     clinic: "both",
     lastVisit: "2023-10-05"
   }
@@ -238,14 +277,23 @@ const Patients = () => {
 
   // These useEffect hooks were used for debugging and have been removed
 
+  // State to track whether to use DOB or Age input
+  const [useAgeInput, setUseAgeInput] = useState(true);
+  const [editUseAgeInput, setEditUseAgeInput] = useState(true);
+
   const [formData, setFormData] = useState({
     name: '',
     gender: '',
     age: '',
+    dateOfBirth: '',
     email: '',
     phone: '',
     altPhone: '', // Added alternative phone
     address: '',
+    city: '',
+    pincode: '',
+    bloodGroup: '',
+    referredBy: '',
     clinic: '',
     lastVisit: ''
   });
@@ -254,10 +302,15 @@ const Patients = () => {
     name: '',
     gender: '',
     age: '',
+    dateOfBirth: '',
     email: '',
     phone: '',
     altPhone: '', // Added alternative phone
     address: '',
+    city: '',
+    pincode: '',
+    bloodGroup: '',
+    referredBy: '',
     clinic: '',
     lastVisit: ''
   });
@@ -268,13 +321,19 @@ const Patients = () => {
       name: '',
       gender: '',
       age: '',
+      dateOfBirth: '',
       email: '',
       phone: '',
       altPhone: '', // Added alternative phone
       address: '',
+      city: '',
+      pincode: '',
+      bloodGroup: '',
+      referredBy: '',
       clinic: '',
       lastVisit: ''
     });
+    setUseAgeInput(true); // Reset to age input by default
   };
 
   // Direct function to reset edit form data
@@ -283,15 +342,21 @@ const Patients = () => {
       name: '',
       gender: '',
       age: '',
+      dateOfBirth: '',
       email: '',
       phone: '',
       altPhone: '', // Added alternative phone
       address: '',
+      city: '',
+      pincode: '',
+      bloodGroup: '',
+      referredBy: '',
       clinic: '',
       lastVisit: ''
     });
     setCurrentEditPatient(null);
     setEditPhoneCountryCode("+91");
+    setEditUseAgeInput(true); // Reset to age input by default
   };
 
   // Direct function to handle edit patient click
@@ -302,14 +367,23 @@ const Patients = () => {
     // Set default country code
     setEditPhoneCountryCode("+91");
 
+    // Determine if we should use age or DOB based on available data
+    const hasDateOfBirth = !!patient.dateOfBirth;
+    setEditUseAgeInput(!hasDateOfBirth);
+
     setEditFormData({
       name: patient.name,
       gender: patient.gender,
       age: patient.age.toString(),
+      dateOfBirth: patient.dateOfBirth || '',
       email: patient.email || '',
       phone: patient.phone,
       altPhone: patient.altPhone || '', // Added alternative phone
-      address: patient.address,
+      address: patient.address || '',
+      city: patient.city || '',
+      pincode: patient.pincode || '',
+      bloodGroup: patient.bloodGroup || '',
+      referredBy: patient.referredBy || '',
       clinic: patient.clinic,
       lastVisit: patient.lastVisit || ''
     });
@@ -331,10 +405,30 @@ const Patients = () => {
 
     if (!currentEditPatient) return;
 
-    if (!editFormData.name || !editFormData.gender || !editFormData.age || !editFormData.phone || !editFormData.clinic) {
+    // Check required fields based on whether we're using age or DOB
+    if (!editFormData.name || !editFormData.gender || !editFormData.phone || !editFormData.clinic) {
       toast({
         title: "Missing Required Fields",
         description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check age or DOB based on the selected option
+    if (editUseAgeInput && !editFormData.age) {
+      toast({
+        title: "Missing Age",
+        description: "Please enter the patient's age.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editUseAgeInput && !editFormData.dateOfBirth) {
+      toast({
+        title: "Missing Date of Birth",
+        description: "Please enter the patient's date of birth.",
         variant: "destructive",
       });
       return;
@@ -347,15 +441,34 @@ const Patients = () => {
   const confirmUpdatePatient = () => {
     if (!currentEditPatient) return;
 
+    // Calculate age from DOB if DOB is used
+    let calculatedAge = Number(editFormData.age);
+
+    if (!editUseAgeInput && editFormData.dateOfBirth) {
+      const birthDate = new Date(editFormData.dateOfBirth);
+      const today = new Date();
+      calculatedAge = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        calculatedAge--;
+      }
+    }
+
     const updatedPatient: Patient = {
       ...currentEditPatient,
       name: editFormData.name,
       gender: editFormData.gender as 'male' | 'female' | 'other',
-      age: Number(editFormData.age),
+      age: calculatedAge,
+      dateOfBirth: !editUseAgeInput ? editFormData.dateOfBirth : undefined,
       email: editFormData.email || null,
       phone: editFormData.phone,
       altPhone: editFormData.altPhone || null, // Added alternative phone
       address: editFormData.address,
+      city: editFormData.city,
+      pincode: editFormData.pincode,
+      bloodGroup: editFormData.bloodGroup,
+      referredBy: editFormData.referredBy,
       clinic: editFormData.clinic as 'dental' | 'meditouch' | 'both',
       lastVisit: editFormData.lastVisit || ''
     };
@@ -435,10 +548,30 @@ const Patients = () => {
       e.preventDefault();
     }
 
-    if (!formData.name || !formData.gender || !formData.age || !formData.phone || !formData.clinic) {
+    // Check required fields based on whether we're using age or DOB
+    if (!formData.name || !formData.gender || !formData.phone || !formData.clinic) {
       toast({
         title: "Missing Required Fields",
         description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check age or DOB based on the selected option
+    if (useAgeInput && !formData.age) {
+      toast({
+        title: "Missing Age",
+        description: "Please enter the patient's age.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!useAgeInput && !formData.dateOfBirth) {
+      toast({
+        title: "Missing Date of Birth",
+        description: "Please enter the patient's date of birth.",
         variant: "destructive",
       });
       return;
@@ -450,16 +583,35 @@ const Patients = () => {
 
   // Function to confirm adding a new patient
   const confirmAddPatient = () => {
+    // Calculate age from DOB if DOB is used
+    let calculatedAge = Number(formData.age);
+
+    if (!useAgeInput && formData.dateOfBirth) {
+      const birthDate = new Date(formData.dateOfBirth);
+      const today = new Date();
+      calculatedAge = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        calculatedAge--;
+      }
+    }
+
     // Create new patient object
     const newPatient: Patient = {
       id: `PT${String(patients.length + 1).padStart(3, '0')}`,
       name: formData.name,
       gender: formData.gender as 'male' | 'female' | 'other',
-      age: Number(formData.age),
+      age: calculatedAge,
+      dateOfBirth: !useAgeInput ? formData.dateOfBirth : undefined,
       email: formData.email || null,
       phone: formData.phone,
       altPhone: formData.altPhone || null, // Added alternative phone
       address: formData.address,
+      city: formData.city,
+      pincode: formData.pincode,
+      bloodGroup: formData.bloodGroup,
+      referredBy: formData.referredBy,
       clinic: formData.clinic as 'dental' | 'meditouch' | 'both',
       lastVisit: formData.lastVisit || ''
     };
@@ -517,6 +669,10 @@ const Patients = () => {
           (formattedAltPhone && formattedAltPhone.includes(searchLower)) ||
           (patient.email && patient.email?.toLowerCase().includes(searchLower)) ||
           (patient.address && patient.address.toLowerCase().includes(searchLower)) ||
+          (patient.city && patient.city.toLowerCase().includes(searchLower)) ||
+          (patient.pincode && patient.pincode.toLowerCase().includes(searchLower)) ||
+          (patient.bloodGroup && patient.bloodGroup.toLowerCase().includes(searchLower)) ||
+          (patient.referredBy && patient.referredBy.toLowerCase().includes(searchLower)) ||
           (patient.gender && patient.gender.toLowerCase().includes(searchLower)) ||
           (patient.age && String(patient.age).includes(searchLower)) ||
           (patient.lastVisit && patient.lastVisit.toLowerCase().includes(searchLower))
@@ -553,7 +709,7 @@ const Patients = () => {
     },
     {
       accessorKey: "phone",
-      header: "Primary Contact",
+      header: "Contact",
       cell: ({ row }) => (
         <div className="flex items-center">
           <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -562,42 +718,19 @@ const Patients = () => {
       ),
     },
     {
-      accessorKey: "altPhone",
-      header: "Alternative Contact",
-      cell: ({ row }) => {
-        const altPhone = row.getValue("altPhone");
-        return altPhone ? (
-          <div className="flex items-center">
-            <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
-            {`+91 ${altPhone}`}
-          </div>
-        ) : (
-          <div className="text-muted-foreground italic">Not provided</div>
-        );
-      },
-    },
-    {
-      accessorKey: "email",
-      header: "Email",
-      cell: ({ row }) => {
-        const email = row.getValue("email");
-        return email ? (
-          <div className="flex items-center">
-            <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
-            {email as string}
-          </div>
-        ) : (
-          <div className="text-muted-foreground italic">Not provided</div>
-        );
-      },
-    },
-    {
-      accessorKey: "address",
-      header: "Address",
+      accessorKey: "city",
+      header: "City",
       cell: ({ row }) => (
-        <div className="max-w-[200px] truncate" title={row.getValue("address")}>
-          {row.getValue("address")}
+        <div className="max-w-[150px] truncate" title={row.getValue("city")}>
+          {row.getValue("city") || "Not provided"}
         </div>
+      ),
+    },
+    {
+      accessorKey: "bloodGroup",
+      header: "Blood Group",
+      cell: ({ row }) => (
+        <div>{row.getValue("bloodGroup") || "Not provided"}</div>
       ),
     },
     {
@@ -615,7 +748,7 @@ const Patients = () => {
       cell: ({ row }) => (
         <div className="flex items-center">
           <CalendarRange className="mr-2 h-4 w-4 text-muted-foreground" />
-          {row.getValue("lastVisit")}
+          {row.getValue("lastVisit") || "No visits"}
         </div>
       ),
     },
@@ -689,9 +822,23 @@ const Patients = () => {
         </Button>
       </div>
 
-      <div className="flex items-center py-4 overflow-x-auto">
-        <div className="flex w-full max-w-sm items-center space-x-2">
-          <div className="relative flex-1">
+      <Tabs
+        defaultValue="all"
+        className="w-full"
+        value={currentTab}
+        onValueChange={(value) => {
+          setCurrentTab(value);
+          // Clear search when changing tabs
+          setSearchValue('');
+        }}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <TabsList className="overflow-x-auto">
+            <TabsTrigger value="all">All Patients</TabsTrigger>
+            <TabsTrigger value="dental">Dental Metrix</TabsTrigger>
+            <TabsTrigger value="meditouch">Meditouch</TabsTrigger>
+          </TabsList>
+
+          <div className="relative w-full md:w-auto md:min-w-[300px]">
             <Input
               placeholder="Search patients by name, phone, email..."
               value={searchValue}
@@ -713,22 +860,6 @@ const Patients = () => {
             )}
           </div>
         </div>
-      </div>
-
-      <Tabs
-        defaultValue="all"
-        className="w-full"
-        value={currentTab}
-        onValueChange={(value) => {
-          setCurrentTab(value);
-          // Clear search when changing tabs
-          setSearchValue('');
-        }}>
-        <TabsList className="overflow-x-auto">
-          <TabsTrigger value="all">All Patients</TabsTrigger>
-          <TabsTrigger value="dental">Dental Metrix</TabsTrigger>
-          <TabsTrigger value="meditouch">Meditouch</TabsTrigger>
-        </TabsList>
 
         {/* Single table component for all tabs */}
         <div className="pt-4">
@@ -823,29 +954,74 @@ const Patients = () => {
                     <option value="other">Other</option>
                   </select>
                 </div>
-                <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
-                  <div className="space-y-2 flex-1">
-                    <Label htmlFor="age">Age *</Label>
-                    <Input
-                      id="age"
-                      type="number"
-                      placeholder="Enter age"
-                      value={formData.age}
-                      onChange={handleFormChange}
-                      required
-                      className="h-10 w-full"
-                    />
+                <div className="md:col-span-2 flex flex-col gap-4">
+                  <div className="flex items-center space-x-4">
+                    <Label>Age/DOB *</Label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="useAge"
+                        name="ageOrDob"
+                        checked={useAgeInput}
+                        onChange={() => setUseAgeInput(true)}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="useAge" className="cursor-pointer">Age</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="useDob"
+                        name="ageOrDob"
+                        checked={!useAgeInput}
+                        onChange={() => setUseAgeInput(false)}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="useDob" className="cursor-pointer">DOB</Label>
+                    </div>
                   </div>
-                  <div className="space-y-2 flex-1">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="Email address"
-                      value={formData.email}
-                      onChange={handleFormChange}
-                      className="h-10 w-full"
-                    />
+
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="space-y-2 flex-1">
+                      {useAgeInput ? (
+                        <>
+                          <Label htmlFor="age">Age *</Label>
+                          <Input
+                            id="age"
+                            type="number"
+                            placeholder="Enter age"
+                            value={formData.age}
+                            onChange={handleFormChange}
+                            required={useAgeInput}
+                            className="h-10 w-full"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                          <Input
+                            id="dateOfBirth"
+                            type="date"
+                            value={formData.dateOfBirth}
+                            onChange={handleFormChange}
+                            required={!useAgeInput}
+                            max={new Date().toISOString().split('T')[0]} // Limit to today or earlier
+                            className="h-10 w-full"
+                          />
+                        </>
+                      )}
+                    </div>
+                    <div className="space-y-2 flex-1">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="Email address"
+                        value={formData.email}
+                        onChange={handleFormChange}
+                        className="h-10 w-full"
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
@@ -929,6 +1105,57 @@ const Patients = () => {
                     value={formData.address}
                     onChange={handleFormChange}
                     required
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="city">City *</Label>
+                  <Input
+                    id="city"
+                    placeholder="Enter city"
+                    value={formData.city}
+                    onChange={handleFormChange}
+                    required
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pincode">Pincode *</Label>
+                  <Input
+                    id="pincode"
+                    placeholder="Enter pincode"
+                    value={formData.pincode}
+                    onChange={handleFormChange}
+                    required
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bloodGroup">Blood Group</Label>
+                  <select
+                    id="bloodGroup"
+                    className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={formData.bloodGroup}
+                    onChange={handleFormChange}
+                  >
+                    <option value="">Select Blood Group</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="referredBy">Referred By</Label>
+                  <Input
+                    id="referredBy"
+                    placeholder="Enter referral source"
+                    value={formData.referredBy}
+                    onChange={handleFormChange}
                     className="h-10"
                   />
                 </div>
@@ -1017,29 +1244,74 @@ const Patients = () => {
                       <option value="other">Other</option>
                     </select>
                   </div>
-                  <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
-                    <div className="space-y-2 flex-1">
-                      <Label htmlFor="age">Age *</Label>
-                      <Input
-                        id="age"
-                        type="number"
-                        placeholder="Enter age"
-                        value={editFormData.age}
-                        onChange={handleEditFormChange}
-                        required
-                        className="h-10 w-full"
-                      />
+                  <div className="md:col-span-2 flex flex-col gap-4">
+                    <div className="flex items-center space-x-4">
+                      <Label>Age/DOB *</Label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="editUseAge"
+                          name="editAgeOrDob"
+                          checked={editUseAgeInput}
+                          onChange={() => setEditUseAgeInput(true)}
+                          className="h-4 w-4"
+                        />
+                        <Label htmlFor="editUseAge" className="cursor-pointer">Age</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="editUseDob"
+                          name="editAgeOrDob"
+                          checked={!editUseAgeInput}
+                          onChange={() => setEditUseAgeInput(false)}
+                          className="h-4 w-4"
+                        />
+                        <Label htmlFor="editUseDob" className="cursor-pointer">DOB</Label>
+                      </div>
                     </div>
-                    <div className="space-y-2 flex-1">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="Email address"
-                        value={editFormData.email}
-                        onChange={handleEditFormChange}
-                        className="h-10 w-full"
-                      />
+
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="space-y-2 flex-1">
+                        {editUseAgeInput ? (
+                          <>
+                            <Label htmlFor="age">Age *</Label>
+                            <Input
+                              id="age"
+                              type="number"
+                              placeholder="Enter age"
+                              value={editFormData.age}
+                              onChange={handleEditFormChange}
+                              required={editUseAgeInput}
+                              className="h-10 w-full"
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                            <Input
+                              id="dateOfBirth"
+                              type="date"
+                              value={editFormData.dateOfBirth}
+                              onChange={handleEditFormChange}
+                              required={!editUseAgeInput}
+                              max={new Date().toISOString().split('T')[0]} // Limit to today or earlier
+                              className="h-10 w-full"
+                            />
+                          </>
+                        )}
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="Email address"
+                          value={editFormData.email}
+                          onChange={handleEditFormChange}
+                          className="h-10 w-full"
+                        />
+                      </div>
                     </div>
                   </div>
                   <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
@@ -1123,6 +1395,57 @@ const Patients = () => {
                       value={editFormData.address}
                       onChange={handleEditFormChange}
                       required
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City *</Label>
+                    <Input
+                      id="city"
+                      placeholder="Enter city"
+                      value={editFormData.city}
+                      onChange={handleEditFormChange}
+                      required
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pincode">Pincode *</Label>
+                    <Input
+                      id="pincode"
+                      placeholder="Enter pincode"
+                      value={editFormData.pincode}
+                      onChange={handleEditFormChange}
+                      required
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bloodGroup">Blood Group</Label>
+                    <select
+                      id="bloodGroup"
+                      className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={editFormData.bloodGroup}
+                      onChange={handleEditFormChange}
+                    >
+                      <option value="">Select Blood Group</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="referredBy">Referred By</Label>
+                    <Input
+                      id="referredBy"
+                      placeholder="Enter referral source"
+                      value={editFormData.referredBy}
+                      onChange={handleEditFormChange}
                       className="h-10"
                     />
                   </div>

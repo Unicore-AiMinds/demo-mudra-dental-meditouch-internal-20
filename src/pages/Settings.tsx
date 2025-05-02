@@ -71,7 +71,10 @@ import { toast } from '@/hooks/use-toast';
 const clinicDetails = {
   dental: {
     name: "Dental Metrix Clinic",
-    address: "123 Healthcare Avenue, Mumbai, Maharashtra 400001",
+    address: "123 Healthcare Avenue",
+    city: "Mumbai",
+    state: "Maharashtra",
+    pincode: "400001",
     phone: "+91 22 4567 8901",
     email: "contact@dentalmetrix.com",
     operatingHours: {
@@ -86,7 +89,10 @@ const clinicDetails = {
   },
   meditouch: {
     name: "Meditouch Clinic",
-    address: "456 Wellness Road, Mumbai, Maharashtra 400001",
+    address: "456 Wellness Road",
+    city: "Mumbai",
+    state: "Maharashtra",
+    pincode: "400001",
     phone: "+91 22 9876 5432",
     email: "care@meditouchclinic.com",
     operatingHours: {
@@ -164,17 +170,17 @@ const services = {
 };
 
 const initialDentalLabs = [
-  { id: 1, name: "Precision Dental Lab", contact: "+91 98765 43210", address: "Mumbai", specialization: "Crowns & Bridges" },
-  { id: 2, name: "Nova Dental Solutions", contact: "+91 87654 32109", address: "Delhi", specialization: "Dentures" },
-  { id: 3, name: "Dent Creations India", contact: "+91 76543 21098", address: "Bangalore", specialization: "Implants" },
-  { id: 4, name: "Implant Specialists", contact: "+91 65432 10987", address: "Chennai", specialization: "Custom Abutments" }
+  { id: 1, name: "Precision Dental Lab", contact: "+91 98765 43210", address: "123 Dental Street", city: "Mumbai", pincode: "400001", specialization: "Crowns & Bridges" },
+  { id: 2, name: "Nova Dental Solutions", contact: "+91 87654 32109", address: "456 Lab Avenue", city: "Delhi", pincode: "110001", specialization: "Dentures" },
+  { id: 3, name: "Dent Creations India", contact: "+91 76543 21098", address: "789 Implant Road", city: "Bangalore", pincode: "560001", specialization: "Implants" },
+  { id: 4, name: "Implant Specialists", contact: "+91 65432 10987", address: "321 Crown Lane", city: "Chennai", pincode: "600001", specialization: "Custom Abutments" }
 ];
 
 const initialDealers = [
-  { id: 1, name: "Dental Supplies Co.", email: "contact@dentalsupplies.com", contact: "+91 98765 43210", city: "Mumbai" },
-  { id: 2, name: "MediDent Distributors", email: "info@medident.com", contact: "+91 87654 32109", city: "Delhi" },
-  { id: 3, name: "Prime Dental Products", email: "sales@primedentalproducts.com", contact: "+91 76543 21098", city: "Bangalore" },
-  { id: 4, name: "Dental Depot", email: "support@dentaldepot.com", contact: "+91 65432 10987", city: "Chennai" }
+  { id: 1, name: "Dental Supplies Co.", email: "contact@dentalsupplies.com", contact: "+91 98765 43210", address: "123 Supplier Street", city: "Mumbai", pincode: "400001" },
+  { id: 2, name: "MediDent Distributors", email: "info@medident.com", contact: "+91 87654 32109", address: "456 Distributor Lane", city: "Delhi", pincode: "110001" },
+  { id: 3, name: "Prime Dental Products", email: "sales@primedentalproducts.com", contact: "+91 76543 21098", address: "789 Product Road", city: "Bangalore", pincode: "560001" },
+  { id: 4, name: "Dental Depot", email: "support@dentaldepot.com", contact: "+91 65432 10987", address: "321 Depot Avenue", city: "Chennai", pincode: "600001" }
 ];
 
 const initialLabWorkTypes = [
@@ -286,7 +292,9 @@ const Settings = () => {
   const [newDealerEmail, setNewDealerEmail] = useState('');
   const [newDealerContact, setNewDealerContact] = useState('');
   const [newDealerContactCountryCode, setNewDealerContactCountryCode] = useState('+91');
+  const [newDealerAddress, setNewDealerAddress] = useState('');
   const [newDealerCity, setNewDealerCity] = useState('');
+  const [newDealerPincode, setNewDealerPincode] = useState('');
 
   // Check if user is admin
   if (user?.role !== 'admin') {
@@ -567,6 +575,8 @@ const Settings = () => {
       const updatedName = document.getElementById('editLabName') as HTMLInputElement;
       const updatedContact = document.getElementById('editLabContact') as HTMLInputElement;
       const updatedAddress = document.getElementById('editLabAddress') as HTMLInputElement;
+      const updatedCity = document.getElementById('editLabCity') as HTMLInputElement;
+      const updatedPincode = document.getElementById('editLabPincode') as HTMLInputElement;
       const updatedSpecialization = document.getElementById('editLabSpecialization') as HTMLInputElement;
 
       // Validate required fields
@@ -583,6 +593,15 @@ const Settings = () => {
         toast({
           title: "Error",
           description: "Contact number is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!updatedCity.value.trim()) {
+        toast({
+          title: "Error",
+          description: "City is required.",
           variant: "destructive"
         });
         return;
@@ -608,6 +627,8 @@ const Settings = () => {
                 name: capitalizeWords(updatedName.value.trim()),
                 contact: formattedContact,
                 address: capitalizeWords(updatedAddress.value.trim()),
+                city: capitalizeWords(updatedCity.value.trim()),
+                pincode: updatedPincode.value.trim(),
                 specialization: capitalizeWords(updatedSpecialization.value.trim())
               }
             : lab
@@ -873,7 +894,9 @@ const Settings = () => {
       const updatedName = document.getElementById('editDealerName') as HTMLInputElement;
       const updatedEmail = document.getElementById('editDealerEmail') as HTMLInputElement;
       const updatedContact = document.getElementById('editDealerContact') as HTMLInputElement;
+      const updatedAddress = document.getElementById('editDealerAddress') as HTMLInputElement;
       const updatedCity = document.getElementById('editDealerCity') as HTMLInputElement;
+      const updatedPincode = document.getElementById('editDealerPincode') as HTMLInputElement;
 
       // Validate required fields
       if (!updatedName.value.trim()) {
@@ -889,6 +912,15 @@ const Settings = () => {
         toast({
           title: "Error",
           description: "Contact number is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!updatedCity.value.trim()) {
+        toast({
+          title: "Error",
+          description: "City is required.",
           variant: "destructive"
         });
         return;
@@ -925,7 +957,9 @@ const Settings = () => {
                 name: capitalizeWords(updatedName.value.trim()),
                 email: updatedEmail.value.trim(),
                 contact: formattedContact,
-                city: capitalizeWords(updatedCity.value.trim())
+                address: capitalizeWords(updatedAddress.value.trim()),
+                city: capitalizeWords(updatedCity.value.trim()),
+                pincode: updatedPincode.value.trim()
               }
             : dealer
         )
@@ -1149,6 +1183,27 @@ const Settings = () => {
                     <Input
                       id="clinicAddress"
                       defaultValue={currentClinicDetails.address}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="clinicCity">City</Label>
+                    <Input
+                      id="clinicCity"
+                      defaultValue={currentClinicDetails.city}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="clinicState">State</Label>
+                    <Input
+                      id="clinicState"
+                      defaultValue={currentClinicDetails.state}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="clinicPincode">Pincode</Label>
+                    <Input
+                      id="clinicPincode"
+                      defaultValue={currentClinicDetails.pincode}
                     />
                   </div>
                   <div className="space-y-2">
@@ -2426,7 +2481,9 @@ const Settings = () => {
                     <TableRow>
                       <TableHead>Lab Name</TableHead>
                       <TableHead>Contact</TableHead>
-                      <TableHead>Location</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>City</TableHead>
+                      <TableHead>Pincode</TableHead>
                       <TableHead>Specialization</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -2437,6 +2494,8 @@ const Settings = () => {
                         <TableCell className="font-medium">{lab.name}</TableCell>
                         <TableCell>{lab.contact}</TableCell>
                         <TableCell>{lab.address}</TableCell>
+                        <TableCell>{lab.city}</TableCell>
+                        <TableCell>{lab.pincode}</TableCell>
                         <TableCell>{lab.specialization}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -2513,8 +2572,16 @@ const Settings = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="labAddress">Address/Location</Label>
-                      <Input id="labAddress" placeholder="City or full address" />
+                      <Label htmlFor="labAddress">Address</Label>
+                      <Input id="labAddress" placeholder="Enter street address" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="labCity">City</Label>
+                      <Input id="labCity" placeholder="Enter city" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="labPincode">Pincode</Label>
+                      <Input id="labPincode" placeholder="Enter pincode" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="labSpecialization">Specialization</Label>
@@ -2532,6 +2599,8 @@ const Settings = () => {
                       const labName = document.getElementById('labName') as HTMLInputElement;
                       const labContact = document.getElementById('labContact') as HTMLInputElement;
                       const labAddress = document.getElementById('labAddress') as HTMLInputElement;
+                      const labCity = document.getElementById('labCity') as HTMLInputElement;
+                      const labPincode = document.getElementById('labPincode') as HTMLInputElement;
                       const labSpecialization = document.getElementById('labSpecialization') as HTMLInputElement;
 
                       // Validate required fields
@@ -2553,6 +2622,15 @@ const Settings = () => {
                         return;
                       }
 
+                      if (!labCity.value.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "City is required.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
                       // Get the country code from the dropdown
                       const countryCodeSelect = document.getElementById('labContactCountryCode') as HTMLSelectElement;
                       const countryCode = countryCodeSelect ? countryCodeSelect.value : '+91';
@@ -2566,6 +2644,8 @@ const Settings = () => {
                         name: capitalizeWords(labName.value.trim()),
                         contact: formattedContact,
                         address: capitalizeWords(labAddress.value.trim()),
+                        city: capitalizeWords(labCity.value.trim()),
+                        pincode: labPincode.value.trim(),
                         specialization: capitalizeWords(labSpecialization.value.trim())
                       };
 
@@ -2581,6 +2661,8 @@ const Settings = () => {
                       labName.value = '';
                       labContact.value = '';
                       labAddress.value = '';
+                      labCity.value = '';
+                      labPincode.value = '';
                       labSpecialization.value = '';
 
                       setIsAddLabDialogOpen(false);
@@ -2652,10 +2734,24 @@ const Settings = () => {
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="editLabAddress">Address/Location</Label>
+                        <Label htmlFor="editLabAddress">Address</Label>
                         <Input
                           id="editLabAddress"
                           defaultValue={currentLab.address}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editLabCity">City</Label>
+                        <Input
+                          id="editLabCity"
+                          defaultValue={currentLab.city}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editLabPincode">Pincode</Label>
+                        <Input
+                          id="editLabPincode"
+                          defaultValue={currentLab.pincode}
                         />
                       </div>
                       <div className="space-y-1">
@@ -2962,7 +3058,9 @@ const Settings = () => {
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Contact</TableHead>
-                      <TableHead>Address/Location</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>City</TableHead>
+                      <TableHead>Pincode</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -2974,7 +3072,9 @@ const Settings = () => {
                           <TableCell className="font-medium">{dealer.name}</TableCell>
                           <TableCell>{dealer.email || '-'}</TableCell>
                           <TableCell>{dealer.contact}</TableCell>
+                          <TableCell>{dealer.address}</TableCell>
                           <TableCell>{dealer.city}</TableCell>
+                          <TableCell>{dealer.pincode}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button variant="ghost" size="icon" onClick={() => handleEditDealer(dealer)}>
@@ -3069,14 +3169,36 @@ const Settings = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
+                      <Label htmlFor="dealerAddress">
+                        Address
+                      </Label>
+                      <Input
+                        id="dealerAddress"
+                        placeholder="Enter street address"
+                        value={newDealerAddress}
+                        onChange={(e) => setNewDealerAddress(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="dealerCity">
-                        Address/Location
+                        City
                       </Label>
                       <Input
                         id="dealerCity"
-                        placeholder="e.g., Mumbai or full address"
+                        placeholder="Enter city"
                         value={newDealerCity}
                         onChange={(e) => setNewDealerCity(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dealerPincode">
+                        Pincode
+                      </Label>
+                      <Input
+                        id="dealerPincode"
+                        placeholder="Enter pincode"
+                        value={newDealerPincode}
+                        onChange={(e) => setNewDealerPincode(e.target.value)}
                       />
                     </div>
                   </div>
@@ -3131,7 +3253,9 @@ const Settings = () => {
                           name: capitalizeWords(newDealerName.trim()),
                           email: newDealerEmail.trim(),
                           contact: formattedContact,
-                          city: capitalizeWords(newDealerCity.trim())
+                          address: capitalizeWords(newDealerAddress.trim()),
+                          city: capitalizeWords(newDealerCity.trim()),
+                          pincode: newDealerPincode.trim()
                         },
                         ...prevDealers
                       ]);
@@ -3143,7 +3267,9 @@ const Settings = () => {
                       setNewDealerName('');
                       setNewDealerEmail('');
                       setNewDealerContact('');
+                      setNewDealerAddress('');
                       setNewDealerCity('');
+                      setNewDealerPincode('');
                       setNewDealerContactCountryCode('+91');
                       setIsAddDealerDialogOpen(false);
                     }}
@@ -3226,13 +3352,33 @@ const Settings = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
+                        <Label htmlFor="editDealerAddress">
+                          Address
+                        </Label>
+                        <Input
+                          id="editDealerAddress"
+                          defaultValue={currentDealer.address || ''}
+                          placeholder="Enter street address"
+                        />
+                      </div>
+                      <div className="space-y-2">
                         <Label htmlFor="editDealerCity">
-                          Address/Location
+                          City
                         </Label>
                         <Input
                           id="editDealerCity"
                           defaultValue={currentDealer.city || ''}
-                          placeholder="e.g., Mumbai or full address"
+                          placeholder="Enter city"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="editDealerPincode">
+                          Pincode
+                        </Label>
+                        <Input
+                          id="editDealerPincode"
+                          defaultValue={currentDealer.pincode || ''}
+                          placeholder="Enter pincode"
                         />
                       </div>
                     </div>

@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Calendar as CalendarIcon, Search, UserPlus } from 'lucide-react';
+import { ArrowLeft, Calendar as CalendarIcon, Search, UserPlus, Plus } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import AddPatientDialog from '@/components/AddPatientDialog';
 
 // Sample registered patients (same as in Appointments.tsx)
 const registeredPatients = [
@@ -60,14 +61,15 @@ const NewAppointment = () => {
   const [notes, setNotes] = useState<string>('');
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [filteredPatients, setFilteredPatients] = useState(registeredPatients);
+  const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
 
   const clinicName = isDental ? 'Dental Metrix' : 'Meditouch';
-  const services = isDental 
+  const services = isDental
     ? ['Dental Checkup', 'Teeth Cleaning', 'Root Canal', 'Crown Fitting', 'Dental Filling', 'Denture Adjustment']
     : ['Skin Consultation', 'Hair Treatment', 'Facial', 'Massage Therapy', 'Cosmetic Procedure'];
-    
-  const doctors = isDental 
-    ? ['Dr. Khanna', 'Dr. Sharma', 'Dr. Patel'] 
+
+  const doctors = isDental
+    ? ['Dr. Khanna', 'Dr. Sharma', 'Dr. Patel']
     : [];
 
   // Generate available time slots in 15-minute intervals
@@ -75,17 +77,17 @@ const NewAppointment = () => {
     const slots = [];
     const clinicType = isDental ? 'dental' : 'meditouch';
     const maxPatientsPerSlot = clinicCapacity;
-    
+
     // Start from 9 AM
     for (let hour = 9; hour <= 17; hour++) {
       for (let minute = 0; minute < 60; minute += 15) {
         // Skip lunch break (1 PM to 2 PM)
         if (hour === 13) continue;
-        
+
         const formattedHour = hour.toString().padStart(2, '0');
         const formattedMinute = minute.toString().padStart(2, '0');
         const timeString = `${formattedHour}:${formattedMinute}`;
-        
+
         // Check if slot is available based on booking status
         const bookedCount = bookedTimeSlots[clinicType]?.[timeString] || 0;
         if (bookedCount < maxPatientsPerSlot) {
@@ -93,7 +95,7 @@ const NewAppointment = () => {
         }
       }
     }
-    
+
     return slots;
   };
 
@@ -102,8 +104,8 @@ const NewAppointment = () => {
       setFilteredPatients(registeredPatients);
       return;
     }
-    
-    const filtered = registeredPatients.filter(patient => 
+
+    const filtered = registeredPatients.filter(patient =>
       patient.name.toLowerCase().includes(value.toLowerCase())
     );
     setFilteredPatients(filtered);
@@ -111,7 +113,7 @@ const NewAppointment = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!patient || !service || !time) {
       toast({
         title: "Missing Information",
@@ -120,9 +122,9 @@ const NewAppointment = () => {
       });
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false);
@@ -135,22 +137,50 @@ const NewAppointment = () => {
   };
 
   const goToPatientRegistration = () => {
-    // Navigate to the patient registration page
-    navigate('/patients');
-    
-    // Show a toast notification that this would normally open the registration form
-    toast({
-      title: "Patient Registration",
-      description: "This would take you to the patient registration form",
-    });
+    // Open the add patient dialog
+    setIsAddPatientDialogOpen(true);
+  };
+
+  // Define the patient type
+  interface Patient {
+    id: string;
+    name: string;
+    gender: 'male' | 'female' | 'other';
+    age: number;
+    dateOfBirth?: string;
+    email: string | null;
+    phone: string;
+    altPhone?: string | null;
+    address?: string;
+    city?: string;
+    pincode?: string;
+    bloodGroup?: string;
+    referredBy?: string;
+    clinic: 'dental' | 'meditouch' | 'both';
+    lastVisit: string;
+  }
+
+  // Handle newly added patient
+  const handlePatientAdded = (newPatient: Patient) => {
+    // Add the new patient to the list of registered patients
+    const updatedPatients = [
+      { id: newPatient.id, name: newPatient.name },
+      ...registeredPatients
+    ];
+
+    // Update the filtered patients list
+    setFilteredPatients(updatedPatients);
+
+    // Select the newly added patient
+    setPatient(newPatient.name);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center">
-        <Button 
-          variant="ghost" 
-          className="mr-4" 
+        <Button
+          variant="ghost"
+          className="mr-4"
           onClick={() => navigate('/appointments')}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -159,7 +189,7 @@ const NewAppointment = () => {
         <div>
           <h1 className="text-3xl font-display font-bold tracking-tight">New Appointment</h1>
           <p className="text-muted-foreground">
-            Schedule a new {clinicName} appointment 
+            Schedule a new {clinicName} appointment
             ({isDental ? "2 patients" : "1 patient"} per time slot)
           </p>
         </div>
@@ -199,7 +229,7 @@ const NewAppointment = () => {
                   </PopoverContent>
                 </Popover>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="time">Time (Available Slots)</Label>
                 <Select value={time} onValueChange={setTime}>
@@ -215,60 +245,62 @@ const NewAppointment = () => {
               </div>
             </div>
 
-            <div className="space-y-2 relative">
-              <div className="flex items-center justify-between">
+            <div className="space-y-4 relative">
+              <div>
                 <Label htmlFor="patient">Patient Name</Label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={goToPatientRegistration} 
-                  className="h-8"
-                >
-                  <UserPlus className="h-3 w-3 mr-1" />
-                  New Registration
-                </Button>
+                <Popover open={patientSearchOpen} onOpenChange={setPatientSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={patientSearchOpen}
+                      className="w-full justify-between mt-2"
+                    >
+                      {patient
+                        ? filteredPatients.find((p) => p.name === patient)?.name
+                        : "Select patient..."}
+                      <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder="Search patients..."
+                        onValueChange={handlePatientSearch}
+                        className="h-9"
+                      />
+                      <CommandEmpty>No patient found.</CommandEmpty>
+                      <CommandGroup className="max-h-60 overflow-auto">
+                        {filteredPatients.map((p) => (
+                          <CommandItem
+                            key={p.id}
+                            value={p.name}
+                            onSelect={() => {
+                              setPatient(p.name);
+                              setPatientSearchOpen(false);
+                            }}
+                          >
+                            {p.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
-              
-              <Popover open={patientSearchOpen} onOpenChange={setPatientSearchOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={patientSearchOpen}
-                    className="w-full justify-between"
-                  >
-                    {patient
-                      ? registeredPatients.find((p) => p.name === patient)?.name
-                      : "Select patient..."}
-                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput 
-                      placeholder="Search patients..." 
-                      onValueChange={handlePatientSearch}
-                      className="h-9"
-                    />
-                    <CommandEmpty>No patient found.</CommandEmpty>
-                    <CommandGroup className="max-h-60 overflow-auto">
-                      {filteredPatients.map((p) => (
-                        <CommandItem
-                          key={p.id}
-                          value={p.name}
-                          onSelect={() => {
-                            setPatient(p.name);
-                            setPatientSearchOpen(false);
-                          }}
-                        >
-                          {p.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+
+              <Button
+                type="button"
+                onClick={goToPatientRegistration}
+                className={`w-full ${
+                  isDental
+                    ? 'bg-dental-primary hover:bg-dental-dark'
+                    : 'bg-meditouch-primary hover:bg-meditouch-dark'
+                }`}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add New Patient
+              </Button>
             </div>
 
             <div className="space-y-2">
@@ -303,12 +335,12 @@ const NewAppointment = () => {
 
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
-              <Textarea 
-                id="notes" 
-                placeholder="Any special requirements or information" 
-                value={notes} 
-                onChange={(e) => setNotes(e.target.value)} 
-                rows={3} 
+              <Textarea
+                id="notes"
+                placeholder="Any special requirements or information"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
               />
             </div>
           </CardContent>
@@ -316,8 +348,8 @@ const NewAppointment = () => {
             <Button
               type="submit"
               className={`${
-                isDental 
-                  ? 'bg-dental-primary hover:bg-dental-dark' 
+                isDental
+                  ? 'bg-dental-primary hover:bg-dental-dark'
                   : 'bg-meditouch-primary hover:bg-meditouch-dark'
               }`}
               disabled={isSubmitting}
@@ -327,6 +359,13 @@ const NewAppointment = () => {
           </CardFooter>
         </form>
       </Card>
+
+      {/* Add Patient Dialog */}
+      <AddPatientDialog
+        isOpen={isAddPatientDialogOpen}
+        onClose={() => setIsAddPatientDialogOpen(false)}
+        onPatientAdded={handlePatientAdded}
+      />
     </div>
   );
 };

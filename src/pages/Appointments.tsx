@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import AddPatientDialog from '@/components/AddPatientDialog';
 
 const registeredPatients = [{
   id: 'p1',
@@ -95,6 +96,21 @@ const doctors = [{
   name: 'Dr. Desai',
   color: '#9B59B6' // Amethyst
 }];
+
+// Define services with durations
+const dentalServices = [
+  { id: 1, name: "Dental Checkup", duration: 15, price: 500 },
+  { id: 2, name: "Root Canal", duration: 60, price: 5000 },
+  { id: 3, name: "Teeth Cleaning", duration: 30, price: 1000 },
+  { id: 4, name: "Crown Fitting", duration: 45, price: 8000 },
+  { id: 5, name: "Dental Filling", duration: 30, price: 1500 }
+];
+
+const meditouchServices = [
+  { id: 1, name: "Skin Consultation", duration: 15, price: 800 },
+  { id: 2, name: "Hair Treatment", duration: 30, price: 1500 },
+  { id: 3, name: "Facial", duration: 60, price: 2000 }
+];
 
 const timeSlots = ['9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM', '10:00 AM', '10:15 AM', '10:30 AM', '10:45 AM', '11:00 AM', '11:15 AM', '11:30 AM', '11:45 AM', '12:00 PM', '12:15 PM', '12:30 PM', '12:45 PM', '2:00 PM', '2:15 PM', '2:30 PM', '2:45 PM', '3:00 PM', '3:15 PM', '3:30 PM', '3:45 PM', '4:00 PM', '4:15 PM', '4:30 PM', '4:45 PM', '5:00 PM', '5:15 PM', '5:30 PM', '5:45 PM'];
 
@@ -209,9 +225,9 @@ const CalendarAppointmentItem = ({ appointment, isDental, onClick, isCompact = f
   isCompact?: boolean
 }) => {
   // Default colors
-  let bgColor = isDental ? 'bg-dental-light' : 'bg-meditouch-light';
-  let borderColor = isDental ? 'border-dental-primary' : 'border-meditouch-primary';
-  let textColor = isDental ? 'text-dental-primary' : 'text-meditouch-primary';
+  const bgColor = isDental ? 'bg-dental-light' : 'bg-meditouch-light';
+  const borderColor = isDental ? 'border-dental-primary' : 'border-meditouch-primary';
+  const textColor = isDental ? 'text-dental-primary' : 'text-meditouch-primary';
 
   // Custom styles for inline styling with doctor colors
   let customStyles = {};
@@ -246,12 +262,17 @@ const CalendarAppointmentItem = ({ appointment, isDental, onClick, isCompact = f
 
   const appointmentContent = (
     <div
-      className={`px-1.5 py-0.5 text-xs rounded mb-0.5 border-l-2 ${bgColor} ${borderColor} ${textColor} cursor-pointer`}
+      className={`px-1.5 py-0.5 text-xs rounded mb-0.5 border-l-2 cursor-pointer`}
       onClick={(e) => {
         e.stopPropagation(); // Stop event from bubbling up to parent
         onClick();
       }}
-      style={customStyles}
+      style={{
+        backgroundColor: isDental ? 'rgba(74, 144, 226, 0.15)' : 'rgba(22, 160, 133, 0.15)',
+        borderLeftColor: isDental ? '#4A90E2' : '#16A085',
+        color: isDental ? '#4A90E2' : '#16A085',
+        ...customStyles
+      }}
     >
       {isCompact ? (
         // Compact view - only show patient name
@@ -278,14 +299,25 @@ const CalendarAppointmentItem = ({ appointment, isDental, onClick, isCompact = f
   ) : appointmentContent;
 };
 
-const TimeSlotAppointment = ({ appointment, isDental, onClick, isCompact = false }: {
+const TimeSlotAppointment = ({
+  appointment,
+  isDental,
+  onClick,
+  isCompact = false,
+  isMultiSlot = false,
+  isFirstSlot = true,
+  slotsOccupied = 1
+}: {
   appointment: DentalAppointment | MeditouchAppointment,
   isDental: boolean,
   onClick: () => void,
-  isCompact?: boolean
+  isCompact?: boolean,
+  isMultiSlot?: boolean,
+  isFirstSlot?: boolean,
+  slotsOccupied?: number
 }) => {
   // Get doctor color from the doctors array if it's a dental appointment
-  let bgColor = isDental ? 'bg-dental-primary' : 'bg-meditouch-primary';
+  const bgColor = isDental ? 'bg-dental-primary' : 'bg-meditouch-primary';
 
   // If it's a dental appointment, try to find the doctor's color
   if (isDental && 'doctor' in appointment) {
@@ -293,26 +325,27 @@ const TimeSlotAppointment = ({ appointment, isDental, onClick, isCompact = false
     // Find the doctor in the doctors array
     const doctor = doctors.find(d => d.name === doctorName);
     if (doctor && 'color' in doctor) {
-      // Use the doctor's color if available
-      bgColor = `bg-[${doctor.color}]`;
+      // We'll use inline styles instead of Tailwind classes for doctor colors
+      // Just keep the default bgColor for the className
     }
   }
 
-  // Create tooltip content for compact view
+  // Create tooltip content with complete appointment details
   const tooltipContent = (
     <div className="text-xs">
       <div className="font-bold">{appointment.patient}</div>
-      <div>{appointment.service}</div>
+      <div><span className="font-medium">Service:</span> {appointment.service}</div>
       {isDental && (appointment as DentalAppointment).doctor && (
-        <div>Doctor: {(appointment as DentalAppointment).doctor}</div>
+        <div><span className="font-medium">Doctor:</span> {(appointment as DentalAppointment).doctor}</div>
       )}
-      <div>Time: {appointment.time}</div>
+      <div><span className="font-medium">Time:</span> {appointment.time}</div>
     </div>
   );
 
+  // Only show content if this is the first slot of the appointment or if we're showing all slots
   const appointmentContent = (
     <div
-      className={`${bgColor} text-white rounded p-1 text-xs cursor-pointer hover:opacity-90 transition-opacity mb-1`}
+      className={`text-white rounded p-1 text-xs cursor-pointer hover:opacity-90 transition-opacity h-full w-full relative`}
       onClick={(e) => {
         e.stopPropagation(); // Stop event from bubbling up to parent
         onClick();
@@ -324,14 +357,22 @@ const TimeSlotAppointment = ({ appointment, isDental, onClick, isCompact = false
           (isDental ? '#4A90E2' : '#16A085')
       }}
     >
-      <div className="font-medium">{appointment.patient}</div>
-      {!isCompact && (
-        <>
-          <div className="text-white/90 text-[10px]">{appointment.service}</div>
-          {isDental && (appointment as DentalAppointment).doctor && (
-            <div className="text-white/90 text-[10px] font-medium">{(appointment as DentalAppointment).doctor}</div>
-          )}
-        </>
+      <div className="font-medium truncate">{appointment.patient}</div>
+      <div className="text-white/90 text-[10px] truncate">
+        {appointment.service}
+        {isMultiSlot && (
+          <span className="ml-1">({slotsOccupied * 15} min)</span>
+        )}
+      </div>
+      {!isCompact && isDental && (appointment as DentalAppointment).doctor && (
+        <div className="text-white/90 text-[10px] font-medium truncate">{(appointment as DentalAppointment).doctor}</div>
+      )}
+
+      {/* Show continuation indicator for multi-slot appointments */}
+      {isMultiSlot && (
+        <div className="absolute bottom-0 right-0 left-0 flex justify-center">
+          <div className="bg-white/30 h-1 w-6 rounded-full"></div>
+        </div>
       )}
     </div>
   );
@@ -367,6 +408,7 @@ const Appointments = () => {
   const [isConfirmUpdateOpen, setIsConfirmUpdateOpen] = useState(false);
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<AppointmentType | null>(null);
+  const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const [appointmentPatient, setAppointmentPatient] = useState("");
@@ -574,9 +616,63 @@ const Appointments = () => {
     return filtered;
   }, [appointments, date, searchTerm, selectedDoctor, isDental, view]);
 
+  // Get service duration in minutes
+  const getServiceDuration = useCallback((serviceName: string) => {
+    // Find the service in the services list
+    const service = isDental
+      ? dentalServices.find(s => s.name === serviceName)
+      : meditouchServices.find(s => s.name === serviceName);
+
+    // Return the duration or default to 15 minutes if not found
+    return service?.duration || 15;
+  }, [isDental]);
+
+  // Calculate how many 15-minute slots a service occupies
+  const getSlotsOccupied = useCallback((serviceName: string) => {
+    const duration = getServiceDuration(serviceName);
+    return Math.ceil(duration / 15);
+  }, [getServiceDuration]);
+
+  // Get all appointments that affect a specific time slot
   const getAppointmentsForTimeSlot = useCallback((timeSlot: string) => {
-    return filteredAppointments.filter(app => app.time === timeSlot);
-  }, [filteredAppointments]);
+    // First, get appointments that start at this exact time slot
+    const directAppointments = filteredAppointments.filter(app => app.time === timeSlot);
+
+    // Then, find appointments that started earlier but extend into this slot
+    const extendedAppointments = filteredAppointments.filter(app => {
+      // Skip appointments that start at this slot (already included)
+      if (app.time === timeSlot) return false;
+
+      // Calculate how many slots this appointment occupies
+      const slotsOccupied = getSlotsOccupied(app.service);
+      if (slotsOccupied <= 1) return false; // Only occupies one slot
+
+      // Find the index of the appointment's start time and the current slot
+      const appStartIndex = timeSlots.indexOf(app.time);
+      const currentSlotIndex = timeSlots.indexOf(timeSlot);
+
+      // If we couldn't find the indices, skip this appointment
+      if (appStartIndex === -1 || currentSlotIndex === -1) return false;
+
+      // Check if this appointment extends into the current slot
+      return (
+        appStartIndex < currentSlotIndex &&
+        appStartIndex + slotsOccupied > currentSlotIndex
+      );
+    });
+
+    // Combine direct and extended appointments
+    const allAppointments = [...directAppointments, ...extendedAppointments];
+
+    // Sort appointments by ID (as a proxy for creation time)
+    // Lower ID numbers were created first
+    return allAppointments.sort((a, b) => {
+      // Extract numeric part from ID (e.g., 'd1' -> 1, 'd10' -> 10)
+      const idA = parseInt(a.id.replace(/\D/g, ''));
+      const idB = parseInt(b.id.replace(/\D/g, ''));
+      return idA - idB; // Sort in ascending order (oldest first)
+    });
+  }, [filteredAppointments, getSlotsOccupied]);
 
   const getBookedTimeSlots = () => {
     // Get all active appointments for the current date (not cancelled or completed)
@@ -600,18 +696,72 @@ const Appointments = () => {
   };
 
   const getAvailableTimeSlots = () => {
-    const slotCounts = getBookedTimeSlots();
+    // Get all active appointments for the current date
+    const dateAppointments = appointments
+      .filter(app =>
+        app.date === format(date, 'yyyy-MM-dd') &&
+        app.status !== 'cancelled' &&
+        app.status !== 'completed'
+      );
 
-    // Filter time slots based on clinic type and current booking count
-    return timeSlots.filter(time => {
-      const currentCount = slotCounts[time] || 0;
+    // Create a map of slot availability
+    const slotAvailability: Record<string, number> = {};
 
-      // For Dental Metrix: allow up to 2 appointments per slot
-      // For Meditouch: allow only 1 appointment per slot
-      const maxAllowed = isDental ? 2 : 1;
-
-      return currentCount < maxAllowed;
+    // Initialize all slots with max capacity
+    timeSlots.forEach(slot => {
+      slotAvailability[slot] = isDental ? 2 : 1; // Dental allows 2 per slot, Meditouch only 1
     });
+
+    // For each appointment, reduce availability of all slots it occupies
+    dateAppointments.forEach(app => {
+      const startSlot = app.time;
+      const slotsOccupied = getSlotsOccupied(app.service);
+
+      // Find the starting index of this appointment
+      const startIndex = timeSlots.indexOf(startSlot);
+      if (startIndex === -1) return;
+
+      // Reduce availability for each slot this appointment occupies
+      for (let i = 0; i < slotsOccupied; i++) {
+        const slotIndex = startIndex + i;
+        if (slotIndex < timeSlots.length) {
+          const slot = timeSlots[slotIndex];
+          slotAvailability[slot] = Math.max(0, (slotAvailability[slot] || 0) - 1);
+        }
+      }
+    });
+
+    // If we're creating a new appointment, we need to check if there are enough consecutive slots
+    if (appointmentService) {
+      const requiredSlots = getSlotsOccupied(appointmentService);
+
+      // Filter slots that have enough consecutive availability
+      return timeSlots.filter(slot => {
+        // If this slot has no availability, it's not valid
+        if (slotAvailability[slot] <= 0) return false;
+
+        // For single-slot services, just check this slot
+        if (requiredSlots <= 1) return true;
+
+        // For multi-slot services, check if there are enough consecutive available slots
+        const startIndex = timeSlots.indexOf(slot);
+        if (startIndex === -1) return false;
+
+        // Check all required slots
+        for (let i = 0; i < requiredSlots; i++) {
+          const slotIndex = startIndex + i;
+          if (slotIndex >= timeSlots.length) return false; // Not enough slots left in the day
+
+          const currentSlot = timeSlots[slotIndex];
+          if (slotAvailability[currentSlot] <= 0) return false; // This slot is already fully booked
+        }
+
+        return true;
+      });
+    }
+
+    // If no service is selected, just return all slots with any availability
+    return timeSlots.filter(slot => slotAvailability[slot] > 0);
   };
 
   const handleNewAppointmentForTimeSlot = (time: string) => {
@@ -904,21 +1054,66 @@ const Appointments = () => {
       return;
     }
 
-    // Check if the slot is still available (in case it was booked while the form was open)
+    // Get the number of slots this service requires
+    const requiredSlots = getSlotsOccupied(appointmentService);
+
+    // Get all active appointments for the current date
     const formattedDate = format(appointmentDate, 'yyyy-MM-dd');
     const dateAppointments = appointments.filter(app =>
       app.date === formattedDate &&
-      app.time === appointmentTime &&
-      app.status !== 'cancelled'
+      app.status !== 'cancelled' &&
+      app.status !== 'completed'
     );
 
-    const slotCount = dateAppointments.length;
-    const maxAllowed = isDental ? 2 : 1;
+    // Create a map of slot availability
+    const slotAvailability: Record<string, number> = {};
 
-    if (slotCount >= maxAllowed) {
+    // Initialize all slots with max capacity
+    timeSlots.forEach(slot => {
+      slotAvailability[slot] = isDental ? 2 : 1; // Dental allows 2 per slot, Meditouch only 1
+    });
+
+    // For each appointment, reduce availability of all slots it occupies
+    dateAppointments.forEach(app => {
+      const startSlot = app.time;
+      const slotsOccupied = getSlotsOccupied(app.service);
+
+      // Find the starting index of this appointment
+      const startIndex = timeSlots.indexOf(startSlot);
+      if (startIndex === -1) return;
+
+      // Reduce availability for each slot this appointment occupies
+      for (let i = 0; i < slotsOccupied; i++) {
+        const slotIndex = startIndex + i;
+        if (slotIndex < timeSlots.length) {
+          const slot = timeSlots[slotIndex];
+          slotAvailability[slot] = Math.max(0, (slotAvailability[slot] || 0) - 1);
+        }
+      }
+    });
+
+    // Check if all required slots are available
+    const startIndex = timeSlots.indexOf(appointmentTime);
+    let allSlotsAvailable = true;
+
+    for (let i = 0; i < requiredSlots; i++) {
+      const slotIndex = startIndex + i;
+      if (slotIndex >= timeSlots.length) {
+        allSlotsAvailable = false;
+        break;
+      }
+
+      const slot = timeSlots[slotIndex];
+      if (slotAvailability[slot] <= 0) {
+        allSlotsAvailable = false;
+        break;
+      }
+    }
+
+    if (!allSlotsAvailable) {
       toast({
-        title: "Time Slot No Longer Available",
-        description: `This time slot has been booked while you were filling the form. Please select another time.`,
+        title: "Time Slot Unavailable",
+        description: `This service requires ${requiredSlots} consecutive time slots (${requiredSlots * 15} minutes), but some are already fully booked. Please select another time.`,
         variant: "destructive"
       });
       return;
@@ -946,7 +1141,22 @@ const Appointments = () => {
     console.log('Creating confirmed appointment:', pendingAppointment);
 
     const formattedDate = format(pendingAppointment.date, 'yyyy-MM-dd');
-    const newId = `${isDental ? 'd' : 'm'}${Math.floor(Math.random() * 10000)}`;
+
+    // Create a sequential ID based on the highest existing ID
+    const existingAppointments = isDental ? dentalAppointments : meditouchAppointments;
+    const prefix = isDental ? 'd' : 'm';
+
+    // Find the highest existing ID number
+    let highestId = 0;
+    existingAppointments.forEach(app => {
+      const idNumber = parseInt(app.id.replace(/\D/g, ''));
+      if (!isNaN(idNumber) && idNumber > highestId) {
+        highestId = idNumber;
+      }
+    });
+
+    // Create new ID that's one higher than the current highest
+    const newId = `${prefix}${highestId + 1}`;
 
     if (isDental) {
       const newAppointment: DentalAppointment = {
@@ -971,9 +1181,15 @@ const Appointments = () => {
       setMeditouchAppointments([...meditouchAppointments, newAppointment]);
     }
 
+    // Get the service duration
+    const requiredSlots = getSlotsOccupied(pendingAppointment.service);
+    const durationMinutes = requiredSlots * 15;
+
     toast({
       title: "Appointment Created",
-      description: `New appointment for ${pendingAppointment.patient} on ${format(pendingAppointment.date, 'PP')} at ${pendingAppointment.time}`
+      description: `New appointment for ${pendingAppointment.patient} on ${format(pendingAppointment.date, 'PP')} at ${pendingAppointment.time}${
+        requiredSlots > 1 ? ` (${durationMinutes} minutes)` : ''
+      }`
     });
 
     // Update the UI date to match the appointment date
@@ -1006,6 +1222,45 @@ const Appointments = () => {
 
   const goToNewAppointment = () => {
     navigate('/appointments/new');
+  };
+
+  // Function to open the add patient dialog
+  const openAddPatientDialog = () => {
+    setIsAddPatientDialogOpen(true);
+  };
+
+  // Define the patient type
+  interface Patient {
+    id: string;
+    name: string;
+    gender: 'male' | 'female' | 'other';
+    age: number;
+    dateOfBirth?: string;
+    email: string | null;
+    phone: string;
+    altPhone?: string | null;
+    address?: string;
+    city?: string;
+    pincode?: string;
+    bloodGroup?: string;
+    referredBy?: string;
+    clinic: 'dental' | 'meditouch' | 'both';
+    lastVisit: string;
+  }
+
+  // Handle newly added patient
+  const handlePatientAdded = (newPatient: Patient) => {
+    // Add the new patient to the list of registered patients
+    const updatedPatients = [
+      { id: newPatient.id, name: newPatient.name },
+      ...registeredPatients
+    ];
+
+    // Update the filtered patients list
+    setFilteredPatients(updatedPatients);
+
+    // Select the newly added patient
+    setAppointmentPatient(newPatient.name);
   };
 
   // Listen for the custom event to open the new appointment form
@@ -1292,17 +1547,30 @@ const Appointments = () => {
                                         </div>
                                       ) : (
                                         <div className="h-full">
-                                          {appointments.map(appointment => (
-                                            <TimeSlotAppointment
-                                              key={appointment.id}
-                                              appointment={appointment}
-                                              isDental={isDental}
-                                              isCompact={appointments.length > 1}
-                                              onClick={() => {
-                                                handleEditAppointment(appointment);
-                                              }}
-                                            />
-                                          ))}
+                                          <div className="flex flex-row gap-1 h-full">
+                                            {appointments.map(appointment => {
+                                              // Check if this is the first slot of a multi-slot appointment
+                                              const isFirstSlot = appointment.time === slot;
+                                              // Get the number of slots this appointment occupies
+                                              const slotsOccupied = getSlotsOccupied(appointment.service);
+                                              // Only show appointments that start in this slot or are extended from previous slots
+                                              return (
+                                                <div key={appointment.id} className="flex-1 min-w-0">
+                                                  <TimeSlotAppointment
+                                                    appointment={appointment}
+                                                    isDental={isDental}
+                                                    isCompact={appointments.length > 1}
+                                                    isMultiSlot={slotsOccupied > 1}
+                                                    isFirstSlot={isFirstSlot}
+                                                    slotsOccupied={slotsOccupied}
+                                                    onClick={() => {
+                                                      handleEditAppointment(appointment);
+                                                    }}
+                                                  />
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
                                         </div>
                                       )}
                                     </div>
@@ -1722,92 +1990,107 @@ const Appointments = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="patient">Patient</Label>
-                <Select
-                  value={appointmentPatient}
-                  onValueChange={setAppointmentPatient}
-                  // Keep the dropdown open when clicking inside it
-                  onOpenChange={(open) => {
-                    if (open) {
-                      // When opening, reset the filtered patients
-                      setFilteredPatients(registeredPatients);
-                    }
-                  }}
-                >
-                  <SelectTrigger id="patient">
-                    <SelectValue placeholder="Select patient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <div className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
-                      <div className="relative">
-                        <Input
-                          placeholder="Search patients..."
-                          className="mb-2 pr-8"
-                          onChange={(e) => {
-                            // Immediately filter as the user types
-                            const value = e.target.value;
-                            console.log('Searching for:', value);
-                            handlePatientSearch(value);
-                          }}
-                          // Add autofocus to automatically focus the search input when dropdown opens
-                          autoFocus
-                          id="patient-search"
-                          // Prevent the dropdown from closing when typing
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => {
-                            // Prevent the dropdown from closing when pressing keys
-                            e.stopPropagation();
-                          }}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3"
-                          onClick={(e) => {
-                            // Prevent the dropdown from closing
-                            e.stopPropagation();
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="patient">Patient</Label>
+                  <Select
+                    value={appointmentPatient}
+                    onValueChange={setAppointmentPatient}
+                    // Keep the dropdown open when clicking inside it
+                    onOpenChange={(open) => {
+                      if (open) {
+                        // When opening, reset the filtered patients
+                        setFilteredPatients(registeredPatients);
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="patient">
+                      <SelectValue placeholder="Select patient" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <div className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="relative">
+                          <Input
+                            placeholder="Search patients..."
+                            className="mb-2 pr-8"
+                            onChange={(e) => {
+                              // Immediately filter as the user types
+                              const value = e.target.value;
+                              console.log('Searching for:', value);
+                              handlePatientSearch(value);
+                            }}
+                            // Add autofocus to automatically focus the search input when dropdown opens
+                            autoFocus
+                            id="patient-search"
+                            // Prevent the dropdown from closing when typing
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              // Prevent the dropdown from closing when pressing keys
+                              e.stopPropagation();
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3"
+                            onClick={(e) => {
+                              // Prevent the dropdown from closing
+                              e.stopPropagation();
 
-                            // Clear the search input
-                            const input = document.getElementById('patient-search') as HTMLInputElement;
-                            if (input) {
-                              input.value = '';
-                              handlePatientSearch('');
-                              // Re-focus the input after clearing
-                              input.focus();
-                            }
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    {filteredPatients.length === 0 ? (
-                      <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                        No patient found
-                      </div>
-                    ) : (
-                      // Wrap in a div to prevent event propagation issues
-                      <div onClick={(e) => e.stopPropagation()}>
-                        {filteredPatients.map(patient => (
-                          <SelectItem
-                            key={patient.id}
-                            value={patient.name}
-                            // Prevent the dropdown from closing immediately
-                            onSelect={(e) => {
-                              // This ensures the value is set but the dropdown doesn't close immediately
-                              e.preventDefault();
-                              setAppointmentPatient(patient.name);
+                              // Clear the search input
+                              const input = document.getElementById('patient-search') as HTMLInputElement;
+                              if (input) {
+                                input.value = '';
+                                handlePatientSearch('');
+                                // Re-focus the input after clearing
+                                input.focus();
+                              }
                             }}
                           >
-                            {patient.name}
-                          </SelectItem>
-                        ))}
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    )}
-                  </SelectContent>
-                </Select>
+                      {filteredPatients.length === 0 ? (
+                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                          No patient found
+                        </div>
+                      ) : (
+                        // Wrap in a div to prevent event propagation issues
+                        <div onClick={(e) => e.stopPropagation()}>
+                          {filteredPatients.map(patient => (
+                            <SelectItem
+                              key={patient.id}
+                              value={patient.name}
+                              // Prevent the dropdown from closing immediately
+                              onSelect={(e) => {
+                                // This ensures the value is set but the dropdown doesn't close immediately
+                                e.preventDefault();
+                                setAppointmentPatient(patient.name);
+                              }}
+                            >
+                              {patient.name}
+                            </SelectItem>
+                          ))}
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={openAddPatientDialog}
+                  className={`w-full ${
+                    isDental
+                      ? 'bg-dental-primary hover:bg-dental-dark'
+                      : 'bg-meditouch-primary hover:bg-meditouch-dark'
+                  }`}
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add New Patient
+                </Button>
               </div>
 
               <div className="space-y-2">
@@ -2259,6 +2542,11 @@ const Appointments = () => {
                 </p>
                 <p className="text-sm">
                   <span className="font-semibold">Service:</span> {pendingAppointment.service}
+                  {pendingAppointment.service && (
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({getSlotsOccupied(pendingAppointment.service) * 15} min)
+                    </span>
+                  )}
                 </p>
                 <p className="text-sm">
                   <span className="font-semibold">Date:</span> {pendingAppointment.date ? format(pendingAppointment.date, 'PP') : ''}
@@ -2296,6 +2584,13 @@ const Appointments = () => {
           appointment={completedAppointment}
         />
       )}
+
+      {/* Add Patient Dialog */}
+      <AddPatientDialog
+        isOpen={isAddPatientDialogOpen}
+        onClose={() => setIsAddPatientDialogOpen(false)}
+        onPatientAdded={handlePatientAdded}
+      />
     </div>
   );
 };
