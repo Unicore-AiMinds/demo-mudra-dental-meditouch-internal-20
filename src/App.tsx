@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ClinicProvider } from "@/contexts/ClinicContext";
 import { DentalHistoryProvider } from "@/contexts/DentalHistoryContext";
+import { VitalSignsProvider } from "@/contexts/VitalSignsContext";
+import { PrescriptionProvider } from "@/contexts/PrescriptionContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Login from "@/pages/Login";
@@ -35,7 +37,9 @@ const App = () => (
         <AuthProvider>
           <ClinicProvider>
             <DentalHistoryProvider>
-              <Routes>
+              <VitalSignsProvider>
+                <PrescriptionProvider>
+                  <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
 
@@ -101,6 +105,8 @@ const App = () => (
               {/* 404 route */}
               <Route path="*" element={<NotFound />} />
               </Routes>
+                </PrescriptionProvider>
+              </VitalSignsProvider>
             </DentalHistoryProvider>
           </ClinicProvider>
         </AuthProvider>

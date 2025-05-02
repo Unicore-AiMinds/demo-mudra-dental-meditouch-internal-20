@@ -3,6 +3,57 @@ import { format, subDays } from "date-fns";
 
 // Demo charting history data
 export const demoChartingHistory: ChartingEntry[] = [
+  // Patient: Riya Sharma (PT009) - Child patient with primary teeth
+  {
+    entryId: "CE101",
+    patientId: "PT009",
+    dateRecorded: format(subDays(new Date(), 30), 'yyyy-MM-dd HH:mm:ss'),
+    toothNumbers: ["54", "55"], // Upper right primary molars (FDI notation)
+    surfaces: ["O", "M"],
+    findingTreatment: "Caries",
+    status: "Existing",
+    notes: "Early stage caries detected in primary teeth during routine checkup."
+  },
+  {
+    entryId: "CE102",
+    patientId: "PT009",
+    dateRecorded: format(subDays(new Date(), 29), 'yyyy-MM-dd HH:mm:ss'),
+    toothNumbers: ["54", "55"], // Upper right primary molars (FDI notation)
+    surfaces: ["O", "M"],
+    findingTreatment: "Composite Filling",
+    status: "Planned",
+    notes: "Scheduled for next appointment. Child-friendly approach needed."
+  },
+  {
+    entryId: "CE103",
+    patientId: "PT009",
+    dateRecorded: format(subDays(new Date(), 15), 'yyyy-MM-dd HH:mm:ss'),
+    toothNumbers: ["54", "55"], // Upper right primary molars (FDI notation)
+    surfaces: ["O", "M"],
+    findingTreatment: "Composite Filling",
+    status: "Completed",
+    notes: "Patient was cooperative. Used fluoride varnish after procedure."
+  },
+  {
+    entryId: "CE104",
+    patientId: "PT009",
+    dateRecorded: format(subDays(new Date(), 14), 'yyyy-MM-dd HH:mm:ss'),
+    toothNumbers: ["74", "75"], // Lower left primary molars (FDI notation)
+    surfaces: ["O"],
+    findingTreatment: "Sealant",
+    status: "Completed",
+    notes: "Preventive sealants applied to prevent future decay."
+  },
+  {
+    entryId: "CE105",
+    patientId: "PT009",
+    dateRecorded: format(subDays(new Date(), 7), 'yyyy-MM-dd HH:mm:ss'),
+    toothNumbers: ["51", "61"], // Upper primary central incisors (FDI notation)
+    findingTreatment: "Loose Tooth",
+    status: "Existing",
+    notes: "Natural exfoliation beginning. Parent informed about proper care during this phase."
+  },
+
   // Patient: Aarav Sharma (PT001)
   {
     entryId: "CE001",

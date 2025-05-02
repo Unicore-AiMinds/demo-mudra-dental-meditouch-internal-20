@@ -18,10 +18,16 @@ export interface ChartingEntry {
 }
 
 // Define the tooth numbering system using FDI/ISO 3950 notation
-// Format: Quadrant (1-4) + Tooth position (1-8)
+// Format: Quadrant (1-4) + Tooth position (1-8) for permanent teeth
+// Format: Quadrant (5-8) + Tooth position (1-5) for primary teeth
+// Permanent teeth:
 // Quadrant 1: Upper Right, Quadrant 2: Upper Left
 // Quadrant 3: Lower Left, Quadrant 4: Lower Right
+// Primary teeth:
+// Quadrant 5: Upper Right, Quadrant 6: Upper Left
+// Quadrant 7: Lower Left, Quadrant 8: Lower Right
 
+// Permanent Teeth (Adult)
 // Upper Right (Quadrant 1)
 const upperRightTeeth = ['18', '17', '16', '15', '14', '13', '12', '11'];
 // Upper Left (Quadrant 2)
@@ -31,13 +37,34 @@ const lowerLeftTeeth = ['31', '32', '33', '34', '35', '36', '37', '38'];
 // Lower Right (Quadrant 4)
 const lowerRightTeeth = ['48', '47', '46', '45', '44', '43', '42', '41'];
 
-// Combined list of all teeth in FDI notation
-export const toothNumbersList: string[] = [
+// Primary Teeth (Child)
+// Upper Right (Quadrant 5)
+const upperRightPrimaryTeeth = ['55', '54', '53', '52', '51'];
+// Upper Left (Quadrant 6)
+const upperLeftPrimaryTeeth = ['61', '62', '63', '64', '65'];
+// Lower Left (Quadrant 7)
+const lowerLeftPrimaryTeeth = ['71', '72', '73', '74', '75'];
+// Lower Right (Quadrant 8)
+const lowerRightPrimaryTeeth = ['85', '84', '83', '82', '81'];
+
+// Combined list of all permanent teeth in FDI notation
+export const permanentTeethList: string[] = [
   ...upperRightTeeth,
   ...upperLeftTeeth,
   ...lowerLeftTeeth,
   ...lowerRightTeeth
 ];
+
+// Combined list of all primary teeth in FDI notation
+export const primaryTeethList: string[] = [
+  ...upperRightPrimaryTeeth,
+  ...upperLeftPrimaryTeeth,
+  ...lowerLeftPrimaryTeeth,
+  ...lowerRightPrimaryTeeth
+];
+
+// Default to permanent teeth
+export const toothNumbersList: string[] = permanentTeethList;
 
 // Define the tooth surfaces
 export const surfacesList: string[] = ['M', 'O', 'D', 'B/F', 'L'];

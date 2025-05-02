@@ -3,6 +3,50 @@ import { addDays, format, subDays } from "date-fns";
 
 // Demo dental history for patients
 export const demoDentalHistory: Record<string, DentalHistoryEntry[]> = {
+  // Riya Sharma (PT009) - Child patient
+  "PT009": [
+    {
+      appointmentId: "d901",
+      patientId: "PT009",
+      date: format(subDays(new Date(), 30), 'yyyy-MM-dd'), // 1 month ago
+      service: "Pediatric Dental Checkup",
+      doctor: "Dr. Patel",
+      diagnosisNotes: "First dental visit. Patient has early caries on primary molars.",
+      treatmentPlanSuggested: "Composite fillings for affected teeth and preventive sealants.",
+      procedurePerformedNotes: "Completed examination and took intraoral photographs. Patient was cooperative."
+    },
+    {
+      appointmentId: "d902",
+      patientId: "PT009",
+      date: format(subDays(new Date(), 15), 'yyyy-MM-dd'), // 15 days ago
+      service: "Composite Filling",
+      doctor: "Dr. Patel",
+      diagnosisNotes: "Caries on primary molars 54, 55.",
+      treatmentPlanSuggested: "Composite fillings with fluoride treatment.",
+      procedurePerformedNotes: "Successfully placed composite fillings on teeth #54, #55. Patient was brave and cooperative."
+    },
+    {
+      appointmentId: "d903",
+      patientId: "PT009",
+      date: format(subDays(new Date(), 14), 'yyyy-MM-dd'), // 14 days ago
+      service: "Preventive Care",
+      doctor: "Dr. Patel",
+      diagnosisNotes: "Preventive care for primary molars.",
+      treatmentPlanSuggested: "Sealants on primary molars to prevent future decay.",
+      procedurePerformedNotes: "Applied sealants on teeth #74, #75. Provided oral hygiene instructions to both patient and parent."
+    },
+    {
+      appointmentId: "d904",
+      patientId: "PT009",
+      date: format(subDays(new Date(), 7), 'yyyy-MM-dd'), // 7 days ago
+      service: "Follow-up Visit",
+      doctor: "Dr. Patel",
+      diagnosisNotes: "Follow-up for recent treatments. Primary incisors showing signs of natural exfoliation.",
+      treatmentPlanSuggested: "Monitor loose teeth. No intervention needed at this time.",
+      procedurePerformedNotes: "Checked recent fillings and sealants. All in good condition. Discussed proper care during tooth loss phase."
+    }
+  ],
+
   // Aarav Sharma (PT001)
   "PT001": [
     {
@@ -122,6 +166,23 @@ export const demoDentalHistory: Record<string, DentalHistoryEntry[]> = {
 
 // Initial array for tentative follow-ups with demo data
 export const initialTentativeFollowUps: TentativeFollowUp[] = [
+  // Child patient follow-up
+  {
+    followUpId: 'fu0',
+    patientId: 'PT009',
+    patientName: 'Riya Sharma',
+    basedOnAppointmentId: 'd904',
+    tentativeDate: format(addDays(new Date(), 90), 'yyyy-MM-dd'), // 3 months from now
+    followUpSequence: 1,
+    totalStepsInSequence: 1,
+    sequenceGroupId: 'seq0',
+    suggestedServiceName: 'Pediatric Dental Checkup',
+    originalService: 'Follow-up Visit',
+    originalDoctor: 'Dr. Patel',
+    status: 'Pending',
+    notes: 'Regular checkup for primary teeth. Monitor loose incisors and check sealants.'
+  },
+
   // Upcoming follow-ups
   {
     followUpId: 'fu1',
@@ -431,6 +492,17 @@ export const initialTentativeFollowUps: TentativeFollowUp[] = [
 export const demoServicesWithFollowUp = [
   {
     id: 1,
+    name: "Pediatric Dental Checkup",
+    duration: 45,
+    price: 800,
+    description: "Child-friendly comprehensive dental examination and consultation",
+    requiresFollowUp: true,
+    defaultFollowUpIntervalDays: 90, // 3 months for children
+    numberOfFollowUps: 1,
+    followUpServiceName: "Pediatric Dental Checkup"
+  },
+  {
+    id: 2,
     name: "General Checkup",
     duration: 30,
     price: 500,
@@ -441,7 +513,7 @@ export const demoServicesWithFollowUp = [
     followUpServiceName: "General Checkup"
   },
   {
-    id: 2,
+    id: 3,
     name: "Teeth Cleaning",
     duration: 45,
     price: 1000,
@@ -452,7 +524,7 @@ export const demoServicesWithFollowUp = [
     followUpServiceName: "Teeth Cleaning"
   },
   {
-    id: 3,
+    id: 4,
     name: "Root Canal Treatment",
     duration: 60,
     price: 5000,
@@ -463,7 +535,7 @@ export const demoServicesWithFollowUp = [
     followUpServiceName: "Root Canal Follow-up"
   },
   {
-    id: 4,
+    id: 5,
     name: "Dental Filling",
     duration: 30,
     price: 1500,
@@ -474,7 +546,7 @@ export const demoServicesWithFollowUp = [
     followUpServiceName: ""
   },
   {
-    id: 5,
+    id: 6,
     name: "Crown Placement",
     duration: 60,
     price: 8000,

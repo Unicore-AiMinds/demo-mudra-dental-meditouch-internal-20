@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -32,7 +33,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import {
   ChartingEntry,
-  toothNumbersList,
+  permanentTeethList,
+  primaryTeethList,
   surfacesList,
   servicesList,
   statusOptions
@@ -62,6 +64,8 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<'Existing' | 'Planned' | 'Completed'>('Existing');
   const [currentNotes, setCurrentNotes] = useState<string>('');
+  const [showPrimaryTeeth, setShowPrimaryTeeth] = useState<boolean>(false);
+  const [currentTeethList, setCurrentTeethList] = useState<string[]>(permanentTeethList);
 
   // Get patient name for follow-ups
   const patientName = getPatientName(patientId) || "Unknown Patient";
@@ -83,6 +87,16 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
         ? prev.filter(t => t !== toothNumber)
         : [...prev, toothNumber]
     );
+  };
+
+  // Toggle between primary and permanent teeth
+  const toggleTeethType = (showPrimary: boolean) => {
+    setShowPrimaryTeeth(showPrimary);
+    setCurrentTeethList(showPrimary ? primaryTeethList : permanentTeethList);
+
+    // Clear selected teeth when switching between primary and permanent
+    // This prevents confusion when teeth numbers overlap
+    setSelectedTeeth([]);
   };
 
   // Handle surface selection
@@ -224,8 +238,37 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
               </TabsContent>
 
               <TabsContent value="grid" className="mt-4">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant={!showPrimaryTeeth ? "default" : "outline"}
+                      onClick={() => toggleTeethType(false)}
+                      className="text-sm"
+                    >
+                      Full Mouth (Permanent Teeth)
+                    </Button>
+                    <Button
+                      variant={showPrimaryTeeth ? "default" : "outline"}
+                      onClick={() => toggleTeethType(true)}
+                      className="text-sm"
+                    >
+                      Show Child Teeth (Primary)
+                    </Button>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="teeth-toggle-grid"
+                      checked={showPrimaryTeeth}
+                      onCheckedChange={toggleTeethType}
+                    />
+                    <Label htmlFor="teeth-toggle-grid" className="text-sm">
+                      {showPrimaryTeeth ? "Primary Teeth" : "Permanent Teeth"}
+                    </Label>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-8 gap-2">
-                  {toothNumbersList.map(tooth => (
+                  {currentTeethList.map(tooth => (
                     <div key={tooth} className="flex items-center space-x-2">
                       <Checkbox
                         id={`tooth-${tooth}`}

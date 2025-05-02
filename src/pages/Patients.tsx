@@ -119,6 +119,23 @@ const demoPatients: Patient[] = [
     lastVisit: "2023-10-15"
   },
   {
+    id: "PT009",
+    name: "Riya Sharma",
+    gender: "female",
+    age: 6,
+    dateOfBirth: "2017-08-12",
+    email: null,
+    phone: "9876543210", // Same as parent (Aarav Sharma)
+    altPhone: null,
+    address: "123 Modi Street",
+    city: "Mumbai",
+    pincode: "400001",
+    bloodGroup: "O+",
+    referredBy: "Family Member",
+    clinic: "dental",
+    lastVisit: "2023-10-18"
+  },
+  {
     id: "PT002",
     name: "Priya Patel",
     gender: "female",

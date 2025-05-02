@@ -21,6 +21,8 @@ import { ArrowLeft, Edit } from 'lucide-react';
 import PatientDentalHistory from '@/components/PatientDentalHistory';
 import DentalChartingComponent from '@/components/DentalChartingComponent';
 import PatientUpcomingAppointments from '@/components/PatientUpcomingAppointments';
+import VitalSignsComponent from '@/components/VitalSignsComponent';
+import PrescriptionComponent from '@/components/PrescriptionComponent';
 
 // Import the Patient interface and demo data
 interface Patient {
@@ -39,6 +41,7 @@ interface Patient {
   referredBy?: string;
   clinic: 'dental' | 'meditouch' | 'both';
   lastVisit: string | '';
+  // Vital signs will be stored separately but referenced by patientId
 }
 
 const demoPatients: Patient[] = [
@@ -247,7 +250,7 @@ const getClinicBadge = (clinic: Patient['clinic'], activeClinic: 'dental' | 'med
 
 // Helper function to check if a tab is valid for a patient based on their clinic
 const isValidTab = (tab: string, clinic: string): boolean => {
-  const allTabs = ['overview', 'appointments'];
+  const allTabs = ['overview', 'appointments', 'vital-signs', 'prescriptions'];
   const dentalTabs = ['dental-history', 'dental-charting'];
 
   if (allTabs.includes(tab)) {
@@ -358,11 +361,13 @@ const PatientDetails = () => {
           <TabsTrigger value="overview">Patient Info</TabsTrigger>
           <TabsTrigger value="appointments">Appointments</TabsTrigger>
           {(patient.clinic === 'dental' || patient.clinic === 'both') && (
-            <TabsTrigger value="dental-history">Dental History</TabsTrigger>
-          )}
-          {(patient.clinic === 'dental' || patient.clinic === 'both') && (
             <TabsTrigger value="dental-charting">Dental Charting</TabsTrigger>
           )}
+          {(patient.clinic === 'dental' || patient.clinic === 'both') && (
+            <TabsTrigger value="dental-history">Dental History</TabsTrigger>
+          )}
+          <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
+          <TabsTrigger value="vital-signs">Vital Signs</TabsTrigger>
         </TabsList>
 
         {/* Patient Info Tab - Personal Information */}
@@ -447,6 +452,13 @@ const PatientDetails = () => {
           />
         </TabsContent>
 
+        {/* Dental Charting Tab */}
+        {(patient.clinic === 'dental' || patient.clinic === 'both') && (
+          <TabsContent value="dental-charting" className="mt-6">
+            <DentalChartingComponent patientId={patient.id} />
+          </TabsContent>
+        )}
+
         {/* Dental History Tab */}
         {(patient.clinic === 'dental' || patient.clinic === 'both') && (
           <TabsContent value="dental-history" className="mt-6">
@@ -454,12 +466,21 @@ const PatientDetails = () => {
           </TabsContent>
         )}
 
-        {/* Dental Charting Tab */}
-        {(patient.clinic === 'dental' || patient.clinic === 'both') && (
-          <TabsContent value="dental-charting" className="mt-6">
-            <DentalChartingComponent patientId={patient.id} />
-          </TabsContent>
-        )}
+        {/* Prescriptions Tab */}
+        <TabsContent value="prescriptions" className="mt-6">
+          <PrescriptionComponent
+            patientId={patient.id}
+            patientName={patient.name}
+          />
+        </TabsContent>
+
+        {/* Vital Signs Tab */}
+        <TabsContent value="vital-signs" className="mt-6">
+          <VitalSignsComponent
+            patientId={patient.id}
+            patientName={patient.name}
+          />
+        </TabsContent>
       </Tabs>
     </div>
   );
