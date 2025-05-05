@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
+import { DentalHistoryEntry } from '@/types/dental-history';
 import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
-  CardDescription
+  CardTitle
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,8 +17,15 @@ import {
   TabsList,
   TabsTrigger
 } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ArrowLeft, Edit } from 'lucide-react';
-import PatientDentalHistory from '@/components/PatientDentalHistory';
 import DentalChartingComponent from '@/components/DentalChartingComponent';
 import PatientUpcomingAppointments from '@/components/PatientUpcomingAppointments';
 import VitalSignsComponent from '@/components/VitalSignsComponent';
@@ -490,45 +497,122 @@ const PatientDetails = () => {
 
 // Wrapper for PatientDentalHistory to avoid importing it directly from Patients.tsx
 const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
-  const { getPatientHistory } = useDentalHistory();
+  const { getPatientHistory, updatePaymentStatus } = useDentalHistory();
   const patientHistory = getPatientHistory(patientId);
+  const [isPaymentConfirmOpen, setIsPaymentConfirmOpen] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<DentalHistoryEntry | null>(null);
+
+  const handlePaymentStatusClick = (entry: DentalHistoryEntry) => {
+    setSelectedEntry(entry);
+    setIsPaymentConfirmOpen(true);
+  };
+
+  const confirmPaymentStatusChange = () => {
+    if (selectedEntry) {
+      // Toggle the payment status
+      const newStatus = selectedEntry.paymentStatus === 'paid' ? 'unpaid' : 'paid';
+      updatePaymentStatus(patientId, selectedEntry.appointmentId, newStatus);
+      setIsPaymentConfirmOpen(false);
+      setSelectedEntry(null);
+    }
+  };
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle>Dental History</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {patientHistory.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2 px-4 font-medium">Date</th>
-                  <th className="text-left py-2 px-4 font-medium">Service</th>
-                  <th className="text-left py-2 px-4 font-medium">Doctor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {patientHistory
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Sort by date, newest first
-                  .map((entry) => (
-                    <tr key={entry.appointmentId} className="border-b">
-                      <td className="py-2 px-4">{new Date(entry.date).toLocaleDateString()}</td>
-                      <td className="py-2 px-4">{entry.service}</td>
-                      <td className="py-2 px-4">{entry.doctor}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+    <>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>Dental History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {patientHistory.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-4 font-medium">Date</th>
+                    <th className="text-left py-2 px-4 font-medium">Service</th>
+                    <th className="text-left py-2 px-4 font-medium">Doctor</th>
+                    <th className="text-left py-2 px-4 font-medium">Payment Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {patientHistory
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Sort by date, newest first
+                    .map((entry) => (
+                      <tr key={entry.appointmentId} className="border-b">
+                        <td className="py-2 px-4">{new Date(entry.date).toLocaleDateString()}</td>
+                        <td className="py-2 px-4">{entry.service}</td>
+                        <td className="py-2 px-4">{entry.doctor}</td>
+                        <td className="py-2 px-4">
+                          <Badge
+                            variant={entry.paymentStatus === 'paid' ? 'default' : 'outline'}
+                            className={`cursor-pointer hover:opacity-80 ${entry.paymentStatus === 'paid' ? 'bg-green-500' : ''}`}
+                            onClick={() => handlePaymentStatusClick(entry)}
+                          >
+                            {entry.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-muted-foreground">No completed appointment history found.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Payment Status Confirmation Dialog */}
+      <Dialog open={isPaymentConfirmOpen} onOpenChange={setIsPaymentConfirmOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Payment Status Change</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to change the payment status for this service?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {selectedEntry && (
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <span className="font-semibold">Service:</span> {selectedEntry.service}
+                </p>
+                <p className="text-sm">
+                  <span className="font-semibold">Date:</span> {new Date(selectedEntry.date).toLocaleDateString()}
+                </p>
+                <p className="text-sm">
+                  <span className="font-semibold">Doctor:</span> {selectedEntry.doctor}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  You are about to mark this service as
+                  <span className="font-semibold">
+                    {selectedEntry.paymentStatus === 'paid' ? ' Unpaid' : ' Paid'}
+                  </span>.
+                </p>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="text-center py-6">
-            <p className="text-muted-foreground">No completed appointment history found.</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPaymentConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmPaymentStatusChange}
+              className={selectedEntry?.paymentStatus === 'paid'
+                ? 'bg-destructive hover:bg-destructive/90'
+                : 'bg-green-600 hover:bg-green-700'}
+            >
+              {selectedEntry?.paymentStatus === 'paid'
+                ? 'Mark as Unpaid'
+                : 'Mark as Paid'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

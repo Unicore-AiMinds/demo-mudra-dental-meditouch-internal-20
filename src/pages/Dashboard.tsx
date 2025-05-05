@@ -147,67 +147,105 @@ const Dashboard = () => {
             <CardDescription>Upcoming appointments for today</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {isDental ? (
-              <>
-                <div className="flex justify-between items-center p-3 rounded-md bg-dental-light">
-                  <div>
-                    <p className="text-sm font-medium">Aarav Sharma</p>
-                    <p className="text-xs text-muted-foreground">10:00 AM - Dental Checkup</p>
+            <div className="space-y-3">
+              {isDental ? (
+                <>
+                  <div className="flex justify-between items-center p-2 rounded-md bg-dental-light border border-dental-light">
+                    <div>
+                      <p className="text-sm font-medium">Aarav Sharma</p>
+                      <p className="text-xs text-muted-foreground">10:00 AM - Dental Checkup</p>
+                    </div>
+                    <div className="text-xs bg-dental-primary text-white px-2 py-1 rounded">
+                      Dr. Khanna
+                    </div>
                   </div>
-                  <div className="text-xs bg-dental-primary text-white px-2 py-1 rounded">
-                    Dr. Khanna
+                  <div className="flex justify-between items-center p-2 rounded-md bg-dental-light border border-dental-light">
+                    <div>
+                      <p className="text-sm font-medium">Priya Patel</p>
+                      <p className="text-xs text-muted-foreground">11:30 AM - Root Canal</p>
+                    </div>
+                    <div className="text-xs bg-dental-primary text-white px-2 py-1 rounded">
+                      Dr. Khanna
+                    </div>
                   </div>
-                </div>
-                <div className="flex justify-between items-center p-3 rounded-md bg-dental-light">
-                  <div>
-                    <p className="text-sm font-medium">Priya Patel</p>
-                    <p className="text-xs text-muted-foreground">11:30 AM - Root Canal</p>
+                  <div className="flex justify-between items-center p-2 rounded-md bg-dental-light border border-dental-light">
+                    <div>
+                      <p className="text-sm font-medium">Arjun Singh</p>
+                      <p className="text-xs text-muted-foreground">2:00 PM - Teeth Cleaning</p>
+                    </div>
+                    <div className="text-xs bg-dental-primary text-white px-2 py-1 rounded">
+                      Dr. Khanna
+                    </div>
                   </div>
-                  <div className="text-xs bg-dental-primary text-white px-2 py-1 rounded">
-                    Dr. Khanna
+                  <div className="flex justify-between items-center p-2 rounded-md bg-dental-light border border-dental-light">
+                    <div>
+                      <p className="text-sm font-medium">Neha Kapoor</p>
+                      <p className="text-xs text-muted-foreground">3:15 PM - Dental Filling</p>
+                    </div>
+                    <div className="text-xs bg-dental-primary text-white px-2 py-1 rounded">
+                      Dr. Desai
+                    </div>
                   </div>
-                </div>
-                <div className="flex justify-between items-center p-3 rounded-md bg-gray-100">
-                  <div>
-                    <p className="text-sm font-medium">Arjun Singh</p>
-                    <p className="text-xs text-muted-foreground">2:00 PM - Teeth Cleaning</p>
+                  <div className="flex justify-between items-center p-2 rounded-md bg-dental-light border border-dental-light">
+                    <div>
+                      <p className="text-sm font-medium">Riya Sharma</p>
+                      <p className="text-xs text-muted-foreground">4:30 PM - Pediatric Checkup</p>
+                    </div>
+                    <div className="text-xs bg-dental-primary text-white px-2 py-1 rounded">
+                      Dr. Patel
+                    </div>
                   </div>
-                  <div className="text-xs bg-dental-primary text-white px-2 py-1 rounded">
-                    Dr. Khanna
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center p-2 rounded-md bg-meditouch-light border border-meditouch-light">
+                    <div>
+                      <p className="text-sm font-medium">Meera Joshi</p>
+                      <p className="text-xs text-muted-foreground">9:15 AM - Skin Consultation</p>
+                    </div>
+                    <div className="text-xs bg-meditouch-primary text-white px-2 py-1 rounded">
+                      Meditouch
+                    </div>
                   </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex justify-between items-center p-3 rounded-md bg-meditouch-light">
-                  <div>
-                    <p className="text-sm font-medium">Meera Joshi</p>
-                    <p className="text-xs text-muted-foreground">9:15 AM - Skin Consultation</p>
+                  <div className="flex justify-between items-center p-2 rounded-md bg-meditouch-light border border-meditouch-light">
+                    <div>
+                      <p className="text-sm font-medium">Ravi Kumar</p>
+                      <p className="text-xs text-muted-foreground">10:30 AM - Hair Treatment</p>
+                    </div>
+                    <div className="text-xs bg-meditouch-primary text-white px-2 py-1 rounded">
+                      Meditouch
+                    </div>
                   </div>
-                  <div className="text-xs bg-meditouch-primary text-white px-2 py-1 rounded">
-                    Meditouch
+                  <div className="flex justify-between items-center p-2 rounded-md bg-meditouch-light border border-meditouch-light">
+                    <div>
+                      <p className="text-sm font-medium">Vikram Mehta</p>
+                      <p className="text-xs text-muted-foreground">12:45 PM - Hair Treatment</p>
+                    </div>
+                    <div className="text-xs bg-meditouch-primary text-white px-2 py-1 rounded">
+                      Meditouch
+                    </div>
                   </div>
-                </div>
-                <div className="flex justify-between items-center p-3 rounded-md bg-meditouch-light">
-                  <div>
-                    <p className="text-sm font-medium">Vikram Mehta</p>
-                    <p className="text-xs text-muted-foreground">12:45 PM - Hair Treatment</p>
+                  <div className="flex justify-between items-center p-2 rounded-md bg-meditouch-light border border-meditouch-light">
+                    <div>
+                      <p className="text-sm font-medium">Aisha Khan</p>
+                      <p className="text-xs text-muted-foreground">2:30 PM - Facial</p>
+                    </div>
+                    <div className="text-xs bg-meditouch-primary text-white px-2 py-1 rounded">
+                      Meditouch
+                    </div>
                   </div>
-                  <div className="text-xs bg-meditouch-primary text-white px-2 py-1 rounded">
-                    Meditouch
+                  <div className="flex justify-between items-center p-2 rounded-md bg-meditouch-light border border-meditouch-light">
+                    <div>
+                      <p className="text-sm font-medium">Rajiv Malhotra</p>
+                      <p className="text-xs text-muted-foreground">4:00 PM - Hair Consultation</p>
+                    </div>
+                    <div className="text-xs bg-meditouch-primary text-white px-2 py-1 rounded">
+                      Meditouch
+                    </div>
                   </div>
-                </div>
-                <div className="flex justify-between items-center p-3 rounded-md bg-gray-100">
-                  <div>
-                    <p className="text-sm font-medium">Aisha Khan</p>
-                    <p className="text-xs text-muted-foreground">3:30 PM - Facial</p>
-                  </div>
-                  <div className="text-xs bg-meditouch-primary text-white px-2 py-1 rounded">
-                    Meditouch
-                  </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
             <Button
               variant="outline"
               className="w-full mt-2"
@@ -255,6 +293,24 @@ const Dashboard = () => {
                     Pending
                   </div>
                 </div>
+                <div className="flex justify-between items-center p-2 rounded-md bg-blue-50 border border-blue-100">
+                  <div>
+                    <p className="text-sm font-medium">Implant for Vikram Singh</p>
+                    <p className="text-xs text-muted-foreground">Due: In 3 days</p>
+                  </div>
+                  <div className="text-xs bg-blue-500 text-white px-2 py-1 rounded">
+                    Pending
+                  </div>
+                </div>
+                <div className="flex justify-between items-center p-2 rounded-md bg-green-50 border border-green-100">
+                  <div>
+                    <p className="text-sm font-medium">Nightguard for Priya Patel</p>
+                    <p className="text-xs text-muted-foreground">Ready for pickup</p>
+                  </div>
+                  <div className="text-xs bg-green-500 text-white px-2 py-1 rounded">
+                    Ready
+                  </div>
+                </div>
                 <Button
                   variant="outline"
                   className="w-full mt-2"
@@ -273,9 +329,9 @@ const Dashboard = () => {
               <CardTitle>Recent Patients</CardTitle>
               <CardDescription>Recently treated patients</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <div className="space-y-3">
-                <div className="flex justify-between items-center p-2 rounded-md bg-gray-50">
+                <div className="flex justify-between items-center p-2 rounded-md bg-gray-50 border border-gray-100">
                   <div>
                     <p className="text-sm font-medium">Aisha Khan</p>
                     <p className="text-xs text-muted-foreground">Hair Treatment - Yesterday</p>
@@ -284,7 +340,7 @@ const Dashboard = () => {
                     View
                   </Button>
                 </div>
-                <div className="flex justify-between items-center p-2 rounded-md bg-gray-50">
+                <div className="flex justify-between items-center p-2 rounded-md bg-gray-50 border border-gray-100">
                   <div>
                     <p className="text-sm font-medium">Rajiv Malhotra</p>
                     <p className="text-xs text-muted-foreground">Skin Consultation - 2 days ago</p>
@@ -293,7 +349,7 @@ const Dashboard = () => {
                     View
                   </Button>
                 </div>
-                <div className="flex justify-between items-center p-2 rounded-md bg-gray-50">
+                <div className="flex justify-between items-center p-2 rounded-md bg-gray-50 border border-gray-100">
                   <div>
                     <p className="text-sm font-medium">Priya Sharma</p>
                     <p className="text-xs text-muted-foreground">Facial - 3 days ago</p>
@@ -302,7 +358,7 @@ const Dashboard = () => {
                     View
                   </Button>
                 </div>
-                <div className="flex justify-between items-center p-2 rounded-md bg-gray-50">
+                <div className="flex justify-between items-center p-2 rounded-md bg-gray-50 border border-gray-100">
                   <div>
                     <p className="text-sm font-medium">Karan Kapoor</p>
                     <p className="text-xs text-muted-foreground">Hair Treatment - 3 days ago</p>
@@ -311,7 +367,23 @@ const Dashboard = () => {
                     View
                   </Button>
                 </div>
+                <div className="flex justify-between items-center p-2 rounded-md bg-gray-50 border border-gray-100">
+                  <div>
+                    <p className="text-sm font-medium">Ananya Reddy</p>
+                    <p className="text-xs text-muted-foreground">Hair Spa - 4 days ago</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/patients/PT006')}>
+                    View
+                  </Button>
+                </div>
               </div>
+              <Button
+                variant="outline"
+                className="w-full mt-2"
+                onClick={() => navigate('/patients')}
+              >
+                View All Patients
+              </Button>
             </CardContent>
           </Card>
         )}

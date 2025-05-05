@@ -6,6 +6,7 @@ export interface DentalHistoryEntry {
   date: string; // YYYY-MM-DD format
   service: string;
   doctor: string;
+  paymentStatus?: 'paid' | 'unpaid';
   diagnosisNotes?: string;
   treatmentPlanSuggested?: string;
   procedurePerformedNotes?: string;

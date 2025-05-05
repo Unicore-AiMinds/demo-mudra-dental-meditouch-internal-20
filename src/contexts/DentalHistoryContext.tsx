@@ -19,6 +19,7 @@ interface DentalHistoryContextType {
     date: string
   ) => void;
   updateFollowUpStatus: (followUpId: string, status: TentativeFollowUp['status']) => void;
+  updatePaymentStatus: (patientId: string, appointmentId: string, status: 'paid' | 'unpaid') => void;
   getPendingFollowUps: () => TentativeFollowUp[];
   // New functions for integration
   addTentativeFollowUps: (followUps: TentativeFollowUp[]) => void;
@@ -72,6 +73,7 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
       date,
       service,
       doctor,
+      paymentStatus: 'unpaid', // Default to unpaid
       procedurePerformedNotes: "Procedure completed successfully."
     };
 
@@ -172,6 +174,33 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
     );
   };
 
+  // Update payment status for a dental history entry
+  const updatePaymentStatus = (patientId: string, appointmentId: string, status: 'paid' | 'unpaid') => {
+    setDentalHistory(prev => {
+      // Get the patient's history
+      const patientHistory = prev[patientId] || [];
+
+      // Update the payment status for the specific appointment
+      const updatedHistory = patientHistory.map(entry =>
+        entry.appointmentId === appointmentId
+          ? { ...entry, paymentStatus: status }
+          : entry
+      );
+
+      // Return the updated dental history
+      return {
+        ...prev,
+        [patientId]: updatedHistory
+      };
+    });
+
+    // Show toast notification
+    toast({
+      title: "Payment Status Updated",
+      description: `The payment status has been updated to ${status === 'paid' ? 'Paid' : 'Unpaid'}.`,
+    });
+  };
+
   // Snooze a follow-up until a specific date
   const snoozeFollowUp = (followUpId: string, snoozeUntilDate: string, notes?: string) => {
     // First, find the follow-up to be snoozed
@@ -252,6 +281,7 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
         updateServiceFollowUpConfig,
         markAppointmentCompleted,
         updateFollowUpStatus,
+        updatePaymentStatus,
         getPendingFollowUps,
         // New functions for integration
         addTentativeFollowUps,

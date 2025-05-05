@@ -8,6 +8,7 @@ export interface BaseAppointment {
   service: string;
   date?: string;
   status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
+  paymentStatus?: 'paid' | 'unpaid';
   // Reference to follow-up that generated this appointment
   basedOnFollowUpId?: string;
   // Reference to dental charting entry that this appointment is for

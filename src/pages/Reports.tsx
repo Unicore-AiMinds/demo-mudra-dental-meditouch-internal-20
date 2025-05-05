@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import {
   Card,
   CardContent,
@@ -125,12 +126,13 @@ const keyMetrics = {
 const Reports = () => {
   const { activeClinic } = useClinic();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [timePeriod, setTimePeriod] = useState("year");
-  
+
   // Filter metrics based on active clinic
   const metrics = activeClinic === 'dental' ? keyMetrics.dental : keyMetrics.meditouch;
   const serviceData = activeClinic === 'dental' ? serviceDistributionDental : serviceDistributionMeditouch;
-  
+
   // Restrict access to admin only
   if (user?.role !== 'admin') {
     return (
@@ -154,10 +156,10 @@ const Reports = () => {
           <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
           <p className="text-muted-foreground">Analyze clinic performance and metrics</p>
         </div>
-        
+
         <div className="flex space-x-2">
-          <Select 
-            value={timePeriod} 
+          <Select
+            value={timePeriod}
             onValueChange={setTimePeriod}
           >
             <SelectTrigger className="w-[180px]">
@@ -170,13 +172,76 @@ const Reports = () => {
               <SelectItem value="custom">Custom Range</SelectItem>
             </SelectContent>
           </Select>
-          
-          <Button variant="outline">
+
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Determine which data to export based on active tab
+              const activeTab = document.querySelector('[data-state="active"][role="tab"]')?.getAttribute('data-value') || 'overview';
+
+              let headers: string[] = [];
+              let data: any[] = [];
+              let filename = '';
+
+              // Set up export data based on active tab
+              if (activeTab === 'appointments' || activeTab === 'overview') {
+                headers = ['Month', 'Dental Appointments', 'Meditouch Appointments'];
+                data = appointmentData.map(item => [
+                  item.month,
+                  item.dental,
+                  item.meditouch
+                ]);
+                filename = `appointments_report_${new Date().toISOString().split('T')[0]}.csv`;
+              } else if (activeTab === 'revenue') {
+                headers = ['Month', 'Dental Revenue (₹)', 'Meditouch Revenue (₹)'];
+                data = revenueData.map(item => [
+                  item.month,
+                  item.dental,
+                  item.meditouch
+                ]);
+                filename = `revenue_report_${new Date().toISOString().split('T')[0]}.csv`;
+              } else if (activeTab === 'services') {
+                headers = ['Service', 'Percentage'];
+                data = serviceData.map(item => [
+                  item.name,
+                  item.value
+                ]);
+                filename = `services_report_${new Date().toISOString().split('T')[0]}.csv`;
+              }
+
+              // Create CSV content
+              const csvContent = [
+                headers.join(','),
+                ...data.map(row => row.join(','))
+              ].join('\n');
+
+              // Create a blob and download link
+              const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+
+              // Create a temporary link and trigger download
+              const link = document.createElement('a');
+
+              link.setAttribute('href', url);
+              link.setAttribute('download', filename);
+              link.style.visibility = 'hidden';
+
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+
+              // Show success message
+              toast({
+                title: "Export Successful",
+                description: `Report data exported to CSV.`,
+              });
+            }}
+          >
             <Download className="mr-2 h-4 w-4" /> Export
           </Button>
         </div>
       </div>
-      
+
       {/* Key Metrics Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -191,7 +256,7 @@ const Reports = () => {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Appointments</CardTitle>
@@ -211,7 +276,7 @@ const Reports = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
@@ -227,7 +292,7 @@ const Reports = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg. Booking Value</CardTitle>
@@ -244,7 +309,7 @@ const Reports = () => {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Tabs for different reports */}
       <Tabs defaultValue="overview" className="w-full">
         <TabsList>
@@ -253,7 +318,7 @@ const Reports = () => {
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
           <TabsTrigger value="services">Services</TabsTrigger>
         </TabsList>
-        
+
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
@@ -282,7 +347,7 @@ const Reports = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-            
+
             <Card className="col-span-1">
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -300,30 +365,30 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']}
                     />
                     <Legend />
-                    <Area 
-                      type="monotone" 
-                      dataKey="dental" 
-                      name="Dental Metrix" 
-                      stroke="#4A90E2" 
-                      fill="rgba(74, 144, 226, 0.2)" 
+                    <Area
+                      type="monotone"
+                      dataKey="dental"
+                      name="Dental Metrix"
+                      stroke="#4A90E2"
+                      fill="rgba(74, 144, 226, 0.2)"
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="meditouch" 
-                      name="Meditouch" 
-                      stroke="#6CBFBF" 
-                      fill="rgba(108, 191, 191, 0.2)" 
+                    <Area
+                      type="monotone"
+                      dataKey="meditouch"
+                      name="Meditouch"
+                      stroke="#6CBFBF"
+                      fill="rgba(108, 191, 191, 0.2)"
                     />
                   </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
-          
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -357,7 +422,7 @@ const Reports = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Other tabs simplified for brevity */}
         <TabsContent value="appointments" className="space-y-6 pt-6">
           <Card>
@@ -378,9 +443,9 @@ const Reports = () => {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Bar 
-                    dataKey={activeClinic === 'dental' ? "dental" : "meditouch"} 
-                    name={activeClinic === 'dental' ? "Dental Metrix" : "Meditouch"} 
+                  <Bar
+                    dataKey={activeClinic === 'dental' ? "dental" : "meditouch"}
+                    name={activeClinic === 'dental' ? "Dental Metrix" : "Meditouch"}
                     fill={activeClinic === 'dental' ? "#4A90E2" : "#6CBFBF"}
                   />
                 </BarChart>
@@ -388,13 +453,13 @@ const Reports = () => {
             </CardContent>
             <CardFooter>
               <p className="text-sm text-muted-foreground">
-                Displaying appointment data for the selected time period. 
+                Displaying appointment data for the selected time period.
                 You can export this data for further analysis.
               </p>
             </CardFooter>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="revenue" className="space-y-6 pt-6">
           <Card>
             <CardHeader>
@@ -412,16 +477,16 @@ const Reports = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip 
-                    formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']} 
+                  <Tooltip
+                    formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']}
                   />
                   <Legend />
-                  <Area 
-                    type="monotone" 
+                  <Area
+                    type="monotone"
                     dataKey={activeClinic === 'dental' ? "dental" : "meditouch"}
-                    name={activeClinic === 'dental' ? "Dental Metrix" : "Meditouch"} 
-                    stroke={activeClinic === 'dental' ? "#4A90E2" : "#6CBFBF"} 
-                    fill={activeClinic === 'dental' ? "rgba(74, 144, 226, 0.2)" : "rgba(108, 191, 191, 0.2)"}  
+                    name={activeClinic === 'dental' ? "Dental Metrix" : "Meditouch"}
+                    stroke={activeClinic === 'dental' ? "#4A90E2" : "#6CBFBF"}
+                    fill={activeClinic === 'dental' ? "rgba(74, 144, 226, 0.2)" : "rgba(108, 191, 191, 0.2)"}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -433,7 +498,7 @@ const Reports = () => {
             </CardFooter>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="services" className="space-y-6 pt-6">
           <Card>
             <CardHeader>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useClinicInfo } from '@/contexts/ClinicInfoContext';
+import { useDoctors } from '@/contexts/DoctorContext';
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { demoFollowUpRules } from '@/data/demo-dental-history';
 import { getRandomDentalColor } from '@/utils/doctorColors';
@@ -108,48 +109,7 @@ const clinicDetails = {
   }
 };
 
-const initialDoctors = [
-  {
-    id: 1,
-    name: "Dr. Rajan Khanna",
-    specialization: "General Dentistry",
-    email: "rajan.khanna@dentalmetrix.com",
-    phone: "+91 98765 43210",
-    aadharDoc: "/docs/aadhar_rajan.pdf",
-    panDoc: "/docs/pan_rajan.pdf",
-    color: "#4A90E2" // Sky blue
-  },
-  {
-    id: 2,
-    name: "Dr. Priya Desai",
-    specialization: "Orthodontics",
-    email: "priya.desai@dentalmetrix.com",
-    phone: "+91 87654 32109",
-    aadharDoc: "/docs/aadhar_priya.pdf",
-    panDoc: "",
-    color: "#2ECC71" // Emerald green
-  },
-  {
-    id: 3,
-    name: "Dr. Vikram Mehta",
-    specialization: "Endodontics",
-    email: "vikram.mehta@dentalmetrix.com",
-    phone: "+91 76543 21098",
-    aadharDoc: "",
-    panDoc: "/docs/pan_vikram.pdf",
-    color: "#9B59B6" // Amethyst
-  },
-  {
-    id: 4,
-    name: "Dr. Ananya Sharma",
-    specialization: "Pediatric Dentistry",
-    email: "ananya.sharma@dentalmetrix.com",
-    phone: "+91 65432 10987",
-    aadharDoc: "/docs/aadhar_ananya.pdf",
-    panDoc: "/docs/pan_ananya.pdf",
-    color: "#E74C3C" // Alizarin
-  }
-];
+// Doctor data is now managed by DoctorContext
 
 const services = {
   dental: [
@@ -260,7 +220,8 @@ const Settings = () => {
   const [newDoctorPhone, setNewDoctorPhone] = useState('');
   const [phoneCountryCode, setPhoneCountryCode] = useState('+91');
   const [editPhoneCountryCode, setEditPhoneCountryCode] = useState('+91');
-  const [dentalDoctors, setDentalDoctors] = useState(initialDoctors);
+  // Using DoctorContext instead of local state
+  const { doctors: dentalDoctors, setDoctors: setDentalDoctors, updateDoctorColor } = useDoctors();
   const [stockItems, setStockItems] = useState(initialStockItems);
   const [dealers, setDealers] = useState(initialDealers);
   const [dentalServices, setDentalServices] = useState(services.dental);
@@ -410,6 +371,13 @@ const Settings = () => {
           panPath = `/docs/pan_${updatedName.value.replace(/\s+/g, '_').toLowerCase()}.${updatedPan.files[0].name.split('.').pop()}`;
         }
 
+        // Get the updated color
+        const updatedColor = document.getElementById('doctorColor') as HTMLInputElement;
+        const newColor = updatedColor ? updatedColor.value : currentDoctor.color;
+
+        // Check if color was changed
+        const colorChanged = updatedColor && updatedColor.value !== currentDoctor.color;
+
         // Update doctor in the list
         const updatedDoctors = dentalDoctors.map(doctor => {
           if (doctor.id === currentDoctor.id) {
@@ -421,17 +389,22 @@ const Settings = () => {
               phone: `${editPhoneCountryCode} ${updatedPhone.value}`,
               aadharDoc: aadharPath,
               panDoc: panPath,
-              color: doctor.color // Preserve the doctor's color
+              color: newColor // Use the selected color or preserve the existing one
             };
           }
           return doctor;
         });
 
+        // Update the doctor color in the context
+        if (colorChanged) {
+          updateDoctorColor(currentDoctor.id, newColor);
+        }
+
         setDentalDoctors(updatedDoctors);
 
         toast({
           title: "Doctor Updated",
-          description: `${updatedName.value}'s information has been updated successfully.`,
+          description: `${updatedName.value}'s information has been updated successfully.${colorChanged ? ' Doctor color has been changed.' : ''}`,
         });
       } else {
         toast({
@@ -1611,29 +1584,6 @@ const Settings = () => {
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="doctorColor">Color</Label>
-                        <div className="flex items-center h-10 px-3 py-2 rounded-md border border-input bg-background">
-                          <div
-                            className="w-6 h-6 rounded-full border border-gray-200"
-                            style={{ backgroundColor: currentDoctor.color }}
-                            title={currentDoctor.color}
-                          ></div>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Color is assigned automatically and cannot be changed
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="editDoctorEmail">Email</Label>
-                        <Input
-                          id="editDoctorEmail"
-                          type="email"
-                          pattern="[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}"
-                          title="Please enter a valid email address"
-                          defaultValue={currentDoctor.email}
-                        />
-                      </div>
-                      <div className="space-y-1">
                         <Label htmlFor="editDoctorPhone">Phone</Label>
                         <div className="flex">
                           <Select
@@ -1664,6 +1614,35 @@ const Settings = () => {
                             }}
                           />
                         </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editDoctorEmail">Email</Label>
+                        <Input
+                          id="editDoctorEmail"
+                          type="email"
+                          pattern="[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}"
+                          title="Please enter a valid email address"
+                          defaultValue={currentDoctor.email}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="doctorColor">Color</Label>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-6 h-6 rounded-full border border-gray-200"
+                            style={{ backgroundColor: currentDoctor.color }}
+                            title={currentDoctor.color}
+                          ></div>
+                          <Input
+                            id="doctorColor"
+                            type="color"
+                            defaultValue={currentDoctor.color}
+                            className="w-full h-10 cursor-pointer"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Choose a color for this doctor that will be used in the appointment calendar
+                        </p>
                       </div>
                     </div>
 
@@ -1765,6 +1744,28 @@ const Settings = () => {
                     Are you sure you want to save these changes?
                   </DialogDescription>
                 </DialogHeader>
+                {currentDoctor && (
+                  <div className="py-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="font-medium">Doctor:</p>
+                      <p>{document.getElementById('editDoctorName')?.value || currentDoctor.name}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">Color:</p>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-4 h-4 rounded-full border border-gray-200"
+                          style={{ backgroundColor: currentDoctor.color }}
+                        ></div>
+                        <span>→</span>
+                        <div
+                          className="w-4 h-4 rounded-full border border-gray-200"
+                          style={{ backgroundColor: document.getElementById('doctorColor')?.value || currentDoctor.color }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsConfirmUpdateDoctorOpen(false)}>
                     Cancel

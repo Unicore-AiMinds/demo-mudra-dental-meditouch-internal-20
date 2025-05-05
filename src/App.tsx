@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ClinicProvider } from "@/contexts/ClinicContext";
 import { ClinicInfoProvider } from "@/contexts/ClinicInfoContext";
+import { DoctorProvider } from "@/contexts/DoctorContext";
 import { DentalHistoryProvider } from "@/contexts/DentalHistoryContext";
 import { VitalSignsProvider } from "@/contexts/VitalSignsContext";
 import { PrescriptionProvider } from "@/contexts/PrescriptionContext";
@@ -39,10 +40,11 @@ const App = () => (
         <AuthProvider>
           <ClinicProvider>
             <ClinicInfoProvider>
-              <DentalHistoryProvider>
-              <VitalSignsProvider>
-                <PrescriptionProvider>
-                  <StockProvider>
+              <DoctorProvider>
+                <DentalHistoryProvider>
+                <VitalSignsProvider>
+                  <PrescriptionProvider>
+                    <StockProvider>
                     <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
@@ -113,6 +115,7 @@ const App = () => (
                   </PrescriptionProvider>
                 </VitalSignsProvider>
               </DentalHistoryProvider>
+              </DoctorProvider>
             </ClinicInfoProvider>
           </ClinicProvider>
         </AuthProvider>

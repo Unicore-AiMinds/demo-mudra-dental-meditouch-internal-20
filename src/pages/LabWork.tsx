@@ -181,6 +181,7 @@ const LabWork = () => {
   const { activeClinic } = useClinic();
   const [searchTerm, setSearchTerm] = useState("");
   const [isNewLabDialogOpen, setIsNewLabDialogOpen] = useState(false);
+  const [isCreateConfirmOpen, setIsCreateConfirmOpen] = useState(false);
   const [isEditLabDialogOpen, setIsEditLabDialogOpen] = useState(false);
   const [isPaymentConfirmOpen, setIsPaymentConfirmOpen] = useState(false);
   const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
@@ -375,7 +376,7 @@ const LabWork = () => {
     });
   };
 
-  const handleCreateLabEntry = () => {
+  const openCreateConfirmation = () => {
     // Validate required fields
     if (!newPatient || !newService || !newLabWorkType || !newAssignedLab || !newDateSent || !newExpectedDelivery) {
       toast({
@@ -386,6 +387,12 @@ const LabWork = () => {
       return;
     }
 
+    // Close the new lab dialog and open the confirmation dialog
+    setIsNewLabDialogOpen(false);
+    setIsCreateConfirmOpen(true);
+  };
+
+  const handleCreateLabEntry = () => {
     // Generate a unique ID
     const newId = `LJ${String(labJobs.length + 1).padStart(3, '0')}`;
 
@@ -420,11 +427,16 @@ const LabWork = () => {
     setNewNotes("");
 
     // Close dialog and show success message
-    setIsNewLabDialogOpen(false);
+    setIsCreateConfirmOpen(false);
     toast({
       title: "Lab Entry Created",
       description: "The new lab work entry has been added successfully.",
     });
+  };
+
+  const cancelCreate = () => {
+    setIsCreateConfirmOpen(false);
+    setIsNewLabDialogOpen(true); // Go back to create dialog
   };
 
   const openEditDialog = (job: LabJob) => {
@@ -830,8 +842,58 @@ const LabWork = () => {
             </Button>
             <Button
               type="submit"
-              onClick={handleCreateLabEntry}
+              onClick={openCreateConfirmation}
               className="bg-dental-primary hover:bg-dental-dark">
+              Create Lab Entry
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCreateConfirmOpen} onOpenChange={setIsCreateConfirmOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Lab Entry Creation</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to create this lab work entry?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2">
+              <p className="text-sm">
+                <span className="font-semibold">Patient:</span> {newPatient}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Service:</span> {newService}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Lab Work Type:</span> {newLabWorkType}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Assigned Lab:</span> {newAssignedLab}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Date Sent:</span> {newDateSent}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Expected Delivery:</span> {newExpectedDelivery}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Status:</span> {getStatusConfig(newStatus).label}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Payment Status:</span> {newPaymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelCreate}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateLabEntry}
+              className="bg-dental-primary hover:bg-dental-dark"
+            >
               Create Lab Entry
             </Button>
           </DialogFooter>

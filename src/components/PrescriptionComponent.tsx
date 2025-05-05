@@ -731,7 +731,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                       />
                     </div>
                     <div>
-                      <Label htmlFor="dispenseQuantity" className="text-xs">Dispense Qty * (Auto-calculated total)</Label>
+                      <Label htmlFor="dispenseQuantity" className="text-xs">Dispense Qty *</Label>
                       <Input
                         id="dispenseQuantity"
                         name="dispenseQuantity"
@@ -739,7 +739,6 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                         value={newMedication.dispenseQuantity}
                         onChange={handleMedicationChange}
                         className="h-8 text-sm"
-                        title="This is auto-calculated as frequency × duration but only shows the total. Can be edited if needed."
                       />
                     </div>
                     <div>

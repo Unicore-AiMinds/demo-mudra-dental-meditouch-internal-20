@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useNavigate } from 'react-router-dom';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
+import { useDoctors } from '@/contexts/DoctorContext';
 import AppointmentCompletionDialog from '@/components/AppointmentCompletionDialog';
 import { getLighterColor } from '@/utils/doctorColors';
 import {
@@ -83,19 +84,7 @@ const registeredPatients = [{
   name: 'Aisha Khan'
 }];
 
-const doctors = [{
-  id: 'dr1',
-  name: 'Dr. Khanna',
-  color: '#4A90E2' // Sky blue
-}, {
-  id: 'dr2',
-  name: 'Dr. Sharma',
-  color: '#2ECC71' // Emerald green
-}, {
-  id: 'dr3',
-  name: 'Dr. Desai',
-  color: '#9B59B6' // Amethyst
-}];
+// Using DoctorContext instead of hardcoded doctors array
 
 // Define services with durations
 const dentalServices = [
@@ -218,11 +207,18 @@ const AppointmentCard = ({
   );
 };
 
-const CalendarAppointmentItem = ({ appointment, isDental, onClick, isCompact = false }: {
+const CalendarAppointmentItem = ({
+  appointment,
+  isDental,
+  onClick,
+  isCompact = false,
+  doctorsList
+}: {
   appointment: DentalAppointment | MeditouchAppointment,
   isDental: boolean,
   onClick: () => void,
-  isCompact?: boolean
+  isCompact?: boolean,
+  doctorsList: { id: number; name: string; color: string }[]
 }) => {
   // Default colors
   const bgColor = isDental ? 'bg-dental-light' : 'bg-meditouch-light';
@@ -235,9 +231,9 @@ const CalendarAppointmentItem = ({ appointment, isDental, onClick, isCompact = f
   // If it's a dental appointment, try to find the doctor's color
   if (isDental && 'doctor' in appointment) {
     const doctorName = appointment.doctor;
-    // Find the doctor in the doctors array
-    const doctor = doctors.find(d => d.name === doctorName);
-    if (doctor && 'color' in doctor) {
+    // Find the doctor in the doctors array passed as prop
+    const doctor = doctorsList.find(d => d.name === doctorName);
+    if (doctor && doctor.color) {
       // Use the doctor's color for styling
       const doctorColor = doctor.color;
       customStyles = {
@@ -306,7 +302,8 @@ const TimeSlotAppointment = ({
   isCompact = false,
   isMultiSlot = false,
   isFirstSlot = true,
-  slotsOccupied = 1
+  slotsOccupied = 1,
+  doctorsList
 }: {
   appointment: DentalAppointment | MeditouchAppointment,
   isDental: boolean,
@@ -314,7 +311,8 @@ const TimeSlotAppointment = ({
   isCompact?: boolean,
   isMultiSlot?: boolean,
   isFirstSlot?: boolean,
-  slotsOccupied?: number
+  slotsOccupied?: number,
+  doctorsList: { id: number; name: string; color: string }[]
 }) => {
   // Get doctor color from the doctors array if it's a dental appointment
   const bgColor = isDental ? 'bg-dental-primary' : 'bg-meditouch-primary';
@@ -322,9 +320,9 @@ const TimeSlotAppointment = ({
   // If it's a dental appointment, try to find the doctor's color
   if (isDental && 'doctor' in appointment) {
     const doctorName = appointment.doctor;
-    // Find the doctor in the doctors array
-    const doctor = doctors.find(d => d.name === doctorName);
-    if (doctor && 'color' in doctor) {
+    // Find the doctor in the doctors array passed as prop
+    const doctor = doctorsList.find(d => d.name === doctorName);
+    if (doctor && doctor.color) {
       // We'll use inline styles instead of Tailwind classes for doctor colors
       // Just keep the default bgColor for the className
     }
@@ -352,7 +350,7 @@ const TimeSlotAppointment = ({
       }}
       style={{
         backgroundColor: isDental && 'doctor' in appointment ?
-          doctors.find(d => d.name === appointment.doctor)?.color ||
+          doctorsList.find(d => d.name === appointment.doctor)?.color ||
           (isDental ? '#4A90E2' : '#16A085') :
           (isDental ? '#4A90E2' : '#16A085')
       }}
@@ -397,6 +395,7 @@ const weekDaysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const Appointments = () => {
   const { activeClinic, isDental } = useClinic();
+  const { doctors } = useDoctors(); // Get doctors from context
   const navigate = useNavigate();
   const [view, setView] = useState('daily');
   const [date, setDate] = useState<Date>(new Date());
@@ -990,11 +989,11 @@ const Appointments = () => {
     // Update the appointment status to completed
     if (isDental) {
       setDentalAppointments(dentalAppointments.map(app =>
-        app.id === appointment.id ? { ...app, status: 'completed' as const } : app
+        app.id === appointment.id ? { ...app, status: 'completed' as const, paymentStatus: 'unpaid' as const } : app
       ));
     } else {
       setMeditouchAppointments(meditouchAppointments.map(app =>
-        app.id === appointment.id ? { ...app, status: 'completed' as const } : app
+        app.id === appointment.id ? { ...app, status: 'completed' as const, paymentStatus: 'unpaid' as const } : app
       ));
     }
 
@@ -1015,7 +1014,8 @@ const Appointments = () => {
     // Prepare the appointment data for the completion dialog
     const appointmentWithPatientId = {
       ...appointment,
-      patientId
+      patientId,
+      paymentStatus: 'unpaid' as const
     };
 
     // Show the completion dialog instead of a toast notification
@@ -1023,6 +1023,27 @@ const Appointments = () => {
     setCompletedAppointment(appointmentWithPatientId);
     setIsCompletionDialogOpen(true);
     console.log("Dialog should be open now");
+  };
+
+  // Handle payment status change
+  const handlePaymentStatusChange = (appointmentId: string, status: 'paid' | 'unpaid') => {
+    if (isDental) {
+      setDentalAppointments(dentalAppointments.map(app =>
+        app.id === appointmentId ? { ...app, paymentStatus: status } : app
+      ));
+    } else {
+      setMeditouchAppointments(meditouchAppointments.map(app =>
+        app.id === appointmentId ? { ...app, paymentStatus: status } : app
+      ));
+    }
+
+    // If the completed appointment is currently displayed, update it
+    if (completedAppointment && completedAppointment.id === appointmentId) {
+      setCompletedAppointment({
+        ...completedAppointment,
+        paymentStatus: status
+      });
+    }
   };
 
   const handlePatientSearch = (value: string) => {
@@ -1563,6 +1584,7 @@ const Appointments = () => {
                                                     isMultiSlot={slotsOccupied > 1}
                                                     isFirstSlot={isFirstSlot}
                                                     slotsOccupied={slotsOccupied}
+                                                    doctorsList={doctors}
                                                     onClick={() => {
                                                       handleEditAppointment(appointment);
                                                     }}
@@ -1731,6 +1753,7 @@ const Appointments = () => {
                                   isDental={isDental}
                                   isCompact={dayAppointments.length > 1} // Use compact view if multiple appointments
                                   onClick={() => handleEditAppointment(appointment)}
+                                  doctorsList={doctors}
                                 />
                               ))}
 
@@ -1917,6 +1940,7 @@ const Appointments = () => {
                                       handleEditAppointment(appointment);
                                     }, 0);
                                   }}
+                                  doctorsList={doctors}
                                 />
                               ))}
 
@@ -2582,6 +2606,7 @@ const Appointments = () => {
           isOpen={isCompletionDialogOpen}
           onClose={() => setIsCompletionDialogOpen(false)}
           appointment={completedAppointment}
+          onPaymentStatusChange={handlePaymentStatusChange}
         />
       )}
 
