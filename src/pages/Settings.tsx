@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
+import { useClinicInfo } from '@/contexts/ClinicInfoContext';
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { demoFollowUpRules } from '@/data/demo-dental-history';
 import { getRandomDentalColor } from '@/utils/doctorColors';
@@ -71,37 +72,37 @@ import { toast } from '@/hooks/use-toast';
 const clinicDetails = {
   dental: {
     name: "Dental Metrix Clinic",
-    address: "123 Healthcare Avenue",
-    city: "Mumbai",
+    address: "Manas apartment, infront of Ambience hotel",
+    city: "Pune",
     state: "Maharashtra",
-    pincode: "400001",
-    phone: "+91 22 4567 8901",
+    pincode: "411016",
+    phone: "094209 35899",
     email: "contact@dentalmetrix.com",
     operatingHours: {
-      monday: "9:00 AM - 6:00 PM",
-      tuesday: "9:00 AM - 6:00 PM",
-      wednesday: "9:00 AM - 6:00 PM",
-      thursday: "9:00 AM - 6:00 PM",
-      friday: "9:00 AM - 6:00 PM",
-      saturday: "10:00 AM - 4:00 PM",
+      monday: "10 am–7 pm",
+      tuesday: "10 am–7 pm",
+      wednesday: "10 am–7 pm",
+      thursday: "10 am–7 pm",
+      friday: "10 am–7 pm",
+      saturday: "10 am–7 pm",
       sunday: "Closed"
     }
   },
   meditouch: {
     name: "Meditouch Clinic",
-    address: "456 Wellness Road",
-    city: "Mumbai",
+    address: "Manas apartment, infront of Ambience hotel",
+    city: "Pune",
     state: "Maharashtra",
-    pincode: "400001",
-    phone: "+91 22 9876 5432",
+    pincode: "411016",
+    phone: "094209 35899",
     email: "care@meditouchclinic.com",
     operatingHours: {
-      monday: "10:00 AM - 7:00 PM",
-      tuesday: "10:00 AM - 7:00 PM",
-      wednesday: "10:00 AM - 7:00 PM",
-      thursday: "10:00 AM - 7:00 PM",
-      friday: "10:00 AM - 7:00 PM",
-      saturday: "10:00 AM - 5:00 PM",
+      monday: "10 am–7 pm",
+      tuesday: "10 am–7 pm",
+      wednesday: "10 am–7 pm",
+      thursday: "10 am–7 pm",
+      friday: "10 am–7 pm",
+      saturday: "10 am–7 pm",
       sunday: "Closed"
     }
   }
@@ -211,6 +212,7 @@ const systemUsers = [
 const Settings = () => {
   const { user } = useAuth();
   const { activeClinic } = useClinic();
+  const { currentClinicInfo } = useClinicInfo();
   // Add dialogs
   const [isAddDoctorDialogOpen, setIsAddDoctorDialogOpen] = useState(false);
   const [isAddServiceDialogOpen, setIsAddServiceDialogOpen] = useState(false);
@@ -312,9 +314,10 @@ const Settings = () => {
     );
   }
 
-  const currentClinicDetails = activeClinic === 'dental'
-    ? clinicDetails.dental
-    : clinicDetails.meditouch;
+  // Using the ClinicInfoContext instead of local clinicDetails
+  // const currentClinicDetails = activeClinic === 'dental'
+  //   ? clinicDetails.dental
+  //   : clinicDetails.meditouch;
 
   const currentServices = activeClinic === 'dental'
     ? dentalServices
@@ -1175,42 +1178,42 @@ const Settings = () => {
                     <Label htmlFor="clinicName">Clinic Name</Label>
                     <Input
                       id="clinicName"
-                      defaultValue={currentClinicDetails.name}
+                      defaultValue={currentClinicInfo.name}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="clinicAddress">Address</Label>
                     <Input
                       id="clinicAddress"
-                      defaultValue={currentClinicDetails.address}
+                      defaultValue={currentClinicInfo.address}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="clinicCity">City</Label>
                     <Input
                       id="clinicCity"
-                      defaultValue={currentClinicDetails.city}
+                      defaultValue={currentClinicInfo.city}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="clinicState">State</Label>
                     <Input
                       id="clinicState"
-                      defaultValue={currentClinicDetails.state}
+                      defaultValue={currentClinicInfo.state}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="clinicPincode">Pincode</Label>
                     <Input
                       id="clinicPincode"
-                      defaultValue={currentClinicDetails.pincode}
+                      defaultValue={currentClinicInfo.pincode}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="clinicPhone">Phone Number</Label>
                     <Input
                       id="clinicPhone"
-                      defaultValue={currentClinicDetails.phone}
+                      defaultValue={currentClinicInfo.phone}
                     />
                   </div>
                   <div className="space-y-2">
@@ -1218,7 +1221,7 @@ const Settings = () => {
                     <Input
                       id="clinicEmail"
                       type="email"
-                      defaultValue={currentClinicDetails.email}
+                      defaultValue={currentClinicInfo.email}
                     />
                   </div>
                 </div>
@@ -1231,49 +1234,49 @@ const Settings = () => {
                     <Label htmlFor="mondayHours">Monday</Label>
                     <Input
                       id="mondayHours"
-                      defaultValue={currentClinicDetails.operatingHours.monday}
+                      defaultValue={currentClinicInfo.operatingHours.monday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tuesdayHours">Tuesday</Label>
                     <Input
                       id="tuesdayHours"
-                      defaultValue={currentClinicDetails.operatingHours.tuesday}
+                      defaultValue={currentClinicInfo.operatingHours.tuesday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="wednesdayHours">Wednesday</Label>
                     <Input
                       id="wednesdayHours"
-                      defaultValue={currentClinicDetails.operatingHours.wednesday}
+                      defaultValue={currentClinicInfo.operatingHours.wednesday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="thursdayHours">Thursday</Label>
                     <Input
                       id="thursdayHours"
-                      defaultValue={currentClinicDetails.operatingHours.thursday}
+                      defaultValue={currentClinicInfo.operatingHours.thursday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="fridayHours">Friday</Label>
                     <Input
                       id="fridayHours"
-                      defaultValue={currentClinicDetails.operatingHours.friday}
+                      defaultValue={currentClinicInfo.operatingHours.friday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="saturdayHours">Saturday</Label>
                     <Input
                       id="saturdayHours"
-                      defaultValue={currentClinicDetails.operatingHours.saturday}
+                      defaultValue={currentClinicInfo.operatingHours.saturday}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="sundayHours">Sunday</Label>
                     <Input
                       id="sundayHours"
-                      defaultValue={currentClinicDetails.operatingHours.sunday}
+                      defaultValue={currentClinicInfo.operatingHours.sunday}
                     />
                   </div>
                 </div>

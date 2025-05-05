@@ -7,14 +7,37 @@ import { Label } from '@/components/ui/label';
 interface VisualToothChartProps {
   selectedTeeth: string[];
   onToothSelect: (toothNumber: string) => void;
+  showPrimaryTeeth?: boolean; // Optional prop to control primary/permanent teeth display
 }
 
 const VisualToothChart: React.FC<VisualToothChartProps> = ({
   selectedTeeth,
   onToothSelect,
+  showPrimaryTeeth: externalShowPrimaryTeeth,
 }) => {
   // State to toggle between permanent and primary teeth
-  const [showPrimaryTeeth, setShowPrimaryTeeth] = useState(false);
+  // Use the external prop if provided, otherwise use internal state
+  const [internalShowPrimaryTeeth, setInternalShowPrimaryTeeth] = useState(false);
+
+  // Use the external prop if provided, otherwise use internal state
+  const showPrimaryTeeth = externalShowPrimaryTeeth !== undefined ? externalShowPrimaryTeeth : internalShowPrimaryTeeth;
+
+  // Update function that respects external control but also notifies parent
+  const updateShowPrimaryTeeth = (value: boolean) => {
+    // Always update internal state for consistency
+    setInternalShowPrimaryTeeth(value);
+
+    // If we're using an external control, we need to notify the parent component
+    // This is a workaround since we can't directly modify the parent's state
+    if (externalShowPrimaryTeeth !== undefined) {
+      // Dispatch a custom event that the parent can listen to
+      const event = new CustomEvent('teethTypeChanged', {
+        detail: { showPrimaryTeeth: value },
+        bubbles: true
+      });
+      document.dispatchEvent(event);
+    }
+  };
 
   // Define the permanent teeth layout for the chart using FDI/ISO 3950 notation
   // Upper permanent teeth: Quadrant 1 (Upper Right) and Quadrant 2 (Upper Left)
@@ -89,14 +112,14 @@ const VisualToothChart: React.FC<VisualToothChartProps> = ({
         <div className="flex items-center space-x-2">
           <Button
             variant={!showPrimaryTeeth ? "default" : "outline"}
-            onClick={() => setShowPrimaryTeeth(false)}
+            onClick={() => updateShowPrimaryTeeth(false)}
             className="text-sm"
           >
             Full Mouth (Permanent Teeth)
           </Button>
           <Button
             variant={showPrimaryTeeth ? "default" : "outline"}
-            onClick={() => setShowPrimaryTeeth(true)}
+            onClick={() => updateShowPrimaryTeeth(true)}
             className="text-sm"
           >
             Show Child Teeth (Primary)
@@ -106,7 +129,7 @@ const VisualToothChart: React.FC<VisualToothChartProps> = ({
           <Switch
             id="teeth-toggle"
             checked={showPrimaryTeeth}
-            onCheckedChange={setShowPrimaryTeeth}
+            onCheckedChange={updateShowPrimaryTeeth}
           />
           <Label htmlFor="teeth-toggle" className="text-sm">
             {showPrimaryTeeth ? "Primary Teeth" : "Permanent Teeth"}

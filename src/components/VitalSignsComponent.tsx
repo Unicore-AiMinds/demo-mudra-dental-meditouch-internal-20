@@ -3,12 +3,37 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Edit, Plus, Save, X } from 'lucide-react';
 import { VitalSign } from '@/types/vital-signs';
 import { useVitalSigns } from '@/contexts/VitalSignsContext';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// Component to display notes with tooltip on hover
+const NotesTooltip: React.FC<{ notes: string }> = ({ notes }) => {
+  if (!notes) return <span>-</span>;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="max-w-[200px] truncate cursor-help">{notes}</div>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[400px] p-4 bg-white text-black border shadow-lg rounded-md">
+          <p className="whitespace-pre-wrap break-words">{notes}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
 
 interface VitalSignsComponentProps {
   patientId: string;
@@ -42,7 +67,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
   }, [patientId, getPatientVitalSigns]);
 
   // Handle input change for new vital sign
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setNewVitalSign(prev => ({ ...prev, [name]: value }));
   };
@@ -261,12 +286,14 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
                 </div>
                 <div className="space-y-2 md:col-span-2 lg:col-span-3">
                   <Label htmlFor="notes">Notes</Label>
-                  <Input
+                  <Textarea
                     id="notes"
                     name="notes"
                     placeholder="Any additional notes"
                     value={newVitalSign.notes}
                     onChange={handleInputChange}
+                    rows={3}
+                    className="resize-y"
                   />
                 </div>
               </div>
@@ -310,7 +337,9 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
                       <TableCell>{vs.temperature}</TableCell>
                       <TableCell>{vs.respiratoryRate}</TableCell>
                       <TableCell>{vs.recordedBy}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">{vs.notes}</TableCell>
+                      <TableCell>
+                        <NotesTooltip notes={vs.notes || ''} />
+                      </TableCell>
                       <TableCell>
                         <Button
                           variant="ghost"

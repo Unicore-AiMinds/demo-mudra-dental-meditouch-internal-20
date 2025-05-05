@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStock } from '@/contexts/StockContext';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, AlertTriangle, Package, FileDown, Filter, X, ArrowUpDown, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';

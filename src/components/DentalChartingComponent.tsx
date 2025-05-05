@@ -48,14 +48,18 @@ import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 
 interface DentalChartingComponentProps {
   patientId: string;
+  patientAge?: number; // Optional age parameter
 }
 
-const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patientId }) => {
+const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patientId, patientAge }) => {
   const { toast } = useToast();
   const { addTentativeFollowUps, getPatientName } = useDentalHistory();
 
   // State for the patient's charting history
   const [patientChartingHistory, setPatientChartingHistory] = useState<ChartingEntry[]>([]);
+
+  // Determine if we should show primary teeth by default based on patient age
+  const isChildPatient = patientAge !== undefined && patientAge >= 0 && patientAge <= 12;
 
   // State for the form inputs
   const [selectedTeeth, setSelectedTeeth] = useState<string[]>([]);
@@ -64,8 +68,8 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<'Existing' | 'Planned' | 'Completed'>('Existing');
   const [currentNotes, setCurrentNotes] = useState<string>('');
-  const [showPrimaryTeeth, setShowPrimaryTeeth] = useState<boolean>(false);
-  const [currentTeethList, setCurrentTeethList] = useState<string[]>(permanentTeethList);
+  const [showPrimaryTeeth, setShowPrimaryTeeth] = useState<boolean>(isChildPatient);
+  const [currentTeethList, setCurrentTeethList] = useState<string[]>(isChildPatient ? primaryTeethList : permanentTeethList);
 
   // Get patient name for follow-ups
   const patientName = getPatientName(patientId) || "Unknown Patient";
@@ -79,6 +83,22 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
     );
     setPatientChartingHistory(filteredHistory);
   }, [patientId]);
+
+  // Listen for teeth type change events from the VisualToothChart component
+  useEffect(() => {
+    const handleTeethTypeChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ showPrimaryTeeth: boolean }>;
+      toggleTeethType(customEvent.detail.showPrimaryTeeth);
+    };
+
+    // Add event listener
+    document.addEventListener('teethTypeChanged', handleTeethTypeChange);
+
+    // Clean up
+    return () => {
+      document.removeEventListener('teethTypeChanged', handleTeethTypeChange);
+    };
+  }, []);
 
   // Handle tooth selection
   const handleToothSelection = (toothNumber: string) => {
@@ -234,6 +254,7 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
                 <VisualToothChart
                   selectedTeeth={selectedTeeth}
                   onToothSelect={handleToothSelection}
+                  showPrimaryTeeth={showPrimaryTeeth}
                 />
               </TabsContent>
 

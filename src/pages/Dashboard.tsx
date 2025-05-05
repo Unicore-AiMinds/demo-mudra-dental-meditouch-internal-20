@@ -1,6 +1,8 @@
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Calendar, Users, PackageOpen, Microscope, Clock } from 'lucide-react';
+import StockAlerts from '@/components/StockAlerts';
+import StockAlertsCount from '@/components/StockAlertsCount';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +11,7 @@ const Dashboard = () => {
   const { activeClinic, isDental, isMeditouch } = useClinic();
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   const stats = {
     dental: {
       appointments: 12,
@@ -55,7 +57,7 @@ const Dashboard = () => {
               </p>
             </CardContent>
           </Card>
-          
+
           <Card className="card-shadow card-hover">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
@@ -72,7 +74,7 @@ const Dashboard = () => {
               </p>
             </CardContent>
           </Card>
-          
+
           {isDental && (
             <>
               <Card className="card-shadow card-hover">
@@ -81,13 +83,16 @@ const Dashboard = () => {
                   <PackageOpen className="h-4 w-4 text-dental-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.dental.stockAlerts}</div>
+                  <div className="text-2xl font-bold">
+                    {/* Use the StockContext to get the actual count */}
+                    <StockAlertsCount />
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    Items below minimum threshold
+                    Including expired items
                   </p>
                 </CardContent>
               </Card>
-              
+
               <Card className="card-shadow card-hover">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Lab Work Pending</CardTitle>
@@ -102,7 +107,7 @@ const Dashboard = () => {
               </Card>
             </>
           )}
-          
+
           {isMeditouch && (
             <>
               <Card className="card-shadow card-hover">
@@ -117,7 +122,7 @@ const Dashboard = () => {
                   </p>
                 </CardContent>
               </Card>
-              
+
               <Card className="card-shadow card-hover">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Average Wait</CardTitle>
@@ -134,7 +139,7 @@ const Dashboard = () => {
           )}
         </div>
       )}
-      
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="col-span-full md:col-span-1 card-shadow card-hover">
           <CardHeader>
@@ -203,8 +208,8 @@ const Dashboard = () => {
                 </div>
               </>
             )}
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full mt-2"
               onClick={() => navigate('/appointments')}
             >
@@ -215,48 +220,7 @@ const Dashboard = () => {
 
         {isDental && isAdmin && (
           <>
-            <Card className="card-shadow card-hover">
-              <CardHeader>
-                <CardTitle>Stock Alerts</CardTitle>
-                <CardDescription>Items below minimum threshold</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center p-2 rounded-md bg-red-50 border border-red-100">
-                  <div>
-                    <p className="text-sm font-medium">Dental Composite</p>
-                    <p className="text-xs text-muted-foreground">Current: 2, Min: 5</p>
-                  </div>
-                  <div className="text-xs bg-red-500 text-white px-2 py-1 rounded">
-                    Low
-                  </div>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded-md bg-amber-50 border border-amber-100">
-                  <div>
-                    <p className="text-sm font-medium">Impression Material</p>
-                    <p className="text-xs text-muted-foreground">Current: 3, Min: 5</p>
-                  </div>
-                  <div className="text-xs bg-amber-500 text-white px-2 py-1 rounded">
-                    Low
-                  </div>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded-md bg-amber-50 border border-amber-100">
-                  <div>
-                    <p className="text-sm font-medium">Orthodontic Wire</p>
-                    <p className="text-xs text-muted-foreground">Current: 4, Min: 6</p>
-                  </div>
-                  <div className="text-xs bg-amber-500 text-white px-2 py-1 rounded">
-                    Low
-                  </div>
-                </div>
-                <Button 
-                  variant="outline" 
-                  className="w-full mt-2"
-                  onClick={() => navigate('/stock')}
-                >
-                  Manage Stock
-                </Button>
-              </CardContent>
-            </Card>
+            <StockAlerts />
 
             <Card className="card-shadow card-hover">
               <CardHeader>
@@ -291,8 +255,8 @@ const Dashboard = () => {
                     Pending
                   </div>
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full mt-2"
                   onClick={() => navigate('/lab')}
                 >

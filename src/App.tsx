@@ -6,9 +6,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ClinicProvider } from "@/contexts/ClinicContext";
+import { ClinicInfoProvider } from "@/contexts/ClinicInfoContext";
 import { DentalHistoryProvider } from "@/contexts/DentalHistoryContext";
 import { VitalSignsProvider } from "@/contexts/VitalSignsContext";
 import { PrescriptionProvider } from "@/contexts/PrescriptionContext";
+import { StockProvider } from "@/contexts/StockContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Login from "@/pages/Login";
@@ -36,10 +38,12 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <ClinicProvider>
-            <DentalHistoryProvider>
+            <ClinicInfoProvider>
+              <DentalHistoryProvider>
               <VitalSignsProvider>
                 <PrescriptionProvider>
-                  <Routes>
+                  <StockProvider>
+                    <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
 
@@ -105,9 +109,11 @@ const App = () => (
               {/* 404 route */}
               <Route path="*" element={<NotFound />} />
               </Routes>
-                </PrescriptionProvider>
-              </VitalSignsProvider>
-            </DentalHistoryProvider>
+                    </StockProvider>
+                  </PrescriptionProvider>
+                </VitalSignsProvider>
+              </DentalHistoryProvider>
+            </ClinicInfoProvider>
           </ClinicProvider>
         </AuthProvider>
       </BrowserRouter>

@@ -455,7 +455,7 @@ const PatientDetails = () => {
         {/* Dental Charting Tab */}
         {(patient.clinic === 'dental' || patient.clinic === 'both') && (
           <TabsContent value="dental-charting" className="mt-6">
-            <DentalChartingComponent patientId={patient.id} />
+            <DentalChartingComponent patientId={patient.id} patientAge={patient.age} />
           </TabsContent>
         )}
 
@@ -471,6 +471,8 @@ const PatientDetails = () => {
           <PrescriptionComponent
             patientId={patient.id}
             patientName={patient.name}
+            patientAge={patient.age}
+            patientDOB={patient.dateOfBirth}
           />
         </TabsContent>
 
