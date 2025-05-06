@@ -1,12 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
+import { useLabWork, LabJob } from '@/contexts/LabWorkContext';
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
+  CardContent
 } from '@/components/ui/card';
 import {
   Select,
@@ -21,11 +18,10 @@ import {
   Download,
   Plus,
   Search,
-  CheckCircle2,
-  Clock,
   Microscope,
   ArrowUpDown,
-  CalendarDays
+  CalendarDays,
+  AlertTriangle
 } from 'lucide-react';
 import {
   Dialog,
@@ -47,88 +43,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from "@/hooks/use-toast";
 
-interface LabJob {
-  id: string;
-  patient: string;
-  service: string;
-  labWorkType: string;
-  dateSent: string;
-  assignedLab: string;
-  expectedDelivery: string;
-  paymentStatus: 'paid' | 'unpaid';
-  status: 'pending-send' | 'sent' | 'received' | 'ready' | 'completed';
-  materialSpecs?: string;
-  notes?: string;
-}
 
-const demoLabJobs: LabJob[] = [
-  {
-    id: "LJ001",
-    patient: "Aarav Sharma",
-    service: "Crown Placement",
-    labWorkType: "PFM Crown",
-    dateSent: "2023-10-15",
-    assignedLab: "Precision Dental Lab",
-    expectedDelivery: "2023-10-25",
-    paymentStatus: "unpaid",
-    status: "pending-send"
-  },
-  {
-    id: "LJ002",
-    patient: "Priya Patel",
-    service: "Complete Denture",
-    labWorkType: "Acrylic Denture",
-    dateSent: "2023-10-16",
-    assignedLab: "Nova Dental Solutions",
-    expectedDelivery: "2023-10-30",
-    paymentStatus: "paid",
-    status: "sent"
-  },
-  {
-    id: "LJ003",
-    patient: "Vikram Singh",
-    service: "Bridge Procedure",
-    labWorkType: "Ceramic Bridge",
-    dateSent: "2023-10-10",
-    assignedLab: "Dent Creations India",
-    expectedDelivery: "2023-10-20",
-    paymentStatus: "unpaid",
-    status: "sent"
-  },
-  {
-    id: "LJ004",
-    patient: "Neha Kapoor",
-    service: "Removable Partial",
-    labWorkType: "Cast Partial Framework",
-    dateSent: "2023-09-28",
-    assignedLab: "Precision Dental Lab",
-    expectedDelivery: "2023-10-18",
-    paymentStatus: "paid",
-    status: "ready"
-  },
-  {
-    id: "LJ005",
-    patient: "Rajiv Malhotra",
-    service: "Implant Restoration",
-    labWorkType: "Custom Abutment",
-    dateSent: "2023-10-03",
-    assignedLab: "Implant Specialists",
-    expectedDelivery: "2023-10-10",
-    paymentStatus: "unpaid",
-    status: "received"
-  },
-  {
-    id: "LJ006",
-    patient: "Ananya Reddy",
-    service: "Nightguard",
-    labWorkType: "Hard Acrylic Splint",
-    dateSent: "2023-10-12",
-    assignedLab: "Nova Dental Solutions",
-    expectedDelivery: "2023-10-22",
-    paymentStatus: "paid",
-    status: "completed"
-  }
-];
 
 type StatusConfig = {
   [key in LabJob['status']]: {
@@ -160,25 +75,21 @@ const getStatusBadge = (status: LabJob['status']) => {
   );
 };
 
-const getStatusIcon = (status: LabJob['status']) => {
-  switch (status) {
-    case 'pending-send':
-      return <Clock className="h-4 w-4 text-gray-400" />;
-    case 'sent':
-      return <Clock className="h-4 w-4 text-blue-500" />;
-    case 'received':
-      return <Clock className="h-4 w-4 text-amber-500" />;
-    case 'ready':
-      return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-    case 'completed':
-      return <CheckCircle2 className="h-4 w-4 text-gray-500" />;
-    default:
-      return <Clock className="h-4 w-4 text-gray-400" />;
-  }
-};
+
+
+
 
 const LabWork = () => {
   const { activeClinic } = useClinic();
+  const {
+    labJobs,
+    addLabJob,
+    updateLabJob,
+    deleteLabJob,
+    isOverdue,
+    isApproachingDelivery
+  } = useLabWork();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isNewLabDialogOpen, setIsNewLabDialogOpen] = useState(false);
   const [isCreateConfirmOpen, setIsCreateConfirmOpen] = useState(false);
@@ -192,7 +103,6 @@ const LabWork = () => {
   const [selectedLab, setSelectedLab] = useState<string | undefined>(undefined);
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
-  const [labJobs, setLabJobs] = useState<LabJob[]>(demoLabJobs);
   const [newStatusValue, setNewStatusValue] = useState<LabJob['status'] | null>(null);
   const [editingJob, setEditingJob] = useState<LabJob | null>(null);
   const { toast } = useToast();
@@ -231,11 +141,20 @@ const LabWork = () => {
         job.assignedLab.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.labWorkType.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesStatus = !selectedStatus || selectedStatus === "all" || job.status === selectedStatus;
+      // Special handling for "overdue" status filter
+      let statusMatch = true;
+      if (selectedStatus === "overdue") {
+        statusMatch = isOverdue(job);
+      } else if (selectedStatus === "approaching") {
+        statusMatch = isApproachingDelivery(job);
+      } else {
+        statusMatch = !selectedStatus || selectedStatus === "all" || job.status === selectedStatus;
+      }
+
       const matchesLab = !selectedLab || selectedLab === "all" || job.assignedLab === selectedLab;
       const matchesPaymentStatus = !selectedPaymentStatus || selectedPaymentStatus === "all" || job.paymentStatus === selectedPaymentStatus;
 
-      return matchesSearch && matchesStatus && matchesLab && matchesPaymentStatus;
+      return matchesSearch && statusMatch && matchesLab && matchesPaymentStatus;
     });
 
     // Then sort the filtered jobs by date
@@ -244,7 +163,7 @@ const LabWork = () => {
       const dateB = new Date(b.dateSent).getTime();
       return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
     });
-  }, [labJobs, searchTerm, selectedStatus, selectedLab, selectedPaymentStatus, sortOrder]);
+  }, [labJobs, searchTerm, selectedStatus, selectedLab, selectedPaymentStatus, sortOrder, isOverdue, isApproachingDelivery]);
 
   if (activeClinic !== 'dental') {
     return (
@@ -274,18 +193,17 @@ const LabWork = () => {
 
   const confirmPaymentStatusChange = () => {
     if (selectedJobId) {
-      setLabJobs(prevJobs =>
-        prevJobs.map(job =>
-          job.id === selectedJobId
-            ? { ...job, paymentStatus: job.paymentStatus === 'paid' ? 'unpaid' : 'paid' }
-            : job
-        )
-      );
+      const job = labJobs.find(job => job.id === selectedJobId);
+      if (job) {
+        updateLabJob(selectedJobId, {
+          paymentStatus: job.paymentStatus === 'paid' ? 'unpaid' : 'paid'
+        });
 
-      toast({
-        title: "Payment Status Updated",
-        description: "The payment status has been updated successfully.",
-      });
+        toast({
+          title: "Payment Status Updated",
+          description: "The payment status has been updated successfully.",
+        });
+      }
 
       // Reset state
       setIsPaymentConfirmOpen(false);
@@ -306,13 +224,7 @@ const LabWork = () => {
 
   const confirmStatusChange = () => {
     if (selectedJobId && newStatusValue) {
-      setLabJobs(prevJobs =>
-        prevJobs.map(job =>
-          job.id === selectedJobId
-            ? { ...job, status: newStatusValue }
-            : job
-        )
-      );
+      updateLabJob(selectedJobId, { status: newStatusValue });
 
       toast({
         title: "Status Updated",
@@ -334,11 +246,19 @@ const LabWork = () => {
 
   const exportToCSV = () => {
     // Create CSV content from the filtered and sorted data
-    const headers = ['Patient', 'Service', 'Lab Work Type', 'Material/Shade Specifications', 'Date Sent', 'Laboratory', 'Notes', 'Expected Delivery', 'Payment Status', 'Status'];
+    const headers = ['Patient', 'Service', 'Lab Work Type', 'Material/Shade Specifications', 'Date Sent', 'Laboratory', 'Notes', 'Expected Delivery', 'Delivery Status', 'Payment Status', 'Status'];
 
     const csvContent = [
       headers.join(','),
       ...sortedAndFilteredLabJobs.map(job => {
+        // Determine delivery status
+        let deliveryStatus = "On Schedule";
+        if (isOverdue(job)) {
+          deliveryStatus = "Overdue";
+        } else if (isApproachingDelivery(job)) {
+          deliveryStatus = "Due Soon";
+        }
+
         return [
           `"${job.patient}"`,
           `"${job.service}"`,
@@ -348,6 +268,7 @@ const LabWork = () => {
           `"${job.assignedLab}"`,
           `"${job.notes || ''}"`,
           job.expectedDelivery,
+          deliveryStatus,
           job.paymentStatus,
           job.status
         ].join(',');
@@ -393,12 +314,8 @@ const LabWork = () => {
   };
 
   const handleCreateLabEntry = () => {
-    // Generate a unique ID
-    const newId = `LJ${String(labJobs.length + 1).padStart(3, '0')}`;
-
     // Create new lab job
-    const newLabJob: LabJob = {
-      id: newId,
+    addLabJob({
       patient: newPatient,
       service: newService,
       labWorkType: newLabWorkType,
@@ -409,10 +326,7 @@ const LabWork = () => {
       status: newStatus,
       materialSpecs: newMaterialSpecs,
       notes: newNotes
-    };
-
-    // Add to the list
-    setLabJobs([newLabJob, ...labJobs]);
+    });
 
     // Reset form fields
     setNewPatient("");
@@ -466,9 +380,8 @@ const LabWork = () => {
 
   const handleUpdateLabEntry = () => {
     if (editingJob) {
-      // Create updated job object using state variables
-      const updatedJob: LabJob = {
-        ...editingJob,
+      // Update the job with new values
+      updateLabJob(editingJob.id, {
         patient: editPatient,
         service: editService,
         labWorkType: editLabWorkType,
@@ -479,14 +392,7 @@ const LabWork = () => {
         paymentStatus: editPaymentStatus,
         materialSpecs: editMaterialSpecs,
         notes: editNotes
-      };
-
-      // Update the job in the list
-      setLabJobs(prevJobs =>
-        prevJobs.map(job =>
-          job.id === editingJob.id ? updatedJob : job
-        )
-      );
+      });
 
       setIsUpdateConfirmOpen(false);
       setEditingJob(null);
@@ -512,7 +418,7 @@ const LabWork = () => {
 
   const handleDeleteLabEntry = () => {
     if (editingJob) {
-      setLabJobs(prevJobs => prevJobs.filter(job => job.id !== editingJob.id));
+      deleteLabJob(editingJob.id);
 
       setIsDeleteConfirmOpen(false);
       setEditingJob(null);
@@ -563,6 +469,8 @@ const LabWork = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="approaching">Approaching Delivery</SelectItem>
               <SelectItem value="pending-send">Pending Send</SelectItem>
               <SelectItem value="sent">Sent to Lab</SelectItem>
               <SelectItem value="received">Received</SelectItem>
@@ -624,7 +532,10 @@ const LabWork = () => {
             <TableBody>
               {sortedAndFilteredLabJobs.length > 0 ? (
                 sortedAndFilteredLabJobs.map((job) => (
-                  <TableRow key={job.id} className="group">
+                  <TableRow
+                    key={job.id}
+                    className={`group ${isOverdue(job) ? "bg-red-50" : ""}`}
+                  >
                     <TableCell className="font-medium">{job.patient}</TableCell>
                     <TableCell className="hidden md:table-cell">{job.service}</TableCell>
                     <TableCell>
@@ -638,7 +549,25 @@ const LabWork = () => {
                         {job.assignedLab}
                       </div>
                     </TableCell>
-                    <TableCell>{job.expectedDelivery}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <span className={isOverdue(job) ? "text-red-600 font-medium" : ""}>
+                          {job.expectedDelivery}
+                        </span>
+                        {isOverdue(job) && (
+                          <div className="flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3 text-red-600" />
+                            <span className="text-xs text-red-600">Overdue</span>
+                          </div>
+                        )}
+                        {isApproachingDelivery(job) && !isOverdue(job) && (
+                          <div className="flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3 text-amber-500" />
+                            <span className="text-xs text-amber-500">Due Soon</span>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={job.paymentStatus === 'paid' ? 'default' : 'outline'}
@@ -649,8 +578,7 @@ const LabWork = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(job.status)}
+                      <div>
                         {getStatusBadge(job.status)}
                       </div>
                     </TableCell>

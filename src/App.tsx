@@ -12,6 +12,7 @@ import { DentalHistoryProvider } from "@/contexts/DentalHistoryContext";
 import { VitalSignsProvider } from "@/contexts/VitalSignsContext";
 import { PrescriptionProvider } from "@/contexts/PrescriptionContext";
 import { StockProvider } from "@/contexts/StockContext";
+import { LabWorkProvider } from "@/contexts/LabWorkContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Login from "@/pages/Login";
@@ -45,9 +46,10 @@ const App = () => (
                 <VitalSignsProvider>
                   <PrescriptionProvider>
                     <StockProvider>
-                    <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/unauthorized" element={<Unauthorized />} />
+                      <LabWorkProvider>
+                        <Routes>
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/unauthorized" element={<Unauthorized />} />
 
               {/* Protected Routes */}
               <Route
@@ -111,6 +113,7 @@ const App = () => (
               {/* 404 route */}
               <Route path="*" element={<NotFound />} />
               </Routes>
+                      </LabWorkProvider>
                     </StockProvider>
                   </PrescriptionProvider>
                 </VitalSignsProvider>

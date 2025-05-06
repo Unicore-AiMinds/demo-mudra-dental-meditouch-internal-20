@@ -212,8 +212,28 @@ const Settings = () => {
   const [isConfirmUpdateDealerOpen, setIsConfirmUpdateDealerOpen] = useState(false);
   const [isConfirmUpdateFollowUpRuleOpen, setIsConfirmUpdateFollowUpRuleOpen] = useState(false);
 
+  // Define types for our data
+  interface Doctor {
+    id: number;
+    name: string;
+    specialization: string;
+    email: string;
+    phone: string;
+    color: string;
+    aadharDoc?: string;
+    panDoc?: string;
+  }
+
+  interface Service {
+    id: number;
+    name: string;
+    duration: number;
+    price: number;
+    description?: string;
+  }
+
   // Current edit items
-  const [currentDoctor, setCurrentDoctor] = useState(null);
+  const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
   const [newDoctorName, setNewDoctorName] = useState('');
   const [newDoctorSpecialization, setNewDoctorSpecialization] = useState('');
   const [newDoctorEmail, setNewDoctorEmail] = useState('');
@@ -222,6 +242,11 @@ const Settings = () => {
   const [editPhoneCountryCode, setEditPhoneCountryCode] = useState('+91');
   // Using DoctorContext instead of local state
   const { doctors: dentalDoctors, setDoctors: setDentalDoctors, updateDoctorColor } = useDoctors();
+
+  // Color picker state
+  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+  const [selectedDoctorForColor, setSelectedDoctorForColor] = useState<Doctor | null>(null);
+  const [tempColor, setTempColor] = useState("");
   const [stockItems, setStockItems] = useState(initialStockItems);
   const [dealers, setDealers] = useState(initialDealers);
   const [dentalServices, setDentalServices] = useState(services.dental);
@@ -229,7 +254,7 @@ const Settings = () => {
   const [dentalLabs, setDentalLabs] = useState(initialDentalLabs);
   const [labWorkTypes, setLabWorkTypes] = useState(initialLabWorkTypes);
   const [followUpRules, setFollowUpRules] = useState<ServiceFollowUpRule[]>(demoFollowUpRules);
-  const [currentService, setCurrentService] = useState(null);
+  const [currentService, setCurrentService] = useState<Service | null>(null);
   const [currentLab, setCurrentLab] = useState(null);
   const [currentLabWorkType, setCurrentLabWorkType] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -301,7 +326,7 @@ const Settings = () => {
   };
 
   // Doctor handlers
-  const handleEditDoctor = (doctor: any) => {
+  const handleEditDoctor = (doctor: Doctor) => {
     setCurrentDoctor(doctor);
     // Extract country code from phone number if it exists
     if (doctor.phone && doctor.phone.startsWith('+')) {
@@ -371,12 +396,7 @@ const Settings = () => {
           panPath = `/docs/pan_${updatedName.value.replace(/\s+/g, '_').toLowerCase()}.${updatedPan.files[0].name.split('.').pop()}`;
         }
 
-        // Get the updated color
-        const updatedColor = document.getElementById('doctorColor') as HTMLInputElement;
-        const newColor = updatedColor ? updatedColor.value : currentDoctor.color;
 
-        // Check if color was changed
-        const colorChanged = updatedColor && updatedColor.value !== currentDoctor.color;
 
         // Update doctor in the list
         const updatedDoctors = dentalDoctors.map(doctor => {
@@ -388,23 +408,19 @@ const Settings = () => {
               email: updatedEmail.value,
               phone: `${editPhoneCountryCode} ${updatedPhone.value}`,
               aadharDoc: aadharPath,
-              panDoc: panPath,
-              color: newColor // Use the selected color or preserve the existing one
+              panDoc: panPath
             };
           }
           return doctor;
         });
 
-        // Update the doctor color in the context
-        if (colorChanged) {
-          updateDoctorColor(currentDoctor.id, newColor);
-        }
+
 
         setDentalDoctors(updatedDoctors);
 
         toast({
           title: "Doctor Updated",
-          description: `${updatedName.value}'s information has been updated successfully.${colorChanged ? ' Doctor color has been changed.' : ''}`,
+          description: `${updatedName.value}'s information has been updated successfully.`,
         });
       } else {
         toast({
@@ -420,7 +436,29 @@ const Settings = () => {
     }
   };
 
-  // This function is now only used directly in the UI, not in the edit form
+  // Handle opening the color picker for a doctor
+  const handleOpenColorPicker = (doctor: Doctor) => {
+    setSelectedDoctorForColor(doctor);
+    setTempColor(doctor.color);
+    setIsColorPickerOpen(true);
+  };
+
+  // Handle color change confirmation
+  const handleColorChange = () => {
+    if (selectedDoctorForColor && tempColor) {
+      // Update the doctor's color in the context
+      updateDoctorColor(selectedDoctorForColor.id, tempColor);
+
+      toast({
+        title: "Color Updated",
+        description: `${selectedDoctorForColor.name}'s color has been updated.`,
+      });
+
+      // Close the color picker dialog
+      setIsColorPickerOpen(false);
+      setSelectedDoctorForColor(null);
+    }
+  };
 
   const handleDeleteDoctor = () => {
     if (currentDoctor) {
@@ -438,7 +476,7 @@ const Settings = () => {
   };
 
   // Service handlers
-  const handleEditService = (service: any) => {
+  const handleEditService = (service: Service) => {
     setCurrentService(service);
     setIsEditServiceDialogOpen(true);
   };
@@ -1329,11 +1367,15 @@ const Settings = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div
-                            className="w-6 h-6 rounded-full border border-gray-200"
-                            style={{ backgroundColor: doctor.color }}
-                            title={doctor.color}
-                          ></div>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-6 h-6 rounded-full border border-gray-200 cursor-pointer hover:border-dental-primary hover:shadow-sm transition-all"
+                              style={{ backgroundColor: doctor.color }}
+                              title="Click to change color"
+                              onClick={() => handleOpenColorPicker(doctor)}
+                            ></div>
+                            <span className="text-xs text-muted-foreground">Click to edit</span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -1625,25 +1667,7 @@ const Settings = () => {
                           defaultValue={currentDoctor.email}
                         />
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="doctorColor">Color</Label>
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-6 h-6 rounded-full border border-gray-200"
-                            style={{ backgroundColor: currentDoctor.color }}
-                            title={currentDoctor.color}
-                          ></div>
-                          <Input
-                            id="doctorColor"
-                            type="color"
-                            defaultValue={currentDoctor.color}
-                            className="w-full h-10 cursor-pointer"
-                          />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Choose a color for this doctor that will be used in the appointment calendar
-                        </p>
-                      </div>
+
                     </div>
 
                     <div className="space-y-2 mt-1">
@@ -1750,20 +1774,6 @@ const Settings = () => {
                       <p className="font-medium">Doctor:</p>
                       <p>{document.getElementById('editDoctorName')?.value || currentDoctor.name}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">Color:</p>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-4 h-4 rounded-full border border-gray-200"
-                          style={{ backgroundColor: currentDoctor.color }}
-                        ></div>
-                        <span>→</span>
-                        <div
-                          className="w-4 h-4 rounded-full border border-gray-200"
-                          style={{ backgroundColor: document.getElementById('doctorColor')?.value || currentDoctor.color }}
-                        ></div>
-                      </div>
-                    </div>
                   </div>
                 )}
                 <DialogFooter>
@@ -1772,6 +1782,63 @@ const Settings = () => {
                   </Button>
                   <Button onClick={handleUpdateDoctor}>
                     Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Color Picker Dialog */}
+            <Dialog open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Change Doctor Color</DialogTitle>
+                  <DialogDescription>
+                    {selectedDoctorForColor && `Select a new color for ${selectedDoctorForColor.name}`}
+                  </DialogDescription>
+                </DialogHeader>
+                {selectedDoctorForColor && (
+                  <div className="py-4">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-center gap-4">
+                        <div
+                          className="w-10 h-10 rounded-full border border-gray-200"
+                          style={{ backgroundColor: selectedDoctorForColor.color }}
+                          title="Current color"
+                        ></div>
+                        <span className="text-xl">→</span>
+                        <div
+                          className="w-10 h-10 rounded-full border border-gray-200"
+                          style={{ backgroundColor: tempColor }}
+                          title="New color"
+                        ></div>
+                      </div>
+
+                      <div className="flex flex-col items-center gap-2">
+                        <Label htmlFor="doctorColorPicker">Choose a color</Label>
+                        <Input
+                          id="doctorColorPicker"
+                          type="color"
+                          value={tempColor}
+                          onChange={(e) => setTempColor(e.target.value)}
+                          className="w-full h-10 cursor-pointer"
+                        />
+                      </div>
+
+                      <p className="text-xs text-muted-foreground text-center mt-2">
+                        This color will be used to identify the doctor in the appointment calendar
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsColorPickerOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={handleColorChange}
+                  >
+                    <Save className="h-4 w-4 mr-2" /> Save Color
                   </Button>
                 </DialogFooter>
               </DialogContent>

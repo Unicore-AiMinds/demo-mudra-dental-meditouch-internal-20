@@ -1,5 +1,6 @@
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLabWork } from '@/contexts/LabWorkContext';
 import { Calendar, Users, PackageOpen, Microscope, Clock } from 'lucide-react';
 import StockAlerts from '@/components/StockAlerts';
 import StockAlertsCount from '@/components/StockAlertsCount';
@@ -10,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 const Dashboard = () => {
   const { activeClinic, isDental, isMeditouch } = useClinic();
   const { user } = useAuth();
+  const { getOverdueCount, getPendingCount, labJobs, isOverdue } = useLabWork();
   const navigate = useNavigate();
 
   const stats = {
@@ -17,7 +19,7 @@ const Dashboard = () => {
       appointments: 12,
       patients: 120,
       stockAlerts: 3,
-      labWorkPending: 5
+      labWorkPending: getPendingCount() + getOverdueCount()
     },
     meditouch: {
       appointments: 8,
@@ -101,7 +103,7 @@ const Dashboard = () => {
                 <CardContent>
                   <div className="text-2xl font-bold">{stats.dental.labWorkPending}</div>
                   <p className="text-xs text-muted-foreground">
-                    2 items are overdue
+                    {getOverdueCount()} items are overdue
                   </p>
                 </CardContent>
               </Card>
@@ -266,51 +268,80 @@ const Dashboard = () => {
                 <CardDescription>Pending lab work items</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between items-center p-2 rounded-md bg-red-50 border border-red-100">
-                  <div>
-                    <p className="text-sm font-medium">Crown for Rohan Gupta</p>
-                    <p className="text-xs text-muted-foreground">Due: Yesterday</p>
-                  </div>
-                  <div className="text-xs bg-red-500 text-white px-2 py-1 rounded">
-                    Overdue
-                  </div>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded-md bg-red-50 border border-red-100">
-                  <div>
-                    <p className="text-sm font-medium">Denture for Sanjay Patel</p>
-                    <p className="text-xs text-muted-foreground">Due: 2 days ago</p>
-                  </div>
-                  <div className="text-xs bg-red-500 text-white px-2 py-1 rounded">
-                    Overdue
-                  </div>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded-md bg-blue-50 border border-blue-100">
-                  <div>
-                    <p className="text-sm font-medium">Bridge for Neha Singh</p>
-                    <p className="text-xs text-muted-foreground">Due: Tomorrow</p>
-                  </div>
-                  <div className="text-xs bg-blue-500 text-white px-2 py-1 rounded">
-                    Pending
-                  </div>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded-md bg-blue-50 border border-blue-100">
-                  <div>
-                    <p className="text-sm font-medium">Implant for Vikram Singh</p>
-                    <p className="text-xs text-muted-foreground">Due: In 3 days</p>
-                  </div>
-                  <div className="text-xs bg-blue-500 text-white px-2 py-1 rounded">
-                    Pending
-                  </div>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded-md bg-green-50 border border-green-100">
-                  <div>
-                    <p className="text-sm font-medium">Nightguard for Priya Patel</p>
-                    <p className="text-xs text-muted-foreground">Ready for pickup</p>
-                  </div>
-                  <div className="text-xs bg-green-500 text-white px-2 py-1 rounded">
-                    Ready
-                  </div>
-                </div>
+                {labJobs
+                  .filter(job => job.status !== 'completed')
+                  .sort((a, b) => {
+                    // Sort by overdue first, then by expected delivery date
+                    if (isOverdue(a) && !isOverdue(b)) return -1;
+                    if (!isOverdue(a) && isOverdue(b)) return 1;
+
+                    const dateA = new Date(a.expectedDelivery).getTime();
+                    const dateB = new Date(b.expectedDelivery).getTime();
+                    return dateA - dateB;
+                  })
+                  .slice(0, 5)
+                  .map(job => {
+                    const isJobOverdue = isOverdue(job);
+                    const isReady = job.status === 'ready';
+
+                    // Format the due date text
+                    let dueText = '';
+                    const today = new Date();
+                    const dueDate = new Date(job.expectedDelivery);
+                    const diffTime = dueDate.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (isJobOverdue) {
+                      dueText = diffDays === -1
+                        ? 'Due: Yesterday'
+                        : `Due: ${Math.abs(diffDays)} days ago`;
+                    } else if (diffDays === 0) {
+                      dueText = 'Due: Today';
+                    } else if (diffDays === 1) {
+                      dueText = 'Due: Tomorrow';
+                    } else {
+                      dueText = `Due: In ${diffDays} days`;
+                    }
+
+                    if (isReady) {
+                      dueText = 'Ready for pickup';
+                    }
+
+                    return (
+                      <div
+                        key={job.id}
+                        className={`flex justify-between items-center p-2 rounded-md ${
+                          isJobOverdue
+                            ? 'bg-red-50 border border-red-100'
+                            : isReady
+                              ? 'bg-green-50 border border-green-100'
+                              : 'bg-blue-50 border border-blue-100'
+                        }`}
+                      >
+                        <div>
+                          <p className="text-sm font-medium">{job.labWorkType} for {job.patient}</p>
+                          <p className="text-xs text-muted-foreground">{dueText}</p>
+                        </div>
+                        <div
+                          className={`text-xs ${
+                            isJobOverdue
+                              ? 'bg-red-500'
+                              : isReady
+                                ? 'bg-green-500'
+                                : 'bg-blue-500'
+                          } text-white px-2 py-1 rounded`}
+                        >
+                          {isJobOverdue
+                            ? 'Overdue'
+                            : isReady
+                              ? 'Ready'
+                              : 'Pending'
+                          }
+                        </div>
+                      </div>
+                    );
+                  })
+                }
                 <Button
                   variant="outline"
                   className="w-full mt-2"

@@ -508,8 +508,24 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
                           {entry.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="max-w-[300px] truncate">
-                        {entry.notes || 'N/A'}
+                      <TableCell className="max-w-[300px] group relative">
+                        <div className={`truncate cursor-help ${entry.notes && entry.notes.length > 30 ? 'flex items-center' : ''}`}>
+                          {entry.notes || 'N/A'}
+                          {entry.notes && entry.notes.length > 30 && (
+                            <span className="ml-1 text-xs text-blue-500 inline-flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                              </svg>
+                            </span>
+                          )}
+                        </div>
+                        {entry.notes && entry.notes.length > 0 && (
+                          <div className="absolute z-50 invisible group-hover:visible bg-white dark:bg-gray-800 p-3 rounded shadow-lg border border-gray-200 dark:border-gray-700 max-w-md whitespace-normal break-words left-0 right-0 md:left-1/2 md:right-auto md:transform md:-translate-x-1/2 mt-1 text-sm">
+                            {entry.notes}
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
