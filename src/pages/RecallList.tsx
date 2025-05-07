@@ -154,7 +154,7 @@ const RecallList = () => {
     // Show toast notification
     toast({
       title: "Follow-up Scheduled",
-      description: `The follow-up for ${followUp.patientName} has been marked as scheduled.`,
+      description: `The follow-up for ${followUp.patientName} has been marked as scheduled and will be removed from the recall list.`,
     });
 
     // Dispatch custom event to open the new appointment form with pre-filled data

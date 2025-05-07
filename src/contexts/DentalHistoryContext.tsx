@@ -263,12 +263,18 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
 
   // Get pending follow-ups
   const getPendingFollowUps = (): TentativeFollowUp[] => {
-    return tentativeFollowUps.filter(followUp => followUp.status === 'Pending');
+    return tentativeFollowUps.filter(followUp =>
+      // Only show follow-ups that are pending (not completed, scheduled, or cancelled)
+      followUp.status === 'Pending'
+    );
   };
 
   // Get snoozed follow-ups
   const getSnoozedFollowUps = (): TentativeFollowUp[] => {
-    return tentativeFollowUps.filter(followUp => followUp.status === 'Snoozed');
+    return tentativeFollowUps.filter(followUp =>
+      // Only show follow-ups that are snoozed (not completed, scheduled, or cancelled)
+      followUp.status === 'Snoozed'
+    );
   };
 
   return (

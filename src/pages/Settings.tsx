@@ -3,9 +3,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useClinicInfo } from '@/contexts/ClinicInfoContext';
 import { useDoctors } from '@/contexts/DoctorContext';
+import { useMedicines } from '@/contexts/MedicineContext';
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { demoFollowUpRules } from '@/data/demo-dental-history';
 import { getRandomDentalColor } from '@/utils/doctorColors';
+import { Medicine } from '@/types/medicines';
 import {
   Card,
   CardContent,
@@ -181,6 +183,7 @@ const Settings = () => {
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isAddStockItemDialogOpen, setIsAddStockItemDialogOpen] = useState(false);
   const [isAddDealerDialogOpen, setIsAddDealerDialogOpen] = useState(false);
+  const [isAddMedicineDialogOpen, setIsAddMedicineDialogOpen] = useState(false);
   const [isAddFollowUpRuleDialogOpen, setIsAddFollowUpRuleDialogOpen] = useState(false);
 
   // Edit dialogs
@@ -191,6 +194,7 @@ const Settings = () => {
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [isEditStockItemDialogOpen, setIsEditStockItemDialogOpen] = useState(false);
   const [isEditDealerDialogOpen, setIsEditDealerDialogOpen] = useState(false);
+  const [isEditMedicineDialogOpen, setIsEditMedicineDialogOpen] = useState(false);
   const [isEditFollowUpRuleDialogOpen, setIsEditFollowUpRuleDialogOpen] = useState(false);
 
   // Confirmation dialogs
@@ -201,6 +205,7 @@ const Settings = () => {
   const [isConfirmDeleteUserOpen, setIsConfirmDeleteUserOpen] = useState(false);
   const [isConfirmDeleteStockItemOpen, setIsConfirmDeleteStockItemOpen] = useState(false);
   const [isConfirmDeleteDealerOpen, setIsConfirmDeleteDealerOpen] = useState(false);
+  const [isConfirmDeleteMedicineOpen, setIsConfirmDeleteMedicineOpen] = useState(false);
   const [isConfirmDeleteFollowUpRuleOpen, setIsConfirmDeleteFollowUpRuleOpen] = useState(false);
 
   const [isConfirmUpdateDoctorOpen, setIsConfirmUpdateDoctorOpen] = useState(false);
@@ -210,6 +215,7 @@ const Settings = () => {
   const [isConfirmUpdateUserOpen, setIsConfirmUpdateUserOpen] = useState(false);
   const [isConfirmUpdateStockItemOpen, setIsConfirmUpdateStockItemOpen] = useState(false);
   const [isConfirmUpdateDealerOpen, setIsConfirmUpdateDealerOpen] = useState(false);
+  const [isConfirmUpdateMedicineOpen, setIsConfirmUpdateMedicineOpen] = useState(false);
   const [isConfirmUpdateFollowUpRuleOpen, setIsConfirmUpdateFollowUpRuleOpen] = useState(false);
 
   // Define types for our data
@@ -234,6 +240,7 @@ const Settings = () => {
 
   // Current edit items
   const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
+  const [currentMedicine, setCurrentMedicine] = useState<Medicine | null>(null);
   const [newDoctorName, setNewDoctorName] = useState('');
   const [newDoctorSpecialization, setNewDoctorSpecialization] = useState('');
   const [newDoctorEmail, setNewDoctorEmail] = useState('');
@@ -242,6 +249,8 @@ const Settings = () => {
   const [editPhoneCountryCode, setEditPhoneCountryCode] = useState('+91');
   // Using DoctorContext instead of local state
   const { doctors: dentalDoctors, setDoctors: setDentalDoctors, updateDoctorColor } = useDoctors();
+  // Using MedicineContext
+  const { medicines, addMedicine, updateMedicine, deleteMedicine } = useMedicines();
 
   // Color picker state
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
@@ -310,11 +319,11 @@ const Settings = () => {
     : meditouchServices;
 
   // Helper function to capitalize the first letter of each word
-  const capitalizeWords = (str) => {
+  const capitalizeWords = (str: string): string => {
     if (!str) return '';
     return str
       .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
   };
 
@@ -522,8 +531,8 @@ const Settings = () => {
       }
 
       // Update the services state
-      const updateFunction = (services) =>
-        services.map(service =>
+      const updateFunction = (services: any[]) =>
+        services.map((service: any) =>
           service.id === currentService.id
             ? {
                 ...service,
@@ -554,8 +563,8 @@ const Settings = () => {
   const handleDeleteService = () => {
     if (currentService) {
       // Remove the service from the services state
-      const filterFunction = (services) =>
-        services.filter(service => service.id !== currentService.id);
+      const filterFunction = (services: any[]) =>
+        services.filter((service: any) => service.id !== currentService.id);
 
       if (activeClinic === 'dental') {
         setDentalServices(filterFunction);
@@ -574,7 +583,7 @@ const Settings = () => {
   };
 
   // Lab handlers
-  const handleEditLab = (lab) => {
+  const handleEditLab = (lab: any) => {
     setCurrentLab(lab);
     setIsEditLabDialogOpen(true);
   };
@@ -677,7 +686,7 @@ const Settings = () => {
   };
 
   // Lab Work Type handlers
-  const handleEditLabWorkType = (workType) => {
+  const handleEditLabWorkType = (workType: any) => {
     setCurrentLabWorkType(workType);
     setIsEditLabWorkTypeDialogOpen(true);
   };
@@ -752,7 +761,7 @@ const Settings = () => {
   };
 
   // User handlers
-  const handleEditUser = (user) => {
+  const handleEditUser = (user: any) => {
     setCurrentUser(user);
     setIsEditUserDialogOpen(true);
   };
@@ -788,7 +797,7 @@ const Settings = () => {
   };
 
   // Stock Item handlers
-  const handleEditStockItem = (item) => {
+  const handleEditStockItem = (item: any) => {
     setCurrentStockItem(item);
     setIsEditStockItemDialogOpen(true);
   };
@@ -879,7 +888,7 @@ const Settings = () => {
   };
 
   // Dealer handlers
-  const handleEditDealer = (dealer) => {
+  const handleEditDealer = (dealer: any) => {
     setCurrentDealer(dealer);
     setIsEditDealerDialogOpen(true);
 
@@ -1003,6 +1012,126 @@ const Settings = () => {
       setIsConfirmDeleteDealerOpen(false);
       setIsEditDealerDialogOpen(false);
       setCurrentDealer(null);
+    }
+  };
+
+  // Medicine handlers
+  const handleEditMedicine = (medicine: Medicine): void => {
+    setCurrentMedicine(medicine);
+    setIsEditMedicineDialogOpen(true);
+  };
+
+  const handleUpdateMedicineConfirm = () => {
+    setIsConfirmUpdateMedicineOpen(true);
+  };
+
+  const handleUpdateMedicine = () => {
+    if (currentMedicine) {
+      const nameInput = document.getElementById('editMedicineName') as HTMLInputElement;
+      const dosageInput = document.getElementById('editMedicineDosage') as HTMLInputElement;
+      const descriptionInput = document.getElementById('editMedicineDescription') as HTMLTextAreaElement;
+
+      if (nameInput && dosageInput) {
+        const updatedName = nameInput.value.trim();
+        const updatedDosage = dosageInput.value.trim();
+        const updatedDescription = descriptionInput ? descriptionInput.value.trim() : '';
+
+        if (!updatedName || !updatedDosage) {
+          toast({
+            title: "Missing Required Fields",
+            description: "Please fill in all required fields.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Update medicine
+        const updated = updateMedicine(currentMedicine.id, {
+          name: updatedName,
+          dosage: updatedDosage,
+          description: updatedDescription || undefined
+        });
+
+        if (updated) {
+          toast({
+            title: "Medicine Updated",
+            description: `${updatedName} has been updated successfully.`,
+          });
+        } else {
+          toast({
+            title: "Update Failed",
+            description: "Could not update medicine information.",
+            variant: "destructive"
+          });
+        }
+
+        setIsConfirmUpdateMedicineOpen(false);
+        setIsEditMedicineDialogOpen(false);
+        setCurrentMedicine(null);
+      }
+    }
+  };
+
+  const handleDeleteMedicine = () => {
+    if (currentMedicine) {
+      // Delete medicine
+      const success = deleteMedicine(currentMedicine.id);
+
+      if (success) {
+        toast({
+          title: "Medicine Removed",
+          description: `${currentMedicine.name} has been removed from the system.`,
+        });
+      } else {
+        toast({
+          title: "Removal Failed",
+          description: "Could not remove the medicine.",
+          variant: "destructive"
+        });
+      }
+
+      setIsConfirmDeleteMedicineOpen(false);
+      setIsEditMedicineDialogOpen(false);
+      setCurrentMedicine(null);
+    }
+  };
+
+  const handleAddMedicine = () => {
+    const nameInput = document.getElementById('newMedicineName') as HTMLInputElement;
+    const dosageInput = document.getElementById('newMedicineDosage') as HTMLInputElement;
+    const descriptionInput = document.getElementById('newMedicineDescription') as HTMLTextAreaElement;
+
+    if (nameInput && dosageInput) {
+      const name = nameInput.value.trim();
+      const dosage = dosageInput.value.trim();
+      const description = descriptionInput ? descriptionInput.value.trim() : '';
+
+      if (!name || !dosage) {
+        toast({
+          title: "Missing Required Fields",
+          description: "Please fill in all required fields.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Add new medicine
+      const newMedicine = addMedicine({
+        name,
+        dosage,
+        description: description || undefined
+      });
+
+      toast({
+        title: "Medicine Added",
+        description: `${name} has been added successfully.`,
+      });
+
+      // Reset form and close dialog
+      nameInput.value = '';
+      dosageInput.value = '';
+      if (descriptionInput) descriptionInput.value = '';
+      setIsAddMedicineDialogOpen(false);
     }
   };
 
@@ -1166,6 +1295,7 @@ const Settings = () => {
           {activeClinic === 'dental' && <TabsTrigger value="labwork">Lab Work Types</TabsTrigger>}
           {activeClinic === 'dental' && <TabsTrigger value="stock">Stock</TabsTrigger>}
           {activeClinic === 'dental' && <TabsTrigger value="dealers">Dealers</TabsTrigger>}
+          {activeClinic === 'dental' && <TabsTrigger value="medicines">Medicines</TabsTrigger>}
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
         </TabsList>
@@ -3170,6 +3300,222 @@ const Settings = () => {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+        )}
+
+        {activeClinic === 'dental' && (
+          <TabsContent value="medicines" className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <FileText className="mr-2 h-5 w-5" />
+                    Manage Medicines
+                  </CardTitle>
+                  <CardDescription>
+                    Add and manage medicines for Dental Metrix Clinic
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setIsAddMedicineDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Medicine
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Dosage</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {medicines.map((medicine) => (
+                      <TableRow key={medicine.id}>
+                        <TableCell className="font-medium">{medicine.name}</TableCell>
+                        <TableCell>{medicine.dosage}</TableCell>
+                        <TableCell>{medicine.description || '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditMedicine(medicine)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => {
+                                setCurrentMedicine(medicine);
+                                setIsConfirmDeleteMedicineOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Add Medicine Dialog */}
+            <Dialog open={isAddMedicineDialogOpen} onOpenChange={setIsAddMedicineDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Medicine</DialogTitle>
+                  <DialogDescription>
+                    Enter the details for the new medicine. Name and dosage are required.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="newMedicineName" className="flex items-center">
+                        Medicine Name <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="newMedicineName"
+                        placeholder="e.g., Amoxicillin"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="newMedicineDosage" className="flex items-center">
+                        Dosage <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="newMedicineDosage"
+                        placeholder="e.g., 500mg"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="newMedicineDescription">
+                        Description
+                      </Label>
+                      <Textarea
+                        id="newMedicineDescription"
+                        placeholder="e.g., Antibiotic used to treat bacterial infections"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddMedicineDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={handleAddMedicine}
+                  >
+                    Add Medicine
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Medicine Dialog */}
+            <Dialog open={isEditMedicineDialogOpen} onOpenChange={setIsEditMedicineDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Medicine</DialogTitle>
+                  <DialogDescription>
+                    Update medicine information.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentMedicine && (
+                  <div className="grid gap-3 py-3">
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="editMedicineName" className="flex items-center">
+                          Medicine Name <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <Input
+                          id="editMedicineName"
+                          defaultValue={currentMedicine.name}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editMedicineDosage" className="flex items-center">
+                          Dosage <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <Input
+                          id="editMedicineDosage"
+                          defaultValue={currentMedicine.dosage}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editMedicineDescription">Description</Label>
+                        <Textarea
+                          id="editMedicineDescription"
+                          defaultValue={currentMedicine.description || ''}
+                          placeholder="Enter medicine description"
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditMedicineDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-dental-primary hover:bg-dental-dark"
+                    onClick={handleUpdateMedicineConfirm}
+                  >
+                    <Save className="h-4 w-4 mr-2" /> Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Confirmation Dialogs */}
+            <Dialog open={isConfirmDeleteMedicineOpen} onOpenChange={setIsConfirmDeleteMedicineOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Deletion</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete this medicine? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                {currentMedicine && (
+                  <div className="py-4">
+                    <p className="font-medium">{currentMedicine.name}</p>
+                    <p className="text-sm text-muted-foreground">{currentMedicine.dosage}</p>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmDeleteMedicineOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeleteMedicine}>
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isConfirmUpdateMedicineOpen} onOpenChange={setIsConfirmUpdateMedicineOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Confirm Update</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to save these changes?
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsConfirmUpdateMedicineOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpdateMedicine}>
+                    Save Changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {/* Add Dealer Dialog */}
             <Dialog open={isAddDealerDialogOpen} onOpenChange={setIsAddDealerDialogOpen}>

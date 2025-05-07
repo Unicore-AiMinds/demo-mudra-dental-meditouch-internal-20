@@ -9,12 +9,17 @@ export interface ChartingEntry {
   service?: string;          // Treatment e.g., 'Composite Filling', 'Root Canal'
   status: 'Existing' | 'Planned' | 'Completed';
   notes?: string;            // Optional notes - can include treatment plan information
+  doctor?: string;           // Doctor assigned to this treatment
   // References to follow-ups generated from this charting entry
   followUpIds?: string[];
   // If this is a planned treatment that was completed, reference to the completion entry
   completedByEntryId?: string;
   // If this is a completion entry, reference to the original planned entry
   completesEntryId?: string;
+  // If this is a planned treatment that has been snoozed, date until which it's snoozed
+  snoozedUntil?: string;     // YYYY-MM-DD format
+  // If this is a planned treatment that has been scheduled, reference to the appointment
+  scheduledAppointmentId?: string;
 }
 
 // Define the tooth numbering system using FDI/ISO 3950 notation

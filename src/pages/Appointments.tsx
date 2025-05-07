@@ -4,8 +4,10 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { useNavigate } from 'react-router-dom';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import { useDoctors } from '@/contexts/DoctorContext';
+import { DentalChartingProvider } from '@/contexts/DentalChartingContext';
 import AppointmentCompletionDialog from '@/components/AppointmentCompletionDialog';
 import { getLighterColor } from '@/utils/doctorColors';
+import PendingTreatmentsView from '@/components/PendingTreatmentsView';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -397,7 +399,16 @@ const Appointments = () => {
   const { activeClinic, isDental } = useClinic();
   const { doctors } = useDoctors(); // Get doctors from context
   const navigate = useNavigate();
-  const [view, setView] = useState('daily');
+
+  // Get URL parameters
+  const getUrlParams = () => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      view: params.get('view') || 'daily'
+    };
+  };
+
+  const [view, setView] = useState(getUrlParams().view);
   const [date, setDate] = useState<Date>(new Date());
   const [selectedDoctor, setSelectedDoctor] = useState<string | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
@@ -416,6 +427,7 @@ const Appointments = () => {
   const [appointmentTime, setAppointmentTime] = useState("");
   const [appointmentDoctor, setAppointmentDoctor] = useState("");
   const [appointmentDate, setAppointmentDate] = useState<Date | undefined>(undefined);
+  const [pendingChartingEntryId, setPendingChartingEntryId] = useState<string | undefined>(undefined);
 
   // State for expanded days in weekly and monthly views
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
@@ -1011,6 +1023,25 @@ const Appointments = () => {
       appointment.date || format(new Date(), 'yyyy-MM-dd')
     );
 
+    // If this is a dental appointment and it's related to a planned treatment, update the charting entry
+    if (isDental && appointment.relatedToChartingEntryId) {
+      // Create a custom event to update the charting entry status to Completed
+      const event = new CustomEvent('updateChartingEntryStatus', {
+        detail: {
+          entryId: appointment.relatedToChartingEntryId,
+          appointmentId: appointment.id,
+          status: 'Completed'
+        }
+      });
+      document.dispatchEvent(event);
+
+      // Show additional toast notification
+      toast({
+        title: "Treatment Completed",
+        description: "The planned treatment has been marked as completed and will be removed from the pending treatments list."
+      });
+    }
+
     // Prepare the appointment data for the completion dialog
     const appointmentWithPatientId = {
       ...appointment,
@@ -1074,6 +1105,9 @@ const Appointments = () => {
       });
       return;
     }
+
+    // Use the chartingEntryId from state if it exists
+    const chartingEntryId = pendingChartingEntryId;
 
     // Get the number of slots this service requires
     const requiredSlots = getSlotsOccupied(appointmentService);
@@ -1163,6 +1197,10 @@ const Appointments = () => {
 
     const formattedDate = format(pendingAppointment.date, 'yyyy-MM-dd');
 
+    // Get the dental charting context if we're in dental mode and have a charting entry ID
+    const dentalChartingContext = isDental && pendingChartingEntryId ?
+      document.querySelector('[data-dental-charting-context]') : null;
+
     // Create a sequential ID based on the highest existing ID
     const existingAppointments = isDental ? dentalAppointments : meditouchAppointments;
     const prefix = isDental ? 'd' : 'm';
@@ -1187,7 +1225,9 @@ const Appointments = () => {
         service: pendingAppointment.service,
         doctor: pendingAppointment.doctor || 'Dr. Khanna',
         date: formattedDate,
-        status: 'confirmed'
+        status: 'confirmed',
+        // If this appointment is for a planned treatment, link it to the charting entry
+        relatedToChartingEntryId: pendingChartingEntryId
       };
       setDentalAppointments([...dentalAppointments, newAppointment]);
     } else {
@@ -1213,12 +1253,32 @@ const Appointments = () => {
       }`
     });
 
+    // If this appointment is for a planned treatment, update the charting entry
+    if (isDental && pendingChartingEntryId) {
+      // Create a custom event to update the charting entry
+      const event = new CustomEvent('updateChartingEntryStatus', {
+        detail: {
+          entryId: pendingChartingEntryId,
+          appointmentId: newId,
+          status: 'Scheduled'
+        }
+      });
+      document.dispatchEvent(event);
+
+      // Show additional toast notification
+      toast({
+        title: "Planned Treatment Scheduled",
+        description: "The planned treatment has been linked to this appointment."
+      });
+    }
+
     // Update the UI date to match the appointment date
     setDate(pendingAppointment.date);
 
     // Close the confirmation dialog and reset form
     setIsConfirmCreateOpen(false);
     setPendingAppointment(null);
+    setPendingChartingEntryId(undefined);
     resetAppointmentForm();
 
     // Log that we've updated the UI date
@@ -1239,6 +1299,7 @@ const Appointments = () => {
     setAppointmentTime("");
     setAppointmentDoctor("");
     setAppointmentDate(undefined);
+    setPendingChartingEntryId(undefined);
   }, []);
 
   const goToNewAppointment = () => {
@@ -1309,6 +1370,43 @@ const Appointments = () => {
     };
   }, [date, resetAppointmentForm]);
 
+  // Update URL when view changes
+  useEffect(() => {
+    // Update the URL with the current view
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', view);
+    window.history.replaceState({}, '', url.toString());
+  }, [view]);
+
+  // Check for pending treatments in sessionStorage when the component mounts
+  useEffect(() => {
+    // Check if we have a pending treatment in sessionStorage
+    const pendingTreatmentJson = sessionStorage.getItem('pendingTreatment');
+
+    if (pendingTreatmentJson) {
+      try {
+        // Parse the pending treatment data
+        const pendingTreatment = JSON.parse(pendingTreatmentJson);
+
+        // Set the view to daily
+        setView('daily');
+
+        // Create a custom event with the pending treatment data
+        const event = new CustomEvent('openNewAppointmentFormWithData', {
+          detail: pendingTreatment
+        });
+
+        // Dispatch the event to open the appointment form
+        document.dispatchEvent(event);
+
+        // Remove the pending treatment from sessionStorage
+        sessionStorage.removeItem('pendingTreatment');
+      } catch (error) {
+        console.error('Error parsing pending treatment data:', error);
+      }
+    }
+  }, []);
+
   // Listen for the custom event to open the new appointment form with pre-filled data
   useEffect(() => {
     const handleOpenNewAppointmentFormWithData = (event: Event) => {
@@ -1316,12 +1414,16 @@ const Appointments = () => {
         patientName: string;
         patientId: string;
         serviceName: string;
-        date: string;
-        followUpId: string;
+        doctorName?: string;
+        date?: string;
+        followUpId?: string;
+        chartingEntryId?: string;
+        teeth?: string;
+        notes?: string;
       }>;
 
       // Get the data from the event
-      const { patientName, serviceName, date, followUpId } = customEvent.detail;
+      const { patientName, patientId, serviceName, doctorName, date, followUpId, chartingEntryId, teeth, notes } = customEvent.detail;
 
       // Reset form first
       resetAppointmentForm();
@@ -1330,21 +1432,39 @@ const Appointments = () => {
       setAppointmentPatient(patientName);
       setAppointmentService(serviceName);
 
-      // Parse the date
+      // Set the doctor if provided
+      if (doctorName) {
+        setAppointmentDoctor(doctorName);
+      }
+
+      // Store the chartingEntryId if provided
+      setPendingChartingEntryId(chartingEntryId);
+
+      // Parse the date if provided
       if (date) {
         const parsedDate = parseISO(date);
         setAppointmentDate(parsedDate);
         setDate(parsedDate); // Also update the UI date
+      } else {
+        // If no date provided, use current UI date
+        setAppointmentDate(date);
       }
 
       // Reset filtered patients list
       setFilteredPatients(registeredPatients);
 
-      // Show toast notification
-      toast({
-        title: "Follow-up Appointment",
-        description: `Creating appointment for ${patientName} based on a follow-up reminder.`,
-      });
+      // Show appropriate toast notification
+      if (chartingEntryId) {
+        toast({
+          title: "Planned Treatment Appointment",
+          description: `Creating appointment for ${patientName} based on planned treatment.`,
+        });
+      } else {
+        toast({
+          title: "Follow-up Appointment",
+          description: `Creating appointment for ${patientName} based on a follow-up reminder.`,
+        });
+      }
 
       // Open the dialog
       setIsNewAppointmentOpen(true);
@@ -1461,6 +1581,7 @@ const Appointments = () => {
                     <TabsTrigger value="daily">Daily</TabsTrigger>
                     <TabsTrigger value="weekly">Weekly</TabsTrigger>
                     <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                    {isDental && <TabsTrigger value="pending">Pending Treatments</TabsTrigger>}
                   </TabsList>
 
                   <TabsContent value="daily" className="m-0 w-full">
@@ -1987,6 +2108,14 @@ const Appointments = () => {
                       ))}
                     </div>
                   </TabsContent>
+
+                  {isDental && (
+                    <TabsContent value="pending" className="m-0 mt-4">
+                      <DentalChartingProvider>
+                        <PendingTreatmentsView />
+                      </DentalChartingProvider>
+                    </TabsContent>
+                  )}
                 </Tabs>
               </div>
             </CardContent>

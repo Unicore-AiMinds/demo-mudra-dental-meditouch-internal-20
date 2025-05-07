@@ -11,7 +11,11 @@ import { Edit, Plus, Save, X, Trash, FileText, Printer } from 'lucide-react';
 import { Prescription, Medication } from '@/types/prescriptions';
 import { usePrescriptions } from '@/contexts/PrescriptionContext';
 import { useClinicInfo } from '@/contexts/ClinicInfoContext';
+import { useDoctors } from '@/contexts/DoctorContext';
+import { useMedicines } from '@/contexts/MedicineContext';
+import { Medicine, getUniqueMedicineNames, getDosagesForMedicine } from '@/types/medicines';
 import { format as formatDate } from 'date-fns';
+import { Combobox } from '@/components/ui/combobox';
 import {
   Dialog,
   DialogContent,
@@ -39,6 +43,8 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
     removeMedicationFromPrescription
   } = usePrescriptions();
   const { currentClinicInfo, getFullAddress } = useClinicInfo();
+  const { doctors } = useDoctors();
+  const { medicines } = useMedicines();
 
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -46,6 +52,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   const [activeTab, setActiveTab] = useState<string>('all');
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
+  const [availableDosages, setAvailableDosages] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Form state for new prescription
@@ -69,8 +76,13 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   const [newMedication, setNewMedication] = useState<Omit<Medication, 'id'>>({
     name: '',
     dosage: '',
-    frequency: '',
     duration: '',
+    timing: {
+      morning: false,
+      afternoon: false,
+      night: false
+    },
+    foodInstructions: '',
     instructions: '',
     dispenseQuantity: ''
   });
@@ -97,6 +109,98 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
     setNewPrescription(prev => ({ ...prev, [name]: value }));
   };
 
+  // Handle medicine name selection from combobox
+  const handleMedicineNameSelect = (selectedMedicineName: string) => {
+    if (selectedMedicineName) {
+      // Update the medication name
+      setNewMedication(prev => ({
+        ...prev,
+        name: selectedMedicineName,
+        dosage: '' // Clear dosage when medicine changes
+      }));
+
+      // Get available dosages for this medicine
+      const dosages = getDosagesForMedicine(medicines, selectedMedicineName);
+      setAvailableDosages(dosages);
+
+      // If there's only one dosage available, select it automatically
+      if (dosages.length === 1) {
+        setNewMedication(prev => ({
+          ...prev,
+          dosage: dosages[0]
+        }));
+      }
+    } else {
+      // If empty value is chosen, clear the fields
+      setNewMedication(prev => ({
+        ...prev,
+        name: '',
+        dosage: ''
+      }));
+      setAvailableDosages([]);
+    }
+  };
+
+  // Handle dosage selection from combobox
+  const handleDosageSelect = (selectedDosage: string) => {
+    setNewMedication(prev => ({
+      ...prev,
+      dosage: selectedDosage
+    }));
+  };
+
+  // Handle timing checkbox changes
+  const handleTimingChange = (time: 'morning' | 'afternoon' | 'night') => {
+    setNewMedication(prev => {
+      // Toggle the timing checkbox
+      const updatedTiming = {
+        ...prev.timing!,
+        [time]: !prev.timing![time]
+      };
+
+      // Create updated medication object
+      const updated = {
+        ...prev,
+        timing: updatedTiming
+      };
+
+      // Auto-calculate dispense quantity if duration is set
+      if (prev.duration) {
+        try {
+          // Extract numeric values from duration (e.g., "7 days" -> 7)
+          const durationMatch = prev.duration.match(/(\d+)/);
+          const durationNum = durationMatch ? parseInt(durationMatch[0], 10) : 0;
+
+          if (durationNum > 0) {
+            // Count selected timing checkboxes
+            const frequencyPerDay = (updatedTiming.morning ? 1 : 0) +
+                                   (updatedTiming.afternoon ? 1 : 0) +
+                                   (updatedTiming.night ? 1 : 0);
+
+            // Calculate total quantity if timing checkboxes are selected
+            if (frequencyPerDay > 0) {
+              const total = frequencyPerDay * durationNum;
+              // Format as just the total number of tablets
+              updated.dispenseQuantity = `${total} tablets`;
+            }
+          }
+        } catch (error) {
+          console.error('Error calculating dispense quantity:', error);
+        }
+      }
+
+      return updated;
+    });
+  };
+
+  // Handle food instructions dropdown change
+  const handleFoodInstructionsChange = (selectedInstruction: string) => {
+    setNewMedication(prev => ({
+      ...prev,
+      foodInstructions: selectedInstruction
+    }));
+  };
+
   // Handle input change for new medication
   const handleMedicationChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -105,22 +209,25 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
     setNewMedication(prev => {
       const updated = { ...prev, [name]: value };
 
-      // Auto-calculate dispense quantity if frequency and duration are set
-      if ((name === 'frequency' || name === 'duration') && updated.frequency && updated.duration) {
+      // Auto-calculate dispense quantity if duration is set
+      if (name === 'duration') {
         try {
-          // Extract numeric values from frequency (e.g., "3 times daily" -> 3)
-          const frequencyMatch = updated.frequency.match(/(\d+)/);
-          const frequencyNum = frequencyMatch ? parseInt(frequencyMatch[0], 10) : 0;
-
           // Extract numeric values from duration (e.g., "7 days" -> 7)
-          const durationMatch = updated.duration.match(/(\d+)/);
+          const durationMatch = updated.duration?.match(/(\d+)/);
           const durationNum = durationMatch ? parseInt(durationMatch[0], 10) : 0;
 
-          // Calculate total quantity if both values are valid numbers
-          if (frequencyNum > 0 && durationNum > 0) {
-            const total = frequencyNum * durationNum;
-            // Format as just the total number of tablets
-            updated.dispenseQuantity = `${total} tablets`;
+          if (durationNum > 0) {
+            // Count selected timing checkboxes
+            const frequencyPerDay = (updated.timing.morning ? 1 : 0) +
+                                   (updated.timing.afternoon ? 1 : 0) +
+                                   (updated.timing.night ? 1 : 0);
+
+            // Calculate total quantity if timing checkboxes are selected
+            if (frequencyPerDay > 0) {
+              const total = frequencyPerDay * durationNum;
+              // Format as just the total number of tablets
+              updated.dispenseQuantity = `${total} tablets`;
+            }
           }
         } catch (error) {
           console.error('Error calculating dispense quantity:', error);
@@ -134,7 +241,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   // Handle adding a medication to the current prescription
   const handleAddMedication = () => {
     // Validate required fields
-    if (!newMedication.name || !newMedication.dosage || !newMedication.frequency || !newMedication.duration) {
+    if (!newMedication.name || !newMedication.dosage || !newMedication.duration) {
       toast({
         title: "Missing Required Fields",
         description: "Please fill in all required medication fields.",
@@ -143,20 +250,43 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
       return;
     }
 
+    // Check if timing is specified
+    const hasTimingSelected = newMedication.timing &&
+      (newMedication.timing.morning || newMedication.timing.afternoon || newMedication.timing.night);
+
+    if (!hasTimingSelected) {
+      toast({
+        title: "Missing Timing Information",
+        description: "Please select at least one timing checkbox (Morning/Afternoon/Night).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Auto-calculate dispense quantity if not already set
     if (!newMedication.dispenseQuantity) {
       try {
-        // Extract numeric values from frequency (e.g., "3 times daily" -> 3)
-        const frequencyMatch = newMedication.frequency.match(/(\d+)/);
-        const frequencyNum = frequencyMatch ? parseInt(frequencyMatch[0], 10) : 0;
-
         // Extract numeric values from duration (e.g., "7 days" -> 7)
         const durationMatch = newMedication.duration.match(/(\d+)/);
         const durationNum = durationMatch ? parseInt(durationMatch[0], 10) : 0;
 
-        // Calculate total quantity if both values are valid numbers
-        if (frequencyNum > 0 && durationNum > 0) {
-          const total = frequencyNum * durationNum;
+        if (durationNum <= 0) {
+          toast({
+            title: "Invalid Duration",
+            description: "Please enter a valid numeric duration.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Count selected timing checkboxes
+        const frequencyPerDay = (newMedication.timing.morning ? 1 : 0) +
+                               (newMedication.timing.afternoon ? 1 : 0) +
+                               (newMedication.timing.night ? 1 : 0);
+
+        // Calculate total quantity
+        if (frequencyPerDay > 0) {
+          const total = frequencyPerDay * durationNum;
           // Format as just the total number of tablets
           setNewMedication(prev => ({
             ...prev,
@@ -196,8 +326,13 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
     setNewMedication({
       name: '',
       dosage: '',
-      frequency: '',
       duration: '',
+      timing: {
+        morning: false,
+        afternoon: false,
+        night: false
+      },
+      foodInstructions: '',
       instructions: '',
       dispenseQuantity: ''
     });
@@ -214,7 +349,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   // Handle saving a new prescription
   const handleSaveNewPrescription = () => {
     // Validate required fields
-    if (!newPrescription.diagnosis || !newPrescription.prescribedBy || !newPrescription.doctorRegNo || newPrescription.medications.length === 0) {
+    if (!newPrescription.diagnosis || !newPrescription.prescribedBy || newPrescription.medications.length === 0) {
       toast({
         title: "Missing Required Fields",
         description: "Please fill in all required fields and add at least one medication.",
@@ -268,7 +403,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
     if (!isEditing) return;
 
     // Validate required fields
-    if (!newPrescription.diagnosis || !newPrescription.prescribedBy || !newPrescription.doctorRegNo || newPrescription.medications.length === 0) {
+    if (!newPrescription.diagnosis || !newPrescription.prescribedBy || newPrescription.medications.length === 0) {
       toast({
         title: "Missing Required Fields",
         description: "Please fill in all required fields and add at least one medication.",
@@ -327,8 +462,13 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
     setNewMedication({
       name: '',
       dosage: '',
-      frequency: '',
       duration: '',
+      timing: {
+        morning: false,
+        afternoon: false,
+        night: false
+      },
+      foodInstructions: '',
       instructions: '',
       dispenseQuantity: ''
     });
@@ -461,8 +601,15 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 <li class="medication">
                   <div class="medication-name">${med.name} - ${med.dosage}</div>
                   <div class="medication-details">
-                    ${med.frequency}, for ${med.duration}
-                    ${med.instructions ? ` (${med.instructions})` : ''}
+                    For ${med.duration}
+                    ${med.timing && (med.timing.morning || med.timing.afternoon || med.timing.night) ?
+                      ` - Timing: ${[
+                        med.timing.morning ? 'Morning' : '',
+                        med.timing.afternoon ? 'Afternoon' : '',
+                        med.timing.night ? 'Night' : ''
+                      ].filter(Boolean).join(', ')}` : ''}
+                    ${med.foodInstructions ? ` - ${med.foodInstructions}` : ''}
+                    ${med.instructions ? ` - Notes: ${med.instructions}` : ''}
                   </div>
                   <div class="medication-details dispense">
                     Dispense: ${med.dispenseQuantity}
@@ -589,14 +736,21 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="prescribedBy">Prescribed By *</Label>
-                  <Input
+                  <select
                     id="prescribedBy"
                     name="prescribedBy"
-                    placeholder="e.g., Dr. Smith"
+                    className="w-full h-10 px-3 py-2 border rounded-md"
                     value={newPrescription.prescribedBy}
                     onChange={handlePrescriptionChange}
                     required
-                  />
+                  >
+                    <option value="">Select a doctor</option>
+                    {doctors.map((doctor) => (
+                      <option key={doctor.id} value={doctor.name}>
+                        {doctor.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="status">Status *</Label>
@@ -614,14 +768,13 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="doctorRegNo">Doctor Registration No. *</Label>
+                  <Label htmlFor="doctorRegNo">Doctor Registration No.</Label>
                   <Input
                     id="doctorRegNo"
                     name="doctorRegNo"
                     placeholder="e.g., MCI-12345"
                     value={newPrescription.doctorRegNo}
                     onChange={handlePrescriptionChange}
-                    required
                   />
                 </div>
 
@@ -650,10 +803,11 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                         <TableRow>
                           <TableHead>Medication</TableHead>
                           <TableHead>Dosage</TableHead>
-                          <TableHead>Frequency</TableHead>
                           <TableHead>Duration</TableHead>
-                          <TableHead>Dispense Qty</TableHead>
+                          <TableHead>Timing</TableHead>
                           <TableHead>Instructions</TableHead>
+                          <TableHead>Notes</TableHead>
+                          <TableHead>Dispense Qty</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -662,10 +816,17 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                           <TableRow key={med.id}>
                             <TableCell>{med.name}</TableCell>
                             <TableCell>{med.dosage}</TableCell>
-                            <TableCell>{med.frequency}</TableCell>
                             <TableCell>{med.duration}</TableCell>
-                            <TableCell>{med.dispenseQuantity}</TableCell>
+                            <TableCell>
+                              {med.timing && [
+                                med.timing.morning ? 'Morning' : '',
+                                med.timing.afternoon ? 'Afternoon' : '',
+                                med.timing.night ? 'Night' : ''
+                              ].filter(Boolean).join(', ')}
+                            </TableCell>
+                            <TableCell>{med.foodInstructions}</TableCell>
                             <TableCell>{med.instructions}</TableCell>
+                            <TableCell>{med.dispenseQuantity}</TableCell>
                             <TableCell>
                               <Button
                                 variant="ghost"
@@ -683,83 +844,150 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 )}
 
                 {/* Add Medication Form */}
-                <div className="border p-3 rounded-md bg-background">
-                  <h5 className="text-sm font-medium mb-2">Add Medication</h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 mb-3">
+                <div className="border p-4 rounded-md bg-background shadow-sm">
+                  <h5 className="text-sm font-medium mb-4 border-b pb-2">Add Medication</h5>
+
+                  {/* First row - Name and Dosage */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* Medicine Name */}
                     <div>
-                      <Label htmlFor="name" className="text-xs">Name *</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        placeholder="Medication name"
-                        value={newMedication.name}
-                        onChange={handleMedicationChange}
-                        className="h-8 text-sm"
+                      <Label htmlFor="medicineName" className="text-xs font-medium mb-1 block">Name *</Label>
+                      <Combobox
+                        options={getUniqueMedicineNames(medicines).map(name => ({
+                          value: name,
+                          label: name
+                        }))}
+                        value={newMedication.name || ""}
+                        onChange={handleMedicineNameSelect}
+                        placeholder="Select a medicine"
+                        emptyMessage="No medicines found"
                       />
                     </div>
+
+                    {/* Dosage */}
                     <div>
-                      <Label htmlFor="dosage" className="text-xs">Dosage *</Label>
-                      <Input
-                        id="dosage"
-                        name="dosage"
-                        placeholder="e.g., 500mg"
-                        value={newMedication.dosage}
-                        onChange={handleMedicationChange}
-                        className="h-8 text-sm"
+                      <Label htmlFor="dosage" className="text-xs font-medium mb-1 block">Dosage *</Label>
+                      <Combobox
+                        options={availableDosages.map(dosage => ({
+                          value: dosage,
+                          label: dosage
+                        }))}
+                        value={newMedication.dosage || ""}
+                        onChange={handleDosageSelect}
+                        placeholder="Select dosage"
+                        emptyMessage="No dosages available"
+                        disabled={availableDosages.length === 0}
                       />
                     </div>
+                  </div>
+
+                  {/* Second row - Timing and Instructions */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* Timing Checkboxes */}
                     <div>
-                      <Label htmlFor="frequency" className="text-xs">Frequency *</Label>
-                      <Input
-                        id="frequency"
-                        name="frequency"
-                        placeholder="e.g., 3 times daily"
-                        value={newMedication.frequency}
-                        onChange={handleMedicationChange}
-                        className="h-8 text-sm"
+                      <Label className="text-xs font-medium mb-1 block">Timing *</Label>
+                      <div className="flex space-x-4 border rounded-md p-2 bg-gray-50">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="morning"
+                            checked={newMedication.timing?.morning}
+                            onChange={() => handleTimingChange('morning')}
+                            className="mr-1.5 h-4 w-4"
+                          />
+                          <Label htmlFor="morning" className="text-sm cursor-pointer">Morning</Label>
+                        </div>
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="afternoon"
+                            checked={newMedication.timing?.afternoon}
+                            onChange={() => handleTimingChange('afternoon')}
+                            className="mr-1.5 h-4 w-4"
+                          />
+                          <Label htmlFor="afternoon" className="text-sm cursor-pointer">Afternoon</Label>
+                        </div>
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="night"
+                            checked={newMedication.timing?.night}
+                            onChange={() => handleTimingChange('night')}
+                            className="mr-1.5 h-4 w-4"
+                          />
+                          <Label htmlFor="night" className="text-sm cursor-pointer">Night</Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Food Instructions */}
+                    <div>
+                      <Label htmlFor="foodInstructions" className="text-xs font-medium mb-1 block">Instructions</Label>
+                      <Combobox
+                        options={[
+                          { value: "After food", label: "After food" },
+                          { value: "Before food", label: "Before food" },
+                          { value: "With food", label: "With food" },
+                          { value: "Empty stomach", label: "Empty stomach" }
+                        ]}
+                        value={newMedication.foodInstructions || ""}
+                        onChange={handleFoodInstructionsChange}
+                        placeholder="Select instructions"
+                        emptyMessage="No instructions available"
                       />
                     </div>
+                  </div>
+
+                  {/* Third row - Duration and Dispense Quantity */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* Duration */}
                     <div>
-                      <Label htmlFor="duration" className="text-xs">Duration *</Label>
+                      <Label htmlFor="duration" className="text-xs font-medium mb-1 block">Duration *</Label>
                       <Input
                         id="duration"
                         name="duration"
                         placeholder="e.g., 7 days"
                         value={newMedication.duration}
                         onChange={handleMedicationChange}
-                        className="h-8 text-sm"
+                        className="h-9 text-sm focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
+
+                    {/* Dispense Quantity */}
                     <div>
-                      <Label htmlFor="dispenseQuantity" className="text-xs">Dispense Qty *</Label>
+                      <Label htmlFor="dispenseQuantity" className="text-xs font-medium mb-1 block">Dispense Qty *</Label>
                       <Input
                         id="dispenseQuantity"
                         name="dispenseQuantity"
                         placeholder="e.g., 21 tablets"
                         value={newMedication.dispenseQuantity}
                         onChange={handleMedicationChange}
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="instructions" className="text-xs">Instructions</Label>
-                      <Input
-                        id="instructions"
-                        name="instructions"
-                        placeholder="Special instructions"
-                        value={newMedication.instructions}
-                        onChange={handleMedicationChange}
-                        className="h-8 text-sm"
+                        className="h-9 text-sm focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
                   </div>
+
+                  {/* Fourth row - Notes */}
+                  <div className="mb-4">
+                    <Label htmlFor="instructions" className="text-xs font-medium mb-1 block">Notes</Label>
+                    <Input
+                      id="instructions"
+                      name="instructions"
+                      placeholder="Special notes"
+                      value={newMedication.instructions}
+                      onChange={handleMedicationChange}
+                      className="h-9 text-sm focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Add Button */}
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleAddMedication}
-                    className="w-full"
+                    className="w-full bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 font-medium"
                   >
-                    <Plus className="h-3 w-3 mr-1" /> Add Medication
+                    <Plus className="h-4 w-4 mr-1" /> Add Medication
                   </Button>
                 </div>
               </div>
@@ -879,7 +1107,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 </div>
                 <div className="text-right">
                   <p><strong>Doctor:</strong> {selectedPrescription.prescribedBy}</p>
-                  <p><strong>Reg. No:</strong> {selectedPrescription.doctorRegNo}</p>
+                  <p><strong>Reg. No:</strong> {selectedPrescription.doctorRegNo || 'N/A'}</p>
                   <p><strong>Diagnosis:</strong> {selectedPrescription.diagnosis}</p>
                 </div>
               </div>
@@ -896,8 +1124,16 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                     <li key={med.id} className="pl-2">
                       <p className="font-medium text-sm">{med.name} - {med.dosage}</p>
                       <p className="text-xs pl-2">
-                        {med.frequency}, for {med.duration}
-                        {med.instructions && ` (${med.instructions})`}
+                        For {med.duration}
+                        {med.timing && (med.timing.morning || med.timing.afternoon || med.timing.night) &&
+                          ` - Timing: ${[
+                            med.timing.morning ? 'Morning' : '',
+                            med.timing.afternoon ? 'Afternoon' : '',
+                            med.timing.night ? 'Night' : ''
+                          ].filter(Boolean).join(', ')}`
+                        }
+                        {med.foodInstructions && ` - ${med.foodInstructions}`}
+                        {med.instructions && ` - Notes: ${med.instructions}`}
                       </p>
                       <p className="text-xs pl-2 font-medium">
                         Dispense: {med.dispenseQuantity}

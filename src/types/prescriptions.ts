@@ -4,10 +4,16 @@ export interface Medication {
   id: string;
   name: string;
   dosage: string;
-  frequency: string;
   duration: string;
-  instructions: string;
+  timing: {
+    morning: boolean;
+    afternoon: boolean;
+    night: boolean;
+  };
+  foodInstructions?: string; // "After food", "Before food", etc.
+  instructions: string; // Renamed to notes in UI but keeping for compatibility
   dispenseQuantity: string; // Amount to dispense (e.g., "30 tablets", "100ml")
+  frequency?: string; // Keeping for backward compatibility with existing data
 }
 
 export interface Prescription {
