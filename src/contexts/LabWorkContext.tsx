@@ -1,27 +1,31 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useSupabase } from '@/contexts/SupabaseContext';
+import { useToast } from '@/hooks/use-toast';
 
 // Define the LabJob interface
 export interface LabJob {
   id: string;
+  lab_job_id: string;
   patient: string;
   service: string;
-  labWorkType: string;
-  dateSent: string;
-  assignedLab: string;
-  expectedDelivery: string;
-  paymentStatus: 'paid' | 'unpaid';
+  lab_work_type: string;
+  date_sent: string;
+  assigned_lab: string;
+  expected_delivery: string;
+  payment_status: 'paid' | 'unpaid';
   status: 'pending-send' | 'sent' | 'received' | 'ready' | 'completed';
-  materialSpecs?: string;
+  material_specs?: string;
   notes?: string;
+  created_at: string;
 }
 
 // Define the context type
 interface LabWorkContextType {
   labJobs: LabJob[];
-  setLabJobs: React.Dispatch<React.SetStateAction<LabJob[]>>;
-  addLabJob: (job: Omit<LabJob, 'id'>) => void;
-  updateLabJob: (id: string, updatedJob: Partial<LabJob>) => void;
-  deleteLabJob: (id: string) => void;
+  isLoading: boolean;
+  addLabJob: (job: Omit<LabJob, 'id' | 'lab_job_id' | 'created_at'>) => Promise<LabJob>;
+  updateLabJob: (id: string, updatedJob: Partial<LabJob>) => Promise<LabJob>;
+  deleteLabJob: (id: string) => Promise<void>;
   isOverdue: (job: LabJob) => boolean;
   isApproachingDelivery: (job: LabJob) => boolean;
   getOverdueCount: () => number;
@@ -41,156 +45,204 @@ const overdueDate = new Date();
 overdueDate.setDate(overdueDate.getDate() - 10);
 const overdueDateStr = overdueDate.toISOString().split('T')[0];
 
-// Initial demo data
-const initialLabJobs: LabJob[] = [
+// Default lab jobs for initialization
+const defaultLabJobs = [
   {
-    id: "LJ001",
+    lab_job_id: "LJ001",
     patient: "Aarav Sharma",
     service: "Crown Placement",
-    labWorkType: "PFM Crown",
-    dateSent: "2023-10-15",
-    assignedLab: "Precision Dental Lab",
-    expectedDelivery: overdueDateStr, // Overdue
-    paymentStatus: "unpaid",
-    status: "pending-send"
+    lab_work_type: "PFM Crown",
+    date_sent: "2023-10-15",
+    assigned_lab: "Precision Dental Lab",
+    expected_delivery: overdueDateStr,
+    payment_status: "unpaid" as const,
+    status: "pending-send" as const,
+    material_specs: "A2 Shade, Metal Occlusal",
+    notes: "Patient has metal allergy, use non-precious alloy"
   },
   {
-    id: "LJ002",
+    lab_job_id: "LJ002",
     patient: "Priya Patel",
     service: "Complete Denture",
-    labWorkType: "Acrylic Denture",
-    dateSent: "2023-10-16",
-    assignedLab: "Nova Dental Solutions",
-    expectedDelivery: approachingDateStr, // Approaching delivery
-    paymentStatus: "paid",
-    status: "sent"
-  },
-  {
-    id: "LJ003",
-    patient: "Vikram Singh",
-    service: "Bridge Procedure",
-    labWorkType: "Ceramic Bridge",
-    dateSent: "2023-10-10",
-    assignedLab: "Dent Creations India",
-    expectedDelivery: overdueDateStr, // Overdue
-    paymentStatus: "unpaid",
-    status: "sent"
-  },
-  {
-    id: "LJ004",
-    patient: "Neha Kapoor",
-    service: "Removable Partial",
-    labWorkType: "Cast Partial Framework",
-    dateSent: "2023-09-28",
-    assignedLab: "Precision Dental Lab",
-    expectedDelivery: approachingDateStr, // Approaching delivery
-    paymentStatus: "paid",
-    status: "ready"
-  },
-  {
-    id: "LJ005",
-    patient: "Rajiv Malhotra",
-    service: "Implant Restoration",
-    labWorkType: "Custom Abutment",
-    dateSent: "2023-10-03",
-    assignedLab: "Implant Specialists",
-    expectedDelivery: overdueDateStr, // Overdue
-    paymentStatus: "unpaid",
-    status: "received"
-  },
-  {
-    id: "LJ006",
-    patient: "Ananya Reddy",
-    service: "Nightguard",
-    labWorkType: "Hard Acrylic Splint",
-    dateSent: "2023-10-12",
-    assignedLab: "Nova Dental Solutions",
-    expectedDelivery: "2023-12-22", // Future date
-    paymentStatus: "paid",
-    status: "completed"
+    lab_work_type: "Acrylic Denture",
+    date_sent: "2023-10-16",
+    assigned_lab: "Nova Dental Solutions",
+    expected_delivery: approachingDateStr,
+    payment_status: "paid" as const,
+    status: "sent" as const,
+    material_specs: "Lucitone 199, Medium Pink",
+    notes: "Patient prefers natural-looking teeth"
   }
 ];
 
 // Provider component
 export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [labJobs, setLabJobs] = useState<LabJob[]>(initialLabJobs);
+  const [labJobs, setLabJobs] = useState<LabJob[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { supabase } = useSupabase();
+  const { toast } = useToast();
 
-  // Load lab jobs from localStorage on initial load
+  // Fetch lab jobs from Supabase
   useEffect(() => {
-    const savedLabJobs = localStorage.getItem('dentalLabJobs');
-    if (savedLabJobs) {
+    const fetchLabJobs = async () => {
       try {
-        setLabJobs(JSON.parse(savedLabJobs));
-      } catch (error) {
-        console.error('Error parsing saved lab jobs:', error);
-      }
-    }
-  }, []);
+        setIsLoading(true);
 
-  // Save lab jobs to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem('dentalLabJobs', JSON.stringify(labJobs));
-  }, [labJobs]);
+        // Fetch lab jobs from Supabase
+        const fetchedJobs = await supabase.from<LabJob>('lab_jobs').getAll({
+          order: { column: 'date_sent', ascending: false }
+        });
+
+        // If no lab jobs exist, create default ones
+        if (fetchedJobs.length === 0) {
+          for (const job of defaultLabJobs) {
+            await supabase.from<LabJob>('lab_jobs').insert(job);
+          }
+
+          // Fetch the newly created lab jobs
+          const newJobs = await supabase.from<LabJob>('lab_jobs').getAll({
+            order: { column: 'date_sent', ascending: false }
+          });
+          setLabJobs(newJobs);
+        } else {
+          setLabJobs(fetchedJobs);
+        }
+      } catch (error) {
+        console.error('Error fetching lab jobs:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load lab jobs. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLabJobs();
+  }, [supabase, toast]);
 
   // Check if a lab job is overdue (expected delivery date is in the past)
   const isOverdue = (job: LabJob) => {
-    if (!job.expectedDelivery || job.status === 'completed') return false;
+    if (!job.expected_delivery || job.status === 'completed') return false;
 
-    const expectedDate = new Date(job.expectedDelivery);
+    const expectedDate = new Date(job.expected_delivery);
     const today = new Date();
-    
+
     // Set both dates to midnight to compare just the dates
     expectedDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
-    
+
     // Return true if expected delivery date is in the past
     return expectedDate < today;
   };
 
   // Check if a lab job is approaching its expected delivery date (within 3 days)
   const isApproachingDelivery = (job: LabJob) => {
-    if (!job.expectedDelivery || job.status === 'completed') return false;
+    if (!job.expected_delivery || job.status === 'completed') return false;
 
-    const expectedDate = new Date(job.expectedDelivery);
+    const expectedDate = new Date(job.expected_delivery);
     const today = new Date();
-    
+
     // Calculate the difference in days
     const differenceInTime = expectedDate.getTime() - today.getTime();
     const differenceInDays = differenceInTime / (1000 * 3600 * 24);
-    
+
     // Return true if expected delivery is within 3 days but not overdue yet
     return differenceInDays > 0 && differenceInDays <= 3;
   };
 
   // Add a new lab job
-  const addLabJob = (job: Omit<LabJob, 'id'>) => {
-    // Generate a unique ID
-    const newId = `LJ${String(labJobs.length + 1).padStart(3, '0')}`;
-    
-    // Create new lab job with ID
-    const newLabJob: LabJob = {
-      id: newId,
-      ...job
-    };
-    
-    // Add to the list
-    setLabJobs(prevJobs => [newLabJob, ...prevJobs]);
+  const addLabJob = async (job: Omit<LabJob, 'id' | 'lab_job_id' | 'created_at'>): Promise<LabJob> => {
+    try {
+      // Generate a unique lab job ID
+      const existingJobs = await supabase.from<LabJob>('lab_jobs').getAll();
+      const newJobNumber = existingJobs.length + 1;
+      const labJobId = `LJ${String(newJobNumber).padStart(3, '0')}`;
+
+      // Create new lab job with ID
+      const newLabJob = {
+        lab_job_id: labJobId,
+        ...job
+      };
+
+      // Add to Supabase
+      const createdJob = await supabase.from<LabJob>('lab_jobs').insert(newLabJob);
+
+      // Update local state
+      setLabJobs(prevJobs => [createdJob, ...prevJobs]);
+
+      toast({
+        title: 'Success',
+        description: 'Lab job added successfully.',
+      });
+
+      return createdJob;
+    } catch (error) {
+      console.error('Error adding lab job:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add lab job. Please try again.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
   };
 
   // Update an existing lab job
-  const updateLabJob = (id: string, updatedJob: Partial<LabJob>) => {
-    setLabJobs(prevJobs =>
-      prevJobs.map(job =>
-        job.id === id
-          ? { ...job, ...updatedJob }
-          : job
-      )
-    );
+  const updateLabJob = async (id: string, updatedJob: Partial<LabJob>): Promise<LabJob> => {
+    try {
+      // Update in Supabase
+      const updated = await supabase.from<LabJob>('lab_jobs').update(id, updatedJob);
+
+      // Update local state
+      setLabJobs(prevJobs =>
+        prevJobs.map(job =>
+          job.id === id
+            ? { ...job, ...updatedJob }
+            : job
+        )
+      );
+
+      toast({
+        title: 'Success',
+        description: 'Lab job updated successfully.',
+      });
+
+      return updated;
+    } catch (error) {
+      console.error('Error updating lab job:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update lab job. Please try again.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
   };
 
   // Delete a lab job
-  const deleteLabJob = (id: string) => {
-    setLabJobs(prevJobs => prevJobs.filter(job => job.id !== id));
+  const deleteLabJob = async (id: string): Promise<void> => {
+    try {
+      // Delete from Supabase
+      await supabase.from<LabJob>('lab_jobs').delete(id);
+
+      // Update local state
+      setLabJobs(prevJobs => prevJobs.filter(job => job.id !== id));
+
+      toast({
+        title: 'Success',
+        description: 'Lab job deleted successfully.',
+      });
+    } catch (error) {
+      console.error('Error deleting lab job:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete lab job. Please try again.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
   };
 
   // Get count of overdue lab jobs
@@ -200,8 +252,8 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Get count of pending lab jobs (not completed and not overdue)
   const getPendingCount = () => {
-    return labJobs.filter(job => 
-      job.status !== 'completed' && 
+    return labJobs.filter(job =>
+      job.status !== 'completed' &&
       !isOverdue(job)
     ).length;
   };
@@ -210,7 +262,7 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <LabWorkContext.Provider
       value={{
         labJobs,
-        setLabJobs,
+        isLoading,
         addLabJob,
         updateLabJob,
         deleteLabJob,

@@ -1,6 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSupabase } from '@/contexts/SupabaseContext';
+import { useToast } from '@/hooks/use-toast';
 
 // Define types for user roles
 export type UserRole = 'admin' | 'doctor' | 'receptionist' | 'inventory';
@@ -25,39 +27,13 @@ interface AuthContextType {
 // Create the auth context
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Mock users for demonstration
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Dr. Khanna',
-    email: 'admin@mudraclinic.com',
-    role: 'admin',
-  },
-  {
-    id: '2',
-    name: 'Dr. Priya Sharma',
-    email: 'doctor@mudraclinic.com',
-    role: 'doctor',
-  },
-  {
-    id: '3',
-    name: 'Lakshmi Patel',
-    email: 'receptionist@mudraclinic.com',
-    role: 'receptionist',
-  },
-  {
-    id: '4',
-    name: 'Rajesh Kumar',
-    email: 'inventory@mudraclinic.com',
-    role: 'inventory',
-  }
-];
-
 // Auth Provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { supabase } = useSupabase();
+  const { toast } = useToast();
 
   // Check if user is already logged in
   useEffect(() => {
@@ -68,23 +44,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
+  // Initialize default admin user if none exists
+  useEffect(() => {
+    const initializeDefaultUser = async () => {
+      try {
+        // Check if any users exist
+        const users = await supabase.from<User>('users').getAll({ limit: 1 });
+
+        if (users.length === 0) {
+          // Create default admin user
+          const defaultAdmin = {
+            name: 'Dr. Khanna',
+            email: 'admin@mudraclinic.com',
+            role: 'admin' as UserRole
+          };
+
+          await supabase.from<User>('users').insert(defaultAdmin);
+          console.log('Default admin user created');
+        }
+      } catch (error) {
+        console.error('Error initializing default user:', error);
+      }
+    };
+
+    initializeDefaultUser();
+  }, [supabase]);
+
   // Login function
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
+      // For demo purposes, we're using a simple password check
+      // In production, you should use proper authentication with hashed passwords
+
       // Find user with matching email
-      const foundUser = mockUsers.find(u => u.email === email);
-      
+      const users = await supabase.from<User>('users').getAll({
+        filters: { email: email }
+      });
+
+      const foundUser = users[0];
+
       if (!foundUser || password !== 'password') {
+        toast({
+          title: 'Login Failed',
+          description: 'Invalid email or password',
+          variant: 'destructive',
+        });
         throw new Error('Invalid credentials');
       }
-      
+
       // Set user in state and localStorage
       setUser(foundUser);
       localStorage.setItem('mudraUser', JSON.stringify(foundUser));
+
+      toast({
+        title: 'Login Successful',
+        description: `Welcome back, ${foundUser.name}!`,
+      });
+
       navigate('/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
@@ -98,6 +115,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     localStorage.removeItem('mudraUser');
+
+    toast({
+      title: 'Logged Out',
+      description: 'You have been successfully logged out',
+    });
+
     navigate('/login');
   };
 

@@ -1,96 +1,156 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { VitalSign, demoVitalSigns } from '@/types/vital-signs';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { VitalSign, defaultVitalSigns } from '@/types/vital-signs';
+import { useSupabase } from '@/contexts/SupabaseContext';
+import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 
 interface VitalSignsContextType {
-  getPatientVitalSigns: (patientId: string) => VitalSign[];
-  addVitalSign: (patientId: string, vitalSign: Omit<VitalSign, 'id' | 'patientId' | 'date'>) => VitalSign;
-  updateVitalSign: (vitalSignId: string, updates: Partial<Omit<VitalSign, 'id' | 'patientId' | 'date'>>) => VitalSign | null;
-  getLatestVitalSign: (patientId: string) => VitalSign | null;
+  getPatientVitalSigns: (patientId: string) => Promise<VitalSign[]>;
+  addVitalSign: (patientId: string, vitalSign: Omit<VitalSign, 'id' | 'vital_sign_id' | 'patient_id' | 'date' | 'created_at' | 'updated_at'>) => Promise<VitalSign>;
+  updateVitalSign: (vitalSignId: string, updates: Partial<Omit<VitalSign, 'id' | 'vital_sign_id' | 'patient_id' | 'date' | 'created_at' | 'updated_at'>>) => Promise<VitalSign | null>;
+  getLatestVitalSign: (patientId: string) => Promise<VitalSign | null>;
+  isLoading: boolean;
 }
 
 const VitalSignsContext = createContext<VitalSignsContextType | undefined>(undefined);
 
 export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [vitalSigns, setVitalSigns] = useState<Record<string, VitalSign[]>>(demoVitalSigns);
+  const [isLoading, setIsLoading] = useState(true);
+  const { supabase } = useSupabase();
+  const { toast } = useToast();
+
+  // Initialize default vital signs if none exist
+  useEffect(() => {
+    const initializeVitalSigns = async () => {
+      try {
+        setIsLoading(true);
+
+        // Check if any vital signs exist
+        const existingVitalSigns = await supabase.from<VitalSign>('vital_signs').getAll({ limit: 1 });
+
+        if (existingVitalSigns.length === 0) {
+          // Create default vital signs
+          for (const vitalSign of defaultVitalSigns) {
+            await supabase.from<VitalSign>('vital_signs').insert(vitalSign);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing vital signs:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to initialize vital signs. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeVitalSigns();
+  }, [supabase, toast]);
 
   // Get all vital signs for a patient
-  const getPatientVitalSigns = (patientId: string): VitalSign[] => {
-    return vitalSigns[patientId] || [];
+  const getPatientVitalSigns = async (patientId: string): Promise<VitalSign[]> => {
+    try {
+      const vitalSigns = await supabase.from<VitalSign>('vital_signs').getAll({
+        filters: { patient_id: patientId },
+        order: { column: 'date', ascending: false }
+      });
+
+      return vitalSigns;
+    } catch (error) {
+      console.error('Error fetching patient vital signs:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch vital signs. Please try again.',
+        variant: 'destructive',
+      });
+      return [];
+    }
   };
 
   // Add a new vital sign record
-  const addVitalSign = (
+  const addVitalSign = async (
     patientId: string,
-    vitalSign: Omit<VitalSign, 'id' | 'patientId' | 'date'>
-  ): VitalSign => {
-    const newVitalSign: VitalSign = {
-      id: `VS${uuidv4().substring(0, 8)}`,
-      patientId,
-      date: new Date().toISOString(),
-      ...vitalSign
-    };
+    vitalSign: Omit<VitalSign, 'id' | 'vital_sign_id' | 'patient_id' | 'date' | 'created_at' | 'updated_at'>
+  ): Promise<VitalSign> => {
+    try {
+      // Generate a unique vital sign ID
+      const vitalSignId = `VS${uuidv4().substring(0, 8)}`;
 
-    setVitalSigns(prev => {
-      const patientVitalSigns = prev[patientId] || [];
-      return {
-        ...prev,
-        [patientId]: [newVitalSign, ...patientVitalSigns]
+      // Create new vital sign
+      const newVitalSign = {
+        vital_sign_id: vitalSignId,
+        patient_id: patientId,
+        date: new Date().toISOString(),
+        ...vitalSign
       };
-    });
 
-    return newVitalSign;
+      // Add to Supabase
+      const createdVitalSign = await supabase.from<VitalSign>('vital_signs').insert(newVitalSign);
+
+      toast({
+        title: 'Success',
+        description: 'Vital signs recorded successfully.',
+      });
+
+      return createdVitalSign;
+    } catch (error) {
+      console.error('Error adding vital sign:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to record vital signs. Please try again.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
   };
 
   // Update an existing vital sign record
-  const updateVitalSign = (
+  const updateVitalSign = async (
     vitalSignId: string,
-    updates: Partial<Omit<VitalSign, 'id' | 'patientId' | 'date'>>
-  ): VitalSign | null => {
-    let updatedVitalSign: VitalSign | null = null;
+    updates: Partial<Omit<VitalSign, 'id' | 'vital_sign_id' | 'patient_id' | 'date' | 'created_at' | 'updated_at'>>
+  ): Promise<VitalSign | null> => {
+    try {
+      // Update in Supabase
+      const updatedVitalSign = await supabase.from<VitalSign>('vital_signs').update(vitalSignId, updates);
 
-    setVitalSigns(prev => {
-      const newVitalSigns = { ...prev };
-      
-      // Find the vital sign in all patients
-      for (const patientId in newVitalSigns) {
-        const index = newVitalSigns[patientId].findIndex(vs => vs.id === vitalSignId);
-        
-        if (index !== -1) {
-          // Update the vital sign
-          updatedVitalSign = {
-            ...newVitalSigns[patientId][index],
-            ...updates
-          };
-          
-          newVitalSigns[patientId] = [
-            ...newVitalSigns[patientId].slice(0, index),
-            updatedVitalSign,
-            ...newVitalSigns[patientId].slice(index + 1)
-          ];
-          
-          break;
-        }
-      }
-      
-      return newVitalSigns;
-    });
+      toast({
+        title: 'Success',
+        description: 'Vital signs updated successfully.',
+      });
 
-    return updatedVitalSign;
+      return updatedVitalSign;
+    } catch (error) {
+      console.error('Error updating vital sign:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update vital signs. Please try again.',
+        variant: 'destructive',
+      });
+      return null;
+    }
   };
 
   // Get the latest vital sign record for a patient
-  const getLatestVitalSign = (patientId: string): VitalSign | null => {
-    const patientVitalSigns = vitalSigns[patientId] || [];
-    
-    if (patientVitalSigns.length === 0) {
+  const getLatestVitalSign = async (patientId: string): Promise<VitalSign | null> => {
+    try {
+      const vitalSigns = await supabase.from<VitalSign>('vital_signs').getAll({
+        filters: { patient_id: patientId },
+        order: { column: 'date', ascending: false },
+        limit: 1
+      });
+
+      return vitalSigns.length > 0 ? vitalSigns[0] : null;
+    } catch (error) {
+      console.error('Error fetching latest vital sign:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch latest vital signs. Please try again.',
+        variant: 'destructive',
+      });
       return null;
     }
-    
-    // Sort by date (newest first) and return the first one
-    return [...patientVitalSigns].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    )[0];
   };
 
   return (
@@ -99,7 +159,8 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
         getPatientVitalSigns,
         addVitalSign,
         updateVitalSign,
-        getLatestVitalSign
+        getLatestVitalSign,
+        isLoading
       }}
     >
       {children}

@@ -2,6 +2,8 @@
 
 export interface Medication {
   id: string;
+  prescription_id?: string;
+  medication_id?: string;
   name: string;
   dosage: string;
   duration: string;
@@ -10,25 +12,103 @@ export interface Medication {
     afternoon: boolean;
     night: boolean;
   };
-  foodInstructions?: string; // "After food", "Before food", etc.
+  food_instructions?: string; // "After food", "Before food", etc.
   instructions: string; // Renamed to notes in UI but keeping for compatibility
-  dispenseQuantity: string; // Amount to dispense (e.g., "30 tablets", "100ml")
+  dispense_quantity: string; // Amount to dispense (e.g., "30 tablets", "100ml")
   frequency?: string; // Keeping for backward compatibility with existing data
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Prescription {
   id: string;
-  patientId: string;
+  prescription_id?: string;
+  patient_id: string;
   date: string; // ISO date string
   medications: Medication[];
   diagnosis: string;
   notes?: string;
-  prescribedBy: string;
+  prescribed_by: string;
   status: 'Active' | 'Completed' | 'Cancelled';
-  doctorRegNo?: string; // Doctor's registration/license number
+  doctor_reg_no?: string; // Doctor's registration/license number
+  created_at?: string;
+  updated_at?: string;
 }
 
-// Demo data for prescriptions
+// Default prescriptions for initialization
+export const defaultPrescriptions = [
+  {
+    prescription_id: "PR001",
+    patient_id: "PT001",
+    date: new Date().toISOString(),
+    diagnosis: "Dental abscess",
+    notes: "Patient allergic to penicillin. Follow up in one week.",
+    prescribed_by: "Dr. Khanna",
+    status: "Active" as const,
+    doctor_reg_no: "MCI-12345"
+  },
+  {
+    prescription_id: "PR101",
+    patient_id: "PT009",
+    date: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString(),
+    diagnosis: "Dental caries with mild infection",
+    notes: "Child-friendly formulation. Parent instructed on proper administration.",
+    prescribed_by: "Dr. Patel",
+    status: "Completed" as const,
+    doctor_reg_no: "DCI-78901"
+  }
+];
+
+// Default medications for initialization
+export const defaultMedications = [
+  {
+    medication_id: "MED001",
+    prescription_id: "PR001",
+    name: "Amoxicillin",
+    dosage: "500mg",
+    frequency: "3 times daily",
+    duration: "7 days",
+    timing: {
+      morning: true,
+      afternoon: true,
+      night: true
+    },
+    instructions: "Take after meals with water",
+    dispense_quantity: "21 tablets"
+  },
+  {
+    medication_id: "MED002",
+    prescription_id: "PR001",
+    name: "Ibuprofen",
+    dosage: "400mg",
+    frequency: "As needed",
+    duration: "3 days",
+    timing: {
+      morning: true,
+      afternoon: true,
+      night: true
+    },
+    instructions: "Take for pain, not more than 3 tablets per day",
+    dispense_quantity: "9 tablets"
+  },
+  {
+    medication_id: "MED101",
+    prescription_id: "PR101",
+    name: "Amoxicillin Suspension",
+    dosage: "250mg/5ml",
+    frequency: "2 times daily",
+    duration: "5 days",
+    timing: {
+      morning: true,
+      afternoon: false,
+      night: true
+    },
+    instructions: "Take after meals. Shake well before use.",
+    dispense_quantity: "100ml bottle"
+  }
+];
+
+// Demo data for prescriptions (for backward compatibility)
 export const demoPrescriptions: Record<string, Prescription[]> = {
   "PT001": [
     {

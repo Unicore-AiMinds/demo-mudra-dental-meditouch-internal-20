@@ -9,11 +9,14 @@ import { ClinicProvider } from "@/contexts/ClinicContext";
 import { ClinicInfoProvider } from "@/contexts/ClinicInfoContext";
 import { DoctorProvider } from "@/contexts/DoctorContext";
 import { DentalHistoryProvider } from "@/contexts/DentalHistoryContext";
+import { DentalChartingProvider } from "@/contexts/DentalChartingContext";
 import { VitalSignsProvider } from "@/contexts/VitalSignsContext";
 import { PrescriptionProvider } from "@/contexts/PrescriptionContext";
 import { StockProvider } from "@/contexts/StockContext";
 import { LabWorkProvider } from "@/contexts/LabWorkContext";
 import { MedicineProvider } from "@/contexts/MedicineContext";
+import { PatientProvider } from "@/contexts/PatientContext";
+import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Login from "@/pages/Login";
@@ -39,16 +42,19 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AuthProvider>
-          <ClinicProvider>
-            <ClinicInfoProvider>
-              <DoctorProvider>
-                <DentalHistoryProvider>
-                  <VitalSignsProvider>
-                    <PrescriptionProvider>
-                      <StockProvider>
-                        <LabWorkProvider>
-                          <MedicineProvider>
+        <SupabaseProvider>
+          <AuthProvider>
+            <ClinicProvider>
+              <ClinicInfoProvider>
+                <DoctorProvider>
+                  <PatientProvider>
+                    <DentalHistoryProvider>
+                      <DentalChartingProvider>
+                        <VitalSignsProvider>
+                          <PrescriptionProvider>
+                            <StockProvider>
+                              <LabWorkProvider>
+                                <MedicineProvider>
                             <Routes>
                               <Route path="/login" element={<Login />} />
                               <Route path="/unauthorized" element={<Unauthorized />} />
@@ -107,6 +113,7 @@ const App = () => (
                                     </ProtectedRoute>
                                   }
                                 />
+
                               </Route>
 
                               {/* Redirect root to dashboard if logged in, otherwise to login */}
@@ -115,16 +122,19 @@ const App = () => (
                               {/* 404 route */}
                               <Route path="*" element={<NotFound />} />
                             </Routes>
-                          </MedicineProvider>
-                        </LabWorkProvider>
-                      </StockProvider>
-                    </PrescriptionProvider>
-                  </VitalSignsProvider>
-                </DentalHistoryProvider>
+                              </MedicineProvider>
+                            </LabWorkProvider>
+                          </StockProvider>
+                        </PrescriptionProvider>
+                      </VitalSignsProvider>
+                    </DentalChartingProvider>
+                  </DentalHistoryProvider>
+                </PatientProvider>
               </DoctorProvider>
             </ClinicInfoProvider>
           </ClinicProvider>
         </AuthProvider>
+        </SupabaseProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

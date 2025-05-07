@@ -2,15 +2,18 @@
 
 export interface VitalSign {
   id: string;
-  patientId: string;
+  vital_sign_id: string;
+  patient_id: string;
   date: string; // ISO date string
   weight: string; // in kg
-  bloodPressure: string; // systolic/diastolic (mmHg)
+  blood_pressure: string; // systolic/diastolic (mmHg)
   pulse: string; // beats per minute (bpm)
   temperature: string; // in Celsius (°C)
-  respiratoryRate: string; // breaths per minute (breaths/min)
+  respiratory_rate: string; // breaths per minute (breaths/min)
   notes?: string;
-  recordedBy: string;
+  recorded_by: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Normal ranges for vital signs (for reference)
@@ -61,46 +64,30 @@ export const isVitalSignNormal = (
   }
 };
 
-// Demo data for vital signs
-export const demoVitalSigns: Record<string, VitalSign[]> = {
-  "PT001": [
-    {
-      id: "VS001",
-      patientId: "PT001",
-      date: new Date().toISOString(),
-      weight: "75",
-      bloodPressure: "120/80",
-      pulse: "72",
-      temperature: "36.8",
-      respiratoryRate: "16",
-      notes: "Patient appears healthy. No concerns.",
-      recordedBy: "Dr. Khanna"
-    },
-    {
-      id: "VS002",
-      patientId: "PT001",
-      date: new Date(new Date().setMonth(new Date().getMonth() - 6)).toISOString(),
-      weight: "78",
-      bloodPressure: "125/85",
-      pulse: "75",
-      temperature: "37.0",
-      respiratoryRate: "18",
-      notes: "Slight elevation in BP. Advised to monitor.",
-      recordedBy: "Dr. Desai"
-    }
-  ],
-  "PT009": [
-    {
-      id: "VS101",
-      patientId: "PT009",
-      date: new Date().toISOString(),
-      weight: "22",
-      bloodPressure: "90/60",
-      pulse: "90",
-      temperature: "36.5",
-      respiratoryRate: "20",
-      notes: "Normal vital signs for age. Child was cooperative.",
-      recordedBy: "Dr. Patel"
-    }
-  ]
-};
+// Default vital signs for initialization
+export const defaultVitalSigns = [
+  {
+    vital_sign_id: "VS001",
+    patient_id: "PT001",
+    date: new Date().toISOString(),
+    weight: "75",
+    blood_pressure: "120/80",
+    pulse: "72",
+    temperature: "36.8",
+    respiratory_rate: "16",
+    notes: "Patient appears healthy. No concerns.",
+    recorded_by: "Dr. Khanna"
+  },
+  {
+    vital_sign_id: "VS101",
+    patient_id: "PT009",
+    date: new Date().toISOString(),
+    weight: "22",
+    blood_pressure: "90/60",
+    pulse: "90",
+    temperature: "36.5",
+    respiratory_rate: "20",
+    notes: "Normal vital signs for age. Child was cooperative.",
+    recorded_by: "Dr. Patel"
+  }
+];

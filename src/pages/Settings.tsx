@@ -4,6 +4,7 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { useClinicInfo } from '@/contexts/ClinicInfoContext';
 import { useDoctors } from '@/contexts/DoctorContext';
 import { useMedicines } from '@/contexts/MedicineContext';
+
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { demoFollowUpRules } from '@/data/demo-dental-history';
 import { getRandomDentalColor } from '@/utils/doctorColors';
@@ -4590,6 +4591,8 @@ const Settings = () => {
             </DialogContent>
           </Dialog>
         </TabsContent>
+
+
       </Tabs>
     </div>
   );

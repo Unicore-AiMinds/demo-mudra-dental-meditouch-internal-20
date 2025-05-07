@@ -1,9 +1,10 @@
 // Define the structure for a dental charting entry
 export interface ChartingEntry {
-  entryId: string;           // Unique ID for the entry (e.g., 'CE001')
-  patientId: string;         // Links to the Patient ID (e.g., 'PT001')
-  dateRecorded: string;      // YYYY-MM-DD HH:MM:SS format
-  toothNumbers: string[];    // Array of selected tooth numbers ['14', '15']
+  id: string;
+  entry_id: string;           // Unique ID for the entry (e.g., 'CE001')
+  patient_id: string;         // Links to the Patient ID (e.g., 'PT001')
+  date_recorded: string;      // YYYY-MM-DD HH:MM:SS format
+  tooth_numbers: string[];    // Array of selected tooth numbers ['14', '15']
   surfaces?: string[];       // Optional array e.g., ['M', 'O']
   finding?: string;          // Pre-existing condition e.g., 'Caries', 'Missing Tooth'
   service?: string;          // Treatment e.g., 'Composite Filling', 'Root Canal'
@@ -11,16 +12,42 @@ export interface ChartingEntry {
   notes?: string;            // Optional notes - can include treatment plan information
   doctor?: string;           // Doctor assigned to this treatment
   // References to follow-ups generated from this charting entry
-  followUpIds?: string[];
+  follow_up_ids?: string[];
   // If this is a planned treatment that was completed, reference to the completion entry
-  completedByEntryId?: string;
+  completed_by_entry_id?: string;
   // If this is a completion entry, reference to the original planned entry
-  completesEntryId?: string;
+  completes_entry_id?: string;
   // If this is a planned treatment that has been snoozed, date until which it's snoozed
-  snoozedUntil?: string;     // YYYY-MM-DD format
+  snoozed_until?: string;     // YYYY-MM-DD format
   // If this is a planned treatment that has been scheduled, reference to the appointment
-  scheduledAppointmentId?: string;
+  scheduled_appointment_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
+
+// Default charting entries for initialization
+export const defaultChartingEntries = [
+  {
+    entry_id: "CE101",
+    patient_id: "PT009",
+    date_recorded: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0] + ' 10:00:00',
+    tooth_numbers: ["54", "55"], // Upper right primary molars (FDI notation)
+    surfaces: ["O", "M"],
+    finding: "Caries",
+    status: "Existing" as const,
+    notes: "Early stage caries detected in primary teeth during routine checkup."
+  },
+  {
+    entry_id: "CE001",
+    patient_id: "PT001",
+    date_recorded: new Date(new Date().setDate(new Date().getDate() - 180)).toISOString().split('T')[0] + ' 11:30:00',
+    tooth_numbers: ["25", "26"], // Upper left premolars (FDI notation)
+    surfaces: ["O", "M"],
+    finding: "Caries",
+    status: "Existing" as const,
+    notes: "Early stage caries detected during routine checkup."
+  }
+];
 
 // Define the tooth numbering system using FDI/ISO 3950 notation
 // Format: Quadrant (1-4) + Tooth position (1-8) for permanent teeth
