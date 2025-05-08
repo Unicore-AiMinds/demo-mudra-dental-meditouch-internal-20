@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 import {
   Card,
@@ -39,7 +38,7 @@ import {
   servicesList,
   statusOptions
 } from '@/types/dental-charting';
-import { demoChartingHistory } from '@/data/demo-dental-charting';
+import { useDentalCharting } from '@/contexts/DentalChartingContext';
 import VisualToothChart from './VisualToothChart';
 import ToothIndicator from './ToothIndicator';
 import SurfaceIndicator from './SurfaceIndicator';
@@ -55,8 +54,11 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
   const { toast } = useToast();
   const { addTentativeFollowUps, getPatientName } = useDentalHistory();
 
+  const { getPatientChartingHistory, addChartingEntry: addChartingEntryToContext } = useDentalCharting();
+
   // State for the patient's charting history
   const [patientChartingHistory, setPatientChartingHistory] = useState<ChartingEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Determine if we should show primary teeth by default based on patient age
   const isChildPatient = patientAge !== undefined && patientAge >= 0 && patientAge <= 12;
@@ -76,13 +78,25 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
 
   // Load the patient's charting history when the component mounts or patientId changes
   useEffect(() => {
-    const filteredHistory = demoChartingHistory.filter(entry => entry.patientId === patientId);
-    // Sort by date, newest first
-    filteredHistory.sort((a, b) =>
-      new Date(b.dateRecorded).getTime() - new Date(a.dateRecorded).getTime()
-    );
-    setPatientChartingHistory(filteredHistory);
-  }, [patientId]);
+    const fetchChartingHistory = async () => {
+      try {
+        setIsLoading(true);
+        const history = await getPatientChartingHistory(patientId);
+        setPatientChartingHistory(history);
+      } catch (error) {
+        console.error('Error fetching patient charting history:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load dental charting history. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchChartingHistory();
+  }, [patientId, getPatientChartingHistory, toast]);
 
   // Listen for teeth type change events from the VisualToothChart component
   useEffect(() => {
@@ -129,7 +143,7 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
   };
 
   // Handle adding a new charting entry
-  const handleAddChartingEntry = () => {
+  const handleAddChartingEntry = async () => {
     // Validate required fields
     if (selectedTeeth.length === 0) {
       toast({
@@ -159,64 +173,87 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
       return;
     }
 
-    // Create a new charting entry
-    const newEntry: ChartingEntry = {
-      entryId: `CE${uuidv4().substring(0, 8)}`,
-      patientId,
-      dateRecorded: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-      toothNumbers: [...selectedTeeth].sort((a, b) => parseInt(a) - parseInt(b)),
-      status: selectedStatus,
-      followUpIds: [], // Initialize empty array for follow-up references
-    };
+    try {
+      // Create a new charting entry with Supabase field names
+      const newEntry: Omit<ChartingEntry, 'id' | 'entry_id' | 'created_at' | 'updated_at'> = {
+        patient_id: patientId,
+        date_recorded: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+        tooth_numbers: [...selectedTeeth].sort((a, b) => parseInt(a) - parseInt(b)),
+        status: selectedStatus,
+        follow_up_ids: [], // Initialize empty array for follow-up references
+      };
 
-    // Add finding or service based on status
-    if (selectedStatus === 'Existing') {
-      newEntry.finding = selectedFinding;
-    } else {
-      newEntry.service = selectedService;
-    }
-
-    // Add surfaces if selected
-    if (selectedSurfaces.length > 0) {
-      newEntry.surfaces = [...selectedSurfaces];
-    }
-
-    // Add notes if provided
-    if (currentNotes.trim()) {
-      newEntry.notes = currentNotes.trim();
-    }
-
-    // Add the new entry to the history
-    setPatientChartingHistory(prev => [newEntry, ...prev]);
-
-    // Generate follow-ups if this is a planned treatment
-    if (selectedStatus === 'Planned' && newEntry.service) {
-      // Generate follow-ups using the integration service
-      const followUps = generateFollowUpsFromChartingEntry(newEntry, patientName);
-
-      if (followUps.length > 0) {
-        // Store the follow-up IDs in the charting entry
-        newEntry.followUpIds = followUps.map(fu => fu.followUpId);
-
-        // Add the follow-ups to the dental history context
-        addTentativeFollowUps(followUps);
-
-        // Show a message about the follow-ups
-        toast({
-          title: "Follow-ups Generated",
-          description: `${followUps.length} follow-up(s) have been added to the recall list.`,
-        });
+      // Add finding or service based on status
+      if (selectedStatus === 'Existing') {
+        newEntry.finding = selectedFinding;
+      } else {
+        newEntry.service = selectedService;
       }
+
+      // Add surfaces if selected
+      if (selectedSurfaces.length > 0) {
+        newEntry.surfaces = [...selectedSurfaces];
+      }
+
+      // Add notes if provided
+      if (currentNotes.trim()) {
+        newEntry.notes = currentNotes.trim();
+      }
+
+      // Add the entry to Supabase via context
+      const savedEntry = await addChartingEntryToContext(newEntry);
+
+      // Generate follow-ups if this is a planned treatment
+      if (selectedStatus === 'Planned' && newEntry.service) {
+        try {
+          // Get the patient name as a string
+          const patientNameStr = typeof patientName === 'string'
+            ? patientName
+            : await patientName;
+
+          // Generate follow-ups using the integration service
+          const followUps = generateFollowUpsFromChartingEntry(savedEntry, patientNameStr);
+
+          if (followUps.length > 0) {
+            // Add the follow-ups to the dental history context
+            await addTentativeFollowUps(followUps);
+
+            // Show a message about the follow-ups
+            toast({
+              title: "Follow-ups Generated",
+              description: `${followUps.length} follow-up(s) have been added to the recall list.`,
+            });
+          }
+        } catch (error) {
+          console.error('Error generating follow-ups:', error);
+          toast({
+            title: "Warning",
+            description: "Entry saved but failed to generate follow-ups.",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // Refresh the patient's charting history
+      const updatedHistory = await getPatientChartingHistory(patientId);
+      setPatientChartingHistory(updatedHistory);
+
+      // Reset the form
+      resetForm();
+
+      // Show success message
+      toast({
+        title: "Success",
+        description: "Charting entry added successfully.",
+      });
+    } catch (error) {
+      console.error('Error adding charting entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add charting entry. Please try again.",
+        variant: "destructive",
+      });
     }
-
-    // Reset the form
-    resetForm();
-
-    // Show success message
-    toast({
-      title: "Success",
-      description: "Charting entry added successfully.",
-    });
   };
 
   // Reset the form inputs
@@ -451,7 +488,11 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Charting History</h3>
 
-          {patientChartingHistory.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-dental-primary border-t-transparent"></div>
+            </div>
+          ) : patientChartingHistory.length > 0 ? (
             <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -467,15 +508,15 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
                 </TableHeader>
                 <TableBody>
                   {patientChartingHistory.map(entry => (
-                    <TableRow key={entry.entryId}>
+                    <TableRow key={entry.entry_id}>
                       <TableCell>
-                        {new Date(entry.dateRecorded).toLocaleDateString()}
+                        {new Date(entry.date_recorded).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <ToothIndicator toothNumbers={entry.toothNumbers} />
+                        <ToothIndicator toothNumbers={entry.tooth_numbers} />
                       </TableCell>
                       <TableCell>
-                        {entry.toothNumbers.join(', ')}
+                        {entry.tooth_numbers.join(', ')}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col items-start gap-1">

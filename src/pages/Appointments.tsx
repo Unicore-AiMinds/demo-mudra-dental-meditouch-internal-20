@@ -4,10 +4,13 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { useNavigate } from 'react-router-dom';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import { useDoctors } from '@/contexts/DoctorContext';
+import { usePatients } from '@/contexts/PatientContext';
+import { useAppointments, Appointment, DentalAppointment, MeditouchAppointment } from '@/contexts/AppointmentContext';
 import { DentalChartingProvider } from '@/contexts/DentalChartingContext';
 import AppointmentCompletionDialog from '@/components/AppointmentCompletionDialog';
 import { getLighterColor } from '@/utils/doctorColors';
 import PendingTreatmentsView from '@/components/PendingTreatmentsView';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -48,43 +51,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import AddPatientDialog from '@/components/AddPatientDialog';
 
-const registeredPatients = [{
-  id: 'p1',
-  name: 'Aarav Sharma'
-}, {
-  id: 'p2',
-  name: 'Priya Patel'
-}, {
-  id: 'p3',
-  name: 'Arjun Singh'
-}, {
-  id: 'p4',
-  name: 'Neha Singh'
-}, {
-  id: 'p5',
-  name: 'Rohan Gupta'
-}, {
-  id: 'p6',
-  name: 'Ishaan Desai'
-}, {
-  id: 'p7',
-  name: 'Sanjay Patel'
-}, {
-  id: 'p8',
-  name: 'Meera Joshi'
-}, {
-  id: 'p9',
-  name: 'Ravi Kumar'
-}, {
-  id: 'p10',
-  name: 'Vikram Mehta'
-}, {
-  id: 'p11',
-  name: 'Neha Kapoor'
-}, {
-  id: 'p12',
-  name: 'Aisha Khan'
-}];
+// Patients will be fetched from PatientContext
 
 // Using DoctorContext instead of hardcoded doctors array
 
@@ -119,35 +86,16 @@ const timeSlots = ['9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM', '10:00 AM', '10:1
 //   return grouped;
 // }, []);
 
-type DentalAppointment = {
-  id: string;
-  time: string;
-  patient: string;
-  service: string;
-  doctor: string;
-  date?: string;
-  status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
-  secondPatient?: string;
-};
-
-type MeditouchAppointment = {
-  id: string;
-  time: string;
-  patient: string;
-  service: string;
-  date?: string;
-  status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
-};
-
+// Using appointment types from AppointmentContext
 type AppointmentType = DentalAppointment | MeditouchAppointment;
 
 const AppointmentCard = ({
   time,
-  patient,
+  patient_name,
   service,
   doctor,
   status,
-  secondPatient = null,
+  second_patient_name = null,
   isDental = true,
   onEdit,
   onReschedule,
@@ -155,11 +103,11 @@ const AppointmentCard = ({
   onComplete
 }: {
   time: string;
-  patient: string;
+  patient_name: string;
   service: string;
   doctor?: string;
   status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
-  secondPatient?: string | null;
+  second_patient_name?: string | null;
   isDental?: boolean;
   onEdit: () => void;
   onReschedule: () => void;
@@ -200,8 +148,8 @@ const AppointmentCard = ({
         </DropdownMenu>
       </div>
       <div className="mt-1">
-        <div className="text-sm font-medium">{patient}</div>
-        {secondPatient && <div className="text-sm font-medium">{secondPatient}</div>}
+        <div className="text-sm font-medium">{patient_name}</div>
+        {second_patient_name && <div className="text-sm font-medium">{second_patient_name}</div>}
         <div className="text-xs text-muted-foreground">{service}</div>
         {doctor && <div className="text-xs font-medium mt-1 text-dental-primary">{doctor}</div>}
       </div>
@@ -249,7 +197,7 @@ const CalendarAppointmentItem = ({
   // Create tooltip content for appointment details
   const tooltipContent = (
     <div className="text-xs">
-      <div className="font-bold">{appointment.patient}</div>
+      <div className="font-bold">{appointment.patient_name}</div>
       <div>{appointment.service}</div>
       {isDental && (appointment as DentalAppointment).doctor && (
         <div>Doctor: {(appointment as DentalAppointment).doctor}</div>
@@ -274,10 +222,10 @@ const CalendarAppointmentItem = ({
     >
       {isCompact ? (
         // Compact view - only show patient name
-        <div className="font-medium truncate">{appointment.patient}</div>
+        <div className="font-medium truncate">{appointment.patient_name}</div>
       ) : (
         // Full view - show time and patient
-        <div className="font-medium truncate">{appointment.time} | {appointment.patient}</div>
+        <div className="font-medium truncate">{appointment.time} | {appointment.patient_name}</div>
       )}
     </div>
   );
@@ -333,7 +281,7 @@ const TimeSlotAppointment = ({
   // Create tooltip content with complete appointment details
   const tooltipContent = (
     <div className="text-xs">
-      <div className="font-bold">{appointment.patient}</div>
+      <div className="font-bold">{appointment.patient_name}</div>
       <div><span className="font-medium">Service:</span> {appointment.service}</div>
       {isDental && (appointment as DentalAppointment).doctor && (
         <div><span className="font-medium">Doctor:</span> {(appointment as DentalAppointment).doctor}</div>
@@ -357,7 +305,7 @@ const TimeSlotAppointment = ({
           (isDental ? '#4A90E2' : '#16A085')
       }}
     >
-      <div className="font-medium truncate">{appointment.patient}</div>
+      <div className="font-medium truncate">{appointment.patient_name}</div>
       <div className="text-white/90 text-[10px] truncate">
         {appointment.service}
         {isMultiSlot && (
@@ -398,6 +346,25 @@ const weekDaysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const Appointments = () => {
   const { activeClinic, isDental } = useClinic();
   const { doctors } = useDoctors(); // Get doctors from context
+  const { patients } = usePatients(); // Get patients from context
+  const {
+    dentalAppointments,
+    meditouchAppointments,
+    isLoading,
+    addAppointment,
+    updateAppointment,
+    deleteAppointment,
+    markAppointmentCompleted
+  } = useAppointments(); // Get appointments from context
+
+  // Combine dental and meditouch appointments
+  const appointments = useMemo(() => {
+    console.log('Combining appointments:', {
+      dental: dentalAppointments.length,
+      meditouch: meditouchAppointments.length
+    });
+    return isDental ? dentalAppointments : meditouchAppointments;
+  }, [dentalAppointments, meditouchAppointments, isDental]);
   const navigate = useNavigate();
 
   // Get URL parameters
@@ -422,7 +389,7 @@ const Appointments = () => {
   const isMobile = useIsMobile();
 
   const [appointmentPatient, setAppointmentPatient] = useState("");
-  const [filteredPatients, setFilteredPatients] = useState(registeredPatients);
+  const [filteredPatients, setFilteredPatients] = useState<{id: string, name: string}[]>([]);
   const [appointmentService, setAppointmentService] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
   const [appointmentDoctor, setAppointmentDoctor] = useState("");
@@ -436,7 +403,8 @@ const Appointments = () => {
   // State for appointment creation confirmation dialog
   const [isConfirmCreateOpen, setIsConfirmCreateOpen] = useState(false);
   const [pendingAppointment, setPendingAppointment] = useState<{
-    patient: string;
+    patient?: string;
+    patient_name?: string;
     service: string;
     time: string;
     date: Date | undefined;
@@ -456,108 +424,23 @@ const Appointments = () => {
     return grouped;
   }, []);
 
-  const [dentalAppointments, setDentalAppointments] = useState<DentalAppointment[]>([
-    {
-      id: 'd1',
-      time: '9:00 AM',
-      patient: 'Aarav Sharma',
-      service: 'Dental Checkup',
-      doctor: 'Dr. Khanna',
-      date: format(new Date(), 'yyyy-MM-dd'),
-      status: 'confirmed'
-    },
-    {
-      id: 'd2',
-      time: '9:15 AM',
-      patient: 'Priya Patel',
-      service: 'Root Canal',
-      doctor: 'Dr. Khanna',
-      date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
-      status: 'confirmed'
-    },
-    {
-      id: 'd3',
-      time: '10:30 AM',
-      patient: 'Arjun Singh',
-      service: 'Teeth Cleaning',
-      doctor: 'Dr. Khanna',
-      date: format(addDays(new Date(), 2), 'yyyy-MM-dd'),
-      status: 'confirmed',
-      secondPatient: 'Neha Singh'
-    },
-    {
-      id: 'd4',
-      time: '11:45 AM',
-      patient: 'Rohan Gupta',
-      service: 'Crown Fitting',
-      doctor: 'Dr. Sharma',
-      date: format(addDays(new Date(), 3), 'yyyy-MM-dd'),
-      status: 'arrived'
-    },
-    {
-      id: 'd5',
-      time: '2:00 PM',
-      patient: 'Ishaan Desai',
-      service: 'Dental Filling',
-      doctor: 'Dr. Sharma',
-      date: format(addDays(new Date(), 4), 'yyyy-MM-dd'),
-      status: 'cancelled'
-    },
-    {
-      id: 'd6',
-      time: '3:30 PM',
-      patient: 'Sanjay Patel',
-      service: 'Denture Adjustment',
-      doctor: 'Dr. Desai',
-      date: format(addDays(new Date(), 5), 'yyyy-MM-dd'),
-      status: 'confirmed'
+  // Effect to filter patients based on search term
+  useEffect(() => {
+    if (patients.length > 0) {
+      if (!searchTerm) {
+        // If no search term, show all patients
+        setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
+      } else {
+        // Filter patients based on search term
+        const filtered = patients.filter(p =>
+          p.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setFilteredPatients(filtered.map(p => ({ id: p.id, name: p.name })));
+      }
     }
-  ]);
+  }, [patients, searchTerm]);
 
-  const [meditouchAppointments, setMeditouchAppointments] = useState<MeditouchAppointment[]>([
-    {
-      id: 'm1',
-      time: '9:15 AM',
-      patient: 'Meera Joshi',
-      service: 'Skin Consultation',
-      date: format(new Date(), 'yyyy-MM-dd'),
-      status: 'confirmed'
-    },
-    {
-      id: 'm2',
-      time: '10:00 AM',
-      patient: 'Ravi Kumar',
-      service: 'Hair Treatment',
-      date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
-      status: 'arrived'
-    },
-    {
-      id: 'm3',
-      time: '12:45 PM',
-      patient: 'Vikram Mehta',
-      service: 'Hair Treatment',
-      date: format(addDays(new Date(), 2), 'yyyy-MM-dd'),
-      status: 'confirmed'
-    },
-    {
-      id: 'm4',
-      time: '2:30 PM',
-      patient: 'Neha Kapoor',
-      service: 'Facial',
-      date: format(addDays(new Date(), 3), 'yyyy-MM-dd'),
-      status: 'cancelled'
-    },
-    {
-      id: 'm5',
-      time: '3:30 PM',
-      patient: 'Aisha Khan',
-      service: 'Facial',
-      date: format(addDays(new Date(), 4), 'yyyy-MM-dd'),
-      status: 'confirmed'
-    }
-  ]);
-
-  const appointments = isDental ? dentalAppointments : meditouchAppointments;
+  // Use appointments from AppointmentContext instead of local state
 
   // Memoize the getAppointmentsForDate function to avoid recalculating on every render
   const getAppointmentsForDate = useCallback((date: Date) => {
@@ -585,8 +468,8 @@ const Appointments = () => {
     const filteredBySearch = filteredByDoctor.filter(app => {
       // Check if the search term matches
       const matchesSearch = !searchTerm ||
-        app.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        app.service.toLowerCase().includes(searchTerm.toLowerCase());
+        (app.patient_name && app.patient_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (app.service && app.service.toLowerCase().includes(searchTerm.toLowerCase()));
 
       return matchesSearch;
     });
@@ -604,9 +487,10 @@ const Appointments = () => {
 
     const filtered = appointments.filter(app => {
       const matchesDate = app.date === format(date, 'yyyy-MM-dd');
-      const matchesSearch = !searchTerm || app.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (isDental && 'secondPatient' in app && app.secondPatient ? app.secondPatient.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
-        app.service.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = !searchTerm ||
+        (app.patient_name && app.patient_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (isDental && app.second_patient_name ? app.second_patient_name.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+        (app.service && app.service.toLowerCase().includes(searchTerm.toLowerCase()));
 
       // Handle doctor filtering properly
       const matchesDoctor =
@@ -805,7 +689,7 @@ const Appointments = () => {
     console.log('Setting appointment date from time slot:', format(date, 'yyyy-MM-dd'));
 
     // Reset filtered patients list
-    setFilteredPatients(registeredPatients);
+    setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
 
     // Open the dialog
     setTimeout(() => {
@@ -821,7 +705,7 @@ const Appointments = () => {
     setIsNewAppointmentOpen(false);
 
     // Pre-fill form fields with appointment data
-    setAppointmentPatient(appointment.patient);
+    setAppointmentPatient(appointment.patient_name);
     setAppointmentService(appointment.service);
     setAppointmentTime(appointment.time);
 
@@ -837,7 +721,7 @@ const Appointments = () => {
     }
 
     // Reset filtered patients list for the search
-    setFilteredPatients(registeredPatients);
+    setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
 
     // Set the editing appointment object
     setEditingAppointment(appointment);
@@ -846,7 +730,7 @@ const Appointments = () => {
     setIsEditAppointmentOpen(true);
 
     console.log('Edit form opened with values:', {
-      patient: appointment.patient,
+      patient: appointment.patient_name,
       service: appointment.service,
       time: appointment.time,
       date: appointment.date,
@@ -856,7 +740,7 @@ const Appointments = () => {
 
   const handleReschedule = (appointment: AppointmentType) => {
     setEditingAppointment(appointment);
-    setAppointmentPatient(appointment.patient);
+    setAppointmentPatient(appointment.patient_name);
     setAppointmentService(appointment.service);
     setAppointmentTime(appointment.time);
     if (appointment.date) {
@@ -870,8 +754,8 @@ const Appointments = () => {
     navigate('/appointments/new', {
       state: {
         reschedule: true,
-        appointmentId: appointment.id,
-        patient: appointment.patient,
+        appointmentId: appointment.id || appointment.appointment_id,
+        patient: appointment.patient_name,
         service: appointment.service,
         time: appointment.time,
         date: appointment.date,
@@ -885,20 +769,23 @@ const Appointments = () => {
     handleEditAppointment(appointment);
   };
 
-  const handleDirectCancel = (appointment: AppointmentType) => {
-    if (isDental) {
-      setDentalAppointments(dentalAppointments.map(app =>
-        app.id === appointment.id ? { ...app, status: 'cancelled' as const } : app
-      ));
-    } else {
-      setMeditouchAppointments(meditouchAppointments.map(app =>
-        app.id === appointment.id ? { ...app, status: 'cancelled' as const } : app
-      ));
+  const handleDirectCancel = async (appointment: AppointmentType) => {
+    try {
+      // Update the appointment status to cancelled in Supabase
+      await updateAppointment(appointment.id || appointment.appointment_id, { status: 'cancelled' });
+
+      toast({
+        title: "Appointment Cancelled",
+        description: `${appointment.patient_name}'s appointment has been cancelled.`
+      });
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel appointment. Please try again.",
+        variant: "destructive"
+      });
     }
-    toast({
-      title: "Appointment Cancelled",
-      description: `${appointment.patient}'s appointment has been cancelled.`
-    });
   };
 
   const openUpdateConfirmation = () => {
@@ -908,44 +795,42 @@ const Appointments = () => {
     }
   };
 
-  const handleRescheduleSubmit = () => {
+  const handleRescheduleSubmit = async () => {
     if (editingAppointment) {
-      const updatedAppointments = isDental
-        ? dentalAppointments.map(app =>
-            app.id === editingAppointment.id
-              ? {
-                  ...app,
-                  time: appointmentTime,
-                  service: appointmentService,
-                  doctor: appointmentDoctor,
-                  date: appointmentDate ? format(appointmentDate, 'yyyy-MM-dd') : app.date
-                }
-              : app
-          )
-        : meditouchAppointments.map(app =>
-            app.id === editingAppointment.id
-              ? {
-                  ...app,
-                  time: appointmentTime,
-                  service: appointmentService,
-                  date: appointmentDate ? format(appointmentDate, 'yyyy-MM-dd') : app.date
-                }
-              : app
-          );
+      try {
+        // Prepare the update data
+        const updateData: Partial<Appointment> = {
+          time: appointmentTime,
+          service: appointmentService,
+          date: appointmentDate ? format(appointmentDate, 'yyyy-MM-dd') : editingAppointment.date
+        };
 
-      if (isDental) {
-        setDentalAppointments(updatedAppointments as DentalAppointment[]);
-      } else {
-        setMeditouchAppointments(updatedAppointments as MeditouchAppointment[]);
+        // Add doctor for dental appointments
+        if (isDental) {
+          updateData.doctor = appointmentDoctor;
+        }
+
+        // Update the appointment in Supabase
+        await updateAppointment(
+          editingAppointment.id || editingAppointment.appointment_id,
+          updateData
+        );
+
+        toast({
+          title: "Appointment Rescheduled",
+          description: `${editingAppointment.patient_name}'s appointment has been rescheduled to ${format(appointmentDate || new Date(), 'PP')} at ${appointmentTime}`
+        });
+
+        setIsConfirmUpdateOpen(false);
+        setEditingAppointment(null);
+      } catch (error) {
+        console.error('Error rescheduling appointment:', error);
+        toast({
+          title: "Error",
+          description: "Failed to reschedule appointment. Please try again.",
+          variant: "destructive"
+        });
       }
-
-      toast({
-        title: "Appointment Rescheduled",
-        description: `${editingAppointment.patient}'s appointment has been rescheduled to ${format(appointmentDate || new Date(), 'PP')} at ${appointmentTime}`
-      });
-
-      setIsConfirmUpdateOpen(false);
-      setEditingAppointment(null);
     }
   };
 
@@ -961,29 +846,30 @@ const Appointments = () => {
     }
   };
 
-  const handleCancelAppointment = () => {
+  const handleCancelAppointment = async () => {
     if (editingAppointment) {
-      const updatedAppointments = isDental
-        ? dentalAppointments.map(app =>
-            app.id === editingAppointment.id ? { ...app, status: 'cancelled' as const } : app
-          )
-        : meditouchAppointments.map(app =>
-            app.id === editingAppointment.id ? { ...app, status: 'cancelled' as const } : app
-          );
+      try {
+        // Update the appointment status to cancelled in Supabase
+        await updateAppointment(
+          editingAppointment.id || editingAppointment.appointment_id,
+          { status: 'cancelled' }
+        );
 
-      if (isDental) {
-        setDentalAppointments(updatedAppointments as DentalAppointment[]);
-      } else {
-        setMeditouchAppointments(updatedAppointments as MeditouchAppointment[]);
+        toast({
+          title: "Appointment Cancelled",
+          description: `${editingAppointment.patient_name}'s appointment has been cancelled`
+        });
+
+        setIsConfirmCancelOpen(false);
+        setEditingAppointment(null);
+      } catch (error) {
+        console.error('Error cancelling appointment:', error);
+        toast({
+          title: "Error",
+          description: "Failed to cancel appointment. Please try again.",
+          variant: "destructive"
+        });
       }
-
-      toast({
-        title: "Appointment Cancelled",
-        description: `${editingAppointment.patient}'s appointment has been cancelled`
-      });
-
-      setIsConfirmCancelOpen(false);
-      setEditingAppointment(null);
     }
   };
 
@@ -993,86 +879,93 @@ const Appointments = () => {
   };
 
   // Handle marking an appointment as completed
-  const { markAppointmentCompleted } = useDentalHistory();
+  const { markAppointmentCompleted: markAppointmentCompletedInHistory } = useDentalHistory();
   const [completedAppointment, setCompletedAppointment] = useState<AppointmentType | null>(null);
   const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
 
-  const handleCompleteAppointment = (appointment: AppointmentType) => {
-    // Update the appointment status to completed
-    if (isDental) {
-      setDentalAppointments(dentalAppointments.map(app =>
-        app.id === appointment.id ? { ...app, status: 'completed' as const, paymentStatus: 'unpaid' as const } : app
-      ));
-    } else {
-      setMeditouchAppointments(meditouchAppointments.map(app =>
-        app.id === appointment.id ? { ...app, status: 'completed' as const, paymentStatus: 'unpaid' as const } : app
-      ));
-    }
+  const handleCompleteAppointment = async (appointment: AppointmentType) => {
+    try {
+      // Update the appointment status to completed in Supabase
+      await markAppointmentCompleted(appointment.id || appointment.appointment_id);
 
-    // Get patient ID from the patient name (in a real app, this would be stored with the appointment)
-    // For demo purposes, we'll extract the ID from the demo patients array
-    const patientId = `PT00${appointment.patient.charAt(0)}`;
+      // Get patient ID from the patient_id field
+      const patientId = appointment.patient_id;
 
-    // Add to dental history and generate follow-up if needed
-    markAppointmentCompleted(
-      appointment.id,
-      patientId,
-      appointment.patient,
-      appointment.service,
-      isDental ? (appointment as DentalAppointment).doctor || 'Unknown Doctor' : 'Unknown Doctor',
-      appointment.date || format(new Date(), 'yyyy-MM-dd')
-    );
+      // Add to dental history and generate follow-up if needed
+      await markAppointmentCompletedInHistory(
+        appointment.id || appointment.appointment_id,
+        patientId,
+        appointment.patient_name,
+        appointment.service,
+        isDental ? (appointment as DentalAppointment).doctor || 'Unknown Doctor' : 'Unknown Doctor',
+        appointment.date || format(new Date(), 'yyyy-MM-dd')
+      );
 
-    // If this is a dental appointment and it's related to a planned treatment, update the charting entry
-    if (isDental && appointment.relatedToChartingEntryId) {
-      // Create a custom event to update the charting entry status to Completed
-      const event = new CustomEvent('updateChartingEntryStatus', {
-        detail: {
-          entryId: appointment.relatedToChartingEntryId,
-          appointmentId: appointment.id,
-          status: 'Completed'
-        }
-      });
-      document.dispatchEvent(event);
+      // If this is a dental appointment and it's related to a planned treatment, update the charting entry
+      if (isDental && appointment.charting_entry_id) {
+        // Create a custom event to update the charting entry status to Completed
+        const event = new CustomEvent('updateChartingEntryStatus', {
+          detail: {
+            entryId: appointment.charting_entry_id,
+            appointmentId: appointment.id || appointment.appointment_id,
+            status: 'Completed'
+          }
+        });
+        document.dispatchEvent(event);
 
-      // Show additional toast notification
+        // Show additional toast notification
+        toast({
+          title: "Treatment Completed",
+          description: "The planned treatment has been marked as completed and will be removed from the pending treatments list."
+        });
+      }
+
+      // Prepare the appointment data for the completion dialog
+      const appointmentWithPatientId = {
+        ...appointment,
+        patientId,
+        paymentStatus: 'unpaid' as const
+      };
+
+      // Show the completion dialog instead of a toast notification
+      console.log("Setting completed appointment:", appointmentWithPatientId);
+      setCompletedAppointment(appointmentWithPatientId);
+      setIsCompletionDialogOpen(true);
+      console.log("Dialog should be open now");
+    } catch (error) {
+      console.error('Error completing appointment:', error);
       toast({
-        title: "Treatment Completed",
-        description: "The planned treatment has been marked as completed and will be removed from the pending treatments list."
+        title: "Error",
+        description: "Failed to mark appointment as completed. Please try again.",
+        variant: "destructive"
       });
     }
-
-    // Prepare the appointment data for the completion dialog
-    const appointmentWithPatientId = {
-      ...appointment,
-      patientId,
-      paymentStatus: 'unpaid' as const
-    };
-
-    // Show the completion dialog instead of a toast notification
-    console.log("Setting completed appointment:", appointmentWithPatientId);
-    setCompletedAppointment(appointmentWithPatientId);
-    setIsCompletionDialogOpen(true);
-    console.log("Dialog should be open now");
   };
 
   // Handle payment status change
-  const handlePaymentStatusChange = (appointmentId: string, status: 'paid' | 'unpaid') => {
-    if (isDental) {
-      setDentalAppointments(dentalAppointments.map(app =>
-        app.id === appointmentId ? { ...app, paymentStatus: status } : app
-      ));
-    } else {
-      setMeditouchAppointments(meditouchAppointments.map(app =>
-        app.id === appointmentId ? { ...app, paymentStatus: status } : app
-      ));
-    }
+  const handlePaymentStatusChange = async (appointmentId: string, status: 'paid' | 'unpaid') => {
+    try {
+      // Update the appointment payment status in Supabase
+      await updateAppointment(appointmentId, { paymentStatus: status });
 
-    // If the completed appointment is currently displayed, update it
-    if (completedAppointment && completedAppointment.id === appointmentId) {
-      setCompletedAppointment({
-        ...completedAppointment,
-        paymentStatus: status
+      // If the completed appointment is currently displayed, update it
+      if (completedAppointment && (completedAppointment.id === appointmentId || completedAppointment.appointment_id === appointmentId)) {
+        setCompletedAppointment({
+          ...completedAppointment,
+          paymentStatus: status
+        });
+      }
+
+      toast({
+        title: `Payment Status: ${status === 'paid' ? 'Paid' : 'Unpaid'}`,
+        description: `The appointment payment status has been updated to ${status}.`
+      });
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update payment status. Please try again.",
+        variant: "destructive"
       });
     }
   };
@@ -1080,7 +973,7 @@ const Appointments = () => {
   const handlePatientSearch = (value: string) => {
     // If value is empty or undefined, show all patients
     if (!value || value.trim() === '') {
-      setFilteredPatients(registeredPatients);
+      setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
       return;
     }
 
@@ -1088,12 +981,12 @@ const Appointments = () => {
     const searchTerm = value.toLowerCase().trim();
 
     // Filter patients whose name contains the search term
-    const filtered = registeredPatients.filter(patient =>
+    const filtered = patients.filter(patient =>
       patient.name.toLowerCase().includes(searchTerm)
     );
 
     console.log(`Found ${filtered.length} patients matching "${searchTerm}"`);
-    setFilteredPatients(filtered);
+    setFilteredPatients(filtered.map(p => ({ id: p.id, name: p.name })));
   };
 
   const handleCreateAppointment = () => {
@@ -1176,7 +1069,7 @@ const Appointments = () => {
 
     // Store the pending appointment data and open confirmation dialog
     setPendingAppointment({
-      patient: appointmentPatient,
+      patient_name: appointmentPatient,
       service: appointmentService,
       time: appointmentTime,
       date: appointmentDate,
@@ -1218,28 +1111,26 @@ const Appointments = () => {
     const newId = `${prefix}${highestId + 1}`;
 
     if (isDental) {
-      const newAppointment: DentalAppointment = {
-        id: newId,
+      const newAppointment = {
         time: pendingAppointment.time,
-        patient: pendingAppointment.patient,
+        patient_name: pendingAppointment.patient_name || pendingAppointment.patient || '',
         service: pendingAppointment.service,
         doctor: pendingAppointment.doctor || 'Dr. Khanna',
         date: formattedDate,
         status: 'confirmed',
         // If this appointment is for a planned treatment, link it to the charting entry
-        relatedToChartingEntryId: pendingChartingEntryId
+        charting_entry_id: pendingChartingEntryId
       };
-      setDentalAppointments([...dentalAppointments, newAppointment]);
+      addAppointment(newAppointment);
     } else {
-      const newAppointment: MeditouchAppointment = {
-        id: newId,
+      const newAppointment = {
         time: pendingAppointment.time,
-        patient: pendingAppointment.patient,
+        patient_name: pendingAppointment.patient_name || pendingAppointment.patient || '',
         service: pendingAppointment.service,
         date: formattedDate,
         status: 'confirmed'
       };
-      setMeditouchAppointments([...meditouchAppointments, newAppointment]);
+      addAppointment(newAppointment);
     }
 
     // Get the service duration
@@ -1248,7 +1139,7 @@ const Appointments = () => {
 
     toast({
       title: "Appointment Created",
-      description: `New appointment for ${pendingAppointment.patient} on ${format(pendingAppointment.date, 'PP')} at ${pendingAppointment.time}${
+      description: `New appointment for ${pendingAppointment.patient_name || pendingAppointment.patient} on ${format(pendingAppointment.date, 'PP')} at ${pendingAppointment.time}${
         requiredSlots > 1 ? ` (${durationMinutes} minutes)` : ''
       }`
     });
@@ -1311,38 +1202,16 @@ const Appointments = () => {
     setIsAddPatientDialogOpen(true);
   };
 
-  // Define the patient type
-  interface Patient {
-    id: string;
-    name: string;
-    gender: 'male' | 'female' | 'other';
-    age: number;
-    dateOfBirth?: string;
-    email: string | null;
-    phone: string;
-    altPhone?: string | null;
-    address?: string;
-    city?: string;
-    pincode?: string;
-    bloodGroup?: string;
-    referredBy?: string;
-    clinic: 'dental' | 'meditouch' | 'both';
-    lastVisit: string;
-  }
-
   // Handle newly added patient
-  const handlePatientAdded = (newPatient: Patient) => {
-    // Add the new patient to the list of registered patients
-    const updatedPatients = [
-      { id: newPatient.id, name: newPatient.name },
-      ...registeredPatients
-    ];
-
-    // Update the filtered patients list
-    setFilteredPatients(updatedPatients);
-
+  const handlePatientAdded = (newPatient: { id: string; name: string }) => {
     // Select the newly added patient
     setAppointmentPatient(newPatient.name);
+
+    // Update filtered patients list
+    setFilteredPatients(prev => [
+      { id: newPatient.id, name: newPatient.name },
+      ...prev
+    ]);
   };
 
   // Listen for the custom event to open the new appointment form
@@ -1355,7 +1224,7 @@ const Appointments = () => {
       setAppointmentDate(date);
 
       // Reset filtered patients list
-      setFilteredPatients(registeredPatients);
+      setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
 
       // Open the dialog
       setIsNewAppointmentOpen(true);
@@ -1368,7 +1237,7 @@ const Appointments = () => {
     return () => {
       window.removeEventListener('openNewAppointmentForm', handleOpenNewAppointmentForm);
     };
-  }, [date, resetAppointmentForm]);
+  }, [date, resetAppointmentForm, patients]);
 
   // Update URL when view changes
   useEffect(() => {
@@ -1378,11 +1247,58 @@ const Appointments = () => {
     window.history.replaceState({}, '', url.toString());
   }, [view]);
 
-  // Check for pending treatments in sessionStorage when the component mounts
+  // Check for pending treatments in Supabase when the component mounts
   useEffect(() => {
-    // Check if we have a pending treatment in sessionStorage
-    const pendingTreatmentJson = sessionStorage.getItem('pendingTreatment');
+    const checkPendingTreatments = async () => {
+      try {
+        // Get the current user
+        const { user } = JSON.parse(localStorage.getItem('mudraUser') || '{}');
 
+        if (user?.id) {
+          // Check for pending treatments in Supabase
+          const { data: pendingTreatments } = await supabase
+            .from('pending_treatments')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('status', 'pending')
+            .limit(1);
+
+          if (pendingTreatments && pendingTreatments.length > 0) {
+            const pendingTreatment = pendingTreatments[0];
+
+            // Set the view to daily
+            setView('daily');
+
+            // Create a custom event with the pending treatment data
+            const event = new CustomEvent('openNewAppointmentFormWithData', {
+              detail: {
+                patientName: pendingTreatment.patient_name,
+                patientId: pendingTreatment.patient_id,
+                serviceName: pendingTreatment.service_name,
+                doctorName: pendingTreatment.doctor_name,
+                chartingEntryId: pendingTreatment.charting_entry_id,
+                teeth: pendingTreatment.teeth,
+                notes: pendingTreatment.notes
+              }
+            });
+
+            // Dispatch the event to open the appointment form
+            document.dispatchEvent(event);
+
+            // Mark the pending treatment as processed
+            await supabase
+              .from('pending_treatments')
+              .update({ status: 'processed' })
+              .eq('id', pendingTreatment.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking pending treatments:', error);
+      }
+    };
+
+    // Also check sessionStorage for backward compatibility
+    const pendingTreatmentJson = sessionStorage.getItem('pendingTreatment');
     if (pendingTreatmentJson) {
       try {
         // Parse the pending treatment data
@@ -1404,6 +1320,9 @@ const Appointments = () => {
       } catch (error) {
         console.error('Error parsing pending treatment data:', error);
       }
+    } else {
+      // If no pending treatment in sessionStorage, check Supabase
+      checkPendingTreatments();
     }
   }, []);
 
@@ -1451,7 +1370,7 @@ const Appointments = () => {
       }
 
       // Reset filtered patients list
-      setFilteredPatients(registeredPatients);
+      setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
 
       // Show appropriate toast notification
       if (chartingEntryId) {
@@ -1477,7 +1396,7 @@ const Appointments = () => {
     return () => {
       window.removeEventListener('openNewAppointmentFormWithData', handleOpenNewAppointmentFormWithData);
     };
-  }, [resetAppointmentForm]);
+  }, [resetAppointmentForm, patients]);
 
   // Helper function to reset expanded states
   const resetExpandedStates = () => {
@@ -1697,7 +1616,7 @@ const Appointments = () => {
                                               const slotsOccupied = getSlotsOccupied(appointment.service);
                                               // Only show appointments that start in this slot or are extended from previous slots
                                               return (
-                                                <div key={appointment.id} className="flex-1 min-w-0">
+                                                <div key={appointment.id || appointment.appointment_id} className="flex-1 min-w-0">
                                                   <TimeSlotAppointment
                                                     appointment={appointment}
                                                     isDental={isDental}
@@ -1869,7 +1788,7 @@ const Appointments = () => {
                               {/* Show all appointments if expanded, otherwise show limited number */}
                               {(isExpanded ? dayAppointments : dayAppointments.slice(0, initialAppointmentsToShow)).map(appointment => (
                                 <CalendarAppointmentItem
-                                  key={appointment.id}
+                                  key={appointment.id || appointment.appointment_id}
                                   appointment={appointment}
                                   isDental={isDental}
                                   isCompact={dayAppointments.length > 1} // Use compact view if multiple appointments
@@ -2050,7 +1969,7 @@ const Appointments = () => {
                                 dayAppointments.slice(0, 3)
                               ).map(appointment => (
                                 <CalendarAppointmentItem
-                                  key={appointment.id}
+                                  key={appointment.id || appointment.appointment_id}
                                   appointment={appointment}
                                   isDental={isDental}
                                   isCompact={dayAppointments.length > 1} // Use compact view if multiple appointments
@@ -2130,7 +2049,7 @@ const Appointments = () => {
           if (!open) {
             // Reset when dialog closes
             resetAppointmentForm();
-            setFilteredPatients(registeredPatients);
+            setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
           }
         }}
       >
@@ -2630,7 +2549,7 @@ const Appointments = () => {
           <div className="py-4">
             {editingAppointment && (
               <p className="text-sm text-muted-foreground">
-                You are about to update the appointment for <span className="font-semibold">{editingAppointment.patient}</span> on {format(appointmentDate || new Date(), 'PP')} at {appointmentTime}.
+                You are about to update the appointment for <span className="font-semibold">{editingAppointment.patient_name}</span> on {format(appointmentDate || new Date(), 'PP')} at {appointmentTime}.
               </p>
             )}
           </div>
@@ -2660,7 +2579,7 @@ const Appointments = () => {
           <div className="py-4">
             {editingAppointment && (
               <p className="text-sm text-muted-foreground">
-                You are about to cancel the appointment for <span className="font-semibold">{editingAppointment.patient}</span> on {format(new Date(editingAppointment.date), 'PP')} at {editingAppointment.time}.
+                You are about to cancel the appointment for <span className="font-semibold">{editingAppointment.patient_name}</span> on {format(new Date(editingAppointment.date), 'PP')} at {editingAppointment.time}.
               </p>
             )}
           </div>
@@ -2691,7 +2610,7 @@ const Appointments = () => {
             {pendingAppointment && (
               <div className="space-y-2">
                 <p className="text-sm">
-                  <span className="font-semibold">Patient:</span> {pendingAppointment.patient}
+                  <span className="font-semibold">Patient:</span> {pendingAppointment.patient_name || pendingAppointment.patient}
                 </p>
                 <p className="text-sm">
                   <span className="font-semibold">Service:</span> {pendingAppointment.service}

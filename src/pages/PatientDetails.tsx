@@ -3,6 +3,9 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import { DentalHistoryEntry } from '@/types/dental-history';
+import { usePatients, Patient } from '@/contexts/PatientContext';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Card,
   CardContent,
@@ -31,13 +34,14 @@ import PatientUpcomingAppointments from '@/components/PatientUpcomingAppointment
 import VitalSignsComponent from '@/components/VitalSignsComponent';
 import PrescriptionComponent from '@/components/PrescriptionComponent';
 
-// Import the Patient interface and demo data
-interface Patient {
+// Import Patient type from PatientContext but create a local interface for UI compatibility
+// This helps us bridge between the Supabase field names and the UI component's expected field names
+interface LocalPatient {
   id: string;
   name: string;
   gender: 'male' | 'female' | 'other';
   age: number;
-  dateOfBirth?: string; // Added DOB field
+  dateOfBirth?: string;
   email: string | null;
   phone: string;
   altPhone?: string | null;
@@ -48,187 +52,7 @@ interface Patient {
   referredBy?: string;
   clinic: 'dental' | 'meditouch' | 'both';
   lastVisit: string | '';
-  // Vital signs will be stored separately but referenced by patientId
 }
-
-const demoPatients: Patient[] = [
-  {
-    id: "PT001",
-    name: "Aarav Sharma",
-    gender: "male",
-    age: 34,
-    dateOfBirth: "1989-05-15", // Added DOB
-    email: "aarav.sharma@example.com",
-    phone: "9876543210",
-    altPhone: "9876543211",
-    address: "123 Modi Street",
-    city: "Mumbai",
-    pincode: "400001",
-    bloodGroup: "O+",
-    referredBy: "Dr. Khanna",
-    clinic: "both",
-    lastVisit: "2023-10-15"
-  },
-  {
-    id: "PT002",
-    name: "Priya Patel",
-    gender: "female",
-    age: 28,
-    email: "priya.patel@example.com",
-    phone: "8765432109",
-    altPhone: null,
-    address: "456 Gandhi Road",
-    city: "Delhi",
-    pincode: "110001",
-    bloodGroup: "A+",
-    referredBy: "Dr. Sharma",
-    clinic: "meditouch",
-    lastVisit: "2023-10-12"
-  },
-  {
-    id: "PT003",
-    name: "Vikram Singh",
-    gender: "male",
-    age: 45,
-    dateOfBirth: "1978-09-23", // Added DOB
-    email: null,
-    phone: "7654321098",
-    altPhone: "7654321099",
-    address: "789 Nehru Avenue",
-    city: "Chennai",
-    pincode: "600001",
-    bloodGroup: "B-",
-    referredBy: "Patient Referral",
-    clinic: "dental",
-    lastVisit: "2023-10-08"
-  },
-  {
-    id: "PT004",
-    name: "Neha Kapoor",
-    gender: "female",
-    age: 31,
-    email: "neha.kapoor@example.com",
-    phone: "6543210987",
-    address: "234 Tagore Lane",
-    city: "Bangalore",
-    pincode: "560001",
-    bloodGroup: "AB+",
-    referredBy: "Website",
-    clinic: "dental",
-    lastVisit: "2023-09-30"
-  },
-  {
-    id: "PT005",
-    name: "Rajiv Malhotra",
-    gender: "male",
-    age: 52,
-    email: "rajiv.malhotra@example.com",
-    phone: "5432109876",
-    altPhone: "5432109877",
-    address: "567 Bose Street",
-    city: "Hyderabad",
-    pincode: "500001",
-    bloodGroup: "A-",
-    referredBy: "Dr. Patel",
-    clinic: "both",
-    lastVisit: "2023-10-02"
-  },
-  {
-    id: "PT006",
-    name: "Ananya Reddy",
-    gender: "female",
-    age: 25,
-    email: "ananya.reddy@example.com",
-    phone: "4321098765",
-    address: "890 Raman Road",
-    city: "Pune",
-    pincode: "411001",
-    bloodGroup: "O-",
-    referredBy: "Family Member",
-    clinic: "meditouch",
-    lastVisit: "2023-10-10"
-  },
-  {
-    id: "PT007",
-    name: "Arjun Nair",
-    gender: "male",
-    age: 38,
-    email: null,
-    phone: "3210987654",
-    altPhone: "3210987655",
-    address: "123 Krishnan Street",
-    city: "Kochi",
-    pincode: "682001",
-    bloodGroup: "B+",
-    referredBy: "Social Media",
-    clinic: "dental",
-    lastVisit: "2023-09-25"
-  },
-  {
-    id: "PT008",
-    name: "Divya Menon",
-    gender: "female",
-    age: 29,
-    email: "divya.menon@example.com",
-    phone: "2109876543",
-    address: "456 Patel Road",
-    city: "Ahmedabad",
-    pincode: "380001",
-    bloodGroup: "AB-",
-    referredBy: "Dr. Sharma",
-    clinic: "both",
-    lastVisit: "2023-10-05"
-  },
-  // Additional patients referenced in the Dashboard
-  {
-    id: "123",
-    name: "Aisha Khan",
-    gender: "female",
-    age: 27,
-    email: "aisha.khan@example.com",
-    phone: "9876543212",
-    address: "789 Jinnah Road",
-    city: "Mumbai",
-    pincode: "400002",
-    bloodGroup: "O+",
-    referredBy: "Online Advertisement",
-    clinic: "meditouch",
-    lastVisit: "2023-10-14"
-  },
-  {
-    id: "124",
-    name: "Rajiv Malhotra",
-    gender: "male",
-    age: 42,
-    email: "rajiv.malhotra2@example.com",
-    phone: "9876543213",
-    address: "101 Gandhi Street, Delhi",
-    clinic: "meditouch",
-    lastVisit: "2023-10-13"
-  },
-  {
-    id: "125",
-    name: "Priya Sharma",
-    gender: "female",
-    age: 31,
-    email: "priya.sharma@example.com",
-    phone: "9876543214",
-    address: "202 Nehru Avenue, Bangalore",
-    clinic: "meditouch",
-    lastVisit: "2023-10-12"
-  },
-  {
-    id: "126",
-    name: "Karan Kapoor",
-    gender: "male",
-    age: 35,
-    email: "karan.kapoor@example.com",
-    phone: "9876543215",
-    address: "303 Tagore Lane, Chennai",
-    clinic: "meditouch",
-    lastVisit: "2023-10-12"
-  }
-];
 
 // Helper function to get clinic badge
 const getClinicBadge = (clinic: Patient['clinic'], activeClinic: 'dental' | 'meditouch') => {
@@ -276,7 +100,7 @@ const PatientDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { activeClinic } = useClinic();
-  const [patient, setPatient] = useState<Patient | null>(null);
+  const [patient, setPatient] = useState<LocalPatient | null>(null);
 
   // Get the tab parameter from the URL query string
   const searchParams = new URLSearchParams(location.search);
@@ -285,24 +109,58 @@ const PatientDetails = () => {
   // State to track the active tab
   const [activeTab, setActiveTab] = useState<string>("overview");
 
+  const { getPatientById, isLoading } = usePatients();
+  const { toast } = useToast();
+
   // Find the patient data when the component mounts
   useEffect(() => {
-    if (patientId) {
-      // Add a small delay to simulate loading from a database
-      const timer = setTimeout(() => {
-        const foundPatient = demoPatients.find(p => p.id === patientId);
-        if (foundPatient) {
-          setPatient(foundPatient);
-        } else {
-          // If patient not found, navigate back to patients list
-          console.error(`Patient with ID ${patientId} not found`);
+    const fetchPatient = async () => {
+      if (patientId) {
+        try {
+          const foundPatient = await getPatientById(patientId);
+          if (foundPatient) {
+            // Convert Supabase field names to component's expected format
+            const formattedPatient: LocalPatient = {
+              id: foundPatient.id,
+              name: foundPatient.name,
+              gender: foundPatient.gender,
+              age: foundPatient.age,
+              dateOfBirth: foundPatient.date_of_birth,
+              email: foundPatient.email,
+              phone: foundPatient.phone,
+              altPhone: foundPatient.alt_phone,
+              address: foundPatient.address,
+              city: foundPatient.city,
+              pincode: foundPatient.pincode,
+              bloodGroup: foundPatient.blood_group,
+              referredBy: foundPatient.referred_by,
+              clinic: foundPatient.clinic,
+              lastVisit: foundPatient.last_visit || ''
+            };
+            setPatient(formattedPatient);
+          } else {
+            // If patient not found, navigate back to patients list
+            toast({
+              title: "Patient Not Found",
+              description: `Patient with ID ${patientId} could not be found.`,
+              variant: "destructive"
+            });
+            navigate('/patients');
+          }
+        } catch (error) {
+          console.error(`Error fetching patient with ID ${patientId}:`, error);
+          toast({
+            title: "Error",
+            description: "Failed to load patient details. Please try again.",
+            variant: "destructive"
+          });
           navigate('/patients');
         }
-      }, 100);
+      }
+    };
 
-      return () => clearTimeout(timer);
-    }
-  }, [patientId, navigate]);
+    fetchPatient();
+  }, [patientId, navigate, getPatientById, toast]);
 
   // Set the active tab based on the URL parameter when the component mounts or URL changes
   useEffect(() => {
@@ -318,11 +176,37 @@ const PatientDetails = () => {
     navigate('/patients');
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div>
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-4 w-32 mt-2" />
+            </div>
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <Skeleton className="h-12 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array(9).fill(0).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-6 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (!patient) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-dental-primary mb-4"></div>
-        <p className="text-lg text-muted-foreground">Loading patient details...</p>
+        <p className="text-lg text-muted-foreground">Patient not found</p>
       </div>
     );
   }
@@ -498,9 +382,33 @@ const PatientDetails = () => {
 // Wrapper for PatientDentalHistory to avoid importing it directly from Patients.tsx
 const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
   const { getPatientHistory, updatePaymentStatus } = useDentalHistory();
-  const patientHistory = getPatientHistory(patientId);
+  const [patientHistory, setPatientHistory] = useState<DentalHistoryEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isPaymentConfirmOpen, setIsPaymentConfirmOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<DentalHistoryEntry | null>(null);
+  const { toast } = useToast();
+
+  // Fetch patient history
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        setIsLoading(true);
+        const history = await getPatientHistory(patientId);
+        setPatientHistory(history);
+      } catch (error) {
+        console.error('Error fetching dental history:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load dental history. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, [patientId, getPatientHistory, toast]);
 
   const handlePaymentStatusClick = (entry: DentalHistoryEntry) => {
     setSelectedEntry(entry);
@@ -510,8 +418,8 @@ const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
   const confirmPaymentStatusChange = () => {
     if (selectedEntry) {
       // Toggle the payment status
-      const newStatus = selectedEntry.paymentStatus === 'paid' ? 'unpaid' : 'paid';
-      updatePaymentStatus(patientId, selectedEntry.appointmentId, newStatus);
+      const newStatus = selectedEntry.payment_status === 'paid' ? 'unpaid' : 'paid';
+      updatePaymentStatus(patientId, selectedEntry.appointment_id, newStatus);
       setIsPaymentConfirmOpen(false);
       setSelectedEntry(null);
     }
@@ -524,7 +432,14 @@ const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
           <CardTitle>Dental History</CardTitle>
         </CardHeader>
         <CardContent>
-          {patientHistory.length > 0 ? (
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : patientHistory.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
@@ -539,17 +454,17 @@ const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
                   {patientHistory
                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Sort by date, newest first
                     .map((entry) => (
-                      <tr key={entry.appointmentId} className="border-b">
+                      <tr key={entry.appointment_id} className="border-b">
                         <td className="py-2 px-4">{new Date(entry.date).toLocaleDateString()}</td>
                         <td className="py-2 px-4">{entry.service}</td>
                         <td className="py-2 px-4">{entry.doctor}</td>
                         <td className="py-2 px-4">
                           <Badge
-                            variant={entry.paymentStatus === 'paid' ? 'default' : 'outline'}
-                            className={`cursor-pointer hover:opacity-80 ${entry.paymentStatus === 'paid' ? 'bg-green-500' : ''}`}
+                            variant={entry.payment_status === 'paid' ? 'default' : 'outline'}
+                            className={`cursor-pointer hover:opacity-80 ${entry.payment_status === 'paid' ? 'bg-green-500' : ''}`}
                             onClick={() => handlePaymentStatusClick(entry)}
                           >
-                            {entry.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
+                            {entry.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
                           </Badge>
                         </td>
                       </tr>
@@ -589,7 +504,7 @@ const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
                 <p className="text-sm text-muted-foreground">
                   You are about to mark this service as
                   <span className="font-semibold">
-                    {selectedEntry.paymentStatus === 'paid' ? ' Unpaid' : ' Paid'}
+                    {selectedEntry.payment_status === 'paid' ? ' Unpaid' : ' Paid'}
                   </span>.
                 </p>
               </div>
@@ -601,11 +516,11 @@ const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
             </Button>
             <Button
               onClick={confirmPaymentStatusChange}
-              className={selectedEntry?.paymentStatus === 'paid'
+              className={selectedEntry?.payment_status === 'paid'
                 ? 'bg-destructive hover:bg-destructive/90'
                 : 'bg-green-600 hover:bg-green-700'}
             >
-              {selectedEntry?.paymentStatus === 'paid'
+              {selectedEntry?.payment_status === 'paid'
                 ? 'Mark as Unpaid'
                 : 'Mark as Paid'}
             </Button>

@@ -2,8 +2,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClinic } from '@/contexts/ClinicContext';
+import { usePatients } from '@/contexts/PatientContext';
+import { useAppointments } from '@/contexts/AppointmentContext';
+import { useDoctors } from '@/contexts/DoctorContext';
 import { format } from 'date-fns';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,70 +15,96 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Calendar as CalendarIcon, Search, UserPlus, Plus } from 'lucide-react';
+import { ArrowLeft, Calendar as CalendarIcon, Search, UserPlus, Plus, Loader2 } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import AddPatientDialog from '@/components/AddPatientDialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Sample registered patients (same as in Appointments.tsx)
-const registeredPatients = [
-  { id: 'p1', name: 'Aarav Sharma' },
-  { id: 'p2', name: 'Priya Patel' },
-  { id: 'p3', name: 'Arjun Singh' },
-  { id: 'p4', name: 'Neha Singh' },
-  { id: 'p5', name: 'Rohan Gupta' },
-  { id: 'p6', name: 'Ishaan Desai' },
-  { id: 'p7', name: 'Sanjay Patel' },
-  { id: 'p8', name: 'Meera Joshi' },
-  { id: 'p9', name: 'Ravi Kumar' },
-  { id: 'p10', name: 'Vikram Mehta' },
-  { id: 'p11', name: 'Neha Kapoor' },
-  { id: 'p12', name: 'Aisha Khan' }
-];
-
-// Sample booked appointments for the current date
-const bookedTimeSlots = {
-  dental: {
-    '09:00': 2, // Fully booked (2 patients)
-    '09:15': 1, // 1 slot available
-    '10:30': 2, // Fully booked
-    '14:00': 1  // 1 slot available
-  },
-  meditouch: {
-    '09:15': 1, // Fully booked (1 patient for meditouch)
-    '10:00': 1, // Fully booked
-    '12:45': 1, // Fully booked
-    '15:30': 1  // Fully booked
-  }
-};
+// We'll use the PatientContext and AppointmentContext instead of demo data
 
 const NewAppointment = () => {
   const { activeClinic, isDental, clinicCapacity } = useClinic();
+  const { patients, isLoading: patientsLoading } = usePatients();
+  const { appointments, isLoading: appointmentsLoading, addAppointment } = useAppointments();
+  const { doctors: doctorsList, isLoading: doctorsLoading } = useDoctors();
   const navigate = useNavigate();
+  const { toast } = useToast();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
   const [time, setTime] = useState<string>('');
   const [patient, setPatient] = useState<string>('');
+  const [patientId, setPatientId] = useState<string>('');
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   const [service, setService] = useState<string>('');
   const [doctor, setDoctor] = useState<string>('');
+  const [doctorId, setDoctorId] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const [filteredPatients, setFilteredPatients] = useState(registeredPatients);
+  const [filteredPatients, setFilteredPatients] = useState<{id: string, name: string}[]>([]);
   const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
+  const [bookedSlots, setBookedSlots] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
   const clinicName = isDental ? 'Dental Metrix' : 'Meditouch';
+
+  // Get services from the appropriate clinic
   const services = isDental
     ? ['Dental Checkup', 'Teeth Cleaning', 'Root Canal', 'Crown Fitting', 'Dental Filling', 'Denture Adjustment']
     : ['Skin Consultation', 'Hair Treatment', 'Facial', 'Massage Therapy', 'Cosmetic Procedure'];
 
-  const doctors = isDental
-    ? ['Dr. Khanna', 'Dr. Sharma', 'Dr. Patel']
+  // Filter doctors based on clinic type
+  const availableDoctors = isDental
+    ? doctorsList.filter(d => d.clinic === 'dental' || d.clinic === 'both')
     : [];
+
+  // Effect to initialize patients list
+  useEffect(() => {
+    if (!patientsLoading) {
+      // Filter patients based on clinic
+      const clinicPatients = patients.filter(p =>
+        p.clinic === activeClinic || p.clinic === 'both'
+      );
+
+      // Map to the format needed for the dropdown
+      setFilteredPatients(clinicPatients.map(p => ({
+        id: p.id,
+        name: p.name
+      })));
+    }
+  }, [patients, patientsLoading, activeClinic]);
+
+  // Effect to calculate booked slots
+  useEffect(() => {
+    if (!appointmentsLoading && date) {
+      const formattedDate = format(date, 'yyyy-MM-dd');
+
+      // Get appointments for the selected date
+      const dateAppointments = appointments.filter(app =>
+        app.date === formattedDate &&
+        app.status !== 'cancelled' &&
+        app.status !== 'completed'
+      );
+
+      // Count booked slots
+      const slots: Record<string, number> = {};
+
+      dateAppointments.forEach(app => {
+        if (!slots[app.time]) {
+          slots[app.time] = 1;
+        } else {
+          slots[app.time]++;
+        }
+      });
+
+      setBookedSlots(slots);
+      setIsLoading(false);
+    }
+  }, [appointments, appointmentsLoading, date]);
 
   // Generate available time slots in 15-minute intervals
   const generateTimeSlots = () => {
     const slots = [];
-    const clinicType = isDental ? 'dental' : 'meditouch';
     const maxPatientsPerSlot = clinicCapacity;
 
     // Start from 9 AM
@@ -89,9 +118,13 @@ const NewAppointment = () => {
         const timeString = `${formattedHour}:${formattedMinute}`;
 
         // Check if slot is available based on booking status
-        const bookedCount = bookedTimeSlots[clinicType]?.[timeString] || 0;
+        const bookedCount = bookedSlots[timeString] || 0;
         if (bookedCount < maxPatientsPerSlot) {
-          slots.push(timeString);
+          // Convert to AM/PM format for display
+          const hour12 = hour % 12 || 12;
+          const ampm = hour < 12 ? 'AM' : 'PM';
+          const displayTime = `${hour12}:${formattedMinute} ${ampm}`;
+          slots.push(displayTime);
         }
       }
     }
@@ -101,17 +134,24 @@ const NewAppointment = () => {
 
   const handlePatientSearch = (value: string) => {
     if (!value) {
-      setFilteredPatients(registeredPatients);
+      // Reset to all patients for this clinic
+      const clinicPatients = patients.filter(p =>
+        p.clinic === activeClinic || p.clinic === 'both'
+      );
+      setFilteredPatients(clinicPatients.map(p => ({ id: p.id, name: p.name })));
       return;
     }
 
-    const filtered = registeredPatients.filter(patient =>
-      patient.name.toLowerCase().includes(value.toLowerCase())
+    // Filter patients by name
+    const filtered = patients.filter(p =>
+      (p.clinic === activeClinic || p.clinic === 'both') &&
+      p.name.toLowerCase().includes(value.toLowerCase())
     );
-    setFilteredPatients(filtered);
+
+    setFilteredPatients(filtered.map(p => ({ id: p.id, name: p.name })));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!patient || !service || !time) {
@@ -125,15 +165,64 @@ const NewAppointment = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Find the patient ID
+      const selectedPatient = filteredPatients.find(p => p.name === patient);
+      if (!selectedPatient) {
+        throw new Error("Selected patient not found");
+      }
+
+      // Find the doctor ID if a doctor is selected
+      let doctorInfo = null;
+      if (doctor && isDental) {
+        doctorInfo = doctorsList.find(d => d.name === doctor);
+      }
+
+      // Format date for Supabase
+      const formattedDate = format(date, 'yyyy-MM-dd');
+
+      // Create appointment object
+      const appointmentData = isDental
+        ? {
+            patient_id: selectedPatient.id,
+            patient_name: patient,
+            service,
+            doctor: doctor || '',
+            doctor_id: doctorInfo?.id || '',
+            time,
+            date: formattedDate,
+            status: 'confirmed' as const,
+            notes: notes || ''
+          }
+        : {
+            patient_id: selectedPatient.id,
+            patient_name: patient,
+            service,
+            time,
+            date: formattedDate,
+            status: 'confirmed' as const,
+            notes: notes || ''
+          };
+
+      // Add appointment to Supabase
+      await addAppointment(appointmentData);
+
       toast({
         title: "Appointment scheduled",
         description: `${patient}'s appointment has been scheduled for ${format(date, 'PPP')} at ${time}`,
       });
+
       navigate('/appointments');
-    }, 1000);
+    } catch (error) {
+      console.error('Error scheduling appointment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to schedule appointment. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const goToPatientRegistration = () => {
@@ -141,38 +230,17 @@ const NewAppointment = () => {
     setIsAddPatientDialogOpen(true);
   };
 
-  // Define the patient type
-  interface Patient {
-    id: string;
-    name: string;
-    gender: 'male' | 'female' | 'other';
-    age: number;
-    dateOfBirth?: string;
-    email: string | null;
-    phone: string;
-    altPhone?: string | null;
-    address?: string;
-    city?: string;
-    pincode?: string;
-    bloodGroup?: string;
-    referredBy?: string;
-    clinic: 'dental' | 'meditouch' | 'both';
-    lastVisit: string;
-  }
-
   // Handle newly added patient
-  const handlePatientAdded = (newPatient: Patient) => {
-    // Add the new patient to the list of registered patients
-    const updatedPatients = [
+  const handlePatientAdded = (newPatient: { id: string; name: string }) => {
+    // Add the new patient to the filtered patients list
+    setFilteredPatients(prev => [
       { id: newPatient.id, name: newPatient.name },
-      ...registeredPatients
-    ];
-
-    // Update the filtered patients list
-    setFilteredPatients(updatedPatients);
+      ...prev
+    ]);
 
     // Select the newly added patient
     setPatient(newPatient.name);
+    setPatientId(newPatient.id);
   };
 
   return (
@@ -325,8 +393,8 @@ const NewAppointment = () => {
                     <SelectValue placeholder="Select doctor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {doctors.map(d => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    {availableDoctors.map(d => (
+                      <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

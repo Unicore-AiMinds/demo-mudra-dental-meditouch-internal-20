@@ -48,6 +48,7 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
   const [tentativeFollowUps, setTentativeFollowUps] = useState<TentativeFollowUp[]>([]);
   const [servicesWithFollowUp, setServicesWithFollowUp] = useState<ServiceWithFollowUp[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [databaseError, setDatabaseError] = useState<boolean>(false);
   const { supabase } = useSupabase();
   const { toast } = useToast();
 
@@ -57,7 +58,11 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
       try {
         setIsLoading(true);
 
+        // We'll skip checking if the table exists and just try to use it
+        // If it doesn't exist, we'll handle the error gracefully
+
         // Fetch dental history entries
+        console.log('Fetching dental history entries...');
         const historyEntries = await supabase.from<DentalHistoryEntry>('dental_history').getAll();
 
         // Fetch follow-ups
@@ -68,8 +73,31 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
 
         // If no dental history entries exist, create default ones
         if (historyEntries.length === 0) {
+          // First check if the referenced appointments exist
+          const appointmentIds = defaultDentalHistoryEntries.map(entry => entry.appointment_id);
+          const existingAppointments = await supabase.from('appointments').getAll({
+            filters: { appointment_code: { $in: appointmentIds } }
+          });
+
+          console.log('Checking for existing appointments before creating dental history:', existingAppointments);
+
+          // Only insert entries where the appointment exists
           for (const entry of defaultDentalHistoryEntries) {
-            await supabase.from<DentalHistoryEntry>('dental_history').insert(entry);
+            try {
+              // Check if this appointment exists
+              const appointmentExists = existingAppointments.some(
+                app => app.appointment_code === entry.appointment_id
+              );
+
+              if (appointmentExists) {
+                await supabase.from<DentalHistoryEntry>('dental_history').insert(entry);
+                console.log(`Successfully inserted dental history for appointment ${entry.appointment_id}`);
+              } else {
+                console.warn(`Skipping dental history entry for appointment ${entry.appointment_id} - appointment does not exist`);
+              }
+            } catch (insertError) {
+              console.error(`Error inserting dental history entry for appointment ${entry.appointment_id}:`, insertError);
+            }
           }
 
           // Fetch the newly created entries
@@ -125,10 +153,16 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
         }
       } catch (error) {
         console.error('Error initializing dental history data:', error);
+
+        // Set empty data instead of showing an error
+        setDentalHistory({});
+        setTentativeFollowUps([]);
+        setServicesWithFollowUp([]);
+
+        // Only show a toast, don't set database error
         toast({
-          title: 'Error',
-          description: 'Failed to load dental history data. Please try again.',
-          variant: 'destructive',
+          title: 'Notice',
+          description: 'No dental history data available yet. You can add new entries as needed.',
         });
       } finally {
         setIsLoading(false);
@@ -141,21 +175,32 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
   // Get dental history for a specific patient
   const getPatientHistory = async (patientId: string): Promise<DentalHistoryEntry[]> => {
     try {
+      if (!patientId) {
+        console.warn('Empty patient ID provided to getPatientHistory');
+        return [];
+      }
+
+      console.log(`Fetching dental history for patient ID: ${patientId}`);
+
       // Fetch directly from Supabase for the most up-to-date data
       const entries = await supabase.from<DentalHistoryEntry>('dental_history').getAll({
         filters: { patient_id: patientId },
         order: { column: 'date', ascending: false }
       });
 
+      console.log(`Retrieved ${entries.length} dental history entries for patient ${patientId}`);
       return entries;
     } catch (error) {
       console.error('Error fetching patient history:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch patient history. Please try again.',
-        variant: 'destructive',
-      });
-      return dentalHistory[patientId] || [];
+
+      // Just log the error and return an empty array without showing a toast
+      // This makes the application more resilient to database issues
+      if (error instanceof Error) {
+        console.error('Detailed error:', error.message);
+      }
+
+      // Return empty array
+      return [];
     }
   };
 
@@ -308,32 +353,37 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
   // Get patient name from patient ID
   const getPatientName = async (patientId: string): Promise<string | undefined> => {
     try {
-      // Fetch patient from Supabase
-      const patients = await supabase.from('patients').getAll({
-        filters: { id: patientId }
-      });
-
-      if (patients.length > 0) {
-        return patients[0].name;
+      if (!patientId) {
+        console.warn('Empty patient ID provided to getPatientName');
+        return 'Unknown Patient';
       }
 
-      // Fallback to demo data if patient not found
-      const demoPatientNames: Record<string, string> = {
-        'PT001': 'Aarav Sharma',
-        'PT002': 'Priya Patel',
-        'PT003': 'Vikram Singh',
-        'PT004': 'Neha Kapoor',
-        'PT005': 'Rajiv Malhotra',
-        'PT006': 'Ananya Reddy',
-        'PT007': 'Arjun Nair',
-        'PT008': 'Divya Menon',
-        'PT009': 'Riya Sharma',
-      };
+      // First try to find by patient_id field
+      let patients = await supabase.from('patients').getAll({
+        filters: { patient_id: patientId }
+      });
 
-      return demoPatientNames[patientId];
+      // If not found, try by id field
+      if (patients.length === 0) {
+        patients = await supabase.from('patients').getAll({
+          filters: { id: patientId }
+        });
+      }
+
+      if (patients.length > 0 && typeof patients[0] === 'object' && patients[0] !== null) {
+        // Type assertion to handle the unknown type
+        const patient = patients[0] as { name?: string };
+        if (patient.name) {
+          return patient.name;
+        }
+      }
+
+      // If patient not found in database, return a generic name
+      console.warn(`Patient with ID ${patientId} not found in database`);
+      return 'Unknown Patient';
     } catch (error) {
       console.error('Error fetching patient name:', error);
-      return undefined;
+      return 'Unknown Patient';
     }
   };
 
@@ -580,6 +630,24 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
       followUp.status === 'Snoozed'
     );
   };
+
+  // No database initialization handler needed
+
+  // If there's a database error, just show a simple error message
+  if (databaseError) {
+    return (
+      <div className="p-4 max-w-md mx-auto mt-8 bg-white rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">No Data Available</h2>
+        <p className="mb-4 text-gray-600">The dental history data is not available at the moment. This could be because the database is still being set up.</p>
+        <button
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 w-full"
+          onClick={() => window.location.reload()}
+        >
+          Refresh Page
+        </button>
+      </div>
+    );
+  }
 
   return (
     <DentalHistoryContext.Provider

@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { permanentTeethList, primaryTeethList } from '@/types/dental-charting';
 
 interface ToothIndicatorProps {
-  toothNumbers: string[];
+  toothNumbers: string[] | string[]; // Accept both field names
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }

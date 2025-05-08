@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format, isAfter, parseISO } from 'date-fns';
 import {
   Card,
@@ -12,88 +12,10 @@ import { Calendar, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useAppointments, Appointment, DentalAppointment } from '@/contexts/AppointmentContext';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Define the appointment types
-type DentalAppointment = {
-  id: string;
-  time: string;
-  patient: string;
-  service: string;
-  doctor: string;
-  date?: string;
-  status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
-  secondPatient?: string;
-};
-
-type MeditouchAppointment = {
-  id: string;
-  time: string;
-  patient: string;
-  service: string;
-  date?: string;
-  status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
-};
-
-type AppointmentType = DentalAppointment | MeditouchAppointment;
-
-// Demo data for appointments
-const dentalAppointments: DentalAppointment[] = [
-  {
-    id: 'd1',
-    time: '9:00 AM',
-    patient: 'Aarav Sharma',
-    service: 'Dental Checkup',
-    doctor: 'Dr. Khanna',
-    date: format(new Date(new Date().setDate(new Date().getDate() + 5)), 'yyyy-MM-dd'),
-    status: 'confirmed'
-  },
-  {
-    id: 'd2',
-    time: '10:30 AM',
-    patient: 'Aarav Sharma',
-    service: 'Root Canal',
-    doctor: 'Dr. Desai',
-    date: format(new Date(new Date().setDate(new Date().getDate() + 12)), 'yyyy-MM-dd'),
-    status: 'confirmed'
-  },
-  {
-    id: 'd3',
-    time: '2:00 PM',
-    patient: 'Priya Patel',
-    service: 'Teeth Cleaning',
-    doctor: 'Dr. Khanna',
-    date: format(new Date(new Date().setDate(new Date().getDate() + 3)), 'yyyy-MM-dd'),
-    status: 'confirmed'
-  },
-  {
-    id: 'd4',
-    time: '11:45 AM',
-    patient: 'Vikram Singh',
-    service: 'Crown Fitting',
-    doctor: 'Dr. Sharma',
-    date: format(new Date(new Date().setDate(new Date().getDate() + 7)), 'yyyy-MM-dd'),
-    status: 'confirmed'
-  }
-];
-
-const meditouchAppointments: MeditouchAppointment[] = [
-  {
-    id: 'm1',
-    time: '9:15 AM',
-    patient: 'Aarav Sharma',
-    service: 'Skin Consultation',
-    date: format(new Date(new Date().setDate(new Date().getDate() + 2)), 'yyyy-MM-dd'),
-    status: 'confirmed'
-  },
-  {
-    id: 'm2',
-    time: '10:00 AM',
-    patient: 'Priya Patel',
-    service: 'Hair Treatment',
-    date: format(new Date(new Date().setDate(new Date().getDate() + 4)), 'yyyy-MM-dd'),
-    status: 'confirmed'
-  }
-];
+// Using Appointment types from AppointmentContext
 
 interface PatientUpcomingAppointmentsProps {
   patientId: string;
@@ -116,54 +38,62 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
 }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { getPatientAppointments, isLoading } = useAppointments();
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
 
-  // Get upcoming appointments for this patient
-  const upcomingAppointments = useMemo(() => {
-    const today = new Date();
+  // Fetch appointments for this patient
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        setIsLoadingAppointments(true);
 
-    // Filter dental appointments if patient is registered for dental clinic
-    const dentalApps = (clinic === 'dental' || clinic === 'both')
-      ? dentalAppointments.filter(app =>
-          app.patient === patientName &&
+        // Get appointments from Supabase
+        const appointments = await getPatientAppointments(
+          patientId,
+          dentalOnly ? 'dental' : clinic
+        );
+
+        // Filter for upcoming appointments
+        const today = new Date();
+        const upcoming = appointments.filter(app =>
           app.status !== 'cancelled' &&
           app.status !== 'completed' &&
-          app.date &&
           isAfter(parseISO(app.date), today)
-        )
-      : [];
+        );
 
-    // Filter meditouch appointments if patient is registered for meditouch clinic and dentalOnly is false
-    const meditouchApps = (!dentalOnly && (clinic === 'meditouch' || clinic === 'both'))
-      ? meditouchAppointments.filter(app =>
-          app.patient === patientName &&
-          app.status !== 'cancelled' &&
-          app.status !== 'completed' &&
-          app.date &&
-          isAfter(parseISO(app.date), today)
-        )
-      : [];
+        // Sort by date and time
+        const sorted = upcoming.sort((a, b) => {
+          // First compare by date
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
 
-    // Combine and sort by date and time
-    let appointments = [...dentalApps, ...meditouchApps].sort((a, b) => {
-      // First compare by date
-      const dateA = a.date ? new Date(a.date) : new Date();
-      const dateB = b.date ? new Date(b.date) : new Date();
+          if (dateA.getTime() !== dateB.getTime()) {
+            return dateA.getTime() - dateB.getTime();
+          }
 
-      if (dateA.getTime() !== dateB.getTime()) {
-        return dateA.getTime() - dateB.getTime();
+          // If dates are the same, compare by time
+          return a.time.localeCompare(b.time);
+        });
+
+        // Limit if requested
+        const limited = limit && limit > 0 ? sorted.slice(0, limit) : sorted;
+
+        setUpcomingAppointments(limited);
+      } catch (error) {
+        console.error('Error fetching patient appointments:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load appointments. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoadingAppointments(false);
       }
+    };
 
-      // If dates are the same, compare by time
-      return a.time.localeCompare(b.time);
-    });
-
-    // Limit the number of appointments if requested
-    if (limit && limit > 0) {
-      appointments = appointments.slice(0, limit);
-    }
-
-    return appointments;
-  }, [patientName, clinic, limit, dentalOnly]);
+    fetchAppointments();
+  }, [patientId, clinic, limit, dentalOnly, getPatientAppointments, toast]);
 
   // Navigate to appointments page
   const handleViewAllAppointments = () => {
@@ -174,6 +104,26 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
     navigate('/appointments');
   };
 
+  // Loading state
+  if (isLoadingAppointments) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-64 mt-2" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Array(2).fill(0).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // No appointments
   if (upcomingAppointments.length === 0) {
     return (
       <Card>
@@ -242,13 +192,13 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
                         )}
                       </div>
                       <Badge
-                        variant={appointment.id.startsWith('d') ? 'outline' : 'secondary'}
-                        className={appointment.id.startsWith('d')
+                        variant={'doctor' in appointment ? 'outline' : 'secondary'}
+                        className={'doctor' in appointment
                           ? 'border-dental-primary text-dental-primary'
                           : 'border-meditouch-primary text-meditouch-primary'
                         }
                       >
-                        {appointment.id.startsWith('d') ? 'Dental' : 'Meditouch'}
+                        {'doctor' in appointment ? 'Dental' : 'Meditouch'}
                       </Badge>
                     </div>
                     {!condensed && (

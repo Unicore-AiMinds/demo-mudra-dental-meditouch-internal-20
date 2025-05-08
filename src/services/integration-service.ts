@@ -59,21 +59,29 @@ const serviceFollowUpRules: ServiceFollowUpRule[] = [
  * Generate follow-ups based on a dental charting entry
  */
 export function generateFollowUpsFromChartingEntry(
-  chartingEntry: ChartingEntry,
+  chartingEntry: ChartingEntry | any, // Accept any to handle both field naming conventions
   patientName: string
 ): TentativeFollowUp[] {
+  // Handle both field naming conventions
+  const status = chartingEntry.status;
+  const service = chartingEntry.service;
+  const entryId = chartingEntry.entry_id || chartingEntry.entryId;
+  const dateRecorded = chartingEntry.date_recorded || chartingEntry.dateRecorded;
+  const patientId = chartingEntry.patient_id || chartingEntry.patientId;
+  const notes = chartingEntry.notes;
+
   // Only generate follow-ups for planned treatments
-  if (chartingEntry.status !== 'Planned') {
+  if (status !== 'Planned') {
     return [];
   }
 
   // Find matching service follow-up rule
-  if (!chartingEntry.service) {
+  if (!service) {
     return [];
   }
 
   const matchingRule = serviceFollowUpRules.find(
-    rule => rule.triggeringServiceName.toLowerCase() === chartingEntry.service.toLowerCase()
+    rule => rule.triggeringServiceName.toLowerCase() === service.toLowerCase()
   );
 
   if (!matchingRule) {
@@ -81,28 +89,28 @@ export function generateFollowUpsFromChartingEntry(
   }
 
   // Generate a sequence group ID for related follow-ups
-  const sequenceGroupId = `seq-${chartingEntry.entryId}-${Date.now()}`;
+  const sequenceGroupId = `seq-${entryId}-${Date.now()}`;
 
   // Create follow-ups based on the rule
   return matchingRule.followUps.map(step => {
-    const followUpDate = addDays(new Date(chartingEntry.dateRecorded), step.intervalDays);
+    const followUpDate = addDays(new Date(dateRecorded), step.intervalDays);
 
     return {
-      followUpId: `fu-${chartingEntry.entryId}-${step.sequence}-${Date.now()}`,
-      patientId: chartingEntry.patientId,
-      patientName,
-      basedOnAppointmentId: "", // Will be filled when the treatment is performed
-      basedOnChartingEntryId: chartingEntry.entryId,
-      tentativeDate: format(followUpDate, 'yyyy-MM-dd'),
-      followUpSequence: step.sequence,
-      totalStepsInSequence: matchingRule.followUps.length,
-      sequenceGroupId,
-      suggestedServiceName: step.suggestedServiceName,
-      originalService: chartingEntry.service || '',
-      originalDoctor: "", // Will be filled when the treatment is performed
+      follow_up_id: `fu-${entryId}-${step.sequence}-${Date.now()}`,
+      patient_id: patientId,
+      patient_name: patientName,
+      based_on_appointment_id: "", // Will be filled when the treatment is performed
+      based_on_charting_entry_id: entryId,
+      tentative_date: format(followUpDate, 'yyyy-MM-dd'),
+      follow_up_sequence: step.sequence,
+      total_steps_in_sequence: matchingRule.followUps.length,
+      sequence_group_id: sequenceGroupId,
+      suggested_service_name: step.suggestedServiceName,
+      original_service: service || '',
+      original_doctor: "", // Will be filled when the treatment is performed
       status: 'Pending',
-      followUpType: 'Treatment',
-      specialNotes: chartingEntry.notes // Pass any notes from the charting entry to the follow-up
+      follow_up_type: 'Treatment',
+      special_notes: notes // Pass any notes from the charting entry to the follow-up
     };
   });
 }

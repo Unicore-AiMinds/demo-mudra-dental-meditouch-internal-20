@@ -19,7 +19,7 @@ const SupabaseExample = () => {
   const [data, setData] = useState<SampleData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -30,8 +30,8 @@ const SupabaseExample = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        // Replace 'your_table_name' with the actual table name in your Supabase database
-        const result = await fetchData<SampleData>('your_table_name', {
+        // Using the 'sample_data' table
+        const result = await fetchData<SampleData>('sample_data', {
           order: { column: 'created_at', ascending: false }
         });
         setData(result);
@@ -49,25 +49,25 @@ const SupabaseExample = () => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim()) {
       setError('Name is required');
       return;
     }
-    
+
     try {
       setSubmitting(true);
       setError(null);
-      
-      // Replace 'your_table_name' with the actual table name in your Supabase database
-      const newItem = await insertData<SampleData>('your_table_name', {
+
+      // Using the 'sample_data' table
+      const newItem = await insertData<SampleData>('sample_data', {
         name,
         description: description.trim() || undefined,
       });
-      
+
       // Add the new item to the data array
       setData(prev => [newItem, ...prev]);
-      
+
       // Reset form
       setName('');
       setDescription('');

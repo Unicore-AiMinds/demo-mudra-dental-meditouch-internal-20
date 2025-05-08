@@ -93,22 +93,85 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     initializeClinics();
   }, [supabase]);
 
-  // Save active clinic to localStorage when it changes
+  // Save active clinic to Supabase user_preferences table when it changes
   useEffect(() => {
-    localStorage.setItem('mudraActiveClinic', activeClinic);
+    const saveActiveClinic = async () => {
+      try {
+        // Check if a preference already exists for the current user
+        const { user } = JSON.parse(localStorage.getItem('mudraUser') || '{}');
 
-    // Update document theme based on active clinic
-    document.body.classList.remove('theme-dental', 'theme-meditouch');
-    document.body.classList.add(`theme-${activeClinic}`);
-  }, [activeClinic]);
+        if (user?.id) {
+          // Try to update existing preference
+          const result = await supabase
+            .from('user_preferences')
+            .update({ active_clinic: activeClinic })
+            .eq('user_id', user.id);
 
-  // Check localStorage for previously selected clinic on initial load
+          // If no rows were updated, insert a new preference
+          if (result.count === 0) {
+            await supabase
+              .from('user_preferences')
+              .insert({
+                user_id: user.id,
+                active_clinic: activeClinic
+              });
+          }
+        }
+
+        // Also save to localStorage as a fallback
+        localStorage.setItem('mudraActiveClinic', activeClinic);
+      } catch (error) {
+        console.error('Error saving clinic preference:', error);
+        // Fallback to localStorage
+        localStorage.setItem('mudraActiveClinic', activeClinic);
+      }
+
+      // Update document theme based on active clinic
+      document.body.classList.remove('theme-dental', 'theme-meditouch');
+      document.body.classList.add(`theme-${activeClinic}`);
+    };
+
+    saveActiveClinic();
+  }, [activeClinic, supabase]);
+
+  // Load active clinic preference from Supabase on initial load
   useEffect(() => {
-    const savedClinic = localStorage.getItem('mudraActiveClinic') as ClinicType;
-    if (savedClinic && (savedClinic === 'dental' || savedClinic === 'meditouch')) {
-      setActiveClinic(savedClinic);
-    }
-  }, []);
+    const loadActiveClinic = async () => {
+      try {
+        // Get the current user
+        const { user } = JSON.parse(localStorage.getItem('mudraUser') || '{}');
+
+        if (user?.id) {
+          // Try to get preference from Supabase
+          const { data } = await supabase
+            .from('user_preferences')
+            .select('active_clinic')
+            .eq('user_id', user.id)
+            .single();
+
+          if (data?.active_clinic) {
+            setActiveClinic(data.active_clinic as ClinicType);
+            return;
+          }
+        }
+
+        // Fallback to localStorage
+        const savedClinic = localStorage.getItem('mudraActiveClinic') as ClinicType;
+        if (savedClinic && (savedClinic === 'dental' || savedClinic === 'meditouch')) {
+          setActiveClinic(savedClinic);
+        }
+      } catch (error) {
+        console.error('Error loading clinic preference:', error);
+        // Fallback to localStorage
+        const savedClinic = localStorage.getItem('mudraActiveClinic') as ClinicType;
+        if (savedClinic && (savedClinic === 'dental' || savedClinic === 'meditouch')) {
+          setActiveClinic(savedClinic);
+        }
+      }
+    };
+
+    loadActiveClinic();
+  }, [supabase]);
 
   // Get current clinic capacity
   const clinicCapacity = activeClinic === 'dental' ? 2 : 1;

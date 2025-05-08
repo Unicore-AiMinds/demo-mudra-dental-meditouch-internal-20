@@ -1,6 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSupabase } from '@/contexts/SupabaseContext';
 import {
   Card,
   CardContent,
@@ -69,121 +70,7 @@ interface AuditLogEntry {
   };
 }
 
-// Sample audit log data
-const demoAuditLogs: AuditLogEntry[] = [
-  {
-    id: "AUD001",
-    timestamp: "2023-10-15 09:32:15",
-    user: "Dr. Rajan Khanna",
-    userRole: "admin",
-    actionCategory: "auth",
-    actionType: "Login Success",
-    targetEntity: "System",
-    details: "Successful login from 192.168.1.105"
-  },
-  {
-    id: "AUD002",
-    timestamp: "2023-10-15 10:15:20",
-    user: "Dr. Rajan Khanna",
-    userRole: "admin",
-    actionCategory: "appointment",
-    actionType: "Create Appointment",
-    targetEntity: "Aarav Sharma",
-    details: "Created new appointment for dental checkup"
-  },
-  {
-    id: "AUD003",
-    timestamp: "2023-10-15 11:20:35",
-    user: "Lakshmi Menon",
-    userRole: "receptionist",
-    actionCategory: "appointment",
-    actionType: "Reschedule Appointment",
-    targetEntity: "Priya Patel",
-    details: "Rescheduled appointment from 16 Oct to 18 Oct",
-    changes: {
-      before: { date: "2023-10-16", time: "10:00 AM" },
-      after: { date: "2023-10-18", time: "11:30 AM" }
-    }
-  },
-  {
-    id: "AUD004",
-    timestamp: "2023-10-15 12:05:40",
-    user: "Rajesh Sharma",
-    userRole: "inventory",
-    actionCategory: "stock",
-    actionType: "Update Stock",
-    targetEntity: "Dental Composite",
-    details: "Added 25 units to inventory",
-    changes: {
-      before: { quantity: 15 },
-      after: { quantity: 40 }
-    }
-  },
-  {
-    id: "AUD005",
-    timestamp: "2023-10-15 13:45:10",
-    user: "Dr. Priya Desai",
-    userRole: "doctor",
-    actionCategory: "lab",
-    actionType: "Create Lab Work",
-    targetEntity: "Vikram Singh",
-    details: "Created new lab work order for PFM Crown"
-  },
-  {
-    id: "AUD006",
-    timestamp: "2023-10-15 14:30:25",
-    user: "Dr. Rajan Khanna",
-    userRole: "admin",
-    actionCategory: "patient",
-    actionType: "Create Patient",
-    targetEntity: "Divya Menon",
-    details: "Added new patient record"
-  },
-  {
-    id: "AUD007",
-    timestamp: "2023-10-15 15:20:55",
-    user: "Dr. Rajan Khanna",
-    userRole: "admin",
-    actionCategory: "user",
-    actionType: "Create User",
-    targetEntity: "Arjun Kumar",
-    details: "Created new user with Inventory Manager role"
-  },
-  {
-    id: "AUD008",
-    timestamp: "2023-10-15 16:45:30",
-    user: "Dr. Rajan Khanna",
-    userRole: "admin",
-    actionCategory: "settings",
-    actionType: "Update Settings",
-    targetEntity: "Clinic Hours",
-    details: "Updated clinic opening hours",
-    changes: {
-      before: { sunday: "Closed" },
-      after: { sunday: "10:00 AM - 2:00 PM" }
-    }
-  },
-  {
-    id: "AUD009",
-    timestamp: "2023-10-15 17:30:15",
-    user: "Rajesh Sharma",
-    userRole: "inventory",
-    actionCategory: "stock",
-    actionType: "Delete Stock Item",
-    targetEntity: "Expired Anesthetic",
-    details: "Removed expired stock"
-  },
-  {
-    id: "AUD010",
-    timestamp: "2023-10-15 18:00:40",
-    user: "Lakshmi Menon",
-    userRole: "receptionist",
-    actionCategory: "auth",
-    actionType: "Logout",
-    targetEntity: "System",
-    details: "User logged out"
-  }
-];
+// Audit log data will be fetched from Supabase
 
 // Get icon for action category
 const getActionIcon = (category: AuditLogEntry['actionCategory']) => {
@@ -229,11 +116,42 @@ const getActionBadge = (actionType: string) => {
 const AuditLog = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { supabase } = useSupabase();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const [selectedUser, setSelectedUser] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch audit logs from Supabase
+  useEffect(() => {
+    const fetchAuditLogs = async () => {
+      try {
+        setIsLoading(true);
+
+        // Fetch audit logs from Supabase
+        const logs = await supabase.from<AuditLogEntry>('audit_logs').getAll({
+          order: { column: 'timestamp', ascending: false }
+        });
+
+        setAuditLogs(logs || []);
+      } catch (error) {
+        console.error('Error fetching audit logs:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load audit logs. Please try again.',
+          variant: 'destructive',
+        });
+        setAuditLogs([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAuditLogs();
+  }, [supabase, toast]);
 
   // Check if the user is an admin
   if (user?.role !== 'admin') {
@@ -251,11 +169,26 @@ const AuditLog = () => {
     );
   }
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96">
+        <div className="text-4xl font-bold text-gray-300 mb-4">
+          <div className="animate-spin h-16 w-16 mx-auto mb-4 border-4 border-dental-primary border-t-transparent rounded-full"></div>
+        </div>
+        <h2 className="text-2xl font-semibold text-gray-700 mb-2">Loading Audit Logs</h2>
+        <p className="text-gray-500 mb-6 text-center max-w-md">
+          Please wait while we fetch the audit logs from the database.
+        </p>
+      </div>
+    );
+  }
+
   // Get unique users for the filter
-  const uniqueUsers = Array.from(new Set(demoAuditLogs.map(log => log.user)));
+  const uniqueUsers = Array.from(new Set(auditLogs.map(log => log.user)));
 
   // Filter logs based on search term and filters
-  const filteredLogs = demoAuditLogs.filter(log => {
+  const filteredLogs = auditLogs.filter(log => {
     const matchesSearch = !searchTerm ||
       log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.actionType.toLowerCase().includes(searchTerm.toLowerCase()) ||

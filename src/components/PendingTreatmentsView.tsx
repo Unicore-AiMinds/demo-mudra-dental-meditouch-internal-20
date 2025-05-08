@@ -1,6 +1,5 @@
-import { useState, useMemo } from 'react';
-import { format, parseISO, addDays, isBefore } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { format, addDays, isBefore } from 'date-fns';
 import { Search, Calendar, Clock, AlarmClock, ArrowUpDown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,13 +30,43 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { ChartingEntry } from '@/types/dental-charting';
 import { useDentalCharting } from '@/contexts/DentalChartingContext';
+import { useSupabase } from '@/contexts/SupabaseContext';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+
+// Helper component to render patient name asynchronously
+const PatientName: React.FC<{ patientId: string }> = ({ patientId }) => {
+  const { getPatientName } = useDentalCharting();
+  const [name, setName] = useState<string>('Unknown');
+
+  useEffect(() => {
+    const fetchName = async () => {
+      try {
+        // Handle both camelCase and snake_case field names
+        const id = patientId || '';
+        if (!id) {
+          setName('Unknown');
+          return;
+        }
+
+        const patientName = await getPatientName(id);
+        setName(typeof patientName === 'string' ? patientName : 'Unknown');
+      } catch (error) {
+        console.error('Error fetching patient name:', error);
+        setName('Unknown');
+      }
+    };
+
+    fetchName();
+  }, [patientId, getPatientName]);
+
+  return <>{name}</>;
+};
 
 // No props needed for this component
 const PendingTreatmentsView: React.FC = () => {
   const { toast } = useToast();
   const { getPlannedChartingEntries, getPatientName, snoozeChartingEntry } = useDentalCharting();
-  const navigate = useNavigate();
+  const { supabase } = useSupabase();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isSnoozeDialogOpen, setIsSnoozeDialogOpen] = useState(false);
@@ -48,34 +77,60 @@ const PendingTreatmentsView: React.FC = () => {
   const [sortBy, setSortBy] = useState<'doctor' | 'patient'>('patient');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc'); // Default to alphabetical order
 
-  // Get all planned charting entries
-  const allPlannedEntries = getPlannedChartingEntries();
+  // State to store planned charting entries
+  const [allPlannedEntries, setAllPlannedEntries] = useState<ChartingEntry[]>([]);
+
+  // Fetch planned charting entries when component mounts
+  useEffect(() => {
+    const fetchPlannedEntries = async () => {
+      try {
+        const entries = await getPlannedChartingEntries();
+        console.log('Fetched planned entries:', entries);
+        setAllPlannedEntries(entries);
+      } catch (error) {
+        console.error('Error fetching planned entries:', error);
+        setAllPlannedEntries([]);
+      }
+    };
+
+    fetchPlannedEntries();
+  }, [getPlannedChartingEntries]);
 
   // Separate entries into pending and snoozed
   const pendingEntries = useMemo(() => {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    return allPlannedEntries.filter(entry =>
+    return allPlannedEntries.filter(entry => {
+      // Get field values with fallbacks
+      const status = entry.status;
+      const scheduledAppointmentId = entry.scheduled_appointment_id;
+      const snoozedUntil = entry.snoozed_until;
+
       // Only show entries that:
       // 1. Are not completed
       // 2. Don't have a scheduled appointment
       // 3. Are not snoozed or the snooze date has passed
-      entry.status !== 'Completed' &&
-      !entry.scheduledAppointmentId &&
-      (!entry.snoozedUntil || entry.snoozedUntil < today)
-    );
+      return status !== 'Completed' &&
+        !scheduledAppointmentId &&
+        (!snoozedUntil || snoozedUntil < today);
+    });
   }, [allPlannedEntries]);
 
   const snoozedEntries = useMemo(() => {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    return allPlannedEntries.filter(entry =>
+    return allPlannedEntries.filter(entry => {
+      // Get field values with fallbacks
+      const status = entry.status;
+      const scheduledAppointmentId = entry.scheduled_appointment_id;
+      const snoozedUntil = entry.snoozed_until;
+
       // Only show entries that:
       // 1. Are not completed
       // 2. Don't have a scheduled appointment
       // 3. Are snoozed and the snooze date has not passed
-      entry.status !== 'Completed' &&
-      !entry.scheduledAppointmentId &&
-      entry.snoozedUntil && entry.snoozedUntil >= today
-    );
+      return status !== 'Completed' &&
+        !scheduledAppointmentId &&
+        snoozedUntil && snoozedUntil >= today;
+    });
   }, [allPlannedEntries]);
 
   // Toggle sort order
@@ -88,62 +143,144 @@ const PendingTreatmentsView: React.FC = () => {
     }
   };
 
-  // Filter and sort entries
-  const filteredAndSortedEntries = useMemo(() => {
+  // Filter entries
+  const filteredEntries = useMemo(() => {
     // Select the appropriate entries based on the active tab
     const entriesToFilter = activeTab === 'pending' ? pendingEntries : snoozedEntries;
 
+    // Filter by search term if provided
+    if (!searchTerm) {
+      return entriesToFilter;
+    }
+
     // Filter by search term
-    const filtered = entriesToFilter.filter(entry => {
-      const patientName = getPatientName(entry.patientId) || '';
+    return entriesToFilter.filter(entry => {
+      // Get field values with fallbacks
+      const service = entry.service || '';
+      const toothNumbers = entry.tooth_numbers || [];
+      const notes = entry.notes || '';
+      const doctor = entry.doctor || '';
+
+      const teethString = Array.isArray(toothNumbers)
+        ? toothNumbers.join(', ')
+        : String(toothNumbers || '');
+
+      const searchTermLower = searchTerm.toLowerCase();
+
       return (
-        patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.service?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.toothNumbers.join(', ').includes(searchTerm) ||
-        (entry.notes && entry.notes.toLowerCase().includes(searchTerm.toLowerCase()))
+        service.toLowerCase().includes(searchTermLower) ||
+        teethString.includes(searchTermLower) ||
+        notes.toLowerCase().includes(searchTermLower) ||
+        doctor.toLowerCase().includes(searchTermLower)
       );
     });
+  }, [activeTab, pendingEntries, snoozedEntries, searchTerm]);
 
+  // Sort entries
+  const filteredAndSortedEntries = useMemo(() => {
     // Sort the filtered entries
-    return filtered.sort((a, b) => {
+    return [...filteredEntries].sort((a, b) => {
       if (sortBy === 'doctor') {
-        const doctorA = a.doctor || 'Not assigned';
-        const doctorB = b.doctor || 'Not assigned';
+        // Handle both camelCase and snake_case field names
+        const doctorA = ((a.doctor || a.doctor || 'Not assigned') as string).toString();
+        const doctorB = ((b.doctor || b.doctor || 'Not assigned') as string).toString();
+
         return sortOrder === 'asc'
           ? doctorA.localeCompare(doctorB)
           : doctorB.localeCompare(doctorA);
       } else { // sortBy === 'patient'
-        const patientA = getPatientName(a.patientId) || '';
-        const patientB = getPatientName(b.patientId) || '';
+        // For patient sorting, we'll use the entry_id or id as a fallback
+        // since we can't do async sorting with patient names
+        const idA = ((a.entry_id || a.id || '') as string).toString();
+        const idB = ((b.entry_id || b.id || '') as string).toString();
+
         return sortOrder === 'asc'
-          ? patientA.localeCompare(patientB)
-          : patientB.localeCompare(patientA);
+          ? idA.localeCompare(idB)
+          : idB.localeCompare(idA);
       }
     });
-  }, [activeTab, pendingEntries, snoozedEntries, searchTerm, sortBy, sortOrder, getPatientName]);
+  }, [filteredEntries, sortBy, sortOrder]);
 
   // Handle scheduling an appointment from a pending treatment
-  const handleScheduleAppointment = (entry: ChartingEntry) => {
-    // Store the treatment details in sessionStorage to be retrieved in the appointments page
-    sessionStorage.setItem('pendingTreatment', JSON.stringify({
-      patientId: entry.patientId,
-      patientName: getPatientName(entry.patientId),
-      serviceName: entry.service,
-      doctorName: entry.doctor,
-      chartingEntryId: entry.entryId,
-      teeth: entry.toothNumbers.join(', '),
-      notes: entry.notes
-    }));
+  const handleScheduleAppointment = async (entry: ChartingEntry) => {
+    try {
+      // Handle both camelCase and snake_case field names
+      const patientId = entry.patient_id || '';
+      const service = entry.service || '';
+      const doctor = entry.doctor || '';
+      const entryId = entry.entry_id || '';
+      const toothNumbers = entry.tooth_numbers || [];
+      const notes = entry.notes || '';
 
-    // Show toast notification
-    toast({
-      title: "Navigating to Appointments",
-      description: `Opening appointments page to schedule treatment for ${getPatientName(entry.patientId)}.`,
-    });
+      // Get patient name
+      let patientName = 'Unknown';
+      try {
+        const name = await getPatientName(patientId);
+        patientName = typeof name === 'string' ? name : 'Unknown';
+      } catch (err) {
+        console.error('Error getting patient name:', err);
+      }
 
-    // Navigate to the appointments page with daily view
-    // Use window.location.href for a full page reload to ensure the URL parameters are processed
-    window.location.href = '/appointments?view=daily';
+      // Convert tooth numbers to string
+      const teethString = Array.isArray(toothNumbers)
+        ? toothNumbers.join(', ')
+        : String(toothNumbers || '');
+
+      // Get the current user
+      const { user } = JSON.parse(localStorage.getItem('mudraUser') || '{}');
+
+      if (user?.id) {
+        // Store the treatment details in Supabase
+        try {
+          await supabase.from('pending_treatments').insert({
+            user_id: user.id,
+            patient_id: patientId,
+            patient_name: patientName,
+            service_name: service,
+            doctor_name: doctor,
+            charting_entry_id: entryId,
+            teeth: teethString,
+            notes: notes,
+            status: 'pending',
+            created_at: new Date().toISOString()
+          });
+        } catch (supabaseError) {
+          console.error('Error inserting into Supabase:', supabaseError);
+        }
+      }
+
+      // Always set in sessionStorage as a fallback
+      sessionStorage.setItem('pendingTreatment', JSON.stringify({
+        patientId: patientId,
+        patientName: patientName,
+        serviceName: service,
+        doctorName: doctor,
+        chartingEntryId: entryId,
+        teeth: teethString,
+        notes: notes
+      }));
+
+      // Show toast notification
+      toast({
+        title: "Navigating to Appointments",
+        description: `Opening appointments page to schedule treatment for ${patientName}.`,
+      });
+
+      // Navigate to the appointments page with daily view
+      // Use window.location.href for a full page reload to ensure the URL parameters are processed
+      window.location.href = '/appointments?view=daily';
+    } catch (error) {
+      console.error('Error in handleScheduleAppointment:', error);
+
+      // Show toast notification
+      toast({
+        title: "Navigating to Appointments",
+        description: `Opening appointments page to schedule treatment.`,
+      });
+
+      // Navigate to the appointments page with daily view
+      window.location.href = '/appointments?view=daily';
+    }
   };
 
   // Handle opening the snooze dialog
@@ -156,7 +293,7 @@ const PendingTreatmentsView: React.FC = () => {
   };
 
   // Handle confirming the snooze
-  const handleConfirmSnooze = () => {
+  const handleConfirmSnooze = async () => {
     if (!selectedEntry || !snoozeDate) {
       toast({
         title: "Missing Information",
@@ -167,28 +304,59 @@ const PendingTreatmentsView: React.FC = () => {
     }
 
     const snoozeUntilDate = format(snoozeDate, 'yyyy-MM-dd');
+    const entryId = selectedEntry.entry_id || '';
 
-    // Call the context function to snooze the entry
-    snoozeChartingEntry(selectedEntry.entryId, snoozeUntilDate, snoozeNotes);
+    try {
+      // Call the context function to snooze the entry
+      await snoozeChartingEntry(entryId, snoozeUntilDate, snoozeNotes);
 
-    // Close dialog and show success message
-    setIsSnoozeDialogOpen(false);
-    toast({
-      title: "Treatment Snoozed",
-      description: `The treatment has been snoozed until ${format(snoozeDate, 'dd/MM/yyyy')}.`,
-    });
+      // Close dialog and show success message
+      setIsSnoozeDialogOpen(false);
+      toast({
+        title: "Treatment Snoozed",
+        description: `The treatment has been snoozed until ${format(snoozeDate, 'dd/MM/yyyy')}.`,
+      });
+    } catch (error) {
+      console.error('Error snoozing treatment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to snooze treatment. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle unsnoozing a treatment
-  const handleUnsnoozeTreatment = (entry: ChartingEntry) => {
-    // Remove the snooze date
-    snoozeChartingEntry(entry.entryId, '', '');
+  const handleUnsnoozeTreatment = async (entry: ChartingEntry) => {
+    const entryId = entry.entry_id || '';
+    const patientId = entry.patient_id || '';
 
-    // Show toast notification
-    toast({
-      title: "Treatment Activated",
-      description: `The treatment for ${getPatientName(entry.patientId)} has been moved back to pending.`,
-    });
+    try {
+      // Remove the snooze date
+      await snoozeChartingEntry(entryId, '', '');
+
+      // Get patient name
+      let patientName = 'Unknown';
+      try {
+        const name = await getPatientName(patientId);
+        patientName = typeof name === 'string' ? name : 'Unknown';
+      } catch (err) {
+        console.error('Error getting patient name:', err);
+      }
+
+      // Show toast notification
+      toast({
+        title: "Treatment Activated",
+        description: `The treatment for ${patientName} has been moved back to pending.`,
+      });
+    } catch (error) {
+      console.error('Error unsnoozing treatment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to activate treatment. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -268,53 +436,71 @@ const PendingTreatmentsView: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAndSortedEntries.map(entry => (
-                    <TableRow key={entry.entryId}>
-                      <TableCell>
-                        <div className="font-medium">{getPatientName(entry.patientId)}</div>
-                      </TableCell>
-                      <TableCell>{entry.toothNumbers.join(', ')}</TableCell>
-                      <TableCell>{entry.service}</TableCell>
-                      <TableCell>
-                        {entry.doctor || "Not assigned"}
-                      </TableCell>
-                      <TableCell>{entry.notes || '-'}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {activeTab === 'pending' ? (
-                            <>
+                  {filteredAndSortedEntries.map((entry) => {
+                    // Handle both camelCase and snake_case field names
+                    const entryId = entry.entry_id || '';
+                    const patientId = entry.patient_id || '';
+                    const toothNumbers = entry.tooth_numbers || [];
+                    const service = entry.service || '';
+                    const doctor = entry.doctor || '';
+                    const notes = entry.notes || '';
+
+                    // Convert tooth numbers to string
+                    const teethString = Array.isArray(toothNumbers)
+                      ? toothNumbers.join(', ')
+                      : String(toothNumbers || '');
+
+                    return (
+                      <TableRow key={entryId}>
+                        <TableCell>
+                          <div className="font-medium">
+                            {/* Use a function to render the patient name asynchronously */}
+                            <PatientName patientId={patientId} />
+                          </div>
+                        </TableCell>
+                        <TableCell>{teethString}</TableCell>
+                        <TableCell>{service}</TableCell>
+                        <TableCell>
+                          {doctor || "Not assigned"}
+                        </TableCell>
+                        <TableCell>{notes || '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {activeTab === 'pending' ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-dental-primary hover:bg-dental-50 hover:text-dental-dark"
+                                  onClick={() => handleScheduleAppointment(entry as ChartingEntry)}
+                                >
+                                  <Clock className="mr-2 h-4 w-4" />
+                                  Schedule
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleSnoozeEntry(entry as ChartingEntry)}
+                                >
+                                  <AlarmClock className="mr-2 h-4 w-4" />
+                                  Snooze
+                                </Button>
+                              </>
+                            ) : (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-dental-primary hover:bg-dental-50 hover:text-dental-dark"
-                                onClick={() => handleScheduleAppointment(entry)}
+                                onClick={() => handleUnsnoozeTreatment(entry as ChartingEntry)}
                               >
                                 <Clock className="mr-2 h-4 w-4" />
-                                Schedule
+                                Activate
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleSnoozeEntry(entry)}
-                              >
-                                <AlarmClock className="mr-2 h-4 w-4" />
-                                Snooze
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleUnsnoozeTreatment(entry)}
-                            >
-                              <Clock className="mr-2 h-4 w-4" />
-                              Activate
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

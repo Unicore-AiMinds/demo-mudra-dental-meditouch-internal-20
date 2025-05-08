@@ -16,6 +16,7 @@ import { StockProvider } from "@/contexts/StockContext";
 import { LabWorkProvider } from "@/contexts/LabWorkContext";
 import { MedicineProvider } from "@/contexts/MedicineContext";
 import { PatientProvider } from "@/contexts/PatientContext";
+import { AppointmentProvider } from "@/contexts/AppointmentContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
@@ -48,13 +49,14 @@ const App = () => (
               <ClinicInfoProvider>
                 <DoctorProvider>
                   <PatientProvider>
-                    <DentalHistoryProvider>
-                      <DentalChartingProvider>
-                        <VitalSignsProvider>
-                          <PrescriptionProvider>
-                            <StockProvider>
-                              <LabWorkProvider>
-                                <MedicineProvider>
+                    <AppointmentProvider>
+                      <DentalHistoryProvider>
+                        <DentalChartingProvider>
+                          <VitalSignsProvider>
+                            <PrescriptionProvider>
+                              <StockProvider>
+                                <LabWorkProvider>
+                                  <MedicineProvider>
                             <Routes>
                               <Route path="/login" element={<Login />} />
                               <Route path="/unauthorized" element={<Unauthorized />} />
@@ -122,18 +124,19 @@ const App = () => (
                               {/* 404 route */}
                               <Route path="*" element={<NotFound />} />
                             </Routes>
-                              </MedicineProvider>
-                            </LabWorkProvider>
-                          </StockProvider>
-                        </PrescriptionProvider>
-                      </VitalSignsProvider>
-                    </DentalChartingProvider>
-                  </DentalHistoryProvider>
-                </PatientProvider>
-              </DoctorProvider>
-            </ClinicInfoProvider>
-          </ClinicProvider>
-        </AuthProvider>
+                                  </MedicineProvider>
+                                </LabWorkProvider>
+                              </StockProvider>
+                            </PrescriptionProvider>
+                          </VitalSignsProvider>
+                        </DentalChartingProvider>
+                      </DentalHistoryProvider>
+                    </AppointmentProvider>
+                  </PatientProvider>
+                </DoctorProvider>
+              </ClinicInfoProvider>
+            </ClinicProvider>
+          </AuthProvider>
         </SupabaseProvider>
       </BrowserRouter>
     </TooltipProvider>

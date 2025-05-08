@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Select,
@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useClinic } from '@/contexts/ClinicContext';
+import { usePatients, Patient } from '@/contexts/PatientContext';
 import {
   Card,
   CardContent,
@@ -31,6 +32,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -82,170 +84,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from '@/components/ui/badge';
 
-interface Patient {
-  id: string;
-  name: string;
-  gender: 'male' | 'female' | 'other';
-  age: number;
-  dateOfBirth?: string; // Store DOB as string in YYYY-MM-DD format
-  email: string | null;
-  phone: string;
-  altPhone?: string | null; // Alternative phone number (optional)
-  address?: string; // Now optional as we'll use structured address
-  city?: string;
-  pincode?: string;
-  bloodGroup?: string;
-  referredBy?: string;
-  clinic: 'dental' | 'meditouch' | 'both';
-  lastVisit: string | '';
-}
-
-const demoPatients: Patient[] = [
-  {
-    id: "PT001",
-    name: "Aarav Sharma",
-    gender: "male",
-    age: 34,
-    dateOfBirth: "1989-05-15", // Added DOB
-    email: "aarav.sharma@example.com",
-    phone: "9876543210",
-    altPhone: "9876543211",
-    address: "123 Modi Street",
-    city: "Mumbai",
-    pincode: "400001",
-    bloodGroup: "O+",
-    referredBy: "Dr. Khanna",
-    clinic: "both",
-    lastVisit: "2023-10-15"
-  },
-  {
-    id: "PT009",
-    name: "Riya Sharma",
-    gender: "female",
-    age: 6,
-    dateOfBirth: "2017-08-12",
-    email: null,
-    phone: "9876543210", // Same as parent (Aarav Sharma)
-    altPhone: null,
-    address: "123 Modi Street",
-    city: "Mumbai",
-    pincode: "400001",
-    bloodGroup: "O+",
-    referredBy: "Family Member",
-    clinic: "dental",
-    lastVisit: "2023-10-18"
-  },
-  {
-    id: "PT002",
-    name: "Priya Patel",
-    gender: "female",
-    age: 28,
-    email: "priya.patel@example.com",
-    phone: "8765432109",
-    altPhone: null,
-    address: "456 Gandhi Road",
-    city: "Delhi",
-    pincode: "110001",
-    bloodGroup: "A+",
-    referredBy: "Dr. Sharma",
-    clinic: "meditouch",
-    lastVisit: "2023-10-12"
-  },
-  {
-    id: "PT003",
-    name: "Vikram Singh",
-    gender: "male",
-    age: 45,
-    dateOfBirth: "1978-09-23", // Added DOB
-    email: null,
-    phone: "7654321098",
-    altPhone: "7654321099",
-    address: "789 Nehru Avenue",
-    city: "Chennai",
-    pincode: "600001",
-    bloodGroup: "B-",
-    referredBy: "Patient Referral",
-    clinic: "dental",
-    lastVisit: "2023-10-08"
-  },
-  {
-    id: "PT004",
-    name: "Neha Kapoor",
-    gender: "female",
-    age: 31,
-    email: "neha.kapoor@example.com",
-    phone: "6543210987",
-    address: "234 Tagore Lane",
-    city: "Bangalore",
-    pincode: "560001",
-    bloodGroup: "AB+",
-    referredBy: "Website",
-    clinic: "dental",
-    lastVisit: "2023-09-30"
-  },
-  {
-    id: "PT005",
-    name: "Rajiv Malhotra",
-    gender: "male",
-    age: 52,
-    email: "rajiv.malhotra@example.com",
-    phone: "5432109876",
-    altPhone: "5432109877",
-    address: "567 Bose Street",
-    city: "Hyderabad",
-    pincode: "500001",
-    bloodGroup: "A-",
-    referredBy: "Dr. Patel",
-    clinic: "both",
-    lastVisit: "2023-10-02"
-  },
-  {
-    id: "PT006",
-    name: "Ananya Reddy",
-    gender: "female",
-    age: 25,
-    email: "ananya.reddy@example.com",
-    phone: "4321098765",
-    address: "890 Raman Road",
-    city: "Pune",
-    pincode: "411001",
-    bloodGroup: "O-",
-    referredBy: "Family Member",
-    clinic: "meditouch",
-    lastVisit: "2023-10-10"
-  },
-  {
-    id: "PT007",
-    name: "Arjun Nair",
-    gender: "male",
-    age: 38,
-    email: null,
-    phone: "3210987654",
-    altPhone: "3210987655",
-    address: "123 Krishnan Street",
-    city: "Kochi",
-    pincode: "682001",
-    bloodGroup: "B+",
-    referredBy: "Social Media",
-    clinic: "dental",
-    lastVisit: "2023-09-25"
-  },
-  {
-    id: "PT008",
-    name: "Divya Menon",
-    gender: "female",
-    age: 29,
-    email: "divya.menon@example.com",
-    phone: "2109876543",
-    address: "456 Patel Road",
-    city: "Ahmedabad",
-    pincode: "380001",
-    bloodGroup: "AB-",
-    referredBy: "Dr. Sharma",
-    clinic: "both",
-    lastVisit: "2023-10-05"
-  }
-];
+// Patient interface is imported from PatientContext
 
 const getClinicBadge = (clinic: Patient['clinic'], activeClinic: 'dental' | 'meditouch') => {
   if (clinic === 'both') {
@@ -288,11 +127,55 @@ const Patients = () => {
   ]);
   const [currentTab, setCurrentTab] = useState<string>("all");
   const { toast } = useToast();
-  const [patients, setPatients] = useState<Patient[]>(demoPatients);
+  const { patients, isLoading, addPatient, updatePatient, deletePatient, searchPatients } = usePatients();
+  const [filteredPatientsList, setFilteredPatientsList] = useState<Patient[]>([]);
   const [phoneCountryCode, setPhoneCountryCode] = useState("+91");
   const [searchValue, setSearchValue] = useState("");
 
-  // These useEffect hooks were used for debugging and have been removed
+  // Effect to filter patients based on search and tab
+  useEffect(() => {
+    const filterPatients = async () => {
+      // Start with all patients if no search term
+      if (!searchValue.trim()) {
+        // Apply tab filtering
+        if (currentTab !== "all") {
+          setFilteredPatientsList(
+            patients.filter(patient =>
+              patient.clinic === currentTab || patient.clinic === 'both'
+            )
+          );
+        } else {
+          setFilteredPatientsList(patients);
+        }
+        return;
+      }
+
+      // If there's a search term, use the searchPatients function
+      try {
+        const searchResults = await searchPatients(searchValue);
+
+        // Apply tab filtering to search results
+        if (currentTab !== "all") {
+          setFilteredPatientsList(
+            searchResults.filter(patient =>
+              patient.clinic === currentTab || patient.clinic === 'both'
+            )
+          );
+        } else {
+          setFilteredPatientsList(searchResults);
+        }
+      } catch (error) {
+        console.error('Error searching patients:', error);
+        toast({
+          title: 'Search Error',
+          description: 'Failed to search patients. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    filterPatients();
+  }, [patients, searchValue, currentTab, searchPatients, toast]);
 
   // State to track whether to use DOB or Age input
   const [useAgeInput, setUseAgeInput] = useState(true);
@@ -455,89 +338,93 @@ const Patients = () => {
   };
 
   // Direct function to update a patient
-  const confirmUpdatePatient = () => {
+  const confirmUpdatePatient = async () => {
     if (!currentEditPatient) return;
 
-    // Calculate age from DOB if DOB is used
-    let calculatedAge = Number(editFormData.age);
+    try {
+      // Calculate age from DOB if DOB is used
+      let calculatedAge = Number(editFormData.age);
 
-    if (!editUseAgeInput && editFormData.dateOfBirth) {
-      const birthDate = new Date(editFormData.dateOfBirth);
-      const today = new Date();
-      calculatedAge = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (!editUseAgeInput && editFormData.dateOfBirth) {
+        const birthDate = new Date(editFormData.dateOfBirth);
+        const today = new Date();
+        calculatedAge = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
 
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        calculatedAge--;
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          calculatedAge--;
+        }
       }
+
+      // Create updated patient object with Supabase field names
+      const updatedPatientData = {
+        name: editFormData.name,
+        gender: editFormData.gender as 'male' | 'female' | 'other',
+        age: calculatedAge,
+        date_of_birth: !editUseAgeInput ? editFormData.dateOfBirth : undefined,
+        email: editFormData.email || null,
+        phone: editFormData.phone,
+        alt_phone: editFormData.altPhone || null,
+        address: editFormData.address,
+        city: editFormData.city,
+        pincode: editFormData.pincode,
+        blood_group: editFormData.bloodGroup,
+        referred_by: editFormData.referredBy,
+        clinic: editFormData.clinic as 'dental' | 'meditouch' | 'both',
+        last_visit: editFormData.lastVisit || ''
+      };
+
+      // Update patient using PatientContext
+      await updatePatient(currentEditPatient.id, updatedPatientData);
+
+      // Close dialogs and show success message
+      setIsEditPatientDialogOpen(false);
+      setIsConfirmUpdateOpen(false);
+
+      toast({
+        title: "Patient Updated",
+        description: `${editFormData.name}'s information has been updated.`,
+      });
+
+      resetEditFormData();
+    } catch (error) {
+      console.error('Error updating patient:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update patient. Please try again.",
+        variant: "destructive",
+      });
     }
-
-    const updatedPatient: Patient = {
-      ...currentEditPatient,
-      name: editFormData.name,
-      gender: editFormData.gender as 'male' | 'female' | 'other',
-      age: calculatedAge,
-      dateOfBirth: !editUseAgeInput ? editFormData.dateOfBirth : undefined,
-      email: editFormData.email || null,
-      phone: editFormData.phone,
-      altPhone: editFormData.altPhone || null, // Added alternative phone
-      address: editFormData.address,
-      city: editFormData.city,
-      pincode: editFormData.pincode,
-      bloodGroup: editFormData.bloodGroup,
-      referredBy: editFormData.referredBy,
-      clinic: editFormData.clinic as 'dental' | 'meditouch' | 'both',
-      lastVisit: editFormData.lastVisit || ''
-    };
-
-    console.log('Updating patient:', updatedPatient);
-
-    // Create a new array with the updated patient
-    const updatedPatients = patients.map(p =>
-      p.id === currentEditPatient.id ? updatedPatient : p
-    );
-
-    // Update the state
-    setPatients(updatedPatients);
-    console.log('Updated patients array after edit:', updatedPatients);
-
-    // Close dialogs and show success message
-    setIsEditPatientDialogOpen(false);
-    setIsConfirmUpdateOpen(false);
-
-    toast({
-      title: "Patient Updated",
-      description: `${editFormData.name}'s information has been updated.`,
-    });
-
-    resetEditFormData();
   };
 
 
 
   // Direct function to delete a patient
-  const confirmDeletePatient = () => {
+  const confirmDeletePatient = async () => {
     if (!currentEditPatient) return;
 
-    console.log('Deleting patient:', currentEditPatient);
+    try {
+      // Delete patient using PatientContext
+      await deletePatient(currentEditPatient.id);
 
-    // Create a new array without the deleted patient
-    const updatedPatients = patients.filter(p => p.id !== currentEditPatient.id);
+      // Close dialogs and show success message
+      setIsEditPatientDialogOpen(false);
+      setIsConfirmDeleteOpen(false);
 
-    // Update the state
-    setPatients(updatedPatients);
-    console.log('Updated patients array after delete:', updatedPatients);
+      toast({
+        title: "Patient Deleted",
+        description: `${currentEditPatient.name} has been removed from the patient registry.`,
+      });
 
-    // Close dialogs and show success message
-    setIsEditPatientDialogOpen(false);
-    setIsConfirmDeleteOpen(false);
-
-    toast({
-      title: "Patient Deleted",
-      description: `${currentEditPatient.name} has been removed from the patient registry.`,
-    });
-
-    resetEditFormData();
+      resetEditFormData();
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete patient. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Direct function to handle edit dialog close
@@ -599,54 +486,61 @@ const Patients = () => {
   };
 
   // Function to confirm adding a new patient
-  const confirmAddPatient = () => {
-    // Calculate age from DOB if DOB is used
-    let calculatedAge = Number(formData.age);
+  const confirmAddPatient = async () => {
+    try {
+      // Calculate age from DOB if DOB is used
+      let calculatedAge = Number(formData.age);
 
-    if (!useAgeInput && formData.dateOfBirth) {
-      const birthDate = new Date(formData.dateOfBirth);
-      const today = new Date();
-      calculatedAge = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (!useAgeInput && formData.dateOfBirth) {
+        const birthDate = new Date(formData.dateOfBirth);
+        const today = new Date();
+        calculatedAge = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
 
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        calculatedAge--;
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          calculatedAge--;
+        }
       }
+
+      // Create new patient object with Supabase field names
+      const newPatient = {
+        name: formData.name,
+        gender: formData.gender as 'male' | 'female' | 'other',
+        age: calculatedAge,
+        date_of_birth: !useAgeInput ? formData.dateOfBirth : undefined,
+        email: formData.email || null,
+        phone: formData.phone,
+        alt_phone: formData.altPhone || null,
+        address: formData.address,
+        city: formData.city,
+        pincode: formData.pincode,
+        blood_group: formData.bloodGroup,
+        referred_by: formData.referredBy,
+        clinic: formData.clinic as 'dental' | 'meditouch' | 'both',
+        last_visit: formData.lastVisit || ''
+      };
+
+      // Add patient using PatientContext
+      await addPatient(newPatient);
+
+      // Close dialogs and show success message
+      setIsConfirmAddOpen(false);
+      setIsAddPatientDialogOpen(false);
+      toast({
+        title: "Patient Added",
+        description: `${formData.name} has been added to the patient registry.`,
+      });
+
+      // Reset the form
+      resetFormData();
+    } catch (error) {
+      console.error('Error adding patient:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add patient. Please try again.",
+        variant: "destructive",
+      });
     }
-
-    // Create new patient object
-    const newPatient: Patient = {
-      id: `PT${String(patients.length + 1).padStart(3, '0')}`,
-      name: formData.name,
-      gender: formData.gender as 'male' | 'female' | 'other',
-      age: calculatedAge,
-      dateOfBirth: !useAgeInput ? formData.dateOfBirth : undefined,
-      email: formData.email || null,
-      phone: formData.phone,
-      altPhone: formData.altPhone || null, // Added alternative phone
-      address: formData.address,
-      city: formData.city,
-      pincode: formData.pincode,
-      bloodGroup: formData.bloodGroup,
-      referredBy: formData.referredBy,
-      clinic: formData.clinic as 'dental' | 'meditouch' | 'both',
-      lastVisit: formData.lastVisit || ''
-    };
-
-    // Add to the beginning of the array to show newest first
-    const updatedPatients = [newPatient, ...patients];
-    setPatients(updatedPatients);
-
-    // Close dialogs and show success message
-    setIsConfirmAddOpen(false);
-    setIsAddPatientDialogOpen(false);
-    toast({
-      title: "Patient Added",
-      description: `${formData.name} has been added to the patient registry.`,
-    });
-
-    // Reset the form
-    resetFormData();
   };
 
   // Direct function to handle dialog close
@@ -655,50 +549,7 @@ const Patients = () => {
     resetFormData();
   };
 
-  // Memoize the filtered patients to prevent unnecessary recalculations
-  const filteredPatients = React.useMemo(() => {
-    // Start with all patients
-    let filtered = [...patients];
-
-    // Apply tab filtering
-    if (currentTab !== "all") {
-      filtered = filtered.filter(patient =>
-        patient.clinic === currentTab || patient.clinic === 'both'
-      );
-    }
-
-    // Apply search filtering
-    const searchTerm = searchValue ? searchValue.trim() : '';
-    if (searchTerm !== '') {
-      const searchLower = searchTerm.toLowerCase();
-
-      filtered = filtered.filter(patient => {
-        // Format phone numbers with country code for searching
-        const formattedPhone = `+91 ${patient.phone}`;
-        const formattedAltPhone = patient.altPhone ? `+91 ${patient.altPhone}` : '';
-
-        // Check each field for a match
-        return (
-          (patient.name && patient.name.toLowerCase().includes(searchLower)) ||
-          (patient.phone && patient.phone.includes(searchLower)) ||
-          (formattedPhone && formattedPhone.includes(searchLower)) ||
-          (patient.altPhone && patient.altPhone.includes(searchLower)) ||
-          (formattedAltPhone && formattedAltPhone.includes(searchLower)) ||
-          (patient.email && patient.email?.toLowerCase().includes(searchLower)) ||
-          (patient.address && patient.address.toLowerCase().includes(searchLower)) ||
-          (patient.city && patient.city.toLowerCase().includes(searchLower)) ||
-          (patient.pincode && patient.pincode.toLowerCase().includes(searchLower)) ||
-          (patient.bloodGroup && patient.bloodGroup.toLowerCase().includes(searchLower)) ||
-          (patient.referredBy && patient.referredBy.toLowerCase().includes(searchLower)) ||
-          (patient.gender && patient.gender.toLowerCase().includes(searchLower)) ||
-          (patient.age && String(patient.age).includes(searchLower)) ||
-          (patient.lastVisit && patient.lastVisit.toLowerCase().includes(searchLower))
-        );
-      });
-    }
-
-    return filtered;
-  }, [patients, currentTab, searchValue]);
+  // Use the filteredPatientsList state that's updated by the useEffect
 
   // Memoize the columns definition to prevent recreating it on every render
   const columns = useMemo<ColumnDef<Patient>[]>(() => [
@@ -808,7 +659,7 @@ const Patients = () => {
 
   // Memoize the table options to prevent unnecessary re-renders
   const tableOptions = useMemo(() => ({
-    data: filteredPatients, // We're already filtering the data before it gets to the table
+    data: filteredPatientsList, // Use the filtered patients list from state
     columns,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -817,7 +668,7 @@ const Patients = () => {
     state: {
       sorting,
     },
-  }), [filteredPatients, columns, sorting]);
+  }), [filteredPatientsList, columns, sorting]);
 
   // Create the table instance with memoized options
   const table = useReactTable(tableOptions);
@@ -888,47 +739,63 @@ const Patients = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              {/* Render the table directly without useMemo */}
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </TableHead>
+              {isLoading ? (
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    {Array(columns.length).fill(0).map((_, i) => (
+                      <Skeleton key={i} className="h-8 w-full" />
+                    ))}
+                  </div>
+                  {Array(5).fill(0).map((_, i) => (
+                    <div key={i} className="flex items-center space-x-4">
+                      {Array(columns.length).fill(0).map((_, j) => (
+                        <Skeleton key={j} className="h-12 w-full" />
                       ))}
-                    </TableRow>
+                    </div>
                   ))}
-                </TableHeader>
-                <TableBody>
-                  {table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        data-state={row.getIsSelected() && "selected"}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <TableHead key={header.id}>
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                          </TableHead>
                         ))}
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={columns.length} className="h-24 text-center">
-                        No patients found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {table.getRowModel().rows?.length ? (
+                      table.getRowModel().rows.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          data-state={row.getIsSelected() && "selected"}
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id}>
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={columns.length} className="h-24 text-center">
+                          No patients found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </div>
