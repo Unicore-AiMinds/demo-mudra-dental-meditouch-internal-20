@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getRandomDentalColor } from '@/utils/doctorColors';
 import { useSupabase } from '@/contexts/SupabaseContext';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 // Define the Doctor type
 export interface Doctor {

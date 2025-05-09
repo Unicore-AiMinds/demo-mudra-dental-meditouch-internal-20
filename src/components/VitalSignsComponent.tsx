@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Edit, Plus, Save, X } from 'lucide-react';
 import { VitalSign } from '@/types/vital-signs';
 import { useVitalSigns } from '@/contexts/VitalSignsContext';
@@ -60,11 +60,26 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
 
   // Load vital signs for the patient
   useEffect(() => {
-    const patientVitalSigns = getPatientVitalSigns(patientId);
-    setVitalSigns(patientVitalSigns.sort((a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    ));
-  }, [patientId, getPatientVitalSigns]);
+    const fetchVitalSigns = async () => {
+      try {
+        const patientVitalSigns = await getPatientVitalSigns(patientId);
+        const sortedVitalSigns = [...patientVitalSigns].sort((a, b) =>
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        setVitalSigns(sortedVitalSigns);
+      } catch (error) {
+        console.error('Error fetching vital signs:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load vital signs. Please try again.",
+          variant: "destructive"
+        });
+        setVitalSigns([]);
+      }
+    };
+
+    fetchVitalSigns();
+  }, [patientId, getPatientVitalSigns, toast]);
 
   // Handle input change for new vital sign
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -73,7 +88,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
   };
 
   // Handle saving a new vital sign
-  const handleSaveNewVitalSign = () => {
+  const handleSaveNewVitalSign = async () => {
     // Validate required fields
     if (!newVitalSign.weight || !newVitalSign.bloodPressure || !newVitalSign.pulse ||
         !newVitalSign.temperature || !newVitalSign.respiratoryRate || !newVitalSign.recordedBy) {
@@ -85,29 +100,38 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
       return;
     }
 
-    // Add new vital sign using context
-    const newRecord = addVitalSign(patientId, newVitalSign);
+    try {
+      // Add new vital sign using context
+      const newRecord = await addVitalSign(patientId, newVitalSign);
 
-    // Update local state
-    setVitalSigns(prev => [newRecord, ...prev]);
+      // Update local state
+      setVitalSigns(prev => [newRecord, ...prev]);
 
-    // Reset form and close
-    setNewVitalSign({
-      weight: '',
-      bloodPressure: '',
-      pulse: '',
-      temperature: '',
-      respiratoryRate: '',
-      notes: '',
-      recordedBy: ''
-    });
-    setIsAddingNew(false);
+      // Reset form and close
+      setNewVitalSign({
+        weight: '',
+        bloodPressure: '',
+        pulse: '',
+        temperature: '',
+        respiratoryRate: '',
+        notes: '',
+        recordedBy: ''
+      });
+      setIsAddingNew(false);
 
-    // Show success message
-    toast({
-      title: "Vital Signs Recorded",
-      description: "The vital signs have been successfully recorded.",
-    });
+      // Show success message
+      toast({
+        title: "Vital Signs Recorded",
+        description: "The vital signs have been successfully recorded.",
+      });
+    } catch (error) {
+      console.error('Error adding vital signs:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add vital signs. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Handle editing an existing vital sign
@@ -128,7 +152,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
   };
 
   // Handle updating an existing vital sign
-  const handleUpdateVitalSign = () => {
+  const handleUpdateVitalSign = async () => {
     if (!isEditing) return;
 
     // Validate required fields
@@ -142,42 +166,51 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
       return;
     }
 
-    // Update the vital sign using context
-    const updatedVitalSign = updateVitalSign(isEditing, newVitalSign);
+    try {
+      // Update the vital sign using context
+      const updatedVitalSign = await updateVitalSign(isEditing, newVitalSign);
 
-    if (updatedVitalSign) {
-      // Update local state
-      setVitalSigns(prev => prev.map(vs =>
-        vs.id === isEditing
-          ? updatedVitalSign
-          : vs
-      ));
+      if (updatedVitalSign) {
+        // Update local state
+        setVitalSigns(prev => prev.map(vs =>
+          vs.id === isEditing
+            ? updatedVitalSign
+            : vs
+        ));
 
-      // Show success message
-      toast({
-        title: "Vital Signs Updated",
-        description: "The vital signs have been successfully updated.",
+        // Show success message
+        toast({
+          title: "Vital Signs Updated",
+          description: "The vital signs have been successfully updated.",
+        });
+      } else {
+        // Show error message
+        toast({
+          title: "Update Failed",
+          description: "Failed to update vital signs. Please try again.",
+          variant: "destructive",
+        });
+      }
+
+      // Reset form and close
+      setNewVitalSign({
+        weight: '',
+        bloodPressure: '',
+        pulse: '',
+        temperature: '',
+        respiratoryRate: '',
+        notes: '',
+        recordedBy: ''
       });
-    } else {
-      // Show error message
+      setIsEditing(null);
+    } catch (error) {
+      console.error('Error updating vital signs:', error);
       toast({
-        title: "Update Failed",
+        title: "Error",
         description: "Failed to update vital signs. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
-
-    // Reset form and close
-    setNewVitalSign({
-      weight: '',
-      bloodPressure: '',
-      pulse: '',
-      temperature: '',
-      respiratoryRate: '',
-      notes: '',
-      recordedBy: ''
-    });
-    setIsEditing(null);
   };
 
   // Cancel adding or editing

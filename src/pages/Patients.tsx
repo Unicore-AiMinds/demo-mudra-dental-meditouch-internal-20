@@ -123,7 +123,7 @@ const Patients = () => {
   const [currentEditPatient, setCurrentEditPatient] = useState<Patient | null>(null);
   const [editPhoneCountryCode, setEditPhoneCountryCode] = useState("+91");
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "id", desc: true } // Sort by ID descending to show newest records first
+    { id: "created_at", desc: true } // Sort by creation date descending to show newest records first
   ]);
   const [currentTab, setCurrentTab] = useState<string>("all");
   const { toast } = useToast();
@@ -135,17 +135,46 @@ const Patients = () => {
   // Effect to filter patients based on search and tab
   useEffect(() => {
     const filterPatients = async () => {
+      console.log('Filtering patients with:', {
+        totalPatients: patients.length,
+        searchValue,
+        currentTab
+      });
+
+      // Process patients to ensure all required fields are present
+      const processedPatients = patients.map(patient => ({
+        ...patient,
+        // Ensure all fields are properly set for display
+        id: patient.id,
+        patient_code: patient.patient_code || `PT${Date.now().toString().slice(-6)}`,
+        name: patient.name || 'Unknown',
+        gender: patient.gender || 'other',
+        age: patient.age || 0,
+        date_of_birth: patient.date_of_birth,
+        email: patient.email,
+        phone: patient.phone || '',
+        alt_phone: patient.alt_phone,
+        address: patient.address,
+        city: patient.city,
+        pincode: patient.pincode,
+        blood_group: patient.blood_group,
+        referred_by: patient.referred_by,
+        clinic: patient.clinic || 'dental',
+        last_visit: patient.last_visit
+      }));
+
       // Start with all patients if no search term
       if (!searchValue.trim()) {
         // Apply tab filtering
         if (currentTab !== "all") {
-          setFilteredPatientsList(
-            patients.filter(patient =>
-              patient.clinic === currentTab || patient.clinic === 'both'
-            )
+          const filtered = processedPatients.filter(patient =>
+            patient.clinic === currentTab || patient.clinic === 'both'
           );
+          console.log(`Filtered to ${filtered.length} patients for tab ${currentTab}`);
+          setFilteredPatientsList(filtered);
         } else {
-          setFilteredPatientsList(patients);
+          console.log(`Using all ${processedPatients.length} patients`);
+          setFilteredPatientsList(processedPatients);
         }
         return;
       }
@@ -153,16 +182,40 @@ const Patients = () => {
       // If there's a search term, use the searchPatients function
       try {
         const searchResults = await searchPatients(searchValue);
+        console.log(`Search returned ${searchResults.length} results`);
+
+        // Process search results to ensure all fields are present
+        const processedResults = searchResults.map(patient => ({
+          ...patient,
+          // Ensure all fields are properly set for display
+          id: patient.id,
+          patient_code: patient.patient_code || `PT${Date.now().toString().slice(-6)}`,
+          name: patient.name || 'Unknown',
+          gender: patient.gender || 'other',
+          age: patient.age || 0,
+          date_of_birth: patient.date_of_birth,
+          email: patient.email,
+          phone: patient.phone || '',
+          alt_phone: patient.alt_phone,
+          address: patient.address,
+          city: patient.city,
+          pincode: patient.pincode,
+          blood_group: patient.blood_group,
+          referred_by: patient.referred_by,
+          clinic: patient.clinic || 'dental',
+          last_visit: patient.last_visit
+        }));
 
         // Apply tab filtering to search results
         if (currentTab !== "all") {
-          setFilteredPatientsList(
-            searchResults.filter(patient =>
-              patient.clinic === currentTab || patient.clinic === 'both'
-            )
+          const filtered = processedResults.filter(patient =>
+            patient.clinic === currentTab || patient.clinic === 'both'
           );
+          console.log(`Filtered search results to ${filtered.length} patients for tab ${currentTab}`);
+          setFilteredPatientsList(filtered);
         } else {
-          setFilteredPatientsList(searchResults);
+          console.log(`Using all ${processedResults.length} search results`);
+          setFilteredPatientsList(processedResults);
         }
       } catch (error) {
         console.error('Error searching patients:', error);
@@ -268,24 +321,43 @@ const Patients = () => {
     setEditPhoneCountryCode("+91");
 
     // Determine if we should use age or DOB based on available data
-    const hasDateOfBirth = !!patient.dateOfBirth;
+    const hasDateOfBirth = !!patient.date_of_birth;
     setEditUseAgeInput(!hasDateOfBirth);
 
+    console.log('Editing patient with data:', patient);
+
     setEditFormData({
-      name: patient.name,
-      gender: patient.gender,
-      age: patient.age.toString(),
-      dateOfBirth: patient.dateOfBirth || '',
+      name: patient.name || '',
+      gender: patient.gender || 'male',
+      age: patient.age ? patient.age.toString() : '0',
+      dateOfBirth: patient.date_of_birth || '',
       email: patient.email || '',
-      phone: patient.phone,
-      altPhone: patient.altPhone || '', // Added alternative phone
+      phone: patient.phone || '',
+      altPhone: patient.alt_phone || '', // Added alternative phone
       address: patient.address || '',
       city: patient.city || '',
       pincode: patient.pincode || '',
-      bloodGroup: patient.bloodGroup || '',
-      referredBy: patient.referredBy || '',
-      clinic: patient.clinic,
-      lastVisit: patient.lastVisit || ''
+      bloodGroup: patient.blood_group || '',
+      referredBy: patient.referred_by || '',
+      clinic: patient.clinic || 'dental',
+      lastVisit: patient.last_visit || ''
+    });
+
+    console.log('Edit form data initialized with:', {
+      name: patient.name || '',
+      gender: patient.gender || 'male',
+      age: patient.age ? patient.age.toString() : '0',
+      dateOfBirth: patient.date_of_birth || '',
+      email: patient.email || '',
+      phone: patient.phone || '',
+      altPhone: patient.alt_phone || '',
+      address: patient.address || '',
+      city: patient.city || '',
+      pincode: patient.pincode || '',
+      bloodGroup: patient.blood_group || '',
+      referredBy: patient.referred_by || '',
+      clinic: patient.clinic || 'dental',
+      lastVisit: patient.last_visit || ''
     });
 
     setIsEditPatientDialogOpen(true);
@@ -356,23 +428,59 @@ const Patients = () => {
         }
       }
 
+      // Validate date fields
+      if (editFormData.dateOfBirth === '') {
+        console.log('Empty date of birth field detected, setting to null');
+        editFormData.dateOfBirth = null;
+      }
+
+      if (editFormData.lastVisit === '') {
+        console.log('Empty last visit field detected, setting to null');
+        editFormData.lastVisit = null;
+      }
+
+      // Validate phone number
+      if (!editFormData.phone || editFormData.phone.trim() === '') {
+        throw new Error('Phone number is required');
+      }
+
+      // Ensure phone number is properly formatted
+      const phoneNumber = editFormData.phone.trim();
+      console.log('Phone number before formatting:', phoneNumber);
+
+      // Ensure gender and clinic are lowercase and match the allowed values
+      const gender = editFormData.gender.toLowerCase();
+      const clinic = editFormData.clinic.toLowerCase();
+
+      // Validate gender
+      if (!['male', 'female', 'other'].includes(gender)) {
+        throw new Error('Gender must be one of: male, female, other');
+      }
+
+      // Validate clinic
+      if (!['dental', 'meditouch', 'both'].includes(clinic)) {
+        throw new Error('Clinic must be one of: dental, meditouch, both');
+      }
+
       // Create updated patient object with Supabase field names
       const updatedPatientData = {
-        name: editFormData.name,
-        gender: editFormData.gender as 'male' | 'female' | 'other',
+        name: editFormData.name.trim(),
+        gender: gender as 'male' | 'female' | 'other',
         age: calculatedAge,
-        date_of_birth: !editUseAgeInput ? editFormData.dateOfBirth : undefined,
-        email: editFormData.email || null,
-        phone: editFormData.phone,
-        alt_phone: editFormData.altPhone || null,
-        address: editFormData.address,
-        city: editFormData.city,
-        pincode: editFormData.pincode,
-        blood_group: editFormData.bloodGroup,
-        referred_by: editFormData.referredBy,
-        clinic: editFormData.clinic as 'dental' | 'meditouch' | 'both',
-        last_visit: editFormData.lastVisit || ''
+        date_of_birth: !editUseAgeInput ? editFormData.dateOfBirth : null,
+        email: editFormData.email && editFormData.email.trim() !== '' ? editFormData.email.trim() : null,
+        phone: phoneNumber,
+        alt_phone: editFormData.altPhone && editFormData.altPhone.trim() !== '' ? editFormData.altPhone.trim() : null,
+        address: editFormData.address && editFormData.address.trim() !== '' ? editFormData.address.trim() : null,
+        city: editFormData.city && editFormData.city.trim() !== '' ? editFormData.city.trim() : null,
+        pincode: editFormData.pincode && editFormData.pincode.trim() !== '' ? editFormData.pincode.trim() : null,
+        blood_group: editFormData.bloodGroup && editFormData.bloodGroup.trim() !== '' ? editFormData.bloodGroup.trim() : null,
+        referred_by: editFormData.referredBy && editFormData.referredBy.trim() !== '' ? editFormData.referredBy.trim() : null,
+        clinic: clinic as 'dental' | 'meditouch' | 'both',
+        last_visit: editFormData.lastVisit && editFormData.lastVisit.trim() !== '' ? editFormData.lastVisit.trim() : null
       };
+
+      console.log('Formatted update data:', updatedPatientData);
 
       // Update patient using PatientContext
       await updatePatient(currentEditPatient.id, updatedPatientData);
@@ -502,22 +610,56 @@ const Patients = () => {
         }
       }
 
+      // Validate date fields
+      if (formData.dateOfBirth === '') {
+        console.log('Empty date of birth field detected, setting to null');
+        formData.dateOfBirth = null;
+      }
+
+      if (formData.lastVisit === '') {
+        console.log('Empty last visit field detected, setting to null');
+        formData.lastVisit = null;
+      }
+
+      // Validate phone number
+      if (!formData.phone || formData.phone.trim() === '') {
+        throw new Error('Phone number is required');
+      }
+
+      // Ensure phone number is properly formatted
+      const phoneNumber = formData.phone.trim();
+      console.log('Phone number before formatting:', phoneNumber);
+
       // Create new patient object with Supabase field names
+      // Ensure gender and clinic are lowercase and match the allowed values
+      const gender = formData.gender.toLowerCase();
+      const clinic = formData.clinic.toLowerCase();
+
+      // Validate gender
+      if (!['male', 'female', 'other'].includes(gender)) {
+        throw new Error('Gender must be one of: male, female, other');
+      }
+
+      // Validate clinic
+      if (!['dental', 'meditouch', 'both'].includes(clinic)) {
+        throw new Error('Clinic must be one of: dental, meditouch, both');
+      }
+
       const newPatient = {
         name: formData.name,
-        gender: formData.gender as 'male' | 'female' | 'other',
+        gender: gender as 'male' | 'female' | 'other',
         age: calculatedAge,
-        date_of_birth: !useAgeInput ? formData.dateOfBirth : undefined,
+        date_of_birth: !useAgeInput && formData.dateOfBirth ? formData.dateOfBirth : null,
         email: formData.email || null,
-        phone: formData.phone,
+        phone: phoneNumber, // Use the validated phone number
         alt_phone: formData.altPhone || null,
-        address: formData.address,
-        city: formData.city,
-        pincode: formData.pincode,
-        blood_group: formData.bloodGroup,
-        referred_by: formData.referredBy,
-        clinic: formData.clinic as 'dental' | 'meditouch' | 'both',
-        last_visit: formData.lastVisit || ''
+        address: formData.address || null,
+        city: formData.city || null,
+        pincode: formData.pincode || null,
+        blood_group: formData.bloodGroup || null,
+        referred_by: formData.referredBy || null,
+        clinic: clinic as 'dental' | 'meditouch' | 'both',
+        last_visit: formData.lastVisit ? formData.lastVisit : null
       };
 
       // Add patient using PatientContext
@@ -534,12 +676,25 @@ const Patients = () => {
       // Reset the form
       resetFormData();
     } catch (error) {
-      console.error('Error adding patient:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add patient. Please try again.",
-        variant: "destructive",
-      });
+      console.error('Error adding patient in Patients.tsx:', error);
+
+      // Log the form data for debugging
+      console.error('Form data that failed to save:', formData);
+
+      // Check if the error is a specific type
+      if (error instanceof Error) {
+        toast({
+          title: "Error",
+          description: `Failed to add patient: ${error.message}`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to add patient. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -550,6 +705,11 @@ const Patients = () => {
   };
 
   // Use the filteredPatientsList state that's updated by the useEffect
+
+  // Log the filtered patients list for debugging
+  useEffect(() => {
+    console.log('Filtered patients list:', filteredPatientsList);
+  }, [filteredPatientsList]);
 
   // Memoize the columns definition to prevent recreating it on every render
   const columns = useMemo<ColumnDef<Patient>[]>(() => [
@@ -578,12 +738,15 @@ const Patients = () => {
     {
       accessorKey: "phone",
       header: "Contact",
-      cell: ({ row }) => (
-        <div className="flex items-center">
-          <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
-          {`+91 ${row.getValue("phone")}`}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const phone = row.getValue("phone");
+        return (
+          <div className="flex items-center">
+            <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
+            {phone ? `+91 ${phone}` : "Not provided"}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "city",
@@ -619,6 +782,15 @@ const Patients = () => {
           {row.getValue("lastVisit") || "No visits"}
         </div>
       ),
+    },
+    {
+      accessorKey: "created_at",
+      header: "Added On",
+      cell: ({ row }) => {
+        const createdAt = row.getValue("created_at") as string;
+        return createdAt ? new Date(createdAt).toLocaleDateString() : "Unknown";
+      },
+      enableHiding: true, // Allow hiding this column
     },
     {
       id: "actions",
@@ -942,6 +1114,16 @@ const Patients = () => {
                         required
                         pattern="\d+"
                         title="Please enter only digits"
+                        onBlur={(e) => {
+                          // Validate on blur - ensure we have a valid phone number
+                          if (e.target.value.trim() === '') {
+                            toast({
+                              title: "Phone Number Required",
+                              description: "Please enter a valid phone number",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
                       />
                     </div>
                   </div>

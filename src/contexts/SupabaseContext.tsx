@@ -1,6 +1,6 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import supabase from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 // Define the context type
 interface SupabaseContextType {

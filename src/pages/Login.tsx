@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { MudraClinicLogo, DentalMetrixLogo, MeditouchLogo } from '@/assets/logos';
 
 const Login = () => {
@@ -53,9 +53,9 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
-                <Input 
+                <Input
                   id="email"
-                  type="email" 
+                  type="email"
                   placeholder="name@mudraclinic.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -63,30 +63,30 @@ const Login = () => {
                   className="focus:border-dental-primary focus:ring-dental-primary"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <a 
-                    href="#" 
+                  <a
+                    href="#"
                     className="text-sm text-dental-primary hover:text-dental-dark transition-colors"
                   >
                     Forgot password?
                   </a>
                 </div>
-                <Input 
+                <Input
                   id="password"
-                  type="password" 
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="focus:border-dental-primary focus:ring-dental-primary"
                 />
               </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full bg-dental-primary hover:bg-dental-dark" 
+
+              <Button
+                type="submit"
+                className="w-full bg-dental-primary hover:bg-dental-dark"
                 disabled={isLoading}
               >
                 {isLoading ? 'Signing in...' : 'Sign In'}

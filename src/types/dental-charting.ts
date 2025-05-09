@@ -104,23 +104,22 @@ export const surfacesList: string[] = ['M', 'O', 'D', 'B/F', 'L'];
 // Findings are now entered as free text rather than selected from a list
 
 // Define the dental services list (treatments)
+// This should be populated from the Settings page services
+// For now, we'll keep this as a fallback
 export const servicesList: string[] = [
+  'General Checkup',
+  'Teeth Cleaning',
+  'Root Canal Treatment',
+  'Dental Filling',
+  'Crown Placement',
+  'Teeth Whitening',
   'Composite Filling',
-  'Amalgam Filling',
-  'PFM Crown',
-  'Zirconia Crown',
-  'Root Canal',
   'Extraction',
   'Sealant',
   'Veneer',
   'Bridge',
-  'Pontic',
   'Implant',
-  'Denture',
-  'Scaling',
-  'Root Planing',
-  'Fluoride Treatment',
-  'Orthodontic Treatment'
+  'Denture'
 ];
 
 // Define the status options

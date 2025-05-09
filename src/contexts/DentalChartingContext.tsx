@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useDentalHistory } from './DentalHistoryContext';
 import { useSupabase } from './SupabaseContext';
 import { v4 as uuidv4 } from 'uuid';
+import { handleDatabaseError } from '@/utils/error-handler';
 
 interface DentalChartingContextType {
   patientChartingHistory: ChartingEntry[];
@@ -54,11 +55,13 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
           setPatientChartingHistory(fetchedEntries);
         }
       } catch (error) {
-        console.error('Error initializing dental charting entries:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load dental charting entries. Please try again.',
-          variant: 'destructive',
+        // Use the global error handler
+        handleDatabaseError({
+          error,
+          toast,
+          errorKey: 'dental_charting_init_error',
+          customMessage: 'Dental charting data will be available after setup is complete.',
+          showToast: true
         });
       } finally {
         setIsLoading(false);
@@ -127,11 +130,13 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
 
       return createdEntry;
     } catch (error) {
-      console.error('Error adding charting entry:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add charting entry. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: 'dental_charting_add_error',
+        customMessage: 'Failed to add charting entry. Please try again.',
+        showToast: true
       });
       throw error;
     }
@@ -148,11 +153,13 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
 
       return entries;
     } catch (error) {
-      console.error('Error fetching patient charting history:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch dental charting history. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `dental_charting_patient_error_${patientId}`,
+        customMessage: 'Dental charting data will be available after setup is complete.',
+        showToast: true
       });
       return patientChartingHistory.filter(entry => entry.patient_id === patientId);
     }
@@ -170,12 +177,16 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
       // Filter out entries that already have appointments scheduled
       return entries.filter(entry => !entry.scheduled_appointment_id);
     } catch (error) {
-      console.error('Error fetching planned charting entries:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch planned dental treatments. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: 'dental_charting_planned_error',
+        customMessage: 'Dental charting data will be available after setup is complete.',
+        showToast: true
       });
+
+      // Return empty array instead of throwing an error for empty data
       return patientChartingHistory.filter(entry =>
         entry.status === 'Planned' && !entry.scheduled_appointment_id
       );
@@ -221,11 +232,13 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
         description: `The treatment has been marked as ${status.toLowerCase()}.`,
       });
     } catch (error) {
-      console.error('Error updating charting entry status:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update treatment status. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `dental_charting_status_error_${entryId}`,
+        customMessage: 'Failed to update treatment status. Please try again.',
+        showToast: true
       });
       throw error;
     }
@@ -260,11 +273,13 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
         description: 'Treatment linked to appointment successfully.',
       });
     } catch (error) {
-      console.error('Error linking charting entry to appointment:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to link treatment to appointment. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `dental_charting_link_error_${entryId}`,
+        customMessage: 'Failed to link treatment to appointment. Please try again.',
+        showToast: true
       });
       throw error;
     }
@@ -310,11 +325,13 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
         description: `Treatment snoozed until ${snoozeUntilDate}.`,
       });
     } catch (error) {
-      console.error('Error snoozing charting entry:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to snooze treatment. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `dental_charting_snooze_error_${entryId}`,
+        customMessage: 'Failed to snooze treatment. Please try again.',
+        showToast: true
       });
       throw error;
     }

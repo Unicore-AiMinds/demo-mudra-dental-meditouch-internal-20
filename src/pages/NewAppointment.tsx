@@ -181,26 +181,30 @@ const NewAppointment = () => {
       // Format date for Supabase
       const formattedDate = format(date, 'yyyy-MM-dd');
 
-      // Create appointment object
+      // Create appointment object - match database schema exactly
       const appointmentData = isDental
         ? {
             patient_id: selectedPatient.id,
-            patient_name: patient,
+            patient_name: patient, // Will be extracted before sending to DB
             service,
             doctor: doctor || '',
             doctor_id: doctorInfo?.id || '',
             time,
             date: formattedDate,
             status: 'confirmed' as const,
+            payment_status: 'unpaid' as const,
+            clinic_type: 'dental' as const,
             notes: notes || ''
           }
         : {
             patient_id: selectedPatient.id,
-            patient_name: patient,
+            patient_name: patient, // Will be extracted before sending to DB
             service,
             time,
             date: formattedDate,
             status: 'confirmed' as const,
+            payment_status: 'unpaid' as const,
+            clinic_type: 'meditouch' as const,
             notes: notes || ''
           };
 

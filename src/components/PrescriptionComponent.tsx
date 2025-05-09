@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Edit, Plus, Save, X, Trash, FileText, Printer } from 'lucide-react';
 import { Prescription, Medication } from '@/types/prescriptions';
 import { usePrescriptions } from '@/contexts/PrescriptionContext';
@@ -59,17 +59,17 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   const [newPrescription, setNewPrescription] = useState<{
     diagnosis: string;
     notes: string;
-    prescribedBy: string;
+    prescribed_by: string;
     status: 'Active' | 'Completed' | 'Cancelled';
     medications: Medication[];
-    doctorRegNo: string;
+    doctor_reg_no: string;
   }>({
     diagnosis: '',
     notes: '',
-    prescribedBy: '',
+    prescribed_by: '',
     status: 'Active',
     medications: [],
-    doctorRegNo: ''
+    doctor_reg_no: ''
   });
 
   // Form state for new medication
@@ -82,20 +82,38 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
       afternoon: false,
       night: false
     },
-    foodInstructions: '',
+    food_instructions: '',
     instructions: '',
-    dispenseQuantity: ''
+    dispense_quantity: ''
   });
 
   // Load prescriptions for the patient
   useEffect(() => {
     console.log('Loading prescriptions for patient ID:', patientId);
-    const patientPrescriptions = getPatientPrescriptions(patientId);
-    console.log('Found prescriptions:', patientPrescriptions);
-    setPrescriptions(patientPrescriptions.sort((a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    ));
-  }, [patientId, getPatientPrescriptions]);
+    const fetchPrescriptions = async () => {
+      try {
+        const patientPrescriptions = await getPatientPrescriptions(patientId);
+        console.log('Found prescriptions:', patientPrescriptions);
+
+        // Sort prescriptions by date (newest first)
+        const sortedPrescriptions = [...patientPrescriptions].sort((a, b) =>
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+
+        setPrescriptions(sortedPrescriptions);
+      } catch (error) {
+        console.error('Error fetching prescriptions:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load prescriptions. Please try again.",
+          variant: "destructive"
+        });
+        setPrescriptions([]);
+      }
+    };
+
+    fetchPrescriptions();
+  }, [patientId, getPatientPrescriptions, toast]);
 
   // Filter prescriptions based on active tab
   const filteredPrescriptions = prescriptions.filter(prescription => {
@@ -181,7 +199,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
             if (frequencyPerDay > 0) {
               const total = frequencyPerDay * durationNum;
               // Format as just the total number of tablets
-              updated.dispenseQuantity = `${total} tablets`;
+              updated.dispense_quantity = `${total} tablets`;
             }
           }
         } catch (error) {
@@ -197,7 +215,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   const handleFoodInstructionsChange = (selectedInstruction: string) => {
     setNewMedication(prev => ({
       ...prev,
-      foodInstructions: selectedInstruction
+      food_instructions: selectedInstruction
     }));
   };
 
@@ -226,7 +244,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
             if (frequencyPerDay > 0) {
               const total = frequencyPerDay * durationNum;
               // Format as just the total number of tablets
-              updated.dispenseQuantity = `${total} tablets`;
+              updated.dispense_quantity = `${total} tablets`;
             }
           }
         } catch (error) {
@@ -264,7 +282,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
     }
 
     // Auto-calculate dispense quantity if not already set
-    if (!newMedication.dispenseQuantity) {
+    if (!newMedication.dispense_quantity) {
       try {
         // Extract numeric values from duration (e.g., "7 days" -> 7)
         const durationMatch = newMedication.duration.match(/(\d+)/);
@@ -290,7 +308,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
           // Format as just the total number of tablets
           setNewMedication(prev => ({
             ...prev,
-            dispenseQuantity: `${total} tablets`
+            dispense_quantity: `${total} tablets`
           }));
         } else {
           toast({
@@ -332,9 +350,9 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
         afternoon: false,
         night: false
       },
-      foodInstructions: '',
+      food_instructions: '',
       instructions: '',
-      dispenseQuantity: ''
+      dispense_quantity: ''
     });
   };
 
@@ -347,39 +365,57 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   };
 
   // Handle saving a new prescription
-  const handleSaveNewPrescription = () => {
-    // Validate required fields
-    if (!newPrescription.diagnosis || !newPrescription.prescribedBy || newPrescription.medications.length === 0) {
-      toast({
-        title: "Missing Required Fields",
-        description: "Please fill in all required fields and add at least one medication.",
-        variant: "destructive",
+  const handleSaveNewPrescription = async () => {
+    try {
+      // Validate required fields
+      if (!newPrescription.diagnosis || !newPrescription.prescribed_by || newPrescription.medications.length === 0) {
+        toast({
+          title: "Missing Required Fields",
+          description: "Please fill in all required fields and add at least one medication.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create a copy of the prescription data for the API
+      const { medications } = newPrescription;
+
+      // Add new prescription using context
+      const newRecord = await addPrescription(patientId, newPrescription);
+
+      // Add each medication to the prescription
+      if (newRecord && newRecord.prescription_id) {
+        for (const medication of medications) {
+          // Remove the id property as it's a temporary ID
+          const { id, ...medicationWithoutId } = medication;
+          await addMedicationToPrescription(newRecord.prescription_id, medicationWithoutId);
+        }
+      }
+
+      // Fetch updated prescriptions
+      const updatedPrescriptions = await getPatientPrescriptions(patientId);
+      setPrescriptions(updatedPrescriptions);
+
+      // Reset form and close
+      setNewPrescription({
+        diagnosis: '',
+        notes: '',
+        prescribed_by: '',
+        status: 'Active',
+        medications: [],
+        doctor_reg_no: ''
       });
-      return;
+      setIsAddingNew(false);
+
+      // Success message is already shown by the context
+    } catch (error) {
+      console.error('Error saving prescription:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save prescription. Please try again.",
+        variant: "destructive"
+      });
     }
-
-    // Add new prescription using context
-    const newRecord = addPrescription(patientId, newPrescription);
-
-    // Update local state
-    setPrescriptions(prev => [newRecord, ...prev]);
-
-    // Reset form and close
-    setNewPrescription({
-      diagnosis: '',
-      notes: '',
-      prescribedBy: '',
-      status: 'Active',
-      medications: [],
-      doctorRegNo: ''
-    });
-    setIsAddingNew(false);
-
-    // Show success message
-    toast({
-      title: "Prescription Created",
-      description: "The prescription has been successfully created.",
-    });
   };
 
   // Handle editing an existing prescription
@@ -389,64 +425,72 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
       setNewPrescription({
         diagnosis: prescription.diagnosis,
         notes: prescription.notes || '',
-        prescribedBy: prescription.prescribedBy,
+        prescribed_by: prescription.prescribed_by,
         status: prescription.status,
         medications: [...prescription.medications],
-        doctorRegNo: prescription.doctorRegNo || ''
+        doctor_reg_no: prescription.doctor_reg_no || ''
       });
       setIsEditing(id);
     }
   };
 
   // Handle updating an existing prescription
-  const handleUpdatePrescription = () => {
-    if (!isEditing) return;
+  const handleUpdatePrescription = async () => {
+    try {
+      if (!isEditing) return;
 
-    // Validate required fields
-    if (!newPrescription.diagnosis || !newPrescription.prescribedBy || newPrescription.medications.length === 0) {
-      toast({
-        title: "Missing Required Fields",
-        description: "Please fill in all required fields and add at least one medication.",
-        variant: "destructive",
+      // Validate required fields
+      if (!newPrescription.diagnosis || !newPrescription.prescribed_by || newPrescription.medications.length === 0) {
+        toast({
+          title: "Missing Required Fields",
+          description: "Please fill in all required fields and add at least one medication.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Proceed with updating the prescription
+
+      // Update the prescription using context
+      const updatedPrescription = await updatePrescription(isEditing, newPrescription);
+
+      if (updatedPrescription) {
+        // Fetch updated prescriptions
+        const updatedPrescriptions = await getPatientPrescriptions(patientId);
+        setPrescriptions(updatedPrescriptions);
+
+        // Show success message
+        toast({
+          title: "Prescription Updated",
+          description: "The prescription has been successfully updated.",
+        });
+      } else {
+        // Show error message
+        toast({
+          title: "Update Failed",
+          description: "Failed to update prescription. Please try again.",
+          variant: "destructive",
+        });
+      }
+
+      // Reset form and close
+      setNewPrescription({
+        diagnosis: '',
+        notes: '',
+        prescribed_by: '',
+        status: 'Active',
+        medications: [],
+        doctor_reg_no: ''
       });
-      return;
-    }
-
-    // Update the prescription using context
-    const updatedPrescription = updatePrescription(isEditing, newPrescription);
-
-    if (updatedPrescription) {
-      // Update local state
-      setPrescriptions(prev => prev.map(p =>
-        p.id === isEditing
-          ? updatedPrescription
-          : p
-      ));
-
-      // Show success message
+      setIsEditing(null);
+    } catch (error) {
+      console.error('Error updating prescription:', error);
       toast({
-        title: "Prescription Updated",
-        description: "The prescription has been successfully updated.",
-      });
-    } else {
-      // Show error message
-      toast({
-        title: "Update Failed",
+        title: "Error",
         description: "Failed to update prescription. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
-
-    // Reset form and close
-    setNewPrescription({
-      diagnosis: '',
-      notes: '',
-      prescribedBy: '',
-      status: 'Active',
-      medications: [],
-      doctorRegNo: ''
-    });
-    setIsEditing(null);
   };
 
   // Cancel adding or editing
@@ -454,10 +498,10 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
     setNewPrescription({
       diagnosis: '',
       notes: '',
-      prescribedBy: '',
+      prescribed_by: '',
       status: 'Active',
       medications: [],
-      doctorRegNo: ''
+      doctor_reg_no: ''
     });
     setNewMedication({
       name: '',
@@ -468,9 +512,9 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
         afternoon: false,
         night: false
       },
-      foodInstructions: '',
+      food_instructions: '',
       instructions: '',
-      dispenseQuantity: ''
+      dispense_quantity: ''
     });
     setIsAddingNew(false);
     setIsEditing(null);
@@ -588,8 +632,8 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 <p><strong>Date:</strong> ${format(new Date(prescription.date), 'dd/MM/yyyy')}</p>
               </div>
               <div class="text-right">
-                <p><strong>Doctor:</strong> ${prescription.prescribedBy}</p>
-                <p><strong>Reg. No:</strong> ${prescription.doctorRegNo || 'N/A'}</p>
+                <p><strong>Doctor:</strong> ${prescription.prescribed_by}</p>
+                <p><strong>Reg. No:</strong> ${prescription.doctor_reg_no || 'N/A'}</p>
                 <p><strong>Diagnosis:</strong> ${prescription.diagnosis}</p>
               </div>
             </div>
@@ -608,11 +652,11 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                         med.timing.afternoon ? 'Afternoon' : '',
                         med.timing.night ? 'Night' : ''
                       ].filter(Boolean).join(', ')}` : ''}
-                    ${med.foodInstructions ? ` - ${med.foodInstructions}` : ''}
+                    ${med.food_instructions ? ` - ${med.food_instructions}` : ''}
                     ${med.instructions ? ` - Notes: ${med.instructions}` : ''}
                   </div>
                   <div class="medication-details dispense">
-                    Dispense: ${med.dispenseQuantity}
+                    Dispense: ${med.dispense_quantity}
                   </div>
                 </li>
               `).join('')}
@@ -627,7 +671,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
 
             <div class="signature">
               <div class="signature-line"></div>
-              <p>${prescription.prescribedBy}</p>
+              <p>${prescription.prescribed_by}</p>
             </div>
           </body>
         </html>
@@ -737,10 +781,10 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 <div className="space-y-2">
                   <Label htmlFor="prescribedBy">Prescribed By *</Label>
                   <select
-                    id="prescribedBy"
-                    name="prescribedBy"
+                    id="prescribed_by"
+                    name="prescribed_by"
                     className="w-full h-10 px-3 py-2 border rounded-md"
-                    value={newPrescription.prescribedBy}
+                    value={newPrescription.prescribed_by}
                     onChange={handlePrescriptionChange}
                     required
                   >
@@ -768,12 +812,12 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="doctorRegNo">Doctor Registration No.</Label>
+                  <Label htmlFor="doctor_reg_no">Doctor Registration No.</Label>
                   <Input
-                    id="doctorRegNo"
-                    name="doctorRegNo"
+                    id="doctor_reg_no"
+                    name="doctor_reg_no"
                     placeholder="e.g., MCI-12345"
-                    value={newPrescription.doctorRegNo}
+                    value={newPrescription.doctor_reg_no}
                     onChange={handlePrescriptionChange}
                   />
                 </div>
@@ -824,9 +868,9 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                                 med.timing.night ? 'Night' : ''
                               ].filter(Boolean).join(', ')}
                             </TableCell>
-                            <TableCell>{med.foodInstructions}</TableCell>
+                            <TableCell>{med.food_instructions}</TableCell>
                             <TableCell>{med.instructions}</TableCell>
-                            <TableCell>{med.dispenseQuantity}</TableCell>
+                            <TableCell>{med.dispense_quantity}</TableCell>
                             <TableCell>
                               <Button
                                 variant="ghost"
@@ -930,7 +974,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                           { value: "With food", label: "With food" },
                           { value: "Empty stomach", label: "Empty stomach" }
                         ]}
-                        value={newMedication.foodInstructions || ""}
+                        value={newMedication.food_instructions || ""}
                         onChange={handleFoodInstructionsChange}
                         placeholder="Select instructions"
                         emptyMessage="No instructions available"
@@ -960,7 +1004,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                         id="dispenseQuantity"
                         name="dispenseQuantity"
                         placeholder="e.g., 21 tablets"
-                        value={newMedication.dispenseQuantity}
+                        value={newMedication.dispense_quantity}
                         onChange={handleMedicationChange}
                         className="h-9 text-sm focus:ring-1 focus:ring-blue-500"
                       />
@@ -1042,7 +1086,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                           <TableCell>
                             {prescription.medications.map(med => med.name).join(', ')}
                           </TableCell>
-                          <TableCell>{prescription.prescribedBy}</TableCell>
+                          <TableCell>{prescription.prescribed_by}</TableCell>
                           <TableCell>{getStatusBadge(prescription.status)}</TableCell>
                           <TableCell>
                             <div className="flex space-x-1">
@@ -1106,8 +1150,8 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                   <p><strong>Date:</strong> {format(new Date(selectedPrescription.date), 'dd/MM/yyyy')}</p>
                 </div>
                 <div className="text-right">
-                  <p><strong>Doctor:</strong> {selectedPrescription.prescribedBy}</p>
-                  <p><strong>Reg. No:</strong> {selectedPrescription.doctorRegNo || 'N/A'}</p>
+                  <p><strong>Doctor:</strong> {selectedPrescription.prescribed_by}</p>
+                  <p><strong>Reg. No:</strong> {selectedPrescription.doctor_reg_no || 'N/A'}</p>
                   <p><strong>Diagnosis:</strong> {selectedPrescription.diagnosis}</p>
                 </div>
               </div>
@@ -1132,11 +1176,11 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                             med.timing.night ? 'Night' : ''
                           ].filter(Boolean).join(', ')}`
                         }
-                        {med.foodInstructions && ` - ${med.foodInstructions}`}
+                        {med.food_instructions && ` - ${med.food_instructions}`}
                         {med.instructions && ` - Notes: ${med.instructions}`}
                       </p>
                       <p className="text-xs pl-2 font-medium">
-                        Dispense: {med.dispenseQuantity}
+                        Dispense: {med.dispense_quantity}
                       </p>
                     </li>
                   ))}
@@ -1156,7 +1200,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
               {/* Signature */}
               <div className="mt-6 pt-4 border-t text-right">
                 <div className="mb-6 w-[200px] h-[1px] border-b border-black inline-block"></div>
-                <p className="font-medium text-sm">{selectedPrescription.prescribedBy}</p>
+                <p className="font-medium text-sm">{selectedPrescription.prescribed_by}</p>
               </div>
             </div>
 

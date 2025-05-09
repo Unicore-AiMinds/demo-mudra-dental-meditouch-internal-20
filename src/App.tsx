@@ -17,6 +17,7 @@ import { LabWorkProvider } from "@/contexts/LabWorkContext";
 import { MedicineProvider } from "@/contexts/MedicineContext";
 import { PatientProvider } from "@/contexts/PatientContext";
 import { AppointmentProvider } from "@/contexts/AppointmentContext";
+import { ServiceProvider } from "@/contexts/ServiceContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
@@ -50,13 +51,14 @@ const App = () => (
                 <DoctorProvider>
                   <PatientProvider>
                     <AppointmentProvider>
-                      <DentalHistoryProvider>
-                        <DentalChartingProvider>
-                          <VitalSignsProvider>
-                            <PrescriptionProvider>
-                              <StockProvider>
-                                <LabWorkProvider>
-                                  <MedicineProvider>
+                      <ServiceProvider>
+                        <DentalHistoryProvider>
+                          <DentalChartingProvider>
+                            <VitalSignsProvider>
+                              <PrescriptionProvider>
+                                <StockProvider>
+                                  <LabWorkProvider>
+                                    <MedicineProvider>
                             <Routes>
                               <Route path="/login" element={<Login />} />
                               <Route path="/unauthorized" element={<Unauthorized />} />
@@ -124,13 +126,14 @@ const App = () => (
                               {/* 404 route */}
                               <Route path="*" element={<NotFound />} />
                             </Routes>
-                                  </MedicineProvider>
-                                </LabWorkProvider>
-                              </StockProvider>
-                            </PrescriptionProvider>
-                          </VitalSignsProvider>
-                        </DentalChartingProvider>
-                      </DentalHistoryProvider>
+                                    </MedicineProvider>
+                                  </LabWorkProvider>
+                                </StockProvider>
+                              </PrescriptionProvider>
+                            </VitalSignsProvider>
+                          </DentalChartingProvider>
+                        </DentalHistoryProvider>
+                      </ServiceProvider>
                     </AppointmentProvider>
                   </PatientProvider>
                 </DoctorProvider>

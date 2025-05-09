@@ -4,7 +4,7 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import { DentalHistoryEntry } from '@/types/dental-history';
 import { usePatients, Patient } from '@/contexts/PatientContext';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Card,
@@ -38,6 +38,7 @@ import PrescriptionComponent from '@/components/PrescriptionComponent';
 // This helps us bridge between the Supabase field names and the UI component's expected field names
 interface LocalPatient {
   id: string;
+  patient_code?: string; // Added patient_code field
   name: string;
   gender: 'male' | 'female' | 'other';
   age: number;
@@ -122,6 +123,7 @@ const PatientDetails = () => {
             // Convert Supabase field names to component's expected format
             const formattedPatient: LocalPatient = {
               id: foundPatient.id,
+              patient_code: foundPatient.patient_code, // Include patient_code
               name: foundPatient.name,
               gender: foundPatient.gender,
               age: foundPatient.age,
@@ -227,7 +229,7 @@ const PatientDetails = () => {
             <h1 className="text-3xl font-display font-bold tracking-tight">{patient.name}</h1>
             <div className="flex items-center gap-2">
               <p className="text-muted-foreground">
-                Patient ID: {patient.id}
+                Patient ID: {patient.patient_code || 'N/A'}
               </p>
               {getClinicBadge(patient.clinic, activeClinic)}
             </div>
@@ -332,14 +334,16 @@ const PatientDetails = () => {
           </Card>
         </TabsContent>
 
-        {/* Appointments Tab - Dental Only */}
+        {/* Appointments Tab - Show all upcoming appointments */}
         <TabsContent value="appointments" className="mt-6">
           <PatientUpcomingAppointments
             patientId={patient.id}
             patientName={patient.name}
             clinic={patient.clinic}
-            title="Upcoming Dental Appointments"
-            dentalOnly={true}
+            title={patient.clinic === 'both' ? "All Upcoming Appointments" :
+                  patient.clinic === 'dental' ? "Upcoming Dental Appointments" :
+                  "Upcoming Meditouch Appointments"}
+            dentalOnly={patient.clinic === 'dental'} // Only filter to dental if patient is dental-only
           />
         </TabsContent>
 

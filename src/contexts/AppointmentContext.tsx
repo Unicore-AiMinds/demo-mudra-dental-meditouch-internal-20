@@ -3,82 +3,53 @@ import { useSupabase } from './SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO, isAfter } from 'date-fns';
+import { handleDatabaseError } from '@/utils/error-handler';
 
 // Define appointment types
-export interface BaseAppointment {
+export interface Appointment {
   id: string;
-  appointment_id?: string;
+  appointment_code: string;
   patient_id: string;
-  patient_name: string;
-  service: string;
+  // patient_name is not in the database schema, but we need it for UI display
+  patient_name?: string; // Not stored in DB, used for UI only
   time: string;
+  service: string;
   date: string;
-  status: 'confirmed' | 'cancelled' | 'completed' | 'arrived' | 'no-show';
+  status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
+  payment_status?: 'paid' | 'unpaid';
+  based_on_follow_up_id?: string;
   notes?: string;
+  clinic_type: 'dental' | 'meditouch';
+  doctor?: string;
+  second_patient?: string;
+  treatment_type?: string;
+  therapist?: string;
   created_at?: string;
   updated_at?: string;
-}
-
-export interface DentalAppointment extends BaseAppointment {
-  doctor: string;
-  doctor_id: string;
-  second_patient_name?: string;
-  second_patient_id?: string;
+  doctor_id?: string;
   charting_entry_id?: string;
-  follow_up_id?: string;
 }
 
-export interface MeditouchAppointment extends BaseAppointment {
-  // Any meditouch-specific fields
-}
+export type DentalAppointment = Appointment & {
+  clinic_type: 'dental';
+  doctor: string;
+};
 
-export type Appointment = DentalAppointment | MeditouchAppointment;
+export type MeditouchAppointment = Appointment & {
+  clinic_type: 'meditouch';
+};
 
-// Default appointments for initialization
-const defaultDentalAppointments: Omit<DentalAppointment, 'id'>[] = [
-  {
-    appointment_id: 'd1',
-    patient_id: 'PT001',
-    patient_name: 'Aarav Sharma',
-    service: 'Dental Checkup',
-    doctor: 'Dr. Khanna',
-    doctor_id: 'DOC001',
-    time: '9:00 AM',
-    date: format(new Date(), 'yyyy-MM-dd'),
-    status: 'confirmed' as const
-  },
-  {
-    appointment_id: 'd2',
-    patient_id: 'PT002',
-    patient_name: 'Priya Patel',
-    service: 'Root Canal',
-    doctor: 'Dr. Khanna',
-    doctor_id: 'DOC001',
-    time: '9:15 AM',
-    date: format(new Date(new Date().setDate(new Date().getDate() + 1)), 'yyyy-MM-dd'),
-    status: 'confirmed' as const
-  }
-];
-
-const defaultMeditouchAppointments: Omit<MeditouchAppointment, 'id'>[] = [
-  {
-    appointment_id: 'm1',
-    patient_id: 'PT004',
-    patient_name: 'Neha Kapoor',
-    service: 'Skin Consultation',
-    time: '9:15 AM',
-    date: format(new Date(), 'yyyy-MM-dd'),
-    status: 'confirmed' as const
-  }
-];
+// No default appointments - everything will come from Supabase
+const defaultDentalAppointments: Omit<DentalAppointment, 'id'>[] = [];
+const defaultMeditouchAppointments: Omit<MeditouchAppointment, 'id'>[] = [];
 
 // Define context type
 interface AppointmentContextType {
   dentalAppointments: DentalAppointment[];
   meditouchAppointments: MeditouchAppointment[];
   isLoading: boolean;
-  addAppointment: (appointment: Omit<Appointment, 'id' | 'appointment_id' | 'created_at' | 'updated_at'>) => Promise<Appointment>;
-  updateAppointment: (id: string, updates: Partial<Omit<Appointment, 'id' | 'appointment_id' | 'created_at' | 'updated_at'>>) => Promise<Appointment>;
+  addAppointment: (appointment: Omit<Appointment, 'id' | 'appointment_code' | 'created_at' | 'updated_at'>) => Promise<Appointment>;
+  updateAppointment: (id: string, updates: Partial<Omit<Appointment, 'id' | 'appointment_code' | 'created_at' | 'updated_at'>>) => Promise<Appointment>;
   deleteAppointment: (id: string) => Promise<void>;
   getAppointmentsByDate: (date: Date, clinic: 'dental' | 'meditouch') => Promise<Appointment[]>;
   getPatientAppointments: (patientId: string, clinic: 'dental' | 'meditouch' | 'both') => Promise<Appointment[]>;
@@ -105,104 +76,48 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
         setIsLoading(true);
 
         try {
-          // Fetch dental appointments from Supabase
-          const fetchedDentalAppointments = await supabase.from<DentalAppointment>('dental_appointments').getAll({
-            order: { column: 'date', ascending: true }
+          // Fetch all appointments from Supabase
+          const fetchedAppointments = await supabase.from<Appointment>('appointments').getAll({
+            order: { column: 'date', ascending: false } // Latest first
           });
 
-          console.log('Fetched dental appointments:', fetchedDentalAppointments);
+          console.log('Fetched all appointments:', fetchedAppointments);
 
-          // If no dental appointments exist, create default ones
-          if (!fetchedDentalAppointments || fetchedDentalAppointments.length === 0) {
-            console.log('No dental appointments found, creating defaults');
+          // Filter appointments by clinic type
+          const dentalApps = fetchedAppointments.filter(app => app.clinic_type === 'dental') as DentalAppointment[];
+          const meditouchApps = fetchedAppointments.filter(app => app.clinic_type === 'meditouch') as MeditouchAppointment[];
 
-            // Add IDs to default appointments
-            const appointmentsWithIds = defaultDentalAppointments.map(app => ({
-              ...app,
-              id: app.appointment_id // Use appointment_id as id for now
-            }));
+          console.log('Filtered dental appointments:', dentalApps.length);
+          console.log('Filtered meditouch appointments:', meditouchApps.length);
 
-            // Set default appointments in state
-            setDentalAppointments(appointmentsWithIds as DentalAppointment[]);
+          // Set fetched appointments in state
+          setDentalAppointments(dentalApps);
+          setMeditouchAppointments(meditouchApps);
+        } catch (error) {
+          console.error('Error fetching appointments:', error);
 
-            // Try to insert them into Supabase
-            for (const appointment of defaultDentalAppointments) {
-              try {
-                await supabase.from<DentalAppointment>('dental_appointments').insert(appointment);
-              } catch (insertError) {
-                console.error('Error inserting default dental appointment:', insertError);
-              }
-            }
-          } else {
-            // Set fetched appointments in state
-            setDentalAppointments(fetchedDentalAppointments);
-          }
-        } catch (dentalError) {
-          console.error('Error fetching dental appointments:', dentalError);
-
-          // Set empty array instead of using default data
+          // Set empty arrays instead of using default data
           setDentalAppointments([]);
-
-          // Show error toast
-          toast({
-            title: 'Error',
-            description: 'Failed to load dental appointments. Please try again.',
-            variant: 'destructive',
-          });
-        }
-
-        try {
-          // Fetch meditouch appointments from Supabase
-          const fetchedMeditouchAppointments = await supabase.from<MeditouchAppointment>('meditouch_appointments').getAll({
-            order: { column: 'date', ascending: true }
-          });
-
-          console.log('Fetched meditouch appointments:', fetchedMeditouchAppointments);
-
-          // If no meditouch appointments exist, create default ones
-          if (!fetchedMeditouchAppointments || fetchedMeditouchAppointments.length === 0) {
-            console.log('No meditouch appointments found, creating defaults');
-
-            // Add IDs to default appointments
-            const appointmentsWithIds = defaultMeditouchAppointments.map(app => ({
-              ...app,
-              id: app.appointment_id // Use appointment_id as id for now
-            }));
-
-            // Set default appointments in state
-            setMeditouchAppointments(appointmentsWithIds as MeditouchAppointment[]);
-
-            // Try to insert them into Supabase
-            for (const appointment of defaultMeditouchAppointments) {
-              try {
-                await supabase.from<MeditouchAppointment>('meditouch_appointments').insert(appointment);
-              } catch (insertError) {
-                console.error('Error inserting default meditouch appointment:', insertError);
-              }
-            }
-          } else {
-            // Set fetched appointments in state
-            setMeditouchAppointments(fetchedMeditouchAppointments);
-          }
-        } catch (meditouchError) {
-          console.error('Error fetching meditouch appointments:', meditouchError);
-
-          // Set empty array instead of using default data
           setMeditouchAppointments([]);
 
-          // Show error toast
-          toast({
-            title: 'Error',
-            description: 'Failed to load meditouch appointments. Please try again.',
-            variant: 'destructive',
+          // Use the global error handler
+          handleDatabaseError({
+            error,
+            toast,
+            errorKey: 'appointments_init_error',
+            customMessage: 'Appointments will be available after setup is complete.',
+            showToast: true
           });
         }
       } catch (error) {
         console.error('Error initializing appointments:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load appointments. Please try again.',
-          variant: 'destructive',
+        // Use the global error handler
+        handleDatabaseError({
+          error,
+          toast,
+          errorKey: 'appointments_init_error',
+          customMessage: 'Appointments will be available after setup is complete.',
+          showToast: true
         });
       } finally {
         setIsLoading(false);
@@ -214,60 +129,116 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   // Add a new appointment
   const addAppointment = async (
-    appointment: Omit<Appointment, 'id' | 'appointment_id' | 'created_at' | 'updated_at'>
+    appointment: Omit<Appointment, 'id' | 'appointment_code' | 'created_at' | 'updated_at'>
   ): Promise<Appointment> => {
     try {
-      // Generate a unique appointment ID
-      const isDental = 'doctor' in appointment;
-      const prefix = isDental ? 'd' : 'm';
-      const appointmentId = `${prefix}${uuidv4().substring(0, 8)}`;
+      console.log('addAppointment called with data:', JSON.stringify(appointment, null, 2));
 
-      // Create new appointment with ID
+      // Validate required fields
+      if (!appointment.patient_name) {
+        console.error('Missing patient_name in appointment data');
+        throw new Error('Patient name is required');
+      }
+
+      if (!appointment.service) {
+        console.error('Missing service in appointment data');
+        throw new Error('Service is required');
+      }
+
+      if (!appointment.time) {
+        console.error('Missing time in appointment data');
+        throw new Error('Time is required');
+      }
+
+      if (!appointment.date) {
+        console.error('Missing date in appointment data');
+        throw new Error('Date is required');
+      }
+
+      if (!appointment.clinic_type) {
+        console.error('Missing clinic_type in appointment data');
+        throw new Error('Clinic type is required');
+      }
+
+      // Generate a unique appointment code
+      const isDental = appointment.clinic_type === 'dental';
+      const prefix = isDental ? 'd' : 'm';
+      const appointmentCode = `${prefix}${uuidv4().substring(0, 8)}`;
+
+      // Generate a UUID for the appointment
+      const id = uuidv4();
+
+      // Create new appointment with ID and code
+      // Extract patient_name since it's not in the database schema
+      const { patient_name, ...appointmentData } = appointment;
+
       const newAppointment = {
-        appointment_id: appointmentId,
-        ...appointment
+        id,
+        appointment_code: appointmentCode,
+        ...appointmentData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
+
+      // Note: patient_name will be added back for UI display after Supabase insert
+
+      console.log('Prepared appointment object for Supabase:', JSON.stringify(newAppointment, null, 2));
 
       // Add to Supabase
       try {
-        // Add ID to the appointment
-        const appointmentWithId = {
+        console.log(`Adding ${isDental ? 'dental' : 'meditouch'} appointment to Supabase table 'appointments'`);
+
+        // Insert into Supabase - send only the data that matches the database schema
+        const createdAppointment = await supabase.from<Appointment>('appointments').insert(newAppointment);
+
+        console.log('Supabase response for appointment:', JSON.stringify(createdAppointment, null, 2));
+
+        if (!createdAppointment) {
+          console.error('Supabase returned null or undefined response');
+          throw new Error('Failed to create appointment in database');
+        }
+
+        // For UI display, we need to add back the patient_name
+        const appointmentForUI = {
           ...newAppointment,
-          id: appointmentId
+          patient_name
         };
 
+        // Update local state based on clinic type
         if (isDental) {
-          // Try to insert into Supabase
-          try {
-            await supabase.from<DentalAppointment>('dental_appointments').insert(newAppointment as DentalAppointment);
-          } catch (insertError) {
-            console.error('Error inserting dental appointment to Supabase:', insertError);
-          }
-
-          // Update local state regardless of Supabase success
-          setDentalAppointments(prev => [...prev, appointmentWithId as DentalAppointment]);
-          return appointmentWithId as Appointment;
+          console.log('Updating local dental appointments state');
+          setDentalAppointments(prev => [...prev, appointmentForUI as DentalAppointment]);
         } else {
-          // Try to insert into Supabase
-          try {
-            await supabase.from<MeditouchAppointment>('meditouch_appointments').insert(newAppointment as MeditouchAppointment);
-          } catch (insertError) {
-            console.error('Error inserting meditouch appointment to Supabase:', insertError);
-          }
-
-          // Update local state regardless of Supabase success
-          setMeditouchAppointments(prev => [...prev, appointmentWithId as MeditouchAppointment]);
-          return appointmentWithId as Appointment;
+          console.log('Updating local meditouch appointments state');
+          setMeditouchAppointments(prev => [...prev, appointmentForUI as MeditouchAppointment]);
         }
+
+        console.log('Successfully created appointment');
+
+        // Show success toast
+        toast({
+          title: 'Success',
+          description: 'Appointment scheduled successfully.',
+        });
+
+        // Return the UI-friendly version with patient_name
+        return appointmentForUI;
       } catch (error) {
-        console.error('Error in addAppointment:', error);
+        console.error('Error in addAppointment Supabase operation:', error);
+
+        // Log more details about the error
+        if (error instanceof Error) {
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+        }
+
+        toast({
+          title: 'Database Error',
+          description: 'Failed to save appointment to database. Please try again.',
+          variant: 'destructive',
+        });
         throw error;
       }
-
-      toast({
-        title: 'Success',
-        description: 'Appointment scheduled successfully.',
-      });
     } catch (error) {
       console.error('Error adding appointment:', error);
       toast({
@@ -282,50 +253,48 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Update an existing appointment
   const updateAppointment = async (
     id: string,
-    updates: Partial<Omit<Appointment, 'id' | 'appointment_id' | 'created_at' | 'updated_at'>>
+    updates: Partial<Omit<Appointment, 'id' | 'appointment_code' | 'created_at' | 'updated_at'>>
   ): Promise<Appointment> => {
     try {
       // Determine if it's a dental or meditouch appointment
-      const dentalAppointment = dentalAppointments.find(a => a.id === id || a.appointment_id === id);
+      const dentalAppointment = dentalAppointments.find(a => a.id === id || a.appointment_code === id);
+      const meditouchAppointment = meditouchAppointments.find(a => a.id === id || a.appointment_code === id);
 
-      let updatedAppointment;
-      if (dentalAppointment) {
-        // Update local state first
-        const updatedLocalAppointment = { ...dentalAppointment, ...updates };
+      // Find the appointment to update
+      const existingAppointment = dentalAppointment || meditouchAppointment;
+
+      if (!existingAppointment) {
+        throw new Error(`Appointment with ID ${id} not found`);
+      }
+
+      // Add updated_at timestamp
+      const updatesWithTimestamp = {
+        ...updates,
+        updated_at: new Date().toISOString()
+      };
+
+      // Create the updated appointment object
+      const updatedLocalAppointment = {
+        ...existingAppointment,
+        ...updatesWithTimestamp
+      };
+
+      console.log('Updating appointment in Supabase:', id, updatesWithTimestamp);
+
+      // Update in Supabase first
+      const updatedDbAppointment = await supabase.from<Appointment>('appointments').update(id, updatesWithTimestamp);
+
+      console.log('Supabase response for appointment update:', updatedDbAppointment);
+
+      // Then update local state based on clinic type
+      if (updatedLocalAppointment.clinic_type === 'dental') {
         setDentalAppointments(prev =>
-          prev.map(a => a.id === id || a.appointment_id === id ? updatedLocalAppointment : a)
+          prev.map(a => a.id === id || a.appointment_code === id ? updatedLocalAppointment as DentalAppointment : a)
         );
-
-        // Try to update in Supabase
-        try {
-          await supabase.from<DentalAppointment>('dental_appointments').update(id, updates);
-        } catch (updateError) {
-          console.error('Error updating dental appointment in Supabase:', updateError);
-        }
-
-        updatedAppointment = updatedLocalAppointment;
       } else {
-        // Find the meditouch appointment
-        const meditouchAppointment = meditouchAppointments.find(a => a.id === id || a.appointment_id === id);
-
-        if (!meditouchAppointment) {
-          throw new Error(`Appointment with ID ${id} not found`);
-        }
-
-        // Update local state first
-        const updatedLocalAppointment = { ...meditouchAppointment, ...updates };
         setMeditouchAppointments(prev =>
-          prev.map(a => a.id === id || a.appointment_id === id ? updatedLocalAppointment : a)
+          prev.map(a => a.id === id || a.appointment_code === id ? updatedLocalAppointment as MeditouchAppointment : a)
         );
-
-        // Try to update in Supabase
-        try {
-          await supabase.from<MeditouchAppointment>('meditouch_appointments').update(id, updates);
-        } catch (updateError) {
-          console.error('Error updating meditouch appointment in Supabase:', updateError);
-        }
-
-        updatedAppointment = updatedLocalAppointment;
       }
 
       toast({
@@ -333,7 +302,7 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
         description: 'Appointment updated successfully.',
       });
 
-      return updatedAppointment;
+      return updatedLocalAppointment;
     } catch (error) {
       console.error('Error updating appointment:', error);
       toast({
@@ -349,32 +318,32 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
   const deleteAppointment = async (id: string): Promise<void> => {
     try {
       // Determine if it's a dental or meditouch appointment
-      const dentalAppointment = dentalAppointments.find(a => a.id === id || a.appointment_id === id);
+      const dentalAppointment = dentalAppointments.find(a => a.id === id || a.appointment_code === id);
+      const meditouchAppointment = meditouchAppointments.find(a => a.id === id || a.appointment_code === id);
 
-      if (dentalAppointment) {
-        // Update local state first
+      // Find the appointment to delete
+      const existingAppointment = dentalAppointment || meditouchAppointment;
+
+      if (!existingAppointment) {
+        throw new Error(`Appointment with ID ${id} not found`);
+      }
+
+      console.log('Deleting appointment from Supabase:', id);
+
+      // Delete from Supabase first
+      await supabase.from<Appointment>('appointments').delete(id);
+
+      console.log('Appointment deleted from Supabase');
+
+      // Then update local state based on clinic type
+      if (existingAppointment.clinic_type === 'dental') {
         setDentalAppointments(prev =>
-          prev.filter(a => a.id !== id && a.appointment_id !== id)
+          prev.filter(a => a.id !== id && a.appointment_code !== id)
         );
-
-        // Try to delete from Supabase
-        try {
-          await supabase.from<DentalAppointment>('dental_appointments').delete(id);
-        } catch (deleteError) {
-          console.error('Error deleting dental appointment from Supabase:', deleteError);
-        }
       } else {
-        // Update local state first
         setMeditouchAppointments(prev =>
-          prev.filter(a => a.id !== id && a.appointment_id !== id)
+          prev.filter(a => a.id !== id && a.appointment_code !== id)
         );
-
-        // Try to delete from Supabase
-        try {
-          await supabase.from<MeditouchAppointment>('meditouch_appointments').delete(id);
-        } catch (deleteError) {
-          console.error('Error deleting meditouch appointment from Supabase:', deleteError);
-        }
       }
 
       toast({
@@ -397,23 +366,17 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       const dateString = format(date, 'yyyy-MM-dd');
 
-      if (clinic === 'dental') {
-        // Fetch dental appointments for the date
-        const appointments = await supabase.from<DentalAppointment>('dental_appointments').getAll({
-          filters: { date: dateString },
-          order: { column: 'time', ascending: true }
-        });
+      // Fetch appointments for the date and clinic type
+      const appointments = await supabase.from<Appointment>('appointments').getAll({
+        filters: {
+          date: dateString,
+          clinic_type: clinic
+        },
+        order: { column: 'time', ascending: true }
+      });
 
-        return appointments;
-      } else {
-        // Fetch meditouch appointments for the date
-        const appointments = await supabase.from<MeditouchAppointment>('meditouch_appointments').getAll({
-          filters: { date: dateString },
-          order: { column: 'time', ascending: true }
-        });
-
-        return appointments;
-      }
+      console.log(`Fetched ${appointments.length} ${clinic} appointments for date ${dateString}`);
+      return appointments;
     } catch (error) {
       console.error('Error fetching appointments by date:', error);
       toast({
@@ -430,28 +393,25 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Get appointments for a specific patient
   const getPatientAppointments = async (patientId: string, clinic: 'dental' | 'meditouch' | 'both'): Promise<Appointment[]> => {
     try {
-      let appointments: Appointment[] = [];
+      // Prepare filters based on clinic type
+      let clinicFilter = {};
 
-      if (clinic === 'dental' || clinic === 'both') {
-        // Fetch dental appointments for the patient
-        const dentalApps = await supabase.from<DentalAppointment>('dental_appointments').getAll({
-          filters: { patient_id: patientId },
-          order: { column: 'date', ascending: true }
-        });
-
-        appointments = [...appointments, ...dentalApps];
+      if (clinic === 'dental') {
+        clinicFilter = { clinic_type: 'dental' };
+      } else if (clinic === 'meditouch') {
+        clinicFilter = { clinic_type: 'meditouch' };
       }
 
-      if (clinic === 'meditouch' || clinic === 'both') {
-        // Fetch meditouch appointments for the patient
-        const meditouchApps = await supabase.from<MeditouchAppointment>('meditouch_appointments').getAll({
-          filters: { patient_id: patientId },
-          order: { column: 'date', ascending: true }
-        });
+      // Fetch appointments for the patient
+      const appointments = await supabase.from<Appointment>('appointments').getAll({
+        filters: {
+          patient_id: patientId,
+          ...clinicFilter
+        },
+        order: { column: 'date', ascending: true }
+      });
 
-        appointments = [...appointments, ...meditouchApps];
-      }
-
+      console.log(`Fetched ${appointments.length} appointments for patient ${patientId} with clinic filter ${clinic}`);
       return appointments;
     } catch (error) {
       console.error('Error fetching patient appointments:', error);
@@ -472,31 +432,24 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
       const today = new Date();
       const todayString = format(today, 'yyyy-MM-dd');
 
-      if (clinic === 'dental') {
-        // Fetch upcoming dental appointments
-        const appointments = await supabase.from<DentalAppointment>('dental_appointments').getAll({
-          filters: {
-            date: { $gte: todayString },
-            status: { $ne: 'cancelled' },
-            status: { $ne: 'completed' }
-          },
-          order: { column: 'date', ascending: true }
-        });
+      console.log(`Fetching upcoming ${clinic} appointments from date ${todayString}`);
 
-        return appointments;
-      } else {
-        // Fetch upcoming meditouch appointments
-        const appointments = await supabase.from<MeditouchAppointment>('meditouch_appointments').getAll({
-          filters: {
-            date: { $gte: todayString },
-            status: { $ne: 'cancelled' },
-            status: { $ne: 'completed' }
-          },
-          order: { column: 'date', ascending: true }
-        });
+      // Fetch upcoming appointments for the specified clinic
+      const appointments = await supabase.from<Appointment>('appointments').getAll({
+        filters: {
+          clinic_type: clinic,
+          status: { $nin: ['cancelled', 'completed'] }
+        },
+        order: { column: 'date', ascending: true }
+      });
 
-        return appointments;
-      }
+      // Filter for dates >= today in JavaScript since Supabase filters might not work as expected
+      const upcomingAppointments = appointments.filter(app => {
+        return app.date >= todayString;
+      });
+
+      console.log(`Fetched ${appointments.length} total ${clinic} appointments, ${upcomingAppointments.length} are upcoming`);
+      return upcomingAppointments;
     } catch (error) {
       console.error('Error fetching upcoming appointments:', error);
       toast({
@@ -505,7 +458,7 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
         variant: 'destructive',
       });
 
-      // Return empty array instead of using local state as fallback
+      // Return empty array
       return [];
     }
   };
@@ -516,7 +469,7 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
       await updateAppointment(appointmentId, { status: 'completed' });
 
       // Dispatch event to update dental charting if needed
-      const appointment = dentalAppointments.find(a => a.id === appointmentId || a.appointment_id === appointmentId);
+      const appointment = dentalAppointments.find(a => a.id === appointmentId || a.appointment_code === appointmentId);
 
       if (appointment && appointment.charting_entry_id) {
         // Dispatch event to update charting entry status
@@ -549,7 +502,9 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Get available time slots for a specific date
   const getAvailableTimeSlots = async (date: Date, clinic: 'dental' | 'meditouch'): Promise<string[]> => {
     try {
+      // Format date for logging
       const dateString = format(date, 'yyyy-MM-dd');
+      console.log(`Getting available time slots for ${clinic} on ${dateString}`);
 
       // Get all appointments for the date
       const appointments = await getAppointmentsByDate(date, clinic);

@@ -56,25 +56,57 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
 
         // Filter for upcoming appointments
         const today = new Date();
-        const upcoming = appointments.filter(app =>
-          app.status !== 'cancelled' &&
-          app.status !== 'completed' &&
-          isAfter(parseISO(app.date), today)
-        );
+        today.setHours(0, 0, 0, 0); // Set to beginning of day for accurate comparison
 
-        // Sort by date and time
+        const upcoming = appointments.filter(app => {
+          // Only include confirmed or arrived appointments
+          const isActiveStatus = app.status === 'confirmed' || app.status === 'arrived';
+
+          // Check if the appointment date is today or in the future
+          const appointmentDate = parseISO(app.date);
+          const isTodayOrFuture =
+            appointmentDate.getFullYear() > today.getFullYear() ||
+            (appointmentDate.getFullYear() === today.getFullYear() &&
+             appointmentDate.getMonth() > today.getMonth()) ||
+            (appointmentDate.getFullYear() === today.getFullYear() &&
+             appointmentDate.getMonth() === today.getMonth() &&
+             appointmentDate.getDate() >= today.getDate());
+
+          return isActiveStatus && isTodayOrFuture;
+        });
+
+        // Sort by date and time - earliest first
         const sorted = upcoming.sort((a, b) => {
           // First compare by date
-          const dateA = new Date(a.date);
-          const dateB = new Date(b.date);
+          const dateA = parseISO(a.date);
+          const dateB = parseISO(b.date);
 
           if (dateA.getTime() !== dateB.getTime()) {
-            return dateA.getTime() - dateB.getTime();
+            return dateA.getTime() - dateB.getTime(); // Earlier dates first
           }
 
           // If dates are the same, compare by time
-          return a.time.localeCompare(b.time);
+          // Convert times to 24-hour format for proper comparison
+          const timeA = convertTo24Hour(a.time);
+          const timeB = convertTo24Hour(b.time);
+          return timeA.localeCompare(timeB); // Earlier times first
         });
+
+        // Helper function to convert 12-hour time format to 24-hour for sorting
+        function convertTo24Hour(time12h: string): string {
+          const [time, modifier] = time12h.split(' ');
+          let [hours, minutes] = time.split(':'); // hours needs to be mutable, minutes is constant
+
+          if (hours === '12') {
+            hours = '00';
+          }
+
+          if (modifier === 'PM') {
+            hours = (parseInt(hours, 10) + 12).toString();
+          }
+
+          return `${hours.padStart(2, '0')}:${minutes}`;
+        }
 
         // Limit if requested
         const limited = limit && limit > 0 ? sorted.slice(0, limit) : sorted;
@@ -128,21 +160,35 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle>Upcoming Appointments</CardTitle>
+          <CardTitle>{title}</CardTitle>
           <CardDescription>
-            Scheduled appointments for this patient
+            {dentalOnly
+              ? "Scheduled dental appointments for this patient"
+              : clinic === 'both'
+                ? "All scheduled appointments for this patient"
+                : `Scheduled ${clinic} appointments for this patient`}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-6">
-            <p className="text-muted-foreground">No upcoming appointments scheduled.</p>
+            <p className="text-muted-foreground">
+              {dentalOnly
+                ? "No upcoming dental appointments scheduled."
+                : clinic === 'both'
+                  ? "No upcoming appointments scheduled."
+                  : `No upcoming ${clinic} appointments scheduled.`}
+            </p>
             <Button
               variant="outline"
               size="sm"
               className="mt-4"
               onClick={handleViewAllAppointments}
             >
-              Schedule an Appointment
+              {dentalOnly
+                ? "Schedule a Dental Appointment"
+                : clinic === 'both'
+                  ? "Schedule an Appointment"
+                  : `Schedule a ${clinic.charAt(0).toUpperCase() + clinic.slice(1)} Appointment`}
             </Button>
           </div>
         </CardContent>
@@ -156,7 +202,11 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
         <CardTitle>{title}</CardTitle>
         {!condensed && (
           <CardDescription>
-            Scheduled appointments for this patient
+            {dentalOnly
+              ? "Scheduled dental appointments for this patient"
+              : clinic === 'both'
+                ? "All scheduled appointments for this patient"
+                : `Scheduled ${clinic} appointments for this patient`}
           </CardDescription>
         )}
       </CardHeader>
@@ -218,8 +268,16 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
                   onClick={handleViewAllAppointments}
                 >
                   {limit && upcomingAppointments.length === limit
-                    ? dentalOnly ? "View All Dental Appointments" : "View All Appointments"
-                    : dentalOnly ? "Manage Dental Appointments" : "Manage Appointments"}
+                    ? dentalOnly
+                      ? "View All Dental Appointments"
+                      : clinic === 'both'
+                        ? "View All Appointments"
+                        : `View All ${clinic.charAt(0).toUpperCase() + clinic.slice(1)} Appointments`
+                    : dentalOnly
+                      ? "Manage Dental Appointments"
+                      : clinic === 'both'
+                        ? "Manage Appointments"
+                        : `Manage ${clinic.charAt(0).toUpperCase() + clinic.slice(1)} Appointments`}
                 </Button>
               </div>
             </>

@@ -32,10 +32,12 @@ import { ChartingEntry } from '@/types/dental-charting';
 import { useDentalCharting } from '@/contexts/DentalChartingContext';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { handleDatabaseError } from '@/utils/error-handler';
 
 // Helper component to render patient name asynchronously
 const PatientName: React.FC<{ patientId: string }> = ({ patientId }) => {
   const { getPatientName } = useDentalCharting();
+  const { toast } = useToast();
   const [name, setName] = useState<string>('Unknown');
 
   useEffect(() => {
@@ -52,12 +54,19 @@ const PatientName: React.FC<{ patientId: string }> = ({ patientId }) => {
         setName(typeof patientName === 'string' ? patientName : 'Unknown');
       } catch (error) {
         console.error('Error fetching patient name:', error);
+        // Use the global error handler but don't show a toast
+        handleDatabaseError({
+          error,
+          toast,
+          errorKey: `patient_name_error_${patientId}`,
+          showToast: false
+        });
         setName('Unknown');
       }
     };
 
     fetchName();
-  }, [patientId, getPatientName]);
+  }, [patientId, getPatientName, toast]);
 
   return <>{name}</>;
 };
@@ -80,6 +89,9 @@ const PendingTreatmentsView: React.FC = () => {
   // State to store planned charting entries
   const [allPlannedEntries, setAllPlannedEntries] = useState<ChartingEntry[]>([]);
 
+  // State to track if there was an error loading entries
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   // Fetch planned charting entries when component mounts
   useEffect(() => {
     const fetchPlannedEntries = async () => {
@@ -87,14 +99,32 @@ const PendingTreatmentsView: React.FC = () => {
         const entries = await getPlannedChartingEntries();
         console.log('Fetched planned entries:', entries);
         setAllPlannedEntries(entries);
+        setLoadError(null);
       } catch (error) {
         console.error('Error fetching planned entries:', error);
         setAllPlannedEntries([]);
+
+        // Use the global error handler
+        const wasHandled = handleDatabaseError({
+          error,
+          toast,
+          errorKey: 'pending_treatments_fetch_error',
+          customMessage: 'Dental charting data will be available after setup is complete.',
+          // Don't show toast here since we're displaying the error in the UI
+          showToast: false
+        });
+
+        // Only set error for non-database errors
+        if (!wasHandled) {
+          setLoadError('Failed to load dental charting entries. Please try again.');
+        } else {
+          setLoadError(null);
+        }
       }
     };
 
     fetchPlannedEntries();
-  }, [getPlannedChartingEntries]);
+  }, [getPlannedChartingEntries, toast]);
 
   // Separate entries into pending and snoozed
   const pendingEntries = useMemo(() => {
@@ -245,7 +275,14 @@ const PendingTreatmentsView: React.FC = () => {
             created_at: new Date().toISOString()
           });
         } catch (supabaseError) {
-          console.error('Error inserting into Supabase:', supabaseError);
+          // Use the global error handler
+          handleDatabaseError({
+            error: supabaseError,
+            toast,
+            errorKey: 'pending_treatments_insert_error',
+            customMessage: 'Could not save treatment details to database, but will continue with scheduling.',
+            showToast: true
+          });
         }
       }
 
@@ -403,8 +440,17 @@ const PendingTreatmentsView: React.FC = () => {
             </div>
           </div>
 
-          {/* Table of treatments */}
-          {filteredAndSortedEntries.length > 0 ? (
+          {/* Display error message if there was an error loading entries */}
+          {loadError ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="text-red-500 mb-4">⚠️</div>
+              <h3 className="text-lg font-medium text-red-500">{loadError}</h3>
+              <p className="text-muted-foreground mt-2">
+                Please refresh the page or try again later.
+              </p>
+            </div>
+          ) : filteredAndSortedEntries.length > 0 ? (
+            /* Table of treatments */
             <div className="rounded-md border overflow-hidden">
               <Table>
                 <TableHeader>
@@ -515,6 +561,19 @@ const PendingTreatmentsView: React.FC = () => {
                   ? 'There are no planned treatments that need to be scheduled.'
                   : 'There are no snoozed treatments. When you snooze a treatment, it will appear here.'}
               </p>
+              {activeTab === 'pending' && (
+                <div className="mt-6">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    To add treatments, go to a patient's record and add dental charting entries with status "Planned".
+                  </p>
+                  <Button
+                    onClick={() => window.location.href = '/patients'}
+                    className="bg-dental-primary hover:bg-dental-dark text-white"
+                  >
+                    Go to Patients
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

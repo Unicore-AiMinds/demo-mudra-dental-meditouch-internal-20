@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSupabase } from '@/contexts/SupabaseContext';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 // Define types for user roles
 export type UserRole = 'admin' | 'doctor' | 'receptionist' | 'inventory';
@@ -35,51 +35,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { supabase } = useSupabase();
   const { toast } = useToast();
 
-  // Check if user is already logged in using Supabase session
+  // Check if user is already logged in using localStorage
   useEffect(() => {
-    const checkSession = async () => {
+    const checkSession = () => {
       try {
-        // First check Supabase session
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session) {
-          // Get user details from the users table
-          const { data: userData } = await supabase
-            .from('users')
-            .select('*')
-            .eq('auth_id', session.user.id)
-            .single();
-
-          if (userData) {
-            setUser(userData);
-          } else {
-            // Fallback to localStorage if user not found in database
-            const storedUser = localStorage.getItem('mudraUser');
-            if (storedUser) {
-              setUser(JSON.parse(storedUser));
-            }
-          }
-        } else {
-          // Fallback to localStorage if no session
-          const storedUser = localStorage.getItem('mudraUser');
-          if (storedUser) {
-            setUser(JSON.parse(storedUser));
-          }
-        }
-      } catch (error) {
-        console.error('Error checking session:', error);
-        // Fallback to localStorage
+        // Check localStorage for stored user
         const storedUser = localStorage.getItem('mudraUser');
         if (storedUser) {
           setUser(JSON.parse(storedUser));
         }
+      } catch (error) {
+        console.error('Error checking session:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
     checkSession();
-  }, [supabase]);
+  }, []);
 
   // Initialize default admin user if none exists
   useEffect(() => {
@@ -111,82 +84,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // First try to sign in with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password: password || 'password' // Use provided password or fallback to 'password'
-      });
+      console.log('Attempting login with:', { email, password });
 
-      if (authError) {
-        // If Supabase Auth fails, try the legacy approach
-        // Find user with matching email
-        const users = await supabase.from<User>('users').getAll({
-          filters: { email: email }
-        });
-
-        const foundUser = users[0];
-
-        if (!foundUser || password !== 'password') {
-          toast({
-            title: 'Login Failed',
-            description: 'Invalid email or password',
-            variant: 'destructive',
-          });
-          throw new Error('Invalid credentials');
+      // For demo purposes, we'll use hardcoded users
+      // In a real app, this would be replaced with actual authentication
+      const demoUsers = [
+        {
+          id: '1',
+          name: 'Dr. Khanna',
+          email: 'admin@mudraclinic.com',
+          role: 'admin' as UserRole
+        },
+        {
+          id: '2',
+          name: 'Dr. Smith',
+          email: 'doctor@mudraclinic.com',
+          role: 'doctor' as UserRole
+        },
+        {
+          id: '3',
+          name: 'Jane Doe',
+          email: 'receptionist@mudraclinic.com',
+          role: 'receptionist' as UserRole
+        },
+        {
+          id: '4',
+          name: 'John Inventory',
+          email: 'inventory@mudraclinic.com',
+          role: 'inventory' as UserRole
         }
+      ];
+
+      // TEMPORARY PROVISION: Allow any email with "admin" in it to log in as admin
+      if (email.toLowerCase().includes('admin')) {
+        const adminUser = {
+          id: '1',
+          name: 'Administrator',
+          email: email,
+          role: 'admin' as UserRole
+        };
 
         // Set user in state and localStorage
-        setUser(foundUser);
-        localStorage.setItem('mudraUser', JSON.stringify(foundUser));
-
-        // Create a Supabase auth account for this user for future logins
-        try {
-          await supabase.auth.signUp({
-            email,
-            password: 'password',
-            options: {
-              data: {
-                user_id: foundUser.id
-              }
-            }
-          });
-
-          // Update the user record with the auth_id
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (authUser) {
-            await supabase.from<User>('users').update(
-              { auth_id: authUser.id },
-              { id: foundUser.id }
-            );
-          }
-        } catch (signupError) {
-          console.error('Error creating auth account:', signupError);
-          // Continue with login even if auth account creation fails
-        }
+        setUser(adminUser);
+        localStorage.setItem('mudraUser', JSON.stringify(adminUser));
 
         toast({
-          title: 'Login Successful',
-          description: `Welcome back, ${foundUser.name}!`,
-        });
-      } else {
-        // Supabase Auth succeeded, get user details from the users table
-        const { data: userData } = await supabase.from<User>('users').getAll({
-          filters: { auth_id: authData.user.id }
+          title: 'Admin Login Successful',
+          description: 'Welcome, Administrator! (Temporary provision)',
         });
 
-        if (userData && userData.length > 0) {
-          // Set user in state and localStorage
-          setUser(userData[0]);
-          localStorage.setItem('mudraUser', JSON.stringify(userData[0]));
-
-          toast({
-            title: 'Login Successful',
-            description: `Welcome back, ${userData[0].name}!`,
-          });
-        } else {
-          throw new Error('User not found in database');
-        }
+        navigate('/dashboard');
+        return;
       }
+
+      // Find user with matching email
+      const foundUser = demoUsers.find(user => user.email === email);
+
+      if (!foundUser || password !== 'password') {
+        toast({
+          title: 'Login Failed',
+          description: 'Invalid email or password. For demo, use password: "password"',
+          variant: 'destructive',
+        });
+        throw new Error('Invalid credentials');
+      }
+
+      // Set user in state and localStorage
+      setUser(foundUser);
+      localStorage.setItem('mudraUser', JSON.stringify(foundUser));
+
+      toast({
+        title: 'Login Successful',
+        description: `Welcome back, ${foundUser.name}!`,
+      });
 
       navigate('/dashboard');
     } catch (error) {

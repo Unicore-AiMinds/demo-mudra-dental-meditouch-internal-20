@@ -3,6 +3,7 @@ import { VitalSign, defaultVitalSigns } from '@/types/vital-signs';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { handleDatabaseError } from '@/utils/error-handler';
 
 interface VitalSignsContextType {
   getPatientVitalSigns: (patientId: string) => Promise<VitalSign[]>;
@@ -35,11 +36,13 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
           }
         }
       } catch (error) {
-        console.error('Error initializing vital signs:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to initialize vital signs. Please try again.',
-          variant: 'destructive',
+        // Use the global error handler
+        handleDatabaseError({
+          error,
+          toast,
+          errorKey: 'vital_signs_init_error',
+          customMessage: 'Vital signs data will be available after setup is complete.',
+          showToast: true
         });
       } finally {
         setIsLoading(false);
@@ -59,11 +62,13 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
 
       return vitalSigns;
     } catch (error) {
-      console.error('Error fetching patient vital signs:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch vital signs. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `vital_signs_fetch_error_${patientId}`,
+        customMessage: 'Vital signs data will be available after setup is complete.',
+        showToast: true
       });
       return [];
     }
@@ -96,12 +101,16 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
 
       return createdVitalSign;
     } catch (error) {
-      console.error('Error adding vital sign:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to record vital signs. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      const wasHandled = handleDatabaseError({
+        error,
+        toast,
+        errorKey: `vital_signs_add_error_${patientId}`,
+        customMessage: 'Failed to record vital signs. Please try again.',
+        showToast: true
       });
+
+      // If it wasn't a database error, we still need to throw
       throw error;
     }
   };
@@ -122,11 +131,13 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
 
       return updatedVitalSign;
     } catch (error) {
-      console.error('Error updating vital sign:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update vital signs. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `vital_signs_update_error_${vitalSignId}`,
+        customMessage: 'Failed to update vital signs. Please try again.',
+        showToast: true
       });
       return null;
     }
@@ -143,11 +154,13 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
 
       return vitalSigns.length > 0 ? vitalSigns[0] : null;
     } catch (error) {
-      console.error('Error fetching latest vital sign:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch latest vital signs. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `vital_signs_latest_error_${patientId}`,
+        customMessage: 'Vital signs data will be available after setup is complete.',
+        showToast: true
       });
       return null;
     }

@@ -35,10 +35,11 @@ import {
   permanentTeethList,
   primaryTeethList,
   surfacesList,
-  servicesList,
+  servicesList, // Fallback services list
   statusOptions
 } from '@/types/dental-charting';
 import { useDentalCharting } from '@/contexts/DentalChartingContext';
+import { useServices } from '@/contexts/ServiceContext'; // Import the ServiceContext
 import VisualToothChart from './VisualToothChart';
 import ToothIndicator from './ToothIndicator';
 import SurfaceIndicator from './SurfaceIndicator';
@@ -53,6 +54,7 @@ interface DentalChartingComponentProps {
 const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patientId, patientAge }) => {
   const { toast } = useToast();
   const { addTentativeFollowUps, getPatientName } = useDentalHistory();
+  const { getDentalServiceNames } = useServices(); // Get dental services from context
 
   const { getPatientChartingHistory, addChartingEntry: addChartingEntryToContext } = useDentalCharting();
 
@@ -435,11 +437,19 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
                   <SelectValue placeholder="Select a service" />
                 </SelectTrigger>
                 <SelectContent>
-                  {servicesList.map(item => (
-                    <SelectItem key={item} value={item}>
-                      {item}
-                    </SelectItem>
-                  ))}
+                  {/* Use services from context if available, otherwise use fallback */}
+                  {getDentalServiceNames().length > 0
+                    ? getDentalServiceNames().map(item => (
+                        <SelectItem key={item} value={item}>
+                          {item}
+                        </SelectItem>
+                      ))
+                    : servicesList.map(item => (
+                        <SelectItem key={item} value={item}>
+                          {item}
+                        </SelectItem>
+                      ))
+                  }
                 </SelectContent>
               </Select>
             </div>

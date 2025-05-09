@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Prescription, Medication, defaultPrescriptions, defaultMedications } from '@/types/prescriptions';
 import { useSupabase } from '@/contexts/SupabaseContext';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { handleDatabaseError } from '@/utils/error-handler';
 
 interface PrescriptionContextType {
   getPatientPrescriptions: (patientId: string) => Promise<Prescription[]>;
@@ -106,10 +107,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
       } catch (error) {
         console.error('Error initializing prescriptions:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load prescriptions. Please try again.',
-          variant: 'destructive',
+        // Use the global error handler
+        handleDatabaseError({
+          error,
+          toast,
+          errorKey: 'prescriptions_init_error',
+          customMessage: 'Prescription data will be available after setup is complete.',
+          showToast: true
         });
       } finally {
         setIsLoading(false);
@@ -157,10 +161,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       return prescriptionsWithMedications;
     } catch (error) {
       console.error('Error fetching patient prescriptions:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch prescriptions. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `prescriptions_fetch_error_${patientId}`,
+        customMessage: 'Prescription data will be available after setup is complete.',
+        showToast: true
       });
       return prescriptions[patientId] || [];
     }
@@ -173,10 +180,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       return patientPrescriptions.filter(prescription => prescription.status === 'Active');
     } catch (error) {
       console.error('Error fetching active prescriptions:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch active prescriptions. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `active_prescriptions_error_${patientId}`,
+        customMessage: 'Prescription data will be available after setup is complete.',
+        showToast: true
       });
       return [];
     }
@@ -220,10 +230,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       return createdPrescription;
     } catch (error) {
       console.error('Error adding prescription:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add prescription. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `prescription_add_error_${patientId}`,
+        customMessage: 'Failed to add prescription. Please try again.',
+        showToast: true
       });
       throw error;
     }
@@ -298,10 +311,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       return updatedPrescription;
     } catch (error) {
       console.error('Error updating prescription:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update prescription. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `prescription_update_error_${prescriptionId}`,
+        customMessage: 'Failed to update prescription. Please try again.',
+        showToast: true
       });
       return null;
     }
@@ -367,10 +383,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       return createdMedication;
     } catch (error) {
       console.error('Error adding medication to prescription:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add medication to prescription. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `medication_add_error_${prescriptionId}`,
+        customMessage: 'Failed to add medication to prescription. Please try again.',
+        showToast: true
       });
       return null;
     }
@@ -461,10 +480,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       return true;
     } catch (error) {
       console.error('Error removing medication from prescription:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to remove medication from prescription. Please try again.',
-        variant: 'destructive',
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `medication_remove_error_${prescriptionId}_${medicationId}`,
+        customMessage: 'Failed to remove medication from prescription. Please try again.',
+        showToast: true
       });
       return false;
     }

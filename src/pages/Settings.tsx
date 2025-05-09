@@ -4,6 +4,7 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { useClinicInfo } from '@/contexts/ClinicInfoContext';
 import { useDoctors } from '@/contexts/DoctorContext';
 import { useMedicines } from '@/contexts/MedicineContext';
+import { useServices } from '@/contexts/ServiceContext';
 
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { demoFollowUpRules } from '@/data/demo-dental-history';
@@ -114,24 +115,7 @@ const clinicDetails = {
 
 // Doctor data is now managed by DoctorContext
 
-const services = {
-  dental: [
-    { id: 1, name: "General Checkup", duration: 30, price: 500 },
-    { id: 2, name: "Teeth Cleaning", duration: 45, price: 1000 },
-    { id: 3, name: "Root Canal Treatment", duration: 60, price: 5000 },
-    { id: 4, name: "Dental Filling", duration: 30, price: 1500 },
-    { id: 5, name: "Crown Placement", duration: 60, price: 8000 },
-    { id: 6, name: "Teeth Whitening", duration: 45, price: 4000 }
-  ],
-  meditouch: [
-    { id: 1, name: "Skin Consultation", duration: 30, price: 800 },
-    { id: 2, name: "Hair Loss Treatment", duration: 45, price: 1500 },
-    { id: 3, name: "Facial", duration: 60, price: 2000 },
-    { id: 4, name: "Dermatology Consultation", duration: 30, price: 1000 },
-    { id: 5, name: "Hair Transplant Consultation", duration: 45, price: 1200 },
-    { id: 6, name: "Acne Treatment", duration: 30, price: 1800 }
-  ]
-};
+// Services are now managed by ServiceContext
 
 const initialDentalLabs = [
   { id: 1, name: "Precision Dental Lab", contact: "+91 98765 43210", address: "123 Dental Street", city: "Mumbai", pincode: "400001", specialization: "Crowns & Bridges" },
@@ -259,8 +243,8 @@ const Settings = () => {
   const [tempColor, setTempColor] = useState("");
   const [stockItems, setStockItems] = useState(initialStockItems);
   const [dealers, setDealers] = useState(initialDealers);
-  const [dentalServices, setDentalServices] = useState(services.dental);
-  const [meditouchServices, setMeditouchServices] = useState(services.meditouch);
+  // Use services from ServiceContext
+  const { dentalServices, meditouchServices, addService, updateService, deleteService } = useServices();
   const [dentalLabs, setDentalLabs] = useState(initialDentalLabs);
   const [labWorkTypes, setLabWorkTypes] = useState(initialLabWorkTypes);
   const [followUpRules, setFollowUpRules] = useState<ServiceFollowUpRule[]>(demoFollowUpRules);
@@ -495,7 +479,7 @@ const Settings = () => {
     setIsConfirmUpdateServiceOpen(true);
   };
 
-  const handleUpdateService = () => {
+  const handleUpdateService = async () => {
     if (currentService) {
       // Get updated values from form fields
       const updatedName = document.getElementById('editServiceName') as HTMLInputElement;
@@ -531,55 +515,48 @@ const Settings = () => {
         return;
       }
 
-      // Update the services state
-      const updateFunction = (services: any[]) =>
-        services.map((service: any) =>
-          service.id === currentService.id
-            ? {
-                ...service,
-                name: capitalizeWords(updatedName.value.trim()),
-                duration: parseInt(updatedDuration.value),
-                price: parseInt(updatedPrice.value),
-                description: updatedDescription?.value?.trim() || ''
-              }
-            : service
-        );
+      try {
+        // Update the service using the ServiceContext
+        await updateService(currentService.id, {
+          name: capitalizeWords(updatedName.value.trim()),
+          duration: parseInt(updatedDuration.value),
+          price: parseInt(updatedPrice.value),
+          description: updatedDescription?.value?.trim() || ''
+        }, activeClinic);
 
-      if (activeClinic === 'dental') {
-        setDentalServices(updateFunction);
-      } else {
-        setMeditouchServices(updateFunction);
+        // Toast is already shown by the context
+        setIsConfirmUpdateServiceOpen(false);
+        setIsEditServiceDialogOpen(false);
+        setCurrentService(null);
+      } catch (error) {
+        console.error('Error updating service:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update service. Please try again.",
+          variant: "destructive"
+        });
       }
-
-      toast({
-        title: "Service Updated",
-        description: `${capitalizeWords(updatedName.value.trim())} service has been updated successfully.`,
-      });
-      setIsConfirmUpdateServiceOpen(false);
-      setIsEditServiceDialogOpen(false);
-      setCurrentService(null);
     }
   };
 
-  const handleDeleteService = () => {
+  const handleDeleteService = async () => {
     if (currentService) {
-      // Remove the service from the services state
-      const filterFunction = (services: any[]) =>
-        services.filter((service: any) => service.id !== currentService.id);
+      try {
+        // Delete the service using the ServiceContext
+        await deleteService(currentService.id, activeClinic);
 
-      if (activeClinic === 'dental') {
-        setDentalServices(filterFunction);
-      } else {
-        setMeditouchServices(filterFunction);
+        // Toast is already shown by the context
+        setIsConfirmDeleteServiceOpen(false);
+        setIsEditServiceDialogOpen(false);
+        setCurrentService(null);
+      } catch (error) {
+        console.error('Error deleting service:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete service. Please try again.",
+          variant: "destructive"
+        });
       }
-
-      toast({
-        title: "Service Removed",
-        description: `${currentService.name} service has been removed from the system.`,
-      });
-      setIsConfirmDeleteServiceOpen(false);
-      setIsEditServiceDialogOpen(false);
-      setCurrentService(null);
     }
   };
 
@@ -2069,7 +2046,7 @@ const Settings = () => {
                 </Button>
                 <Button
                   className={activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
-                  onClick={() => {
+                  onClick={async () => {
                     // Get values from form fields
                     const serviceName = document.getElementById('serviceName') as HTMLInputElement;
                     const serviceDuration = document.getElementById('serviceDuration') as HTMLInputElement;
@@ -2104,34 +2081,35 @@ const Settings = () => {
                       return;
                     }
 
-                    // Create new service object
-                    const newService = {
-                      id: Math.floor(Math.random() * 10000), // Generate a random ID (in a real app, this would come from the backend)
-                      name: capitalizeWords(serviceName.value.trim()),
-                      duration: parseInt(serviceDuration.value),
-                      price: parseInt(servicePrice.value),
-                      description: serviceDescription?.value?.trim() || ''
-                    };
+                    try {
+                      // Create new service object
+                      const newService = {
+                        name: capitalizeWords(serviceName.value.trim()),
+                        duration: parseInt(serviceDuration.value),
+                        price: parseInt(servicePrice.value),
+                        description: serviceDescription?.value?.trim() || ''
+                      };
 
-                    // Add the new service to the appropriate state
-                    if (activeClinic === 'dental') {
-                      setDentalServices(prev => [newService, ...prev]);
-                    } else {
-                      setMeditouchServices(prev => [newService, ...prev]);
+                      // Add the new service using the ServiceContext
+                      await addService(newService, activeClinic);
+
+                      // Reset form fields
+                      serviceName.value = '';
+                      serviceDuration.value = '';
+                      servicePrice.value = '';
+                      if (serviceDescription) serviceDescription.value = '';
+
+                      setIsAddServiceDialogOpen(false);
+
+                      // Toast is already shown by the context
+                    } catch (error) {
+                      console.error('Error adding service:', error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to add service. Please try again.",
+                        variant: "destructive"
+                      });
                     }
-
-                    toast({
-                      title: "Service Added",
-                      description: "The new service has been successfully added.",
-                    });
-
-                    // Reset form fields
-                    serviceName.value = '';
-                    serviceDuration.value = '';
-                    servicePrice.value = '';
-                    if (serviceDescription) serviceDescription.value = '';
-
-                    setIsAddServiceDialogOpen(false);
                   }}
                 >
                   Add Service

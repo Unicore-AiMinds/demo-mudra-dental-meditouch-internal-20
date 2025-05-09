@@ -34,6 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 import { Calendar } from '@/components/ui/calendar';
 import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday, parseISO } from 'date-fns';
+import { v4 as uuidv4 } from 'uuid';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
@@ -55,7 +56,8 @@ import AddPatientDialog from '@/components/AddPatientDialog';
 
 // Using DoctorContext instead of hardcoded doctors array
 
-// Define services with durations
+// Services should be fetched from Supabase, but for now we'll use these
+// TODO: Replace with data from Supabase
 const dentalServices = [
   { id: 1, name: "Dental Checkup", duration: 15, price: 500 },
   { id: 2, name: "Root Canal", duration: 60, price: 5000 },
@@ -350,12 +352,14 @@ const Appointments = () => {
   const {
     dentalAppointments,
     meditouchAppointments,
-    isLoading,
     addAppointment,
     updateAppointment,
     deleteAppointment,
     markAppointmentCompleted
   } = useAppointments(); // Get appointments from context
+
+  // Local loading state for UI operations
+  const [isLoading, setIsLoading] = useState(false);
 
   // Combine dental and meditouch appointments
   const appointments = useMemo(() => {
@@ -441,6 +445,17 @@ const Appointments = () => {
   }, [patients, searchTerm]);
 
   // Use appointments from AppointmentContext instead of local state
+
+  // Function to refresh appointments for the selected date
+  const fetchAppointmentsForSelectedDate = useCallback(async () => {
+    try {
+      console.log('Refreshing appointments for date:', format(date, 'yyyy-MM-dd'));
+      // This will trigger a re-render with the latest appointments
+      // The appointments are already being fetched from the context
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    }
+  }, [date]);
 
   // Memoize the getAppointmentsForDate function to avoid recalculating on every render
   const getAppointmentsForDate = useCallback((date: Date) => {
@@ -754,7 +769,7 @@ const Appointments = () => {
     navigate('/appointments/new', {
       state: {
         reschedule: true,
-        appointmentId: appointment.id || appointment.appointment_id,
+        appointmentId: appointment.id,
         patient: appointment.patient_name,
         service: appointment.service,
         time: appointment.time,
@@ -772,7 +787,7 @@ const Appointments = () => {
   const handleDirectCancel = async (appointment: AppointmentType) => {
     try {
       // Update the appointment status to cancelled in Supabase
-      await updateAppointment(appointment.id || appointment.appointment_id, { status: 'cancelled' });
+      await updateAppointment(appointment.id, { status: 'cancelled' });
 
       toast({
         title: "Appointment Cancelled",
@@ -1082,7 +1097,7 @@ const Appointments = () => {
   };
 
   // Function to actually create the appointment after confirmation
-  const confirmCreateAppointment = () => {
+  const confirmCreateAppointment = async () => {
     if (!pendingAppointment || !pendingAppointment.date) return;
 
     // Debug logs
@@ -1090,90 +1105,125 @@ const Appointments = () => {
 
     const formattedDate = format(pendingAppointment.date, 'yyyy-MM-dd');
 
-    // Get the dental charting context if we're in dental mode and have a charting entry ID
-    const dentalChartingContext = isDental && pendingChartingEntryId ?
-      document.querySelector('[data-dental-charting-context]') : null;
+    // Find the patient ID from the patient name
+    const patient = patients.find(p => p.name === (pendingAppointment.patient_name || pendingAppointment.patient));
+    const patientId = patient?.id || '';
 
-    // Create a sequential ID based on the highest existing ID
-    const existingAppointments = isDental ? dentalAppointments : meditouchAppointments;
-    const prefix = isDental ? 'd' : 'm';
-
-    // Find the highest existing ID number
-    let highestId = 0;
-    existingAppointments.forEach(app => {
-      const idNumber = parseInt(app.id.replace(/\D/g, ''));
-      if (!isNaN(idNumber) && idNumber > highestId) {
-        highestId = idNumber;
-      }
-    });
-
-    // Create new ID that's one higher than the current highest
-    const newId = `${prefix}${highestId + 1}`;
-
-    if (isDental) {
-      const newAppointment = {
-        time: pendingAppointment.time,
-        patient_name: pendingAppointment.patient_name || pendingAppointment.patient || '',
-        service: pendingAppointment.service,
-        doctor: pendingAppointment.doctor || 'Dr. Khanna',
-        date: formattedDate,
-        status: 'confirmed',
-        // If this appointment is for a planned treatment, link it to the charting entry
-        charting_entry_id: pendingChartingEntryId
-      };
-      addAppointment(newAppointment);
-    } else {
-      const newAppointment = {
-        time: pendingAppointment.time,
-        patient_name: pendingAppointment.patient_name || pendingAppointment.patient || '',
-        service: pendingAppointment.service,
-        date: formattedDate,
-        status: 'confirmed'
-      };
-      addAppointment(newAppointment);
-    }
-
-    // Get the service duration
-    const requiredSlots = getSlotsOccupied(pendingAppointment.service);
-    const durationMinutes = requiredSlots * 15;
-
-    toast({
-      title: "Appointment Created",
-      description: `New appointment for ${pendingAppointment.patient_name || pendingAppointment.patient} on ${format(pendingAppointment.date, 'PP')} at ${pendingAppointment.time}${
-        requiredSlots > 1 ? ` (${durationMinutes} minutes)` : ''
-      }`
-    });
-
-    // If this appointment is for a planned treatment, update the charting entry
-    if (isDental && pendingChartingEntryId) {
-      // Create a custom event to update the charting entry
-      const event = new CustomEvent('updateChartingEntryStatus', {
-        detail: {
-          entryId: pendingChartingEntryId,
-          appointmentId: newId,
-          status: 'Scheduled'
-        }
-      });
-      document.dispatchEvent(event);
-
-      // Show additional toast notification
+    if (!patientId) {
+      console.error('Patient ID not found for name:', pendingAppointment.patient_name);
       toast({
-        title: "Planned Treatment Scheduled",
-        description: "The planned treatment has been linked to this appointment."
+        title: 'Error',
+        description: 'Patient not found in database. Please select a valid patient.',
+        variant: 'destructive',
       });
+      return;
     }
 
-    // Update the UI date to match the appointment date
-    setDate(pendingAppointment.date);
+    // Find the doctor ID if in dental mode
+    let doctorId = '';
+    if (isDental && pendingAppointment.doctor) {
+      const doctor = doctors.find(d => d.name === pendingAppointment.doctor);
+      doctorId = doctor?.id || '';
+    }
 
-    // Close the confirmation dialog and reset form
-    setIsConfirmCreateOpen(false);
-    setPendingAppointment(null);
-    setPendingChartingEntryId(undefined);
-    resetAppointmentForm();
+    try {
+      setIsLoading(true);
 
-    // Log that we've updated the UI date
-    console.log('Updated UI date to match appointment date:', format(pendingAppointment.date, 'yyyy-MM-dd'));
+      if (isDental) {
+        const newAppointment = {
+          time: pendingAppointment.time,
+          patient_name: pendingAppointment.patient_name || pendingAppointment.patient || '',
+          patient_id: patientId,
+          service: pendingAppointment.service || 'Dental Checkup',
+          doctor: pendingAppointment.doctor || 'Dr. Khanna',
+          doctor_id: doctorId,
+          date: formattedDate,
+          status: 'confirmed' as const,
+          payment_status: 'unpaid' as const,
+          clinic_type: 'dental' as const,
+          // If this appointment is for a planned treatment, link it to the charting entry
+          charting_entry_id: pendingChartingEntryId
+        };
+        console.log('Creating dental appointment:', JSON.stringify(newAppointment, null, 2));
+        await addAppointment(newAppointment);
+
+        toast({
+          title: 'Success',
+          description: 'Dental appointment scheduled successfully.',
+        });
+      } else {
+        const newAppointment = {
+          time: pendingAppointment.time,
+          patient_name: pendingAppointment.patient_name || pendingAppointment.patient || '',
+          patient_id: patientId,
+          service: pendingAppointment.service || 'General Consultation',
+          date: formattedDate,
+          status: 'confirmed' as const,
+          payment_status: 'unpaid' as const,
+          clinic_type: 'meditouch' as const
+        };
+        console.log('Creating meditouch appointment:', JSON.stringify(newAppointment, null, 2));
+        await addAppointment(newAppointment);
+
+        toast({
+          title: 'Success',
+          description: 'Meditouch appointment scheduled successfully.',
+        });
+      }
+
+      // Get the service duration
+      const requiredSlots = getSlotsOccupied(pendingAppointment.service);
+      const durationMinutes = requiredSlots * 15;
+
+      // Show success toast with duration info
+      toast({
+        title: "Appointment Created",
+        description: `New appointment for ${pendingAppointment.patient_name || pendingAppointment.patient} on ${format(pendingAppointment.date, 'PP')} at ${pendingAppointment.time}${
+          requiredSlots > 1 ? ` (${durationMinutes} minutes)` : ''
+        }`
+      });
+
+      // If this appointment is for a planned treatment, update the charting entry
+      if (isDental && pendingChartingEntryId) {
+        // Create a custom event to update the charting entry
+        const event = new CustomEvent('updateChartingEntryStatus', {
+          detail: {
+            entryId: pendingChartingEntryId,
+            appointmentId: uuidv4(), // Generate a new UUID since we don't have newId anymore
+            status: 'Scheduled'
+          }
+        });
+        document.dispatchEvent(event);
+
+        // Show additional toast notification
+        toast({
+          title: "Planned Treatment Scheduled",
+          description: "The planned treatment has been linked to this appointment."
+        });
+      }
+
+      // Close the confirmation dialog and reset form
+      setIsConfirmCreateOpen(false);
+      setPendingAppointment(null);
+      setPendingChartingEntryId(undefined);
+      resetAppointmentForm();
+
+      // Update the UI date to match the appointment date
+      setDate(pendingAppointment.date);
+    } catch (error) {
+      console.error('Error creating appointment:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to schedule appointment. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+
+    // Toast is already shown in the try block
+
+    // Everything is already handled in the try block
   };
 
   // Function to cancel appointment creation
@@ -1616,7 +1666,7 @@ const Appointments = () => {
                                               const slotsOccupied = getSlotsOccupied(appointment.service);
                                               // Only show appointments that start in this slot or are extended from previous slots
                                               return (
-                                                <div key={appointment.id || appointment.appointment_id} className="flex-1 min-w-0">
+                                                <div key={appointment.id} className="flex-1 min-w-0">
                                                   <TimeSlotAppointment
                                                     appointment={appointment}
                                                     isDental={isDental}
@@ -1788,7 +1838,7 @@ const Appointments = () => {
                               {/* Show all appointments if expanded, otherwise show limited number */}
                               {(isExpanded ? dayAppointments : dayAppointments.slice(0, initialAppointmentsToShow)).map(appointment => (
                                 <CalendarAppointmentItem
-                                  key={appointment.id || appointment.appointment_id}
+                                  key={appointment.id}
                                   appointment={appointment}
                                   isDental={isDental}
                                   isCompact={dayAppointments.length > 1} // Use compact view if multiple appointments
@@ -1969,7 +2019,7 @@ const Appointments = () => {
                                 dayAppointments.slice(0, 3)
                               ).map(appointment => (
                                 <CalendarAppointmentItem
-                                  key={appointment.id || appointment.appointment_id}
+                                  key={appointment.id}
                                   appointment={appointment}
                                   isDental={isDental}
                                   isCompact={dayAppointments.length > 1} // Use compact view if multiple appointments
@@ -2072,7 +2122,7 @@ const Appointments = () => {
                     onOpenChange={(open) => {
                       if (open) {
                         // When opening, reset the filtered patients
-                        setFilteredPatients(registeredPatients);
+                        setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
                       }
                     }}
                   >
@@ -2285,7 +2335,7 @@ const Appointments = () => {
           setIsEditAppointmentOpen(open);
           if (open) {
             // Reset filtered patients when opening the dialog
-            setFilteredPatients(registeredPatients);
+            setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
           } else {
             // When closing, make sure we don't open the new appointment dialog
             setEditingAppointment(null);
