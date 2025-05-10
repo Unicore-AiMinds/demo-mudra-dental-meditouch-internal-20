@@ -27,25 +27,53 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const fetchMedicines = async () => {
       try {
         setIsLoading(true);
+        console.log("Fetching medicines from Supabase...");
 
-        // Fetch medicines from Supabase
-        const fetchedMedicines = await supabase.from<Medicine>('medicines').getAll({
-          order: { column: 'name', ascending: true }
-        });
-
-        // If no medicines exist, create default ones
-        if (fetchedMedicines.length === 0) {
-          for (const medicine of defaultMedicines) {
-            await supabase.from<Medicine>('medicines').insert(medicine);
-          }
-
-          // Fetch the newly created medicines
-          const newMedicines = await supabase.from<Medicine>('medicines').getAll({
+        // Check if the medicines table exists
+        try {
+          // Fetch medicines from Supabase
+          const fetchedMedicines = await supabase.from<Medicine>('medicines').getAll({
             order: { column: 'name', ascending: true }
           });
-          setMedicines(newMedicines);
-        } else {
-          setMedicines(fetchedMedicines);
+
+          console.log(`Fetched ${fetchedMedicines.length} medicines from Supabase`);
+
+          // If no medicines exist, create default ones
+          if (fetchedMedicines.length === 0) {
+            console.log("No medicines found in database. Creating default medicines...");
+
+            // Insert default medicines one by one
+            for (const medicine of defaultMedicines) {
+              console.log(`Adding default medicine: ${medicine.name} ${medicine.dosage}`);
+              await supabase.from<Medicine>('medicines').insert(medicine);
+            }
+
+            // Fetch the newly created medicines
+            const newMedicines = await supabase.from<Medicine>('medicines').getAll({
+              order: { column: 'name', ascending: true }
+            });
+
+            console.log(`Created ${newMedicines.length} default medicines`);
+            setMedicines(newMedicines);
+          } else {
+            console.log("Using existing medicines from database");
+            setMedicines(fetchedMedicines);
+          }
+        } catch (tableError) {
+          console.error("Error accessing medicines table:", tableError);
+
+          // If the table doesn't exist or there's an error, use default medicines in memory
+          console.log("Using default medicines in memory only");
+          setMedicines(defaultMedicines.map((med, index) => ({
+            ...med,
+            id: `default-medicine-${index + 1}`
+          })));
+
+          toast({
+            title: 'Database Setup Required',
+            description: 'Using default medicines. Please set up the database for full functionality.',
+            variant: 'destructive',
+          });
         }
       } catch (error) {
         console.error('Error fetching medicines:', error);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { usePrescriptions } from '@/contexts/PrescriptionContext';
 import { useClinicInfo } from '@/contexts/ClinicInfoContext';
 import { useDoctors } from '@/contexts/DoctorContext';
 import { useMedicines } from '@/contexts/MedicineContext';
+import { useSupabase } from '@/contexts/SupabaseContext';
 import { Medicine, getUniqueMedicineNames, getDosagesForMedicine } from '@/types/medicines';
 import { format as formatDate } from 'date-fns';
 import { Combobox } from '@/components/ui/combobox';
@@ -45,6 +47,12 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   const { currentClinicInfo, getFullAddress } = useClinicInfo();
   const { doctors } = useDoctors();
   const { medicines } = useMedicines();
+  const { supabase } = useSupabase();
+
+  // Log available medicines for debugging
+  useEffect(() => {
+    console.log("Available medicines in the system:", medicines);
+  }, [medicines]);
 
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -223,9 +231,21 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   const handleMedicationChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
 
+    // Sanitize input - trim whitespace for string fields
+    const sanitizedValue = typeof value === 'string' ? value.trim() : value;
+
     // Update the medication state
     setNewMedication(prev => {
-      const updated = { ...prev, [name]: value };
+      // Create updated object with sanitized value
+      const updated = {
+        ...prev,
+        [name]: sanitizedValue
+      };
+
+      // Special handling for name and dosage to ensure they're always trimmed
+      if (name === 'name' || name === 'dosage') {
+        updated[name] = (sanitizedValue || '').toString().trim();
+      }
 
       // Auto-calculate dispense quantity if duration is set
       if (name === 'duration') {
@@ -279,6 +299,69 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
         variant: "destructive",
       });
       return;
+    }
+
+    // Verify that the medicine exists in the medicines table
+    // Helper function for safe string comparison - handles null, undefined, case, and whitespace
+    const safeEqual = (a: string | null | undefined, b: string | null | undefined): boolean => {
+      return (a ?? '').toString().trim().toLowerCase() === (b ?? '').toString().trim().toLowerCase();
+    };
+
+    // For logging purposes
+    const normalize = (str: string | null | undefined): string => {
+      return (str ?? '').toString().trim().toLowerCase();
+    };
+
+    // Sanitize the medication name and dosage one more time before comparison
+    const sanitizedName = (newMedication.name ?? '').trim();
+    const sanitizedDosage = (newMedication.dosage ?? '').trim();
+
+    console.log('Looking for medicine match with sanitized values:', {
+      name: sanitizedName,
+      normalizedName: normalize(sanitizedName),
+      dosage: sanitizedDosage,
+      normalizedDosage: normalize(sanitizedDosage)
+    });
+
+    // Use safeEqual for more reliable matching
+    const matchingMedicine = medicines.find(m =>
+      safeEqual(m.name, sanitizedName) && safeEqual(m.dosage, sanitizedDosage)
+    );
+
+    if (!matchingMedicine) {
+      console.error(`No matching medicine found for ${newMedication.name} - ${newMedication.dosage}`);
+      console.log("Available medicines:", medicines.map(m => ({ id: m.id, name: m.name, dosage: m.dosage })));
+
+      // Show a warning to the user with sanitized values
+      toast({
+        title: "Warning: Medicine Not Found",
+        description: `${sanitizedName} ${sanitizedDosage} is not in the medicines database. This may cause issues when saving.`,
+      });
+
+      // Option to add the medicine to the database with sanitized values
+      if (confirm(`${sanitizedName} ${sanitizedDosage} is not in the medicines database. Would you like to add it now?`)) {
+        try {
+          // Add the medicine to the database with sanitized values
+          const newMedicine = {
+            name: sanitizedName,
+            dosage: sanitizedDosage,
+            description: "Added from prescription form"
+          };
+
+          // Use the context method to add the medicine
+          // This will be handled by the PrescriptionContext's addMedicationToPrescription method
+          // which will properly handle the medicine ID lookup
+          console.log("User chose to add medicine to database:", newMedicine);
+          toast({
+            title: "Medicine Will Be Added",
+            description: `${sanitizedName} ${sanitizedDosage} will be added to the database when the prescription is saved.`,
+          });
+        } catch (error: unknown) {
+          console.error("Error adding medicine:", error);
+        }
+      }
+    } else {
+      console.log(`Found matching medicine with ID: ${matchingMedicine.id} for ${newMedication.name} - ${newMedication.dosage}`);
     }
 
     // Auto-calculate dispense quantity if not already set
@@ -377,37 +460,78 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
         return;
       }
 
-      // Create a copy of the prescription data for the API
       const { medications } = newPrescription;
 
-      // Add new prescription using context
+      // ✅ STEP 1: Save prescription
+      console.log("Saving prescription:", newPrescription);
       const newRecord = await addPrescription(patientId, newPrescription);
 
-      // Add each medication to the prescription
-      if (newRecord && newRecord.prescription_id) {
-        for (const medication of medications) {
-          // Remove the id property as it's a temporary ID
-          const { id, ...medicationWithoutId } = medication;
-          await addMedicationToPrescription(newRecord.prescription_id, medicationWithoutId);
+      if (newRecord) {
+        // Make sure we're using the UUID from the database, not the text ID
+        const prescriptionIdToUse = newRecord.id;
+        console.log("IMPORTANT: Using prescription UUID for medication links:", prescriptionIdToUse);
+        console.log("Prescription text ID (for reference only):", newRecord.prescription_id);
+
+        // ✅ STEP 2: Add medications using the context method
+        console.log("Adding medications using context method");
+
+        try {
+          for (const medication of medications) {
+            // Remove the temporary ID as it's not needed and ensure all string values are trimmed
+            const { id, ...medicationWithoutId } = medication;
+
+            // Sanitize all string fields to avoid whitespace issues
+            const sanitizedMedication = {
+              ...medicationWithoutId,
+              name: medicationWithoutId.name.trim(),
+              dosage: (medicationWithoutId.dosage || '').trim(),
+              duration: (medicationWithoutId.duration || '').trim(),
+              food_instructions: (medicationWithoutId.food_instructions || '').trim(),
+              instructions: (medicationWithoutId.instructions || '').trim(),
+              dispense_quantity: (medicationWithoutId.dispense_quantity || '').trim()
+            };
+
+            console.log("Adding medication using context method:", sanitizedMedication);
+
+            // Use the context method which properly handles medicine ID lookup and error handling
+            const result = await addMedicationToPrescription(prescriptionIdToUse, sanitizedMedication);
+
+            console.log("Successfully added medication:", result);
+          }
+        } catch (err) {
+          console.error("Error adding medication:", err);
+
+          // Show error to user
+          toast({
+            title: "Error Adding Medication",
+            description: err.message || "Failed to add medication. Please check if the medicine exists in the system.",
+            variant: "destructive",
+          });
+
+          // Cancel the entire save process
+          throw err; // Re-throw to stop the process
         }
+
+        // ✅ STEP 4: Refresh prescriptions from DB
+        const updatedPrescriptions = await getPatientPrescriptions(patientId);
+        setPrescriptions(updatedPrescriptions);
+
+        // ✅ STEP 5: Reset form
+        setNewPrescription({
+          diagnosis: '',
+          notes: '',
+          prescribed_by: '',
+          status: 'Active',
+          medications: [],
+          doctor_reg_no: ''
+        });
+        setIsAddingNew(false);
+
+        toast({
+          title: "Success",
+          description: "Prescription and medications saved successfully.",
+        });
       }
-
-      // Fetch updated prescriptions
-      const updatedPrescriptions = await getPatientPrescriptions(patientId);
-      setPrescriptions(updatedPrescriptions);
-
-      // Reset form and close
-      setNewPrescription({
-        diagnosis: '',
-        notes: '',
-        prescribed_by: '',
-        status: 'Active',
-        medications: [],
-        doctor_reg_no: ''
-      });
-      setIsAddingNew(false);
-
-      // Success message is already shown by the context
     } catch (error) {
       console.error('Error saving prescription:', error);
       toast({
@@ -449,14 +573,102 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
         return;
       }
 
-      // Proceed with updating the prescription
+      // Extract medications before updating prescription
+      const { medications } = newPrescription;
+
+      console.log("Updating prescription:", isEditing);
+      console.log("Medications to update:", medications);
+
+      // Create a copy without medications for the update
+      const prescriptionWithoutMedications = {
+        ...newPrescription,
+        medications: [] // Clear medications for the update
+      };
 
       // Update the prescription using context
-      const updatedPrescription = await updatePrescription(isEditing, newPrescription);
+      const updatedPrescription = await updatePrescription(isEditing, prescriptionWithoutMedications);
 
       if (updatedPrescription) {
-        // Fetch updated prescriptions
+        // We need to use the UUID (id) for the foreign key relationship, not the text prescription_id
+        const prescriptionIdToUse = updatedPrescription.id;
+        console.log("Successfully updated prescription. UUID:", updatedPrescription.id, "Text ID:", updatedPrescription.prescription_id);
+        console.log("Using ID for medication relationship:", prescriptionIdToUse);
+
+        // First, we need to fetch the current prescription to get its medications
+        const currentPrescriptions = await getPatientPrescriptions(patientId);
+        const currentPrescription = currentPrescriptions.find(p => p.id === isEditing);
+
+        if (currentPrescription) {
+          // Delete all existing medications
+          for (const med of currentPrescription.medications || []) {
+            if (med.id) {
+              console.log("Removing medication:", med.id);
+              // Use the context method for consistent handling and proper fallbacks
+              console.log("Using context method to remove medication with ID:", med.id);
+              await removeMedicationFromPrescription(prescriptionIdToUse, med.id);
+              console.log("Successfully removed medication with ID:", med.id);
+            }
+          }
+
+          // We'll use the medications directly with the context method
+          // No need to prepare them with IDs as the context method will handle that
+          console.log("Using medications directly with context method");
+
+          // Use the context method for adding medications
+          console.log("Using context method to add medications");
+
+          try {
+            // Add all new medications using the context method
+            for (const medication of medications) {
+              // Sanitize all string fields to avoid whitespace issues
+              const sanitizedMedication = {
+                ...medication,
+                name: medication.name.trim(),
+                dosage: (medication.dosage || '').trim(),
+                duration: (medication.duration || '').trim(),
+                food_instructions: (medication.food_instructions || '').trim(),
+                instructions: (medication.instructions || '').trim(),
+                dispense_quantity: (medication.dispense_quantity || '').trim()
+              };
+
+              console.log("Adding medication using context method:", sanitizedMedication);
+
+              // Use the context method which properly handles medicine ID lookup and error handling
+              const result = await addMedicationToPrescription(prescriptionIdToUse, sanitizedMedication);
+
+              console.log("Successfully added medication:", result);
+            }
+          } catch (err) {
+            console.error("Error adding medication:", err);
+
+            // Show error to user
+            toast({
+              title: "Error Adding Medication",
+              description: err.message || "Failed to add medication. Please check if the medicine exists in the system.",
+              variant: "destructive",
+            });
+
+            // Cancel the entire update process
+            throw err; // Re-throw to stop the process
+          }
+
+          console.log("All medications processed");
+
+          // Refresh prescriptions from the database to ensure we have the latest data
+          console.log("Refreshing prescriptions from database");
+          const updatedPrescriptions = await getPatientPrescriptions(patientId);
+          setPrescriptions(updatedPrescriptions);
+        } else {
+          console.error("Could not find current prescription with ID:", isEditing);
+        }
+
+        // Wait a moment for database operations to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Fetch updated prescriptions with a slight delay to ensure database consistency
+        console.log("Fetching updated prescriptions after updating");
         const updatedPrescriptions = await getPatientPrescriptions(patientId);
+        console.log("Updated prescriptions:", updatedPrescriptions);
         setPrescriptions(updatedPrescriptions);
 
         // Show success message
@@ -640,27 +852,31 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
 
             <div class="rx">Rx</div>
 
-            <ol class="medications">
-              ${prescription.medications.map(med => `
-                <li class="medication">
-                  <div class="medication-name">${med.name} - ${med.dosage}</div>
-                  <div class="medication-details">
-                    For ${med.duration}
-                    ${med.timing && (med.timing.morning || med.timing.afternoon || med.timing.night) ?
-                      ` - Timing: ${[
-                        med.timing.morning ? 'Morning' : '',
-                        med.timing.afternoon ? 'Afternoon' : '',
-                        med.timing.night ? 'Night' : ''
-                      ].filter(Boolean).join(', ')}` : ''}
-                    ${med.food_instructions ? ` - ${med.food_instructions}` : ''}
-                    ${med.instructions ? ` - Notes: ${med.instructions}` : ''}
-                  </div>
-                  <div class="medication-details dispense">
-                    Dispense: ${med.dispense_quantity}
-                  </div>
-                </li>
-              `).join('')}
-            </ol>
+            ${prescription.medications && prescription.medications.length > 0 ? `
+              <ol class="medications">
+                ${prescription.medications.map(med => `
+                  <li class="medication">
+                    <div class="medication-name">${med.name} - ${med.dosage}</div>
+                    <div class="medication-details">
+                      For ${med.duration}
+                      ${med.timing && (med.timing.morning || med.timing.afternoon || med.timing.night) ?
+                        ` - Timing: ${[
+                          med.timing.morning ? 'Morning' : '',
+                          med.timing.afternoon ? 'Afternoon' : '',
+                          med.timing.night ? 'Night' : ''
+                        ].filter(Boolean).join(', ')}` : ''}
+                      ${med.food_instructions ? ` - ${med.food_instructions}` : ''}
+                      ${med.instructions ? ` - Notes: ${med.instructions}` : ''}
+                    </div>
+                    <div class="medication-details dispense">
+                      Dispense: ${med.dispense_quantity}
+                    </div>
+                  </li>
+                `).join('')}
+              </ol>
+            ` : `
+              <p class="no-medications">No medications added to this prescription.</p>
+            `}
 
             ${prescription.notes ? `
               <div class="section">
@@ -1084,7 +1300,9 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                           <TableCell>{format(new Date(prescription.date), 'dd/MM/yyyy')}</TableCell>
                           <TableCell>{prescription.diagnosis}</TableCell>
                           <TableCell>
-                            {prescription.medications.map(med => med.name).join(', ')}
+                            {prescription.medications && prescription.medications.length > 0
+                              ? prescription.medications.map(med => med.name).join(', ')
+                              : 'No medications'}
                           </TableCell>
                           <TableCell>{prescription.prescribed_by}</TableCell>
                           <TableCell>{getStatusBadge(prescription.status)}</TableCell>
@@ -1163,28 +1381,32 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
 
               {/* Medications */}
               <div className="mb-4">
-                <ul className="list-decimal pl-5 space-y-2">
-                  {selectedPrescription.medications.map(med => (
-                    <li key={med.id} className="pl-2">
-                      <p className="font-medium text-sm">{med.name} - {med.dosage}</p>
-                      <p className="text-xs pl-2">
-                        For {med.duration}
-                        {med.timing && (med.timing.morning || med.timing.afternoon || med.timing.night) &&
-                          ` - Timing: ${[
-                            med.timing.morning ? 'Morning' : '',
-                            med.timing.afternoon ? 'Afternoon' : '',
-                            med.timing.night ? 'Night' : ''
-                          ].filter(Boolean).join(', ')}`
-                        }
-                        {med.food_instructions && ` - ${med.food_instructions}`}
-                        {med.instructions && ` - Notes: ${med.instructions}`}
-                      </p>
-                      <p className="text-xs pl-2 font-medium">
-                        Dispense: {med.dispense_quantity}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
+                {selectedPrescription.medications && selectedPrescription.medications.length > 0 ? (
+                  <ul className="list-decimal pl-5 space-y-2">
+                    {selectedPrescription.medications.map(med => (
+                      <li key={med.id} className="pl-2">
+                        <p className="font-medium text-sm">{med.name} - {med.dosage}</p>
+                        <p className="text-xs pl-2">
+                          For {med.duration}
+                          {med.timing && (med.timing.morning || med.timing.afternoon || med.timing.night) &&
+                            ` - Timing: ${[
+                              med.timing.morning ? 'Morning' : '',
+                              med.timing.afternoon ? 'Afternoon' : '',
+                              med.timing.night ? 'Night' : ''
+                            ].filter(Boolean).join(', ')}`
+                          }
+                          {med.food_instructions && ` - ${med.food_instructions}`}
+                          {med.instructions && ` - Notes: ${med.instructions}`}
+                        </p>
+                        <p className="text-xs pl-2 font-medium">
+                          Dispense: {med.dispense_quantity}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm italic">No medications added to this prescription.</p>
+                )}
               </div>
 
 

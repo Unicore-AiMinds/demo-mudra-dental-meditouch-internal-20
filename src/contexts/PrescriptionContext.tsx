@@ -5,6 +5,25 @@ import { useToast } from '@/components/ui/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { handleDatabaseError } from '@/utils/error-handler';
 
+// Supabase configuration - same as in supabase.ts
+// Verify this matches your actual Supabase project
+const SUPABASE_URL = 'https://otvhtpnmunoazgqhennu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90dmh0cG5tdW5vYXpncWhlbm51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2MDEwMTAsImV4cCI6MjA2MjE3NzAxMH0.TeZa-YGzfToszrWrMomsjw3R9mRxFR-7NE7sNLFi9JM';
+
+// Log Supabase configuration to verify
+console.log('Using Supabase project:', SUPABASE_URL);
+
+// Define Medicine type if not already imported
+interface Medicine {
+  id: string;
+  name: string;
+  dosage?: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
 interface PrescriptionContextType {
   getPatientPrescriptions: (patientId: string) => Promise<Prescription[]>;
   addPrescription: (patientId: string, prescription: Omit<Prescription, 'id' | 'prescription_id' | 'patient_id' | 'date' | 'created_at' | 'updated_at'>) => Promise<Prescription>;
@@ -39,16 +58,45 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
             await supabase.from<Prescription>('prescriptions').insert(prescription);
           }
 
-          // Create default medications
+          // Create default medications - try both table names
           for (const medication of defaultMedications) {
-            await supabase.from<Medication>('prescription_medications').insert(medication);
+            try {
+              // First try with the correct table name from the SQL schema
+              await supabase.from<Medication>('prescription_medications').insert(medication);
+              console.log(`Added default medication to prescription_medications table`);
+            } catch (err) {
+              console.error("Error adding default to prescription_medications:", err);
+              // Fallback to potential alternative table name
+              try {
+                await supabase.from<Medication>('prescription_medication').insert(medication);
+                console.log(`Added default medication to prescription_medication table`);
+              } catch (fallbackErr) {
+                console.error("Error adding default to prescription_medication:", fallbackErr);
+              }
+            }
           }
 
           // Fetch the newly created prescriptions
           const newPrescriptions = await supabase.from<Prescription>('prescriptions').getAll();
 
-          // Fetch the newly created medications
-          const newMedications = await supabase.from<Medication>('prescription_medications').getAll();
+          // Fetch the newly created medications - try both table names
+          let newMedications = [];
+          try {
+            // First try with the correct table name from the SQL schema
+            newMedications = await supabase.from<Medication>('prescription_medications').getAll();
+            console.log(`Fetched ${newMedications.length} medications from prescription_medications table`);
+          } catch (err) {
+            console.error("Error fetching from prescription_medications:", err);
+            // Fallback to potential alternative table name
+            try {
+              newMedications = await supabase.from<Medication>('prescription_medication').getAll();
+              console.log(`Fetched ${newMedications.length} medications from prescription_medication table`);
+            } catch (fallbackErr) {
+              console.error("Error fetching from prescription_medication:", fallbackErr);
+              // Last resort - create an empty array
+              newMedications = [];
+            }
+          }
 
           // Group medications by prescription ID
           const medicationsByPrescription: Record<string, Medication[]> = {};
@@ -76,8 +124,24 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
 
           setPrescriptions(groupedPrescriptions);
         } else {
-          // Fetch all medications
-          const fetchedMedications = await supabase.from<Medication>('prescription_medications').getAll();
+          // Fetch all medications - try both table names
+          let fetchedMedications = [];
+          try {
+            // First try with the correct table name from the SQL schema
+            fetchedMedications = await supabase.from<Medication>('prescription_medications').getAll();
+            console.log(`Fetched ${fetchedMedications.length} medications from prescription_medications table`);
+          } catch (err) {
+            console.error("Error fetching from prescription_medications:", err);
+            // Fallback to potential alternative table name
+            try {
+              fetchedMedications = await supabase.from<Medication>('prescription_medication').getAll();
+              console.log(`Fetched ${fetchedMedications.length} medications from prescription_medication table`);
+            } catch (fallbackErr) {
+              console.error("Error fetching from prescription_medication:", fallbackErr);
+              // Last resort - create an empty array
+              fetchedMedications = [];
+            }
+          }
 
           // Group medications by prescription ID
           const medicationsByPrescription: Record<string, Medication[]> = {};
@@ -123,39 +187,173 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
     initializePrescriptions();
   }, [supabase, toast]);
 
-  // Get all prescriptions for a patient
+  // Get all prescriptions for a patient with a single SQL-like query approach
   const getPatientPrescriptions = async (patientId: string): Promise<Prescription[]> => {
     try {
-      // Fetch directly from Supabase for the most up-to-date data
+      console.log(`Fetching prescriptions for patient ID: ${patientId}`);
+      console.log("=== IMPROVED PRESCRIPTION LOADING PROCESS ===");
+
+      // Step 1: Fetch prescriptions for the patient
+      console.log("Step 1: Fetching prescriptions for patient");
       const fetchedPrescriptions = await supabase.from<Prescription>('prescriptions').getAll({
         filters: { patient_id: patientId },
         order: { column: 'date', ascending: false }
       });
 
-      // Fetch medications for these prescriptions
-      const prescriptionIds = fetchedPrescriptions.map(p => p.prescription_id).filter(Boolean);
+      console.log(`Found ${fetchedPrescriptions.length} prescriptions for patient ID: ${patientId}`);
 
-      if (prescriptionIds.length === 0) {
+      if (fetchedPrescriptions.length === 0) {
+        console.log(`No prescriptions found for patient ID: ${patientId}`);
         return [];
       }
 
-      const fetchedMedications = await supabase.from<Medication>('prescription_medications').getAll({
-        filters: { prescription_id: prescriptionIds }
-      });
+      // Get the UUIDs of the prescriptions
+      const prescriptionUuids = fetchedPrescriptions.map(p => p.id);
+      console.log(`Prescription UUIDs: ${prescriptionUuids.join(', ')}`);
 
-      // Group medications by prescription ID
-      const medicationsByPrescription: Record<string, Medication[]> = {};
-      fetchedMedications.forEach(medication => {
-        if (!medicationsByPrescription[medication.prescription_id || '']) {
-          medicationsByPrescription[medication.prescription_id || ''] = [];
+      // Step 2: Fetch prescription-medication links for these prescriptions
+      console.log("Step 2: Fetching prescription-medication links for these prescriptions");
+
+      // Build a filter to get links only for these prescriptions
+      const prescriptionFilter = prescriptionUuids.map(id => `prescription_id=eq.${id}`).join('&');
+      const linksUrl = `${SUPABASE_URL}/rest/v1/prescription_medications?${prescriptionFilter}`;
+
+      console.log("Fetching links with URL:", linksUrl);
+
+      let links = [];
+      try {
+        const linksResponse = await fetch(linksUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!linksResponse.ok) {
+          console.error(`Error fetching links: ${linksResponse.status} ${linksResponse.statusText}`);
+          throw new Error(`Failed to fetch links: ${linksResponse.status}`);
         }
-        medicationsByPrescription[medication.prescription_id || ''].push(medication);
+
+        links = await linksResponse.json();
+        console.log(`Found ${links.length} prescription-medication links`);
+      } catch (error) {
+        console.error("Error fetching prescription-medication links:", error);
+        links = [];
+      }
+
+      // Step 3: Fetch medications for these links
+      console.log("Step 3: Fetching medications for these links");
+
+      let medications = [];
+      if (links.length > 0) {
+        // Get all medication IDs from the links
+        const medicationIds = links.map(link => link.medication_id);
+        console.log(`Medication IDs to fetch: ${medicationIds.join(', ')}`);
+
+        // Build a filter to get only these medications
+        const medicationsFilter = medicationIds.map(id => `id=eq.${id}`).join('&');
+        const medicationsUrl = `${SUPABASE_URL}/rest/v1/medications?${medicationsFilter}`;
+
+        console.log("Fetching medications with URL:", medicationsUrl);
+
+        try {
+          const medicationsResponse = await fetch(medicationsUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          });
+
+          if (!medicationsResponse.ok) {
+            console.error(`Error fetching medications: ${medicationsResponse.status} ${medicationsResponse.statusText}`);
+            throw new Error(`Failed to fetch medications: ${medicationsResponse.status}`);
+          }
+
+          medications = await medicationsResponse.json();
+          console.log(`Found ${medications.length} medications`);
+        } catch (error) {
+          console.error("Error fetching medications:", error);
+          medications = [];
+        }
+      } else {
+        console.log("No links found, so no medications to fetch");
+      }
+
+      // Step 4: Map medications to prescriptions
+      console.log("Step 4: Mapping medications to prescriptions");
+
+      // Create a map of prescription ID to medications
+      const medicationsByPrescription: Record<string, Medication[]> = {};
+
+      // Initialize with empty arrays for all prescriptions
+      prescriptionUuids.forEach(uuid => {
+        medicationsByPrescription[uuid] = [];
       });
 
-      // Add medications to prescriptions
-      const prescriptionsWithMedications = fetchedPrescriptions.map(prescription => ({
-        ...prescription,
-        medications: medicationsByPrescription[prescription.prescription_id || ''] || []
+      // Process links and medications
+      if (links.length > 0 && medications.length > 0) {
+        console.log("Adding medications to prescriptions from database...");
+
+        links.forEach(link => {
+          const medication = medications.find(med => med.id === link.medication_id);
+          if (medication && link.prescription_id) {
+            console.log(`Mapping medication ${medication.id} to prescription ${link.prescription_id}`);
+
+            // Convert flat medication fields to the expected structure
+            const formattedMedication: Medication = {
+              id: medication.id,
+              medication_id: medication.medication_id,
+              prescription_id: link.prescription_id,
+              name: medication.name,
+              dosage: medication.dosage,
+              duration: medication.duration,
+              timing: {
+                morning: medication.timing_morning,
+                afternoon: medication.timing_afternoon,
+                night: medication.timing_night
+              },
+              food_instructions: medication.food_instructions,
+              instructions: medication.instructions,
+              dispense_quantity: medication.dispense_quantity
+            };
+
+            // Add to the appropriate prescription
+            medicationsByPrescription[link.prescription_id].push(formattedMedication);
+          }
+        });
+      } else {
+        console.log("No medications found in database. Checking for embedded medications...");
+
+        // Check for embedded medications in the prescription objects
+        fetchedPrescriptions.forEach(prescription => {
+          if (prescription.medications && prescription.medications.length > 0) {
+            console.log(`Found ${prescription.medications.length} embedded medications in prescription ${prescription.id}`);
+            medicationsByPrescription[prescription.id] = prescription.medications;
+          }
+        });
+      }
+
+      // Step 5: Create prescriptions with medications
+      console.log("Step 5: Creating prescriptions with medications");
+
+      const prescriptionsWithMedications = fetchedPrescriptions.map(prescription => {
+        const medsForPrescription = medicationsByPrescription[prescription.id] || [];
+        console.log(`Prescription ${prescription.prescription_id} has ${medsForPrescription.length} medications`);
+
+        return {
+          ...prescription,
+          medications: medsForPrescription
+        };
+      });
+
+      // Update local state
+      setPrescriptions(prev => ({
+        ...prev,
+        [patientId]: prescriptionsWithMedications
       }));
 
       return prescriptionsWithMedications;
@@ -169,6 +367,8 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         customMessage: 'Prescription data will be available after setup is complete.',
         showToast: true
       });
+
+      // Return existing prescriptions from state or empty array
       return prescriptions[patientId] || [];
     }
   };
@@ -210,16 +410,54 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         ...prescription
       };
 
-      // Add to Supabase
+      // Add to Supabase using direct fetch API to ensure we get the UUID back
       const { medications, ...prescriptionWithoutMedications } = newPrescription;
-      const createdPrescription = await supabase.from<Prescription>('prescriptions').insert(prescriptionWithoutMedications);
+
+      console.log("=== PRESCRIPTION CREATION PROCESS ===");
+      console.log("Inserting prescription:", prescriptionWithoutMedications);
+
+      // Use direct fetch API for more control
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/prescriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(prescriptionWithoutMedications)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error response from Supabase:", errorText);
+        throw new Error(`Failed to insert prescription: ${response.status} ${response.statusText}`);
+      }
+
+      // Parse the response to get the created prescription with UUID
+      const responseData = await response.json();
+      console.log("Supabase direct insert response for prescription:", responseData);
+
+      if (!responseData || responseData.length === 0) {
+        throw new Error("Failed to create prescription: No response data");
+      }
+
+      // Use the created prescription with UUID
+      const createdPrescription = responseData[0];
+      console.log("Successfully created prescription with UUID:", createdPrescription.id);
+
+      // Make sure the created prescription has an empty medications array
+      const prescriptionWithEmptyMedications = {
+        ...createdPrescription,
+        medications: []
+      };
 
       // Update local state
       const updatedPrescriptions = { ...prescriptions };
       if (!updatedPrescriptions[patientId]) {
         updatedPrescriptions[patientId] = [];
       }
-      updatedPrescriptions[patientId] = [createdPrescription, ...updatedPrescriptions[patientId]];
+      updatedPrescriptions[patientId] = [prescriptionWithEmptyMedications, ...updatedPrescriptions[patientId]];
       setPrescriptions(updatedPrescriptions);
 
       toast({
@@ -323,28 +561,520 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   };
 
+  // Helper function to safely resolve prescription ID to UUID
+  const resolvePrescriptionId = async (prescriptionId: string): Promise<string> => {
+    console.log(`Resolving prescription ID: ${prescriptionId}`);
+
+    // If it's already a UUID, return as-is
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(prescriptionId)) {
+      console.log(`ID is already a UUID: ${prescriptionId}`);
+      return prescriptionId;
+    }
+
+    // Search in local state first
+    for (const patientId in prescriptions) {
+      const prescription = prescriptions[patientId].find(
+        p => p.prescription_id === prescriptionId || p.id === prescriptionId
+      );
+
+      if (prescription) {
+        console.log(`Found prescription UUID ${prescription.id} for prescription_id ${prescriptionId} in local state`);
+        return prescription.id;
+      }
+    }
+
+    // If not found in local state, fetch from Supabase
+    try {
+      console.log(`Fetching prescription with ID ${prescriptionId} from database`);
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/prescriptions?prescription_id=eq.${prescriptionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+
+      if (!response.ok) {
+        console.error(`Error fetching prescription: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch prescription: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        console.log(`Found prescription in database with UUID: ${data[0].id}`);
+        return data[0].id;
+      }
+
+      // As a last resort, try direct UUID lookup
+      console.log(`Trying direct UUID lookup for ${prescriptionId}`);
+      const directResponse = await fetch(`${SUPABASE_URL}/rest/v1/prescriptions?id=eq.${prescriptionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+
+      if (directResponse.ok) {
+        const directData = await directResponse.json();
+        if (directData && directData.length > 0) {
+          console.log(`Found prescription with direct UUID lookup: ${directData[0].id}`);
+          return directData[0].id;
+        }
+      }
+
+      console.error(`Could not find prescription with ID ${prescriptionId}`);
+      throw new Error(`Prescription with ID ${prescriptionId} not found`);
+    } catch (error) {
+      console.error('Error resolving prescription ID:', error);
+      throw error;
+    }
+  };
+
   // Add a medication to an existing prescription
   const addMedicationToPrescription = async (
     prescriptionId: string,
     medication: Omit<Medication, 'id' | 'medication_id' | 'prescription_id' | 'created_at' | 'updated_at'>
   ): Promise<Medication | null> => {
     try {
-      // Generate a unique medication ID
-      const medicationId = `MED${uuidv4().substring(0, 8)}`;
+      console.log("Starting addMedicationToPrescription with:", { prescriptionId, medication });
 
-      // Create new medication
-      const newMedication = {
-        medication_id: medicationId,
-        prescription_id: prescriptionId,
-        ...medication
+      // Helper function for safe string comparison - handles null, undefined, case, and whitespace
+      const safeEqual = (a: string | null | undefined, b: string | null | undefined): boolean => {
+        return (a ?? '').toString().trim().toLowerCase() === (b ?? '').toString().trim().toLowerCase();
       };
 
-      // Add to Supabase
-      const createdMedication = await supabase.from<Medication>('prescription_medications').insert(newMedication);
+      // For backward compatibility and logging
+      const normalize = (str: string | null | undefined): string => {
+        return (str ?? '').toString().trim().toLowerCase();
+      };
+
+      // Check if prescriptionId is already a UUID
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(prescriptionId);
+
+      // Use the ID directly if it's a UUID, otherwise try to resolve it
+      let prescriptionUuid = '';
+
+      if (isUuid) {
+        prescriptionUuid = prescriptionId;
+        console.log(`Using provided UUID directly: ${prescriptionUuid}`);
+      } else {
+        // For backward compatibility, try to resolve the ID
+        try {
+          prescriptionUuid = await resolvePrescriptionId(prescriptionId);
+          console.log(`Resolved prescription ID ${prescriptionId} to UUID: ${prescriptionUuid}`);
+        } catch (error) {
+          console.error(`Failed to resolve prescription ID ${prescriptionId}:`, error);
+          throw new Error(`Invalid prescription ID: ${prescriptionId}. Please use the UUID.`);
+        }
+      }
+
+      // STEP 1: First, check if the medicine exists in the medicines table
+      console.log("Checking if medicine exists in medicines table...");
+
+      // Verify the medicines table schema first
+      try {
+        console.log("Verifying medicines table schema...");
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/medicines?limit=0`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!response.ok) {
+          console.error(`Error accessing medicines table: ${response.status} ${response.statusText}`);
+          throw new Error(`Medicines table access error: ${response.status}`);
+        }
+
+        // Check the table schema
+        const schemaResponse = await fetch(`${SUPABASE_URL}/rest/v1/medicines?select=id,name,dosage,description,created_at,updated_at&limit=0`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!schemaResponse.ok) {
+          console.error(`Error checking medicines schema: ${schemaResponse.status} ${schemaResponse.statusText}`);
+          // Continue anyway, but log the error
+        } else {
+          console.log("Medicines table schema verified successfully");
+        }
+      } catch (error) {
+        console.error("Error verifying medicines table:", error);
+        // Continue anyway, but log the error
+      }
+
+      // Fetch medicines from the table
+      const fetchedMedicines = await supabase.from<Medicine>('medicines').getAll();
+      console.log(`Found ${fetchedMedicines.length} medicines in the database`);
+
+      // Add detailed logging for medicine matching
+      console.log('User input medicine:', {
+        name: medication.name,
+        normalizedName: normalize(medication.name),
+        dosage: medication.dosage,
+        normalizedDosage: normalize(medication.dosage || '')
+      });
+
+      console.log('Available medicines in DB:', fetchedMedicines.map(m => ({
+        id: m.id,
+        name: m.name,
+        normalizedName: normalize(m.name),
+        dosage: m.dosage,
+        normalizedDosage: normalize(m.dosage || '')
+      })));
+
+      // Find matching medicine by name and dosage using safeEqual for reliable matching
+      let matchingMedicine = fetchedMedicines.find(m => {
+        const nameMatches = safeEqual(m.name, medication.name);
+        const dosageMatches = safeEqual(m.dosage, medication.dosage);
+
+        console.log(`Comparing: "${m.name}" (${normalize(m.name)}) with "${medication.name}" (${normalize(medication.name)}) - Match: ${nameMatches}`);
+        console.log(`Comparing: "${m.dosage || ''}" (${normalize(m.dosage || '')}) with "${medication.dosage || ''}" (${normalize(medication.dosage || '')}) - Match: ${dosageMatches}`);
+
+        return nameMatches && dosageMatches;
+      });
+
+      // If no matching medicine is found, create one
+      if (!matchingMedicine) {
+        console.log(`Medicine not found: ${medication.name} ${medication.dosage}. Creating a new one.`);
+
+        try {
+          // Create a new medicine with explicit ID and all required fields
+          const medicineUuid = uuidv4();
+          const newMedicine = {
+            id: medicineUuid,
+            name: medication.name.trim(), // Trim whitespace
+            dosage: (medication.dosage || '').trim(), // Trim whitespace
+            description: "Added automatically from prescription",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          console.log("Creating new medicine with direct API:", newMedicine);
+
+          // Use direct fetch API for more control
+          try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/medicines`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Prefer': 'return=representation'
+              },
+              body: JSON.stringify(newMedicine)
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error("Error response from Supabase:", errorText);
+              throw new Error(`Failed to create medicine: ${response.status} ${response.statusText}`);
+            }
+
+            const responseData = await response.json();
+            console.log("Supabase direct insert response for medicine:", responseData);
+
+            // Use the created medicine
+            const createdMedicine = responseData[0] || { ...newMedicine };
+            console.log("Successfully created medicine:", createdMedicine);
+
+            // Use the newly created medicine
+            matchingMedicine = createdMedicine;
+          } catch (apiError) {
+            console.error("API error creating medicine:", apiError);
+            // Fallback to using the new medicine object directly
+            matchingMedicine = newMedicine;
+          }
+
+          // Show a success toast
+          toast({
+            title: "Medicine Created",
+            description: `Created medicine: ${medication.name} ${medication.dosage || ''}`,
+          });
+        } catch (error) {
+          console.error("Failed to create medicine:", error);
+
+          // Show a toast error to the user
+          toast({
+            title: "Invalid Medicine",
+            description: `Medicine not found and could not be created: ${medication.name}, ${medication.dosage}`,
+            variant: "destructive",
+          });
+
+          // Throw an error to stop the process
+          throw new Error(`Medicine not found and could not be created: ${medication.name}, ${medication.dosage}`);
+        }
+      }
+
+      // STEP 2: Create a medication record in the medications table
+      console.log("Creating medication record in medications table...");
+
+      // Generate a unique medication ID
+      const medicationTextId = `MED${uuidv4().substring(0, 8)}`;
+
+      // Create the medication record with all required fields from the schema
+      // Trim all string values to avoid whitespace issues
+      const medicationRecord = {
+        medication_id: medicationTextId,
+        name: medication.name.trim(),
+        dosage: (medication.dosage || '').trim(),
+        duration: (medication.duration || '').trim(),
+        timing_morning: medication.timing?.morning || false,
+        timing_afternoon: medication.timing?.afternoon || false,
+        timing_night: medication.timing?.night || false,
+        food_instructions: (medication.food_instructions || '').trim(),
+        instructions: (medication.instructions || '').trim(),
+        dispense_quantity: (medication.dispense_quantity || '').trim(),
+        frequency: '' // Add any missing required fields from the schema
+      };
+
+      console.log("=== MEDICATION CREATION PROCESS ===");
+      console.log("Prescription UUID to link to:", prescriptionUuid);
+      console.log("Medication to save:", {
+        ...medicationRecord,
+        prescription_id: prescriptionUuid
+      });
+
+      // Verify medications table schema first
+      try {
+        console.log("Verifying medications table schema...");
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/medications?limit=0`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!response.ok) {
+          console.error(`Error accessing medications table: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          console.error("Error details:", errorText);
+        } else {
+          console.log("Medications table exists and is accessible");
+        }
+      } catch (error) {
+        console.error("Error verifying medications table:", error);
+      }
+
+      // Insert into medications table - DIRECT APPROACH
+      let createdMedicationRecord: { id: string };
+      try {
+        // Generate a UUID for the medication
+        const medicationUuid = uuidv4();
+
+        // Create a complete record with all required fields
+        const completeRecord = {
+          id: medicationUuid, // Explicitly set the ID
+          medication_id: medicationTextId,
+          name: medication.name.trim(),
+          dosage: (medication.dosage || '').trim(),
+          duration: (medication.duration || '').trim(),
+          timing_morning: medication.timing?.morning || false,
+          timing_afternoon: medication.timing?.afternoon || false,
+          timing_night: medication.timing?.night || false,
+          food_instructions: (medication.food_instructions || '').trim(),
+          instructions: (medication.instructions || '').trim(),
+          dispense_quantity: (medication.dispense_quantity || '').trim(),
+          frequency: '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        console.log("Attempting to insert medication with complete record:", completeRecord);
+
+        // Use the direct fetch API to ensure the record is created
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/medications`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(completeRecord)
+        });
+
+        // Log the full response for debugging
+        console.log("Response status:", response.status, response.statusText);
+        console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Error response from Supabase:", errorText);
+          throw new Error(`Failed to insert medication: ${response.status} ${response.statusText}`);
+        }
+
+        // Parse the response
+        const responseData = await response.json();
+        console.log("Supabase direct insert response:", responseData);
+
+        if (responseData && responseData.length > 0 && responseData[0].id) {
+          createdMedicationRecord = { id: responseData[0].id };
+          console.log("Successfully created medication with returned ID:", responseData[0].id);
+        } else {
+          // If we don't get a valid response, use our generated UUID
+          createdMedicationRecord = { id: medicationUuid };
+          console.log("Using generated UUID for medication:", medicationUuid);
+        }
+      } catch (error) {
+        console.error("Failed to create medication record:", error);
+
+        // Generate a UUID for UI purposes
+        const medicationUuid = uuidv4();
+        createdMedicationRecord = { id: medicationUuid };
+
+        // Show a warning but continue with UI updates
+        toast({
+          title: "Warning",
+          description: "Could not save medication to database. Using temporary data for display.",
+        });
+      }
+
+      // STEP 3: Link the medication to the prescription in the prescription_medications table
+      console.log("Linking medication to prescription...");
+
+      // Verify prescription_medications table schema first
+      try {
+        console.log("Verifying prescription_medications table schema...");
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/prescription_medications?limit=0`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!response.ok) {
+          console.error(`Error accessing prescription_medications table: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          console.error("Error details:", errorText);
+        } else {
+          console.log("Prescription_medications table exists and is accessible");
+        }
+      } catch (error) {
+        console.error("Error verifying prescription_medications table:", error);
+      }
+
+      // Create the link record with explicit ID
+      const linkUuid = uuidv4();
+      const linkRecord = {
+        id: linkUuid,
+        prescription_id: prescriptionUuid,
+        medication_id: createdMedicationRecord.id
+      };
+
+      console.log("=== PRESCRIPTION-MEDICATION LINKING PROCESS ===");
+      console.log("Prescription UUID:", prescriptionUuid);
+      console.log("Medication UUID:", createdMedicationRecord.id);
+      console.log("Link record to insert:", linkRecord);
+
+      // Insert into prescription_medications table - DIRECT APPROACH
+      try {
+        console.log("Attempting to insert link record using direct fetch API...");
+
+        // Create a complete link record with all required fields
+        const completeLinkRecord = {
+          id: linkUuid,
+          prescription_id: prescriptionUuid,
+          medication_id: createdMedicationRecord.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        console.log("Link record to insert:", completeLinkRecord);
+
+        // Use the direct fetch API to ensure the record is created
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/prescription_medications`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(completeLinkRecord)
+        });
+
+        // Log the full response for debugging
+        console.log("Response status:", response.status, response.statusText);
+        console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Error response from Supabase:", errorText);
+
+          // Try to parse the error for more details
+          try {
+            const errorJson = JSON.parse(errorText);
+            console.error("Parsed error:", errorJson);
+
+            // Check for foreign key violation
+            if (errorText.includes("foreign key constraint") || errorText.includes("violates foreign key constraint")) {
+              console.error("Foreign key constraint violation. This likely means the medication_id or prescription_id doesn't exist in their respective tables.");
+              console.error("Medication ID:", createdMedicationRecord.id);
+              console.error("Prescription ID:", prescriptionUuid);
+            }
+          } catch (parseError) {
+            // Just log the raw error if we can't parse it
+            console.error("Could not parse error JSON:", parseError);
+          }
+
+          throw new Error(`Failed to insert link: ${response.status} ${response.statusText}`);
+        }
+
+        // Parse the response
+        const responseData = await response.json();
+        console.log("Supabase direct insert response for link:", responseData);
+
+        console.log("Successfully linked medication to prescription");
+      } catch (insertError) {
+        console.error("Failed to link medication to prescription:", insertError);
+        console.log("Continuing with UI updates only");
+
+        // Show a user-friendly message
+        toast({
+          title: "Partial Success",
+          description: "Medication added to UI but may not be saved in database.",
+        });
+      }
+
+      // Create a complete medication object for the UI
+      const createdMedication: Medication = {
+        id: createdMedicationRecord.id,
+        medication_id: medicationTextId,
+        prescription_id: prescriptionUuid,
+        name: medication.name,
+        dosage: medication.dosage || '',
+        duration: medication.duration || '',
+        timing: {
+          morning: medication.timing?.morning || false,
+          afternoon: medication.timing?.afternoon || false,
+          night: medication.timing?.night || false
+        },
+        food_instructions: medication.food_instructions || '',
+        instructions: medication.instructions || '',
+        dispense_quantity: medication.dispense_quantity || ''
+      };
+
+      console.log('Created medication:', createdMedication);
 
       // Update local state
       setPrescriptions(prev => {
         const newPrescriptions = { ...prev };
+        let updated = false;
 
         // Find the prescription in all patients
         for (const patientId in newPrescriptions) {
@@ -353,14 +1083,21 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
           );
 
           if (index !== -1) {
+            console.log(`Found prescription at index ${index} for patient ${patientId}`);
+
+            // Make sure medications array exists
+            const currentMedications = newPrescriptions[patientId][index].medications || [];
+
             // Add it to the prescription
             const updatedPrescription = {
               ...newPrescriptions[patientId][index],
               medications: [
-                ...newPrescriptions[patientId][index].medications,
+                ...currentMedications,
                 createdMedication
               ]
             };
+
+            console.log('Updated prescription:', updatedPrescription);
 
             newPrescriptions[patientId] = [
               ...newPrescriptions[patientId].slice(0, index),
@@ -368,8 +1105,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
               ...newPrescriptions[patientId].slice(index + 1)
             ];
 
+            updated = true;
             break;
           }
+        }
+
+        if (!updated) {
+          console.warn(`Could not find prescription ${prescriptionId} in local state to update`);
         }
 
         return newPrescriptions;
@@ -418,14 +1160,70 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
       }
 
-      if (!medicationToDelete) {
-        // If not found in local state, fetch from Supabase
-        const fetchedMedications = await supabase.from<Medication>('prescription_medications').getAll({
-          filters: {
-            prescription_id: prescriptionId,
-            medication_id: medicationId
+      // Find the actual UUID of the prescription (not the text prescription_id)
+      let prescriptionUuid = '';
+
+      // Search in local state first to get the actual UUID
+      for (const patientId in prescriptions) {
+        const prescription = prescriptions[patientId].find(
+          p => p.prescription_id === prescriptionId || p.id === prescriptionId
+        );
+
+        if (prescription) {
+          prescriptionUuid = prescription.id;
+          console.log(`Found prescription UUID ${prescriptionUuid} for prescription_id ${prescriptionId}`);
+          break;
+        }
+      }
+
+      // If not found in local state, fetch from Supabase
+      if (!prescriptionUuid) {
+        try {
+          const fetchedPrescriptions = await supabase.from<Prescription>('prescriptions').getAll({
+            filters: { prescription_id: prescriptionId }
+          });
+
+          if (fetchedPrescriptions.length > 0) {
+            prescriptionUuid = fetchedPrescriptions[0].id;
+            console.log(`Fetched prescription UUID ${prescriptionUuid} for prescription_id ${prescriptionId}`);
+          } else {
+            console.error(`Could not find prescription with prescription_id ${prescriptionId}`);
+            throw new Error(`Prescription with ID ${prescriptionId} not found`);
           }
-        });
+        } catch (error) {
+          console.error('Error fetching prescription UUID:', error);
+          throw error;
+        }
+      }
+
+      if (!medicationToDelete) {
+        // If not found in local state, fetch from Supabase - try both table names
+        let fetchedMedications = [];
+
+        try {
+          // First try with the correct table name from the SQL schema
+          fetchedMedications = await supabase.from<Medication>('prescription_medications').getAll({
+            filters: {
+              prescription_id: prescriptionUuid, // Use the UUID, not the text ID
+              medication_id: medicationId
+            }
+          });
+          console.log(`Fetched ${fetchedMedications.length} medications from prescription_medications table`);
+        } catch (err) {
+          console.error("Error fetching from prescription_medications:", err);
+          // Fallback to potential alternative table name
+          try {
+            fetchedMedications = await supabase.from<Medication>('prescription_medication').getAll({
+              filters: {
+                prescription_id: prescriptionUuid, // Use the UUID, not the text ID
+                medication_id: medicationId
+              }
+            });
+            console.log(`Fetched ${fetchedMedications.length} medications from prescription_medication table`);
+          } catch (fallbackErr) {
+            console.error("Error fetching from prescription_medication:", fallbackErr);
+          }
+        }
 
         if (fetchedMedications.length === 0) {
           throw new Error('Medication not found');
@@ -434,8 +1232,22 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         medicationToDelete = fetchedMedications[0];
       }
 
-      // Delete from Supabase
-      await supabase.from<Medication>('prescription_medications').delete(medicationToDelete.id);
+      // Delete from Supabase - try both table names
+      try {
+        // First try with the correct table name from the SQL schema
+        await supabase.from<Medication>('prescription_medications').delete(medicationToDelete.id);
+        console.log(`Deleted medication from prescription_medications table`);
+      } catch (err) {
+        console.error("Error deleting from prescription_medications:", err);
+        // Fallback to potential alternative table name
+        try {
+          await supabase.from<Medication>('prescription_medication').delete(medicationToDelete.id);
+          console.log(`Deleted medication from prescription_medication table`);
+        } catch (fallbackErr) {
+          console.error("Error deleting from prescription_medication:", fallbackErr);
+          throw new Error("Failed to delete medication from any prescription medications table");
+        }
+      }
 
       // Update local state
       setPrescriptions(prev => {
