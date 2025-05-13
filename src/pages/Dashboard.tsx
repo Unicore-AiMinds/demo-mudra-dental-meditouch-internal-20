@@ -7,6 +7,7 @@ import StockAlertsCount from '@/components/StockAlertsCount';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import UnresolvedAppointmentsAlert from '@/components/UnresolvedAppointmentsAlert';
 
 const Dashboard = () => {
   const { activeClinic, isDental, isMeditouch } = useClinic();

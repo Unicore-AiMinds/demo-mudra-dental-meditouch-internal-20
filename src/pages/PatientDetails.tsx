@@ -33,6 +33,7 @@ import DentalChartingComponent from '@/components/DentalChartingComponent';
 import PatientUpcomingAppointments from '@/components/PatientUpcomingAppointments';
 import VitalSignsComponent from '@/components/VitalSignsComponent';
 import PrescriptionComponent from '@/components/PrescriptionComponent';
+import UnresolvedAppointmentsAlert from '@/components/UnresolvedAppointmentsAlert';
 
 // Import Patient type from PatientContext but create a local interface for UI compatibility
 // This helps us bridge between the Supabase field names and the UI component's expected field names

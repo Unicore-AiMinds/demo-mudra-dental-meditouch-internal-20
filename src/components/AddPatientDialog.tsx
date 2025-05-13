@@ -79,7 +79,7 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
     pincode: '',
     bloodGroup: '',
     referredBy: '',
-    clinic: '',
+    clinic: activeClinic, // Set default clinic to current active clinic
     lastVisit: ''
   });
 
@@ -98,7 +98,7 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
       pincode: '',
       bloodGroup: '',
       referredBy: '',
-      clinic: '',
+      clinic: activeClinic, // Set default clinic to current active clinic
       lastVisit: ''
     });
     setUseAgeInput(true);
@@ -462,8 +462,12 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
                     required
                   >
                     <option value="">Select Clinic</option>
-                    <option value="dental">Dental Metrix</option>
-                    <option value="meditouch">Meditouch</option>
+                    <option value="dental" className={activeClinic === 'dental' ? 'font-bold' : ''}>
+                      Dental Metrix {activeClinic === 'dental' ? '(Current)' : ''}
+                    </option>
+                    <option value="meditouch" className={activeClinic === 'meditouch' ? 'font-bold' : ''}>
+                      Meditouch {activeClinic === 'meditouch' ? '(Current)' : ''}
+                    </option>
                     <option value="both">Both Clinics</option>
                   </select>
                 </div>

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useSupabase } from './SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
-import { format, parseISO, isAfter } from 'date-fns';
+import { format } from 'date-fns';
 import { handleDatabaseError } from '@/utils/error-handler';
 
 // Define appointment types
@@ -40,8 +40,6 @@ export type MeditouchAppointment = Appointment & {
 };
 
 // No default appointments - everything will come from Supabase
-const defaultDentalAppointments: Omit<DentalAppointment, 'id'>[] = [];
-const defaultMeditouchAppointments: Omit<MeditouchAppointment, 'id'>[] = [];
 
 // Define context type
 interface AppointmentContextType {
@@ -83,9 +81,31 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
 
           console.log('Fetched all appointments:', fetchedAppointments);
 
+          // Fetch all patients to get their names
+          const patients = await supabase.from<{ id: string; name: string }>('patients').getAll();
+          console.log('Fetched patients for name lookup:', patients.length);
+
+          // Create a map of patient IDs to names for quick lookup
+          const patientNameMap: Record<string, string> = {};
+          patients.forEach(patient => {
+            if (patient.id && patient.name) {
+              patientNameMap[patient.id] = patient.name;
+            }
+          });
+
+          // Add patient names to appointments
+          const appointmentsWithNames = fetchedAppointments.map(app => {
+            return {
+              ...app,
+              patient_name: patientNameMap[app.patient_id] || 'Unknown Patient'
+            };
+          });
+
+          console.log('Added patient names to appointments');
+
           // Filter appointments by clinic type
-          const dentalApps = fetchedAppointments.filter(app => app.clinic_type === 'dental') as DentalAppointment[];
-          const meditouchApps = fetchedAppointments.filter(app => app.clinic_type === 'meditouch') as MeditouchAppointment[];
+          const dentalApps = appointmentsWithNames.filter(app => app.clinic_type === 'dental') as DentalAppointment[];
+          const meditouchApps = appointmentsWithNames.filter(app => app.clinic_type === 'meditouch') as MeditouchAppointment[];
 
           console.log('Filtered dental appointments:', dentalApps.length);
           console.log('Filtered meditouch appointments:', meditouchApps.length);
@@ -375,6 +395,33 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
         order: { column: 'time', ascending: true }
       });
 
+      // Fetch patient names for these appointments
+      const patientIds = appointments.map(app => app.patient_id).filter(Boolean);
+
+      if (patientIds.length > 0) {
+        // Fetch patients for these IDs
+        const patients = await supabase.from<{ id: string; name: string }>('patients').getAll({
+          filters: { id: { $in: patientIds } }
+        });
+
+        // Create a map of patient IDs to names
+        const patientNameMap: Record<string, string> = {};
+        patients.forEach(patient => {
+          if (patient.id && patient.name) {
+            patientNameMap[patient.id] = patient.name;
+          }
+        });
+
+        // Add patient names to appointments
+        const appointmentsWithNames = appointments.map(app => ({
+          ...app,
+          patient_name: patientNameMap[app.patient_id] || 'Unknown Patient'
+        }));
+
+        console.log(`Fetched ${appointments.length} ${clinic} appointments for date ${dateString} with patient names`);
+        return appointmentsWithNames;
+      }
+
       console.log(`Fetched ${appointments.length} ${clinic} appointments for date ${dateString}`);
       return appointments;
     } catch (error) {
@@ -410,6 +457,20 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
         },
         order: { column: 'date', ascending: true }
       });
+
+      // Fetch the patient name
+      const patient = await supabase.from<{ id: string; name: string }>('patients').getById(patientId);
+
+      if (patient && patient.name) {
+        // Add patient name to all appointments
+        const appointmentsWithName = appointments.map(app => ({
+          ...app,
+          patient_name: patient.name
+        }));
+
+        console.log(`Fetched ${appointments.length} appointments for patient ${patientId} (${patient.name}) with clinic filter ${clinic}`);
+        return appointmentsWithName;
+      }
 
       console.log(`Fetched ${appointments.length} appointments for patient ${patientId} with clinic filter ${clinic}`);
       return appointments;
@@ -447,6 +508,33 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
       const upcomingAppointments = appointments.filter(app => {
         return app.date >= todayString;
       });
+
+      // Fetch patient names for these appointments
+      const patientIds = upcomingAppointments.map(app => app.patient_id).filter(Boolean);
+
+      if (patientIds.length > 0) {
+        // Fetch patients for these IDs
+        const patients = await supabase.from<{ id: string; name: string }>('patients').getAll({
+          filters: { id: { $in: patientIds } }
+        });
+
+        // Create a map of patient IDs to names
+        const patientNameMap: Record<string, string> = {};
+        patients.forEach(patient => {
+          if (patient.id && patient.name) {
+            patientNameMap[patient.id] = patient.name;
+          }
+        });
+
+        // Add patient names to appointments
+        const appointmentsWithNames = upcomingAppointments.map(app => ({
+          ...app,
+          patient_name: patientNameMap[app.patient_id] || 'Unknown Patient'
+        }));
+
+        console.log(`Fetched ${appointments.length} total ${clinic} appointments, ${upcomingAppointments.length} are upcoming with patient names`);
+        return appointmentsWithNames;
+      }
 
       console.log(`Fetched ${appointments.length} total ${clinic} appointments, ${upcomingAppointments.length} are upcoming`);
       return upcomingAppointments;

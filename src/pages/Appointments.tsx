@@ -8,6 +8,7 @@ import { usePatients } from '@/contexts/PatientContext';
 import { useAppointments, Appointment, DentalAppointment, MeditouchAppointment } from '@/contexts/AppointmentContext';
 import { DentalChartingProvider } from '@/contexts/DentalChartingContext';
 import AppointmentCompletionDialog from '@/components/AppointmentCompletionDialog';
+import UnresolvedAppointmentsAlert from '@/components/UnresolvedAppointmentsAlert';
 import { getLighterColor } from '@/utils/doctorColors';
 import PendingTreatmentsView from '@/components/PendingTreatmentsView';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -164,13 +165,15 @@ const CalendarAppointmentItem = ({
   isDental,
   onClick,
   isCompact = false,
-  doctorsList
+  doctorsList,
+  getServiceDuration
 }: {
   appointment: DentalAppointment | MeditouchAppointment,
   isDental: boolean,
   onClick: () => void,
   isCompact?: boolean,
-  doctorsList: { id: number; name: string; color: string }[]
+  doctorsList: { id: number; name: string; color: string }[],
+  getServiceDuration: (serviceName: string) => number
 }) => {
   // Default colors
   const bgColor = isDental ? 'bg-dental-light' : 'bg-meditouch-light';
@@ -205,6 +208,7 @@ const CalendarAppointmentItem = ({
         <div>Doctor: {(appointment as DentalAppointment).doctor}</div>
       )}
       <div>Time: {appointment.time}</div>
+      <div>Duration: {getServiceDuration(appointment.service)} min</div>
     </div>
   );
 
@@ -223,11 +227,17 @@ const CalendarAppointmentItem = ({
       }}
     >
       {isCompact ? (
-        // Compact view - only show patient name
-        <div className="font-medium truncate">{appointment.patient_name}</div>
+        // Compact view - show service and patient name
+        <>
+          <div className="font-medium truncate">{appointment.service}</div>
+          <div className="text-xs truncate">{appointment.patient_name}</div>
+        </>
       ) : (
-        // Full view - show time and patient
-        <div className="font-medium truncate">{appointment.time} | {appointment.patient_name}</div>
+        // Full view - show time, service and patient
+        <>
+          <div className="font-medium truncate">{appointment.time} | {appointment.service}</div>
+          <div className="text-xs truncate">{appointment.patient_name}</div>
+        </>
       )}
     </div>
   );
@@ -285,6 +295,9 @@ const TimeSlotAppointment = ({
     <div className="text-xs">
       <div className="font-bold">{appointment.patient_name}</div>
       <div><span className="font-medium">Service:</span> {appointment.service}</div>
+      {isMultiSlot && (
+        <div><span className="font-medium">Duration:</span> {slotsOccupied * 15} min</div>
+      )}
       {isDental && (appointment as DentalAppointment).doctor && (
         <div><span className="font-medium">Doctor:</span> {(appointment as DentalAppointment).doctor}</div>
       )}
@@ -307,12 +320,9 @@ const TimeSlotAppointment = ({
           (isDental ? '#4A90E2' : '#16A085')
       }}
     >
-      <div className="font-medium truncate">{appointment.patient_name}</div>
-      <div className="text-white/90 text-[10px] truncate">
-        {appointment.service}
-        {isMultiSlot && (
-          <span className="ml-1">({slotsOccupied * 15} min)</span>
-        )}
+      <div className="font-medium truncate">{appointment.service}</div>
+      <div className="text-white/90 text-[10px] truncate font-bold">
+        {appointment.patient_name}
       </div>
       {!isCompact && isDental && (appointment as DentalAppointment).doctor && (
         <div className="text-white/90 text-[10px] font-medium truncate">{(appointment as DentalAppointment).doctor}</div>
@@ -428,21 +438,26 @@ const Appointments = () => {
     return grouped;
   }, []);
 
-  // Effect to filter patients based on search term
+  // Effect to filter patients based on search term and clinic type
   useEffect(() => {
     if (patients.length > 0) {
+      // First filter patients by clinic type
+      const clinicPatients = patients.filter(p =>
+        p.clinic === activeClinic || p.clinic === 'both'
+      );
+
       if (!searchTerm) {
-        // If no search term, show all patients
-        setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
+        // If no search term, show all patients for this clinic
+        setFilteredPatients(clinicPatients.map(p => ({ id: p.id, name: p.name })));
       } else {
-        // Filter patients based on search term
-        const filtered = patients.filter(p =>
+        // Filter patients based on search term and clinic type
+        const filtered = clinicPatients.filter(p =>
           p.name.toLowerCase().includes(searchTerm.toLowerCase())
         );
         setFilteredPatients(filtered.map(p => ({ id: p.id, name: p.name })));
       }
     }
-  }, [patients, searchTerm]);
+  }, [patients, searchTerm, activeClinic]);
 
   // Use appointments from AppointmentContext instead of local state
 
@@ -617,8 +632,16 @@ const Appointments = () => {
     // Create a map of slot availability
     const slotAvailability: Record<string, number> = {};
 
+    // Get current date and time
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const isToday = date.getFullYear() === today.getFullYear() &&
+                    date.getMonth() === today.getMonth() &&
+                    date.getDate() === today.getDate();
+
     // Initialize all slots with max capacity
     timeSlots.forEach(slot => {
+      // Always set normal capacity for all slots
       slotAvailability[slot] = isDental ? 2 : 1; // Dental allows 2 per slot, Meditouch only 1
     });
 
@@ -690,6 +713,38 @@ const Appointments = () => {
       return;
     }
 
+    // Check if the time slot is in the past
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const isToday = date.getFullYear() === today.getFullYear() &&
+                    date.getMonth() === today.getMonth() &&
+                    date.getDate() === today.getDate();
+
+    if (isToday) {
+      // Parse the time slot
+      const [timeStr, modifier] = time.split(' ');
+      let hours = parseInt(timeStr.split(':')[0]);
+      const minutes = parseInt(timeStr.split(':')[1]);
+
+      // Convert to 24-hour format
+      if (modifier === 'PM' && hours < 12) hours += 12;
+      if (modifier === 'AM' && hours === 12) hours = 0;
+
+      // Create a date object for this time slot
+      const slotTime = new Date(today);
+      slotTime.setHours(hours, minutes, 0, 0);
+
+      // If the slot is in the past, prevent creating an appointment
+      if (slotTime <= now) {
+        toast({
+          title: "Time Slot Unavailable",
+          description: "Cannot create appointments for times that have already passed. Please select a future time.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     // Make sure we're not already editing and close any open new appointment dialog
     setIsNewAppointmentOpen(false);
 
@@ -703,8 +758,11 @@ const Appointments = () => {
     // Debug log
     console.log('Setting appointment date from time slot:', format(date, 'yyyy-MM-dd'));
 
-    // Reset filtered patients list
-    setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
+    // Reset filtered patients list - only show patients for current clinic
+    const clinicPatients = patients.filter(p =>
+      p.clinic === activeClinic || p.clinic === 'both'
+    );
+    setFilteredPatients(clinicPatients.map(p => ({ id: p.id, name: p.name })));
 
     // Open the dialog
     setTimeout(() => {
@@ -735,8 +793,11 @@ const Appointments = () => {
       setAppointmentDoctor((appointment as DentalAppointment).doctor);
     }
 
-    // Reset filtered patients list for the search
-    setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
+    // Reset filtered patients list for the search - only show patients for current clinic
+    const clinicPatients = patients.filter(p =>
+      p.clinic === activeClinic || p.clinic === 'both'
+    );
+    setFilteredPatients(clinicPatients.map(p => ({ id: p.id, name: p.name })));
 
     // Set the editing appointment object
     setEditingAppointment(appointment);
@@ -961,7 +1022,7 @@ const Appointments = () => {
   const handlePaymentStatusChange = async (appointmentId: string, status: 'paid' | 'unpaid') => {
     try {
       // Update the appointment payment status in Supabase
-      await updateAppointment(appointmentId, { paymentStatus: status });
+      await updateAppointment(appointmentId, { payment_status: status });
 
       // If the completed appointment is currently displayed, update it
       if (completedAppointment && (completedAppointment.id === appointmentId || completedAppointment.appointment_id === appointmentId)) {
@@ -986,21 +1047,26 @@ const Appointments = () => {
   };
 
   const handlePatientSearch = (value: string) => {
-    // If value is empty or undefined, show all patients
+    // First filter patients by clinic type
+    const clinicPatients = patients.filter(p =>
+      p.clinic === activeClinic || p.clinic === 'both'
+    );
+
+    // If value is empty or undefined, show all patients for this clinic
     if (!value || value.trim() === '') {
-      setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
+      setFilteredPatients(clinicPatients.map(p => ({ id: p.id, name: p.name })));
       return;
     }
 
     // Convert to lowercase for case-insensitive search
     const searchTerm = value.toLowerCase().trim();
 
-    // Filter patients whose name contains the search term
-    const filtered = patients.filter(patient =>
+    // Filter patients whose name contains the search term and match clinic type
+    const filtered = clinicPatients.filter(patient =>
       patient.name.toLowerCase().includes(searchTerm)
     );
 
-    console.log(`Found ${filtered.length} patients matching "${searchTerm}"`);
+    console.log(`Found ${filtered.length} patients matching "${searchTerm}" for clinic ${activeClinic}`);
     setFilteredPatients(filtered.map(p => ({ id: p.id, name: p.name })));
   };
 
@@ -1012,6 +1078,48 @@ const Appointments = () => {
         variant: "destructive"
       });
       return;
+    }
+
+    // Prevent creating appointments with past dates
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (appointmentDate < today) {
+      toast({
+        title: "Invalid Date",
+        description: "Cannot create appointments for past dates. Please select a current or future date.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // If the appointment is for today, check if the time has already passed
+    if (appointmentDate.getFullYear() === today.getFullYear() &&
+        appointmentDate.getMonth() === today.getMonth() &&
+        appointmentDate.getDate() === today.getDate()) {
+
+      // Parse the appointment time
+      const [time, modifier] = appointmentTime.split(' ');
+      let hours = parseInt(time.split(':')[0]);
+      const minutes = parseInt(time.split(':')[1]);
+
+      // Convert to 24-hour format
+      if (modifier === 'PM' && hours < 12) hours += 12;
+      if (modifier === 'AM' && hours === 12) hours = 0;
+
+      // Create a date object for this time slot
+      const appointmentDateTime = new Date(today);
+      appointmentDateTime.setHours(hours, minutes, 0, 0);
+
+      // Check if the appointment time has already passed
+      if (appointmentDateTime < now) {
+        toast({
+          title: "Invalid Time",
+          description: "Cannot create appointments for times that have already passed. Please select a future time.",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     // Use the chartingEntryId from state if it exists
@@ -1099,6 +1207,52 @@ const Appointments = () => {
   // Function to actually create the appointment after confirmation
   const confirmCreateAppointment = async () => {
     if (!pendingAppointment || !pendingAppointment.date) return;
+
+    // Double-check to prevent creating appointments with past dates
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (pendingAppointment.date < today) {
+      toast({
+        title: "Invalid Date",
+        description: "Cannot create appointments for past dates. Please select a current or future date.",
+        variant: "destructive"
+      });
+      setIsConfirmCreateOpen(false);
+      setIsNewAppointmentOpen(true);
+      return;
+    }
+
+    // If the appointment is for today, check if the time has already passed
+    if (pendingAppointment.date.getFullYear() === today.getFullYear() &&
+        pendingAppointment.date.getMonth() === today.getMonth() &&
+        pendingAppointment.date.getDate() === today.getDate()) {
+
+      // Parse the appointment time
+      const [time, modifier] = pendingAppointment.time.split(' ');
+      let hours = parseInt(time.split(':')[0]);
+      const minutes = parseInt(time.split(':')[1]);
+
+      // Convert to 24-hour format
+      if (modifier === 'PM' && hours < 12) hours += 12;
+      if (modifier === 'AM' && hours === 12) hours = 0;
+
+      // Create a date object for this time slot
+      const appointmentDateTime = new Date(today);
+      appointmentDateTime.setHours(hours, minutes, 0, 0);
+
+      // Check if the appointment time has already passed
+      if (appointmentDateTime < now) {
+        toast({
+          title: "Invalid Time",
+          description: "Cannot create appointments for times that have already passed. Please select a future time.",
+          variant: "destructive"
+        });
+        setIsConfirmCreateOpen(false);
+        setIsNewAppointmentOpen(true);
+        return;
+      }
+    }
 
     // Debug logs
     console.log('Creating confirmed appointment:', pendingAppointment);
@@ -1273,8 +1427,11 @@ const Appointments = () => {
       // Set the date to the current UI date
       setAppointmentDate(date);
 
-      // Reset filtered patients list
-      setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
+      // Reset filtered patients list - only show patients for current clinic
+      const clinicPatients = patients.filter(p =>
+        p.clinic === activeClinic || p.clinic === 'both'
+      );
+      setFilteredPatients(clinicPatients.map(p => ({ id: p.id, name: p.name })));
 
       // Open the dialog
       setIsNewAppointmentOpen(true);
@@ -1287,7 +1444,7 @@ const Appointments = () => {
     return () => {
       window.removeEventListener('openNewAppointmentForm', handleOpenNewAppointmentForm);
     };
-  }, [date, resetAppointmentForm, patients]);
+  }, [date, resetAppointmentForm, patients, activeClinic]);
 
   // Update URL when view changes
   useEffect(() => {
@@ -1533,6 +1690,9 @@ const Appointments = () => {
         </div>
       </div>
 
+      {/* Alert for unresolved past appointments */}
+      <UnresolvedAppointmentsAlert />
+
       <div className="flex flex-col gap-4">
         <div className="w-full">
           <Card className="w-full">
@@ -1769,7 +1929,7 @@ const Appointments = () => {
                         </div>
                       ))}
                     </div>
-                    <div className="grid grid-cols-7 gap-1 h-[600px]">
+                    <div className="grid grid-cols-7 gap-1 h-[700px]">
                       {weekDates.map((day, idx) => {
                         const dayAppointments = getAppointmentsForDate(day);
                         const isCurrentDay = isToday(day);
@@ -1778,14 +1938,14 @@ const Appointments = () => {
                         const isExpanded = expandedDay === format(day, 'yyyy-MM-dd');
 
                         // Determine how many appointments to show initially - based on space analysis
-                        const initialAppointmentsToShow = 12; // Show up to 12 appointments before needing to expand
+                        const initialAppointmentsToShow = 30; // Show up to 30 appointments by default
                         const hasMoreAppointments = dayAppointments.length > initialAppointmentsToShow;
 
                         return (
                           <div
                             key={idx}
                             className={cn(
-                              "border rounded-lg h-full p-1 relative",
+                              "border rounded-lg h-full p-1 relative overflow-hidden flex flex-col",
                               isCurrentDay && "border-primary bg-primary/5",
                               !isSameMonth(day, date) && "opacity-50"
                             )}
@@ -1798,7 +1958,7 @@ const Appointments = () => {
                               }
                             }}
                           >
-                            <div className="flex items-center justify-between mb-1 sticky top-0 bg-white z-10">
+                            <div className="flex items-center justify-between mb-1 sticky top-0 bg-white z-10 flex-shrink-0">
                               <div
                                 className={cn(
                                   "text-xs font-medium p-1 text-center rounded-md flex-grow cursor-pointer",
@@ -1833,7 +1993,8 @@ const Appointments = () => {
                             {/* Scrollable container for appointments */}
                             <div className={cn(
                               "space-y-1 overflow-y-auto pr-1",
-                              isExpanded ? "max-h-[300px]" : "max-h-[180px]" // Taller container in weekly view
+                              isExpanded ? "max-h-[500px]" : "max-h-[500px]", // Make container taller to show more appointments
+                              "h-[calc(100%-30px)]" // Subtract header height to ensure proper scrolling
                             )}>
                               {/* Show all appointments if expanded, otherwise show limited number */}
                               {(isExpanded ? dayAppointments : dayAppointments.slice(0, initialAppointmentsToShow)).map(appointment => (
@@ -1844,6 +2005,7 @@ const Appointments = () => {
                                   isCompact={dayAppointments.length > 1} // Use compact view if multiple appointments
                                   onClick={() => handleEditAppointment(appointment)}
                                   doctorsList={doctors}
+                                  getServiceDuration={getServiceDuration}
                                 />
                               ))}
 
@@ -1961,9 +2123,9 @@ const Appointments = () => {
                           <div
                             key={idx}
                             className={cn(
-                              "border rounded-lg min-h-[100px] p-1 relative",
+                              "border rounded-lg min-h-[100px] p-1 relative overflow-hidden flex flex-col",
                               isCurrentDay && "border-primary bg-primary/5",
-                              expandedMonthDay === format(day, 'yyyy-MM-dd') && "max-h-[250px] z-10 shadow-lg bg-white",
+                              expandedMonthDay === format(day, 'yyyy-MM-dd') && "max-h-[350px] z-10 shadow-lg bg-white",
                               !expandedMonthDay && "max-h-[120px]"
                             )}
                             onClick={() => {
@@ -1976,7 +2138,7 @@ const Appointments = () => {
                             }}
                           >
                             {/* Day header with capacity indicator */}
-                            <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center justify-between mb-1 sticky top-0 bg-white z-10 flex-shrink-0">
                               <div
                                 className={cn(
                                   "text-xs font-medium p-1 text-center rounded-md flex-grow cursor-pointer",
@@ -2010,8 +2172,9 @@ const Appointments = () => {
 
                             {/* Scrollable appointments container */}
                             <div className={cn(
-                              "space-y-0.5 mt-1 overflow-y-auto pr-1",
-                              expandedMonthDay === format(day, 'yyyy-MM-dd') ? "max-h-[200px]" : "max-h-[70px]"
+                              "space-y-0.5 mt-1 overflow-y-auto pr-1 flex-grow",
+                              expandedMonthDay === format(day, 'yyyy-MM-dd') ? "max-h-[300px]" : "max-h-[70px]",
+                              "h-[calc(100%-30px)]" // Subtract header height to ensure proper scrolling
                             )}>
                               {/* Show all appointments if expanded, otherwise show limited number */}
                               {(expandedMonthDay === format(day, 'yyyy-MM-dd') ?
@@ -2031,6 +2194,7 @@ const Appointments = () => {
                                     }, 0);
                                   }}
                                   doctorsList={doctors}
+                                  getServiceDuration={getServiceDuration}
                                 />
                               ))}
 
@@ -2099,7 +2263,11 @@ const Appointments = () => {
           if (!open) {
             // Reset when dialog closes
             resetAppointmentForm();
-            setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
+            // Reset filtered patients - only show patients for current clinic
+            const clinicPatients = patients.filter(p =>
+              p.clinic === activeClinic || p.clinic === 'both'
+            );
+            setFilteredPatients(clinicPatients.map(p => ({ id: p.id, name: p.name })));
           }
         }}
       >
@@ -2121,8 +2289,11 @@ const Appointments = () => {
                     // Keep the dropdown open when clicking inside it
                     onOpenChange={(open) => {
                       if (open) {
-                        // When opening, reset the filtered patients
-                        setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
+                        // When opening, reset the filtered patients - only show patients for current clinic
+                        const clinicPatients = patients.filter(p =>
+                          p.clinic === activeClinic || p.clinic === 'both'
+                        );
+                        setFilteredPatients(clinicPatients.map(p => ({ id: p.id, name: p.name })));
                       }
                     }}
                   >
@@ -2263,6 +2434,7 @@ const Appointments = () => {
                       onSelect={setAppointmentDate}
                       initialFocus
                       className="pointer-events-auto"
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))} // Disable past dates
                     />
                   </PopoverContent>
                 </Popover>
@@ -2334,8 +2506,11 @@ const Appointments = () => {
         onOpenChange={(open) => {
           setIsEditAppointmentOpen(open);
           if (open) {
-            // Reset filtered patients when opening the dialog
-            setFilteredPatients(patients.map(p => ({ id: p.id, name: p.name })));
+            // Reset filtered patients when opening the dialog - only show patients for current clinic
+            const clinicPatients = patients.filter(p =>
+              p.clinic === activeClinic || p.clinic === 'both'
+            );
+            setFilteredPatients(clinicPatients.map(p => ({ id: p.id, name: p.name })));
           } else {
             // When closing, make sure we don't open the new appointment dialog
             setEditingAppointment(null);

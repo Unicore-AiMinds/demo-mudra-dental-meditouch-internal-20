@@ -14,6 +14,7 @@ import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointments, Appointment, DentalAppointment } from '@/contexts/AppointmentContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import UnresolvedAppointmentsAlert from '@/components/UnresolvedAppointmentsAlert';
 
 // Using Appointment types from AppointmentContext
 
@@ -95,7 +96,8 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
         // Helper function to convert 12-hour time format to 24-hour for sorting
         function convertTo24Hour(time12h: string): string {
           const [time, modifier] = time12h.split(' ');
-          let [hours, minutes] = time.split(':'); // hours needs to be mutable, minutes is constant
+          let hours = time.split(':')[0]; // hours needs to be mutable
+          const minutes = time.split(':')[1]; // minutes is constant
 
           if (hours === '12') {
             hours = '00';
@@ -197,20 +199,24 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
   }
 
   return (
-    <Card>
-      <CardHeader className={condensed ? "pb-1 pt-3" : "pb-2"}>
-        <CardTitle>{title}</CardTitle>
-        {!condensed && (
-          <CardDescription>
-            {dentalOnly
-              ? "Scheduled dental appointments for this patient"
-              : clinic === 'both'
-                ? "All scheduled appointments for this patient"
-                : `Scheduled ${clinic} appointments for this patient`}
-          </CardDescription>
-        )}
-      </CardHeader>
-      <CardContent className={condensed ? "pt-2" : ""}>
+    <>
+      {/* Alert for unresolved past appointments - only shown for this specific patient */}
+      <UnresolvedAppointmentsAlert patientId={patientId} />
+
+      <Card>
+        <CardHeader className={condensed ? "pb-1 pt-3" : "pb-2"}>
+          <CardTitle>{title}</CardTitle>
+          {!condensed && (
+            <CardDescription>
+              {dentalOnly
+                ? "Scheduled dental appointments for this patient"
+                : clinic === 'both'
+                  ? "All scheduled appointments for this patient"
+                  : `Scheduled ${clinic} appointments for this patient`}
+            </CardDescription>
+          )}
+        </CardHeader>
+        <CardContent className={condensed ? "pt-2" : ""}>
         <div className="space-y-4">
           {upcomingAppointments.length > 0 ? (
             <>
@@ -301,6 +307,7 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
         </div>
       </CardContent>
     </Card>
+    </>
   );
 };
 

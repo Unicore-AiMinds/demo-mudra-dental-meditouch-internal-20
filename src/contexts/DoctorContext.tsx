@@ -68,17 +68,32 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setIsLoading(true);
 
         // Fetch doctors from Supabase
-        const fetchedDoctors = await supabase.from<Doctor>('doctors').getAll();
+        const { data: fetchedDoctors, error } = await supabase
+          .from('doctors')
+          .select('*');
+
+        if (error) throw error;
 
         // If no doctors exist, create default ones
-        if (fetchedDoctors.length === 0) {
+        if (!fetchedDoctors || fetchedDoctors.length === 0) {
+          console.log('No doctors found, creating defaults...');
+
           for (const doctor of defaultDoctors) {
-            await supabase.from<Doctor>('doctors').insert(doctor);
+            const { error: insertError } = await supabase
+              .from('doctors')
+              .insert(doctor);
+
+            if (insertError) throw insertError;
           }
 
           // Fetch the newly created doctors
-          const newDoctors = await supabase.from<Doctor>('doctors').getAll();
-          setDoctors(newDoctors);
+          const { data: newDoctors, error: fetchError } = await supabase
+            .from('doctors')
+            .select('*');
+
+          if (fetchError) throw fetchError;
+
+          setDoctors(newDoctors || []);
         } else {
           setDoctors(fetchedDoctors);
         }
@@ -107,7 +122,16 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       };
 
       // Add doctor to Supabase
-      const newDoctor = await supabase.from<Doctor>('doctors').insert(doctorWithColor);
+      const { data, error } = await supabase
+        .from('doctors')
+        .insert(doctorWithColor)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new Error('Failed to create doctor');
+
+      const newDoctor = data as Doctor;
 
       // Update local state
       setDoctors(prev => [...prev, newDoctor]);
@@ -133,11 +157,21 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const updateDoctor = async (id: string, doctor: Partial<Doctor>): Promise<Doctor> => {
     try {
       // Update doctor in Supabase
-      const updatedDoctor = await supabase.from<Doctor>('doctors').update(id, doctor);
+      const { data, error } = await supabase
+        .from('doctors')
+        .update(doctor)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new Error('Failed to update doctor');
+
+      const updatedDoctor = data as Doctor;
 
       // Update local state
       setDoctors(prev =>
-        prev.map(d => d.id === id ? { ...d, ...doctor } : d)
+        prev.map(d => d.id === id ? updatedDoctor : d)
       );
 
       toast({
@@ -161,7 +195,12 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const deleteDoctor = async (id: string): Promise<void> => {
     try {
       // Delete doctor from Supabase
-      await supabase.from<Doctor>('doctors').delete(id);
+      const { error } = await supabase
+        .from('doctors')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
 
       // Update local state
       setDoctors(prev => prev.filter(d => d.id !== id));
@@ -185,7 +224,12 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const updateDoctorColor = async (doctorId: string, newColor: string): Promise<void> => {
     try {
       // Update doctor color in Supabase
-      await supabase.from<Doctor>('doctors').update(doctorId, { color: newColor });
+      const { error } = await supabase
+        .from('doctors')
+        .update({ color: newColor })
+        .eq('id', doctorId);
+
+      if (error) throw error;
 
       // Update local state
       setDoctors(prevDoctors =>

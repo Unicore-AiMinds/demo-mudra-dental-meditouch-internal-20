@@ -4,7 +4,9 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { useClinicInfo } from '@/contexts/ClinicInfoContext';
 import { useDoctors } from '@/contexts/DoctorContext';
 import { useMedicines } from '@/contexts/MedicineContext';
-import { useServices } from '@/contexts/ServiceContext';
+import { useServices, ServiceWithFollowUp } from '@/contexts/ServiceContext';
+import { useServiceFollowUps } from '@/contexts/ServiceFollowUpContext';
+import { useServiceFollowUpRules } from '@/contexts/ServiceFollowUpRuleContext';
 
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { demoFollowUpRules } from '@/data/demo-dental-history';
@@ -68,7 +70,8 @@ import {
   FileText,
   Microscope,
   RefreshCw,
-  Package
+  Package,
+  Loader2
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -244,10 +247,14 @@ const Settings = () => {
   const [stockItems, setStockItems] = useState(initialStockItems);
   const [dealers, setDealers] = useState(initialDealers);
   // Use services from ServiceContext
-  const { dentalServices, meditouchServices, addService, updateService, deleteService } = useServices();
+  const { dentalServices, meditouchServices, servicesWithFollowUp, addService, updateService, deleteService, addServiceWithFollowUp, updateServiceWithFollowUp, deleteServiceWithFollowUp } = useServices();
+
+  // Use service follow-ups from ServiceFollowUpContext
+  const { generateFollowUpsForCompletedService } = useServiceFollowUps();
+  // Use service follow-up rules from ServiceFollowUpRuleContext
+  const { followUpRules, addFollowUpRule, updateFollowUpRule, deleteFollowUpRule, isLoading: isLoadingRules } = useServiceFollowUpRules();
   const [dentalLabs, setDentalLabs] = useState(initialDentalLabs);
   const [labWorkTypes, setLabWorkTypes] = useState(initialLabWorkTypes);
-  const [followUpRules, setFollowUpRules] = useState<ServiceFollowUpRule[]>(demoFollowUpRules);
   const [currentService, setCurrentService] = useState<Service | null>(null);
   const [currentLab, setCurrentLab] = useState(null);
   const [currentLabWorkType, setCurrentLabWorkType] = useState(null);
@@ -255,12 +262,25 @@ const Settings = () => {
   const [currentStockItem, setCurrentStockItem] = useState(null);
   const [currentDealer, setCurrentDealer] = useState(null);
   const [currentFollowUpRule, setCurrentFollowUpRule] = useState<ServiceFollowUpRule | null>(null);
+  const [currentServiceWithFollowUp, setCurrentServiceWithFollowUp] = useState<ServiceWithFollowUp | null>(null);
 
   // Follow-up rule form states
   const [newTriggeringService, setNewTriggeringService] = useState('');
   const [newFollowUpSteps, setNewFollowUpSteps] = useState<FollowUpStep[]>([
-    { sequence: 1, intervalDays: 180, suggestedServiceName: '', notes: '' }
+    { sequence: 1, interval_days: 180, suggested_service_name: '', notes: '' }
   ]);
+
+  // Service with follow-up form states
+  const [newServiceWithFollowUp, setNewServiceWithFollowUp] = useState<Omit<ServiceWithFollowUp, 'id' | 'created_at' | 'updated_at'>>({
+    name: '',
+    duration: 30,
+    price: 0,
+    description: '',
+    requires_follow_up: true,
+    default_follow_up_interval_days: 180,
+    number_of_follow_ups: 1,
+    follow_up_service_name: ''
+  });
 
   // Stock item form states
   const [newStockItemName, setNewStockItemName] = useState('');
@@ -470,6 +490,15 @@ const Settings = () => {
   };
 
   // Service handlers
+  interface Service {
+    id: string;
+    name: string;
+    duration: number;
+    price: number;
+    description?: string;
+    clinic_type: 'dental' | 'meditouch';
+  }
+
   const handleEditService = (service: Service) => {
     setCurrentService(service);
     setIsEditServiceDialogOpen(true);
@@ -506,10 +535,11 @@ const Settings = () => {
         return;
       }
 
-      if (!updatedPrice.value || parseInt(updatedPrice.value) < 0) {
+      const priceValue = parseFloat(updatedPrice.value);
+      if (!updatedPrice.value || isNaN(priceValue) || priceValue < 0) {
         toast({
           title: "Error",
-          description: "Price must be a non-negative number.",
+          description: "Price must be a valid non-negative number.",
           variant: "destructive"
         });
         return;
@@ -520,9 +550,9 @@ const Settings = () => {
         await updateService(currentService.id, {
           name: capitalizeWords(updatedName.value.trim()),
           duration: parseInt(updatedDuration.value),
-          price: parseInt(updatedPrice.value),
+          price: parseFloat(updatedPrice.value),
           description: updatedDescription?.value?.trim() || ''
-        }, activeClinic);
+        });
 
         // Toast is already shown by the context
         setIsConfirmUpdateServiceOpen(false);
@@ -543,7 +573,7 @@ const Settings = () => {
     if (currentService) {
       try {
         // Delete the service using the ServiceContext
-        await deleteService(currentService.id, activeClinic);
+        await deleteService(currentService.id);
 
         // Toast is already shown by the context
         setIsConfirmDeleteServiceOpen(false);
@@ -561,7 +591,17 @@ const Settings = () => {
   };
 
   // Lab handlers
-  const handleEditLab = (lab: any) => {
+  interface Lab {
+    id: number;
+    name: string;
+    contact: string;
+    address: string;
+    city: string;
+    pincode: string;
+    specialization: string;
+  }
+
+  const handleEditLab = (lab: Lab) => {
     setCurrentLab(lab);
     setIsEditLabDialogOpen(true);
   };
@@ -664,7 +704,13 @@ const Settings = () => {
   };
 
   // Lab Work Type handlers
-  const handleEditLabWorkType = (workType: any) => {
+  interface LabWorkType {
+    id: number;
+    name: string;
+    turnaround: string;
+  }
+
+  const handleEditLabWorkType = (workType: LabWorkType) => {
     setCurrentLabWorkType(workType);
     setIsEditLabWorkTypeDialogOpen(true);
   };
@@ -739,7 +785,15 @@ const Settings = () => {
   };
 
   // User handlers
-  const handleEditUser = (user: any) => {
+  interface SystemUser {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    status: string;
+  }
+
+  const handleEditUser = (user: SystemUser) => {
     setCurrentUser(user);
     setIsEditUserDialogOpen(true);
   };
@@ -775,7 +829,16 @@ const Settings = () => {
   };
 
   // Stock Item handlers
-  const handleEditStockItem = (item: any) => {
+  interface StockItem {
+    id: number;
+    name: string;
+    subItem?: string;
+    description?: string;
+    itemType: string;
+    minimumThreshold: number;
+  }
+
+  const handleEditStockItem = (item: StockItem) => {
     setCurrentStockItem(item);
     setIsEditStockItemDialogOpen(true);
   };
@@ -866,7 +929,17 @@ const Settings = () => {
   };
 
   // Dealer handlers
-  const handleEditDealer = (dealer: any) => {
+  interface Dealer {
+    id: number;
+    name: string;
+    email: string;
+    contact: string;
+    address: string;
+    city: string;
+    pincode: string;
+  }
+
+  const handleEditDealer = (dealer: Dealer) => {
     setCurrentDealer(dealer);
     setIsEditDealerDialogOpen(true);
 
@@ -1113,10 +1186,340 @@ const Settings = () => {
     }
   };
 
+  // Service with follow-up handlers
+  const handleEditServiceWithFollowUp = (service: ServiceWithFollowUp) => {
+    setCurrentServiceWithFollowUp(service);
+    setIsEditFollowUpRuleDialogOpen(true);
+  };
+
+  const handleUpdateServiceWithFollowUpConfirm = () => {
+    setIsConfirmUpdateFollowUpRuleOpen(true);
+  };
+
+  const handleUpdateServiceWithFollowUp = async () => {
+    if (currentServiceWithFollowUp) {
+      // Get updated values from form fields
+      const nameInput = document.getElementById('editServiceWithFollowUpName') as HTMLInputElement;
+      const durationInput = document.getElementById('editServiceWithFollowUpDuration') as HTMLInputElement;
+      const priceInput = document.getElementById('editServiceWithFollowUpPrice') as HTMLInputElement;
+      const descriptionInput = document.getElementById('editServiceWithFollowUpDescription') as HTMLTextAreaElement;
+      const requiresFollowUpInput = document.getElementById('editRequiresFollowUp') as HTMLInputElement;
+      const intervalDaysInput = document.getElementById('editFollowUpIntervalDays') as HTMLInputElement;
+      const numFollowUpsInput = document.getElementById('editNumberOfFollowUps') as HTMLInputElement;
+      const followUpServiceInput = document.getElementById('editFollowUpServiceName') as HTMLSelectElement;
+
+      // Validate required fields
+      if (!nameInput.value.trim()) {
+        toast({
+          title: "Error",
+          description: "Service name is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!durationInput.value || parseInt(durationInput.value) <= 0) {
+        toast({
+          title: "Error",
+          description: "Duration must be greater than 0.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const priceValue = parseFloat(priceInput.value);
+      if (!priceInput.value || isNaN(priceValue) || priceValue < 0) {
+        toast({
+          title: "Error",
+          description: "Price must be a valid non-negative number.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create updated service object
+      const updatedService: Partial<ServiceWithFollowUp> = {
+        name: nameInput.value,
+        duration: parseInt(durationInput.value),
+        price: parseFloat(priceInput.value),
+        description: descriptionInput.value,
+        requires_follow_up: requiresFollowUpInput.checked,
+      };
+
+      // Add follow-up specific fields if follow-up is required
+      if (requiresFollowUpInput.checked) {
+        if (!intervalDaysInput.value || parseInt(intervalDaysInput.value) <= 0) {
+          toast({
+            title: "Error",
+            description: "Follow-up interval days must be greater than 0.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (!numFollowUpsInput.value || parseInt(numFollowUpsInput.value) <= 0) {
+          toast({
+            title: "Error",
+            description: "Number of follow-ups must be greater than 0.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (!followUpServiceInput.value) {
+          toast({
+            title: "Error",
+            description: "Please select a follow-up service.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        updatedService.default_follow_up_interval_days = parseInt(intervalDaysInput.value);
+        updatedService.number_of_follow_ups = parseInt(numFollowUpsInput.value);
+        updatedService.follow_up_service_name = followUpServiceInput.value;
+      }
+
+      try {
+        // Update service with follow-up in Supabase
+        await updateServiceWithFollowUp(currentServiceWithFollowUp.id, updatedService);
+
+        toast({
+          title: "Service Updated",
+          description: `${nameInput.value} has been updated with follow-up configuration.`,
+        });
+
+        setIsConfirmUpdateFollowUpRuleOpen(false);
+        setIsEditFollowUpRuleDialogOpen(false);
+        setCurrentServiceWithFollowUp(null);
+      } catch (error) {
+        console.error('Error updating service with follow-up:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update service with follow-up. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleDeleteServiceWithFollowUp = async () => {
+    if (currentServiceWithFollowUp) {
+      try {
+        // Delete service with follow-up from Supabase
+        await deleteServiceWithFollowUp(currentServiceWithFollowUp.id);
+
+        toast({
+          title: "Service Removed",
+          description: `${currentServiceWithFollowUp.name} has been removed from services with follow-up.`,
+        });
+
+        setIsConfirmDeleteFollowUpRuleOpen(false);
+        setIsEditFollowUpRuleDialogOpen(false);
+        setCurrentServiceWithFollowUp(null);
+      } catch (error) {
+        console.error('Error deleting service with follow-up:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete service with follow-up. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleAddServiceWithFollowUp = async () => {
+    // Validate inputs
+    if (!newServiceWithFollowUp.name) {
+      toast({
+        title: "Error",
+        description: "Service name is required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newServiceWithFollowUp.duration <= 0) {
+      toast({
+        title: "Error",
+        description: "Duration must be greater than 0.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (isNaN(newServiceWithFollowUp.price) || newServiceWithFollowUp.price < 0) {
+      toast({
+        title: "Error",
+        description: "Price must be a valid non-negative number.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate follow-up specific fields if follow-up is required
+    if (newServiceWithFollowUp.requires_follow_up) {
+      if (!newServiceWithFollowUp.default_follow_up_interval_days || newServiceWithFollowUp.default_follow_up_interval_days <= 0) {
+        toast({
+          title: "Error",
+          description: "Follow-up interval days must be greater than 0.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!newServiceWithFollowUp.number_of_follow_ups || newServiceWithFollowUp.number_of_follow_ups <= 0) {
+        toast({
+          title: "Error",
+          description: "Number of follow-ups must be greater than 0.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!newServiceWithFollowUp.follow_up_service_name) {
+        toast({
+          title: "Error",
+          description: "Please select a follow-up service.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    try {
+      // Add service with follow-up to Supabase
+      await addServiceWithFollowUp(newServiceWithFollowUp);
+
+      toast({
+        title: "Service Added",
+        description: `${newServiceWithFollowUp.name} has been added with follow-up configuration.`,
+      });
+
+      // Reset form
+      setNewServiceWithFollowUp({
+        name: '',
+        duration: 30,
+        price: 0,
+        description: '',
+        requires_follow_up: true,
+        default_follow_up_interval_days: 180,
+        number_of_follow_ups: 1,
+        follow_up_service_name: ''
+      });
+
+      setIsAddFollowUpRuleDialogOpen(false);
+    } catch (error) {
+      console.error('Error adding service with follow-up:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add service with follow-up. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Follow-up rule handlers
+  const handleAddFollowUpRule = async () => {
+    // Validate required fields
+    if (!newTriggeringService) {
+      toast({
+        title: "Error",
+        description: "Triggering service name is required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newFollowUpSteps.length === 0) {
+      toast({
+        title: "Error",
+        description: "At least one follow-up step is required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Make a deep copy of the steps to ensure we don't modify the state directly
+    const processedSteps = newFollowUpSteps.map(step => {
+      // Check if the step has a suggested_service_name
+      if (!step.suggested_service_name) {
+        toast({
+          title: "Error",
+          description: "Follow-up name is required for all steps.",
+          variant: "destructive"
+        });
+        return null;
+      }
+
+      if (step.interval_days <= 0) {
+        toast({
+          title: "Error",
+          description: "Interval days must be a positive number for all steps.",
+          variant: "destructive"
+        });
+        return null;
+      }
+
+      // Return a clean copy of the step with the correct field names
+      return {
+        sequence: step.sequence,
+        interval_days: step.interval_days,
+        suggested_service_name: step.suggested_service_name,
+        notes: step.notes || ''
+      };
+    });
+
+    // Check if any step validation failed
+    if (processedSteps.includes(null)) {
+      return;
+    }
+
+    // Check if a rule for this service already exists
+    const existingRule = followUpRules.find(
+      rule => rule.triggering_service_name.toLowerCase() === newTriggeringService.toLowerCase()
+    );
+
+    if (existingRule) {
+      toast({
+        title: "Error",
+        description: `A follow-up rule for ${newTriggeringService} already exists.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Create the new rule object
+      const newRule = {
+        triggering_service_name: newTriggeringService,
+        followUps: processedSteps.map((step, index) => {
+          console.log(`Step ${index + 1} suggested_service_name:`, step.suggested_service_name);
+
+          return {
+            ...step,
+            sequence: index + 1
+          };
+        })
+      };
+
+      console.log('New rule to be added:', newRule);
+
+      // Add the rule using the context
+      await addFollowUpRule(newRule);
+
+      // Reset form
+      setNewTriggeringService('');
+      setNewFollowUpSteps([{ sequence: 1, interval_days: 180, suggested_service_name: '', notes: '' }]);
+      setIsAddFollowUpRuleDialogOpen(false);
+    } catch (error) {
+      console.error('Error adding follow-up rule:', error);
+    }
+  };
+
   const handleEditFollowUpRule = (rule: ServiceFollowUpRule) => {
     setCurrentFollowUpRule(rule);
-    setNewTriggeringService(rule.triggeringServiceName);
+    setNewTriggeringService(rule.triggering_service_name);
     setNewFollowUpSteps([...rule.followUps]);
     setIsEditFollowUpRuleDialogOpen(true);
   };
@@ -1125,7 +1528,7 @@ const Settings = () => {
     setIsConfirmUpdateFollowUpRuleOpen(true);
   };
 
-  const handleUpdateFollowUpRule = () => {
+  const handleUpdateFollowUpRule = async () => {
     if (currentFollowUpRule) {
       // Validate required fields
       if (!newTriggeringService) {
@@ -1146,68 +1549,85 @@ const Settings = () => {
         return;
       }
 
-      for (const step of newFollowUpSteps) {
-        if (!step.suggestedServiceName) {
+      // Make a deep copy of the steps to ensure we don't modify the state directly
+      const processedSteps = newFollowUpSteps.map(step => {
+        // Check if the step has a suggested_service_name
+        if (!step.suggested_service_name) {
           toast({
             title: "Error",
-            description: "Suggested service name is required for all steps.",
+            description: "Follow-up name is required for all steps.",
             variant: "destructive"
           });
-          return;
+          return null;
         }
 
-        if (step.intervalDays <= 0) {
+        if (step.interval_days <= 0) {
           toast({
             title: "Error",
             description: "Interval days must be a positive number for all steps.",
             variant: "destructive"
           });
-          return;
+          return null;
         }
+
+        // Return a clean copy of the step with the correct field names
+        return {
+          sequence: step.sequence,
+          interval_days: step.interval_days,
+          suggested_service_name: step.suggested_service_name,
+          notes: step.notes || ''
+        };
+      });
+
+      // Check if any step validation failed
+      if (processedSteps.includes(null)) {
+        return;
       }
 
-      // Update the follow-up rule
-      setFollowUpRules(prevRules =>
-        prevRules.map(rule =>
-          rule.ruleId === currentFollowUpRule.ruleId
-            ? {
-                ...rule,
-                triggeringServiceName: newTriggeringService,
-                followUps: newFollowUpSteps.map((step, index) => ({
-                  ...step,
-                  sequence: index + 1
-                }))
-              }
-            : rule
-        )
-      );
+      try {
+        // Create the updated rule object
+        const updatedRule = {
+          triggering_service_name: newTriggeringService,
+          followUps: processedSteps.map((step, index) => {
+            console.log(`Step ${index + 1} suggested_service_name:`, step.suggested_service_name);
 
-      toast({
-        title: "Follow-up Rule Updated",
-        description: `Follow-up rule for ${newTriggeringService} has been updated successfully.`,
-      });
-      setIsConfirmUpdateFollowUpRuleOpen(false);
-      setIsEditFollowUpRuleDialogOpen(false);
-      setCurrentFollowUpRule(null);
-      setNewTriggeringService('');
-      setNewFollowUpSteps([{ sequence: 1, intervalDays: 180, suggestedServiceName: '', notes: '' }]);
+            return {
+              ...step,
+              sequence: index + 1
+            };
+          })
+        };
+
+        console.log('Updated rule:', updatedRule);
+
+        // Update the rule using the context
+        await updateFollowUpRule(currentFollowUpRule.id, updatedRule);
+
+        // Reset form and close dialogs
+        setIsConfirmUpdateFollowUpRuleOpen(false);
+        setIsEditFollowUpRuleDialogOpen(false);
+        setCurrentFollowUpRule(null);
+        setNewTriggeringService('');
+        setNewFollowUpSteps([{ sequence: 1, interval_days: 180, suggested_service_name: '', notes: '' }]);
+      } catch (error) {
+        console.error('Error updating follow-up rule:', error);
+      }
     }
   };
 
-  const handleDeleteFollowUpRule = () => {
+  const handleDeleteFollowUpRule = async () => {
     if (currentFollowUpRule) {
-      // Remove the follow-up rule
-      setFollowUpRules(prevRules =>
-        prevRules.filter(rule => rule.ruleId !== currentFollowUpRule.ruleId)
-      );
+      try {
+        // Delete the rule using the context
+        await deleteFollowUpRule(currentFollowUpRule.id);
 
-      toast({
-        title: "Follow-up Rule Removed",
-        description: `Follow-up rule for ${currentFollowUpRule.triggeringServiceName} has been removed.`,
-      });
-      setIsConfirmDeleteFollowUpRuleOpen(false);
-      setIsEditFollowUpRuleDialogOpen(false);
-      setCurrentFollowUpRule(null);
+        // Close dialogs and reset state
+        setIsConfirmDeleteFollowUpRuleOpen(false);
+        setIsEditFollowUpRuleDialogOpen(false);
+        setCurrentFollowUpRule(null);
+      } catch (error) {
+        console.error('Error deleting follow-up rule:', error);
+      }
     }
   };
 
@@ -1216,8 +1636,8 @@ const Settings = () => {
       ...prevSteps,
       {
         sequence: prevSteps.length + 1,
-        intervalDays: 180,
-        suggestedServiceName: '',
+        interval_days: 180,
+        suggested_service_name: '',
         notes: ''
       }
     ]);
@@ -1242,13 +1662,34 @@ const Settings = () => {
     }
   };
 
-  const handleFollowUpStepChange = (index: number, field: keyof FollowUpStep, value: string | number) => {
+  const handleFollowUpStepChange = (index: number, field: string, value: string | number) => {
+    console.log(`Updating step ${index}, field: ${field}, value: ${value}`);
+
     setNewFollowUpSteps(prevSteps =>
-      prevSteps.map((step, i) =>
-        i === index
-          ? { ...step, [field]: value }
-          : step
-      )
+      prevSteps.map((step, i) => {
+        if (i === index) {
+          const updatedStep = { ...step };
+
+          // Map the field names to the correct property names
+          if (field === 'intervalDays') {
+            updatedStep.interval_days = value as number;
+          } else if (field === 'suggestedServiceName' || field === 'suggested_service_name') {
+            // Always set the suggested_service_name field
+            updatedStep.suggested_service_name = value as string;
+
+            // Log the update for debugging
+            console.log(`Updated step ${index} suggested_service_name to: ${updatedStep.suggested_service_name}`);
+          } else {
+            updatedStep[field] = value;
+          }
+
+          // Log the entire updated step for debugging
+          console.log(`Updated step ${index}:`, updatedStep);
+
+          return updatedStep;
+        }
+        return step;
+      })
     );
   };
 
@@ -2072,10 +2513,11 @@ const Settings = () => {
                       return;
                     }
 
-                    if (!servicePrice.value || parseInt(servicePrice.value) < 0) {
+                    const priceValue = parseFloat(servicePrice.value);
+                    if (!servicePrice.value || isNaN(priceValue) || priceValue < 0) {
                       toast({
                         title: "Error",
-                        description: "Price must be a non-negative number.",
+                        description: "Price must be a valid non-negative number.",
                         variant: "destructive"
                       });
                       return;
@@ -2086,12 +2528,13 @@ const Settings = () => {
                       const newService = {
                         name: capitalizeWords(serviceName.value.trim()),
                         duration: parseInt(serviceDuration.value),
-                        price: parseInt(servicePrice.value),
-                        description: serviceDescription?.value?.trim() || ''
+                        price: parseFloat(servicePrice.value),
+                        description: serviceDescription?.value?.trim() || '',
+                        clinic_type: activeClinic as 'dental' | 'meditouch'
                       };
 
                       // Add the new service using the ServiceContext
-                      await addService(newService, activeClinic);
+                      await addService(newService);
 
                       // Reset form fields
                       serviceName.value = '';
@@ -2246,46 +2689,84 @@ const Settings = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Triggering Service</TableHead>
-                      <TableHead>Follow-up Sequence</TableHead>
+                      <TableHead>Follow-up Steps</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {followUpRules.map((rule) => (
-                      <TableRow key={rule.ruleId}>
-                        <TableCell className="font-medium">{rule.triggeringServiceName}</TableCell>
-                        <TableCell>
-                          {rule.followUps.map((step, index) => (
-                            <div key={index} className="mb-1 last:mb-0">
-                              <Badge variant="outline" className="mr-2">
-                                {index + 1}
-                              </Badge>
-                              {step.intervalDays} days
-                              <span className="mx-1">→</span>
-                              <span className="font-medium">{step.suggestedServiceName}</span>
-                            </div>
-                          ))}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditFollowUpRule(rule)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-500 hover:text-red-700"
-                              onClick={() => {
-                                setCurrentFollowUpRule(rule);
-                                setIsConfirmDeleteFollowUpRuleOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                    {isLoadingRules ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="h-24 text-center">
+                          <div className="flex justify-center items-center">
+                            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                            Loading follow-up rules...
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      followUpRules.map((rule) => (
+                        <TableRow key={rule.id}>
+                          <TableCell className="font-medium">{rule.triggering_service_name}</TableCell>
+                          <TableCell>
+                            {console.log('Rule followUps:', rule.followUps)}
+                            {rule.followUps.map((step, index) => {
+                              console.log(`Rendering step ${index + 1}:`, step);
+
+                              // Create a local copy of the step to avoid modifying the original
+                              const displayStep = { ...step };
+
+                              // Ensure suggested_service_name is set
+                              if (!displayStep.suggested_service_name && displayStep.suggestedServiceName) {
+                                console.log(`Setting suggested_service_name from suggestedServiceName: ${displayStep.suggestedServiceName}`);
+                                displayStep.suggested_service_name = displayStep.suggestedServiceName;
+                              }
+
+                              // If still not set, use a default
+                              if (!displayStep.suggested_service_name) {
+                                console.log(`Setting default suggested_service_name for step ${index + 1}`);
+                                displayStep.suggested_service_name = `Follow-up ${index + 1}`;
+                              }
+
+                              return (
+                                <div key={index} className="mb-1 last:mb-0">
+                                  <Badge variant="outline" className="mr-2">
+                                    {index + 1}
+                                  </Badge>
+                                  {displayStep.interval_days} days
+                                  <span className="mx-1">→</span>
+                                  <span className="font-medium">
+                                    {displayStep.suggested_service_name}
+                                  </span>
+                                  {displayStep.notes && (
+                                    <span className="ml-2 text-gray-500 text-sm italic">
+                                      ({displayStep.notes})
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditFollowUpRule(rule)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-500 hover:text-red-700"
+                                onClick={() => {
+                                  setCurrentFollowUpRule(rule);
+                                  setIsConfirmDeleteFollowUpRuleOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                     {followUpRules.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={3} className="h-24 text-center">
@@ -2327,10 +2808,11 @@ const Settings = () => {
                     </Select>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-base font-medium">Follow-up Steps</Label>
+                      <Label>Follow-up Steps</Label>
                       <Button
+                        type="button"
                         variant="outline"
                         size="sm"
                         onClick={handleAddFollowUpStep}
@@ -2356,26 +2838,31 @@ const Settings = () => {
                           )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="space-y-2">
-                            <Label htmlFor={`interval-${index}`}>Interval (Days) *</Label>
-                            <Input
-                              id={`interval-${index}`}
-                              type="number"
-                              value={step.intervalDays}
-                              onChange={(e) => handleFollowUpStepChange(index, 'intervalDays', parseInt(e.target.value) || 0)}
-                              min="1"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`service-${index}`}>Suggested Service *</Label>
-                            <Input
-                              id={`service-${index}`}
-                              value={step.suggestedServiceName}
-                              onChange={(e) => handleFollowUpStepChange(index, 'suggestedServiceName', e.target.value)}
-                              placeholder="e.g., Follow-up Check"
-                            />
-                          </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`interval-${index}`}>Interval (days) *</Label>
+                          <Input
+                            id={`interval-${index}`}
+                            type="number"
+                            min="1"
+                            value={step.interval_days}
+                            onChange={(e) => handleFollowUpStepChange(index, 'intervalDays', parseInt(e.target.value) || 0)}
+                            placeholder="e.g., 180 for 6 months"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`followup-name-${index}`}>Follow-up Name *</Label>
+                          <Input
+                            id={`followup-name-${index}`}
+                            value={step.suggested_service_name || ''}
+                            onChange={(e) => handleFollowUpStepChange(index, 'suggested_service_name', e.target.value)}
+                            placeholder="Enter follow-up name"
+                            required
+                            className={!step.suggested_service_name ? 'border-red-500' : ''}
+                          />
+                          {!step.suggested_service_name && (
+                            <p className="text-sm text-red-500 mt-1">Follow-up name is required</p>
+                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -2398,80 +2885,7 @@ const Settings = () => {
                   </Button>
                   <Button
                     className="bg-dental-primary hover:bg-dental-dark"
-                    onClick={() => {
-                      // Validate required fields
-                      if (!newTriggeringService) {
-                        toast({
-                          title: "Error",
-                          description: "Triggering service name is required.",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-
-                      if (newFollowUpSteps.length === 0) {
-                        toast({
-                          title: "Error",
-                          description: "At least one follow-up step is required.",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-
-                      for (const step of newFollowUpSteps) {
-                        if (!step.suggestedServiceName) {
-                          toast({
-                            title: "Error",
-                            description: "Suggested service name is required for all steps.",
-                            variant: "destructive"
-                          });
-                          return;
-                        }
-
-                        if (step.intervalDays <= 0) {
-                          toast({
-                            title: "Error",
-                            description: "Interval days must be a positive number for all steps.",
-                            variant: "destructive"
-                          });
-                          return;
-                        }
-                      }
-
-                      // Check if a rule already exists for this service
-                      const existingRule = followUpRules.find(rule => rule.triggeringServiceName === newTriggeringService);
-                      if (existingRule) {
-                        toast({
-                          title: "Error",
-                          description: `A follow-up rule already exists for ${newTriggeringService}.`,
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-
-                      // Create new follow-up rule
-                      const newRule: ServiceFollowUpRule = {
-                        ruleId: `rule${Date.now()}`,
-                        triggeringServiceName: newTriggeringService,
-                        followUps: newFollowUpSteps.map((step, index) => ({
-                          ...step,
-                          sequence: index + 1
-                        }))
-                      };
-
-                      // Add the new rule to the state
-                      setFollowUpRules(prev => [...prev, newRule]);
-
-                      toast({
-                        title: "Follow-up Rule Added",
-                        description: `Follow-up rule for ${newTriggeringService} has been added successfully.`,
-                      });
-
-                      // Reset form
-                      setNewTriggeringService('');
-                      setNewFollowUpSteps([{ sequence: 1, intervalDays: 180, suggestedServiceName: '', notes: '' }]);
-                      setIsAddFollowUpRuleDialogOpen(false);
-                    }}
+                    onClick={handleAddFollowUpRule}
                   >
                     Add Follow-up Rule
                   </Button>
@@ -2509,10 +2923,11 @@ const Settings = () => {
                       </Select>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label className="text-base font-medium">Follow-up Steps</Label>
+                        <Label>Follow-up Steps</Label>
                         <Button
+                          type="button"
                           variant="outline"
                           size="sm"
                           onClick={handleAddFollowUpStep}
@@ -2538,26 +2953,31 @@ const Settings = () => {
                             )}
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                              <Label htmlFor={`edit-interval-${index}`}>Interval (Days) *</Label>
-                              <Input
-                                id={`edit-interval-${index}`}
-                                type="number"
-                                value={step.intervalDays}
-                                onChange={(e) => handleFollowUpStepChange(index, 'intervalDays', parseInt(e.target.value) || 0)}
-                                min="1"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor={`edit-service-${index}`}>Suggested Service *</Label>
-                              <Input
-                                id={`edit-service-${index}`}
-                                value={step.suggestedServiceName}
-                                onChange={(e) => handleFollowUpStepChange(index, 'suggestedServiceName', e.target.value)}
-                                placeholder="e.g., Follow-up Check"
-                              />
-                            </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`edit-interval-${index}`}>Interval (days) *</Label>
+                            <Input
+                              id={`edit-interval-${index}`}
+                              type="number"
+                              min="1"
+                              value={step.interval_days}
+                              onChange={(e) => handleFollowUpStepChange(index, 'intervalDays', parseInt(e.target.value) || 0)}
+                              placeholder="e.g., 180 for 6 months"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`edit-followup-name-${index}`}>Follow-up Name *</Label>
+                            <Input
+                              id={`edit-followup-name-${index}`}
+                              value={step.suggested_service_name || ''}
+                              onChange={(e) => handleFollowUpStepChange(index, 'suggested_service_name', e.target.value)}
+                              placeholder="Enter follow-up name"
+                              required
+                              className={!step.suggested_service_name ? 'border-red-500' : ''}
+                            />
+                            {!step.suggested_service_name && (
+                              <p className="text-sm text-red-500 mt-1">Follow-up name is required</p>
+                            )}
                           </div>
 
                           <div className="space-y-2">
@@ -2600,7 +3020,7 @@ const Settings = () => {
                 </DialogHeader>
                 {currentFollowUpRule && (
                   <div className="py-4">
-                    <p className="font-medium">{currentFollowUpRule.triggeringServiceName}</p>
+                    <p className="font-medium">{currentFollowUpRule.triggering_service_name}</p>
                     <p className="text-sm text-muted-foreground">
                       {currentFollowUpRule.followUps.length} follow-up step(s)
                     </p>

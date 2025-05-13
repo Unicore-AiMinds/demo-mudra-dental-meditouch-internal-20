@@ -85,9 +85,11 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
           for (const entry of defaultDentalHistoryEntries) {
             try {
               // Check if this appointment exists
-              const appointmentExists = existingAppointments.some(
-                app => app.appointment_code === entry.appointment_id
-              );
+              const appointmentExists = existingAppointments.some(app => {
+                // Type assertion to handle the unknown type
+                const typedApp = app as { appointment_code?: string };
+                return typedApp.appointment_code === entry.appointment_id;
+              });
 
               if (appointmentExists) {
                 await supabase.from<DentalHistoryEntry>('dental_history').insert(entry);
@@ -189,7 +191,69 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
       });
 
       console.log(`Retrieved ${entries.length} dental history entries for patient ${patientId}`);
-      return entries;
+
+      // Also fetch past unresolved appointments for this patient
+      console.log(`Checking for past unresolved appointments for patient ID: ${patientId}`);
+      const today = new Date();
+      const todayString = format(today, 'yyyy-MM-dd');
+
+      const appointments = await supabase.from('appointments').getAll({
+        filters: {
+          patient_id: patientId
+        }
+      });
+
+      // Filter for past appointments that are not completed, cancelled, or scheduled
+      const pastUnresolvedAppointments = appointments.filter(app => {
+        // Type assertion to handle the unknown type
+        const typedApp = app as {
+          date: string;
+          status: string;
+          id: string;
+          service?: string;
+          doctor?: string;
+          payment_status?: 'paid' | 'unpaid';
+        };
+
+        return typedApp.date < todayString &&
+               typedApp.status !== 'completed' &&
+               typedApp.status !== 'cancelled' &&
+               typedApp.status !== 'scheduled';
+      });
+
+      console.log(`Found ${pastUnresolvedAppointments.length} past unresolved appointments for patient ${patientId}`);
+
+      // Convert past unresolved appointments to dental history entries
+      const unresolvedEntries: DentalHistoryEntry[] = pastUnresolvedAppointments.map(app => {
+        // Type assertion to handle the unknown type
+        const typedApp = app as {
+          id: string;
+          date: string;
+          service?: string;
+          doctor?: string;
+          payment_status?: 'paid' | 'unpaid';
+        };
+
+        return {
+          id: `unresolved-${typedApp.id}`,
+          appointment_id: typedApp.id,
+          patient_id: patientId,
+          date: typedApp.date,
+          service: typedApp.service || 'Unknown Service',
+          doctor: typedApp.doctor || 'Unknown Doctor',
+          payment_status: typedApp.payment_status || 'unpaid',
+          procedure_performed_notes: 'This appointment is past its scheduled date but has not been marked as completed, cancelled, or rescheduled.',
+          status: 'Unresolved' // Add a special status for these entries
+        };
+      });
+
+      // Combine regular entries with unresolved appointments
+      const combinedEntries = [...entries, ...unresolvedEntries];
+
+      // Sort by date (newest first)
+      combinedEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      return combinedEntries;
     } catch (error) {
       console.error('Error fetching patient history:', error);
 

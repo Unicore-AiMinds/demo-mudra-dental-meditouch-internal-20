@@ -61,6 +61,7 @@ export interface ServiceWithFollowUp {
 export interface FollowUpStep {
   id?: string;
   service_follow_up_rule_id?: string;
+  follow_up_service_id?: string;
   sequence: number; // 1, 2, 3...
   interval_days: number;
   suggested_service_name: string;
@@ -73,6 +74,7 @@ export interface FollowUpStep {
 export interface ServiceFollowUpRule {
   id: string;
   rule_id: string; // Unique ID
+  service_id?: string;
   triggering_service_name: string; // Matches a name in the Services list
   followUps: FollowUpStep[];
   created_at?: string;

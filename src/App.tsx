@@ -18,6 +18,8 @@ import { MedicineProvider } from "@/contexts/MedicineContext";
 import { PatientProvider } from "@/contexts/PatientContext";
 import { AppointmentProvider } from "@/contexts/AppointmentContext";
 import { ServiceProvider } from "@/contexts/ServiceContext";
+import { ServiceFollowUpProvider } from "@/contexts/ServiceFollowUpContext";
+import { ServiceFollowUpRuleProvider } from "@/contexts/ServiceFollowUpRuleContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
@@ -52,13 +54,15 @@ const App = () => (
                   <PatientProvider>
                     <AppointmentProvider>
                       <ServiceProvider>
-                        <DentalHistoryProvider>
-                          <DentalChartingProvider>
-                            <VitalSignsProvider>
-                              <PrescriptionProvider>
-                                <StockProvider>
-                                  <LabWorkProvider>
-                                    <MedicineProvider>
+                        <ServiceFollowUpProvider>
+                          <ServiceFollowUpRuleProvider>
+                            <DentalHistoryProvider>
+                            <DentalChartingProvider>
+                              <VitalSignsProvider>
+                                <PrescriptionProvider>
+                                  <StockProvider>
+                                    <LabWorkProvider>
+                                      <MedicineProvider>
                             <Routes>
                               <Route path="/login" element={<Login />} />
                               <Route path="/unauthorized" element={<Unauthorized />} />
@@ -132,7 +136,9 @@ const App = () => (
                               </PrescriptionProvider>
                             </VitalSignsProvider>
                           </DentalChartingProvider>
-                        </DentalHistoryProvider>
+                          </DentalHistoryProvider>
+                          </ServiceFollowUpRuleProvider>
+                        </ServiceFollowUpProvider>
                       </ServiceProvider>
                     </AppointmentProvider>
                   </PatientProvider>
