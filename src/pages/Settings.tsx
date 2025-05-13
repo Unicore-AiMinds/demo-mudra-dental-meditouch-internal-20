@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useClinicInfo } from '@/contexts/ClinicInfoContext';
@@ -7,6 +7,7 @@ import { useMedicines } from '@/contexts/MedicineContext';
 import { useServices, ServiceWithFollowUp } from '@/contexts/ServiceContext';
 import { useServiceFollowUps } from '@/contexts/ServiceFollowUpContext';
 import { useServiceFollowUpRules } from '@/contexts/ServiceFollowUpRuleContext';
+import { fixDocumentUrl, createDownloadLink } from '@/lib/supabase-storage';
 
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { demoFollowUpRules } from '@/data/demo-dental-history';
@@ -208,18 +209,18 @@ const Settings = () => {
 
   // Define types for our data
   interface Doctor {
-    id: number;
+    id: string;
     name: string;
     specialization: string;
     email: string;
     phone: string;
     color: string;
-    aadharDoc?: string;
-    panDoc?: string;
+    aadhar_doc?: string;
+    pan_doc?: string;
   }
 
   interface Service {
-    id: number;
+    id: string;
     name: string;
     duration: number;
     price: number;
@@ -236,7 +237,57 @@ const Settings = () => {
   const [phoneCountryCode, setPhoneCountryCode] = useState('+91');
   const [editPhoneCountryCode, setEditPhoneCountryCode] = useState('+91');
   // Using DoctorContext instead of local state
-  const { doctors: dentalDoctors, setDoctors: setDentalDoctors, updateDoctorColor } = useDoctors();
+  const { doctors: dentalDoctors, addDoctor, updateDoctor, deleteDoctor, updateDoctorColor, isLoading: doctorsLoading } = useDoctors();
+
+  // Debug log the doctors data
+  console.log('Settings component - dentalDoctors:', dentalDoctors);
+  console.log('Settings component - doctorsLoading:', doctorsLoading);
+
+  // Function to handle document downloads
+  const handleDocumentDownload = useCallback(async (docUrl: string | undefined, docType: string) => {
+    if (!docUrl) {
+      toast({
+        title: "Error",
+        description: `No ${docType} document available.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // First try to fix the URL format
+      const fixedUrl = fixDocumentUrl(docUrl);
+      console.log(`Fixed ${docType} URL:`, fixedUrl);
+
+      // Create a signed download link
+      const downloadUrl = await createDownloadLink(fixedUrl || '');
+      console.log(`${docType} download URL:`, downloadUrl);
+
+      if (downloadUrl) {
+        // Open the download URL in a new tab
+        window.open(downloadUrl, '_blank');
+      } else {
+        toast({
+          title: "Error",
+          description: `Failed to generate download link for ${docType} document.`,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error(`Error downloading ${docType} document:`, error);
+      toast({
+        title: "Error",
+        description: `Failed to download ${docType} document.`,
+        variant: "destructive"
+      });
+    }
+  }, []);
+
+  // State for file uploads
+  const [aadharFile, setAadharFile] = useState<File | null>(null);
+  const [panFile, setPanFile] = useState<File | null>(null);
+  const [editAadharFile, setEditAadharFile] = useState<File | null>(null);
+  const [editPanFile, setEditPanFile] = useState<File | null>(null);
   // Using MedicineContext
   const { medicines, addMedicine, updateMedicine, deleteMedicine } = useMedicines();
 
@@ -357,7 +408,7 @@ const Settings = () => {
     setIsConfirmUpdateDoctorOpen(true);
   };
 
-  const handleUpdateDoctor = () => {
+  const handleUpdateDoctor = async () => {
     if (currentDoctor) {
       // Get updated values from form fields
       const updatedName = document.getElementById('editDoctorName') as HTMLInputElement;
@@ -394,43 +445,18 @@ const Settings = () => {
       }
 
       if (updatedName && updatedSpecialization && updatedEmail && updatedPhone) {
-        // Process document uploads
-        let aadharPath = currentDoctor.aadharDoc || "";
-        let panPath = currentDoctor.panDoc || "";
-
-        if (updatedAadhar && updatedAadhar.files && updatedAadhar.files.length > 0) {
-          // In a real app, you would upload the file and get a URL back
-          // For demo purposes, we'll create a fake path
-          aadharPath = `/docs/aadhar_${updatedName.value.replace(/\s+/g, '_').toLowerCase()}.${updatedAadhar.files[0].name.split('.').pop()}`;
-        }
-
-        if (updatedPan && updatedPan.files && updatedPan.files.length > 0) {
-          // In a real app, you would upload the file and get a URL back
-          // For demo purposes, we'll create a fake path
-          panPath = `/docs/pan_${updatedName.value.replace(/\s+/g, '_').toLowerCase()}.${updatedPan.files[0].name.split('.').pop()}`;
-        }
-
-
-
-        // Update doctor in the list
-        const updatedDoctors = dentalDoctors.map(doctor => {
-          if (doctor.id === currentDoctor.id) {
-            return {
-              ...doctor,
-              name: updatedName.value,
-              specialization: updatedSpecialization.value,
-              email: updatedEmail.value,
-              phone: `${editPhoneCountryCode} ${updatedPhone.value}`,
-              aadharDoc: aadharPath,
-              panDoc: panPath
-            };
-          }
-          return doctor;
-        });
-
-
-
-        setDentalDoctors(updatedDoctors);
+        // Update doctor using the DoctorContext with file uploads
+        await updateDoctor(
+          currentDoctor.id,
+          {
+            name: updatedName.value,
+            specialization: updatedSpecialization.value,
+            email: updatedEmail.value,
+            phone: `${editPhoneCountryCode} ${updatedPhone.value}`
+          },
+          editAadharFile || undefined,
+          editPanFile || undefined
+        );
 
         toast({
           title: "Doctor Updated",
@@ -447,6 +473,8 @@ const Settings = () => {
       setIsConfirmUpdateDoctorOpen(false);
       setIsEditDoctorDialogOpen(false);
       setCurrentDoctor(null);
+      setEditAadharFile(null);
+      setEditPanFile(null);
     }
   };
 
@@ -474,18 +502,28 @@ const Settings = () => {
     }
   };
 
-  const handleDeleteDoctor = () => {
+  const handleDeleteDoctor = async () => {
     if (currentDoctor) {
-      // Delete doctor from the list
-      setDentalDoctors(dentalDoctors.filter(doctor => doctor.id !== currentDoctor.id));
+      try {
+        // Delete doctor using the DoctorContext
+        await deleteDoctor(currentDoctor.id);
 
-      toast({
-        title: "Doctor Removed",
-        description: `${currentDoctor.name} has been removed from the system.`,
-      });
-      setIsConfirmDeleteDoctorOpen(false);
-      setIsEditDoctorDialogOpen(false);
-      setCurrentDoctor(null);
+        toast({
+          title: "Doctor Removed",
+          description: `${currentDoctor.name} has been removed from the system.`,
+        });
+      } catch (error) {
+        console.error('Error deleting doctor:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete doctor. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsConfirmDeleteDoctorOpen(false);
+        setIsEditDoctorDialogOpen(false);
+        setCurrentDoctor(null);
+      }
     }
   };
 
@@ -1882,70 +1920,99 @@ const Settings = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {dentalDoctors.map((doctor) => (
-                      <TableRow key={doctor.id}>
-                        <TableCell className="font-medium">{doctor.name}</TableCell>
-                        <TableCell>{doctor.specialization}</TableCell>
-                        <TableCell>{doctor.email}</TableCell>
-                        <TableCell>{doctor.phone}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            {doctor.aadharDoc && (
-                              <a
-                                href={doctor.aadharDoc}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline flex items-center"
-                              >
-                                <FileText className="h-3 w-3 mr-1" /> Aadhar
-                              </a>
-                            )}
-                            {doctor.panDoc && (
-                              <a
-                                href={doctor.panDoc}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline flex items-center"
-                              >
-                                <FileText className="h-3 w-3 mr-1" /> PAN
-                              </a>
-                            )}
-                            {!doctor.aadharDoc && !doctor.panDoc && (
-                              <span className="text-gray-400 text-sm">No documents</span>
-                            )}
+                    {doctorsLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          <div className="flex flex-col items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-dental-primary mb-2" />
+                            <p className="text-sm text-muted-foreground">Loading doctors...</p>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-6 h-6 rounded-full border border-gray-200 cursor-pointer hover:border-dental-primary hover:shadow-sm transition-all"
-                              style={{ backgroundColor: doctor.color }}
-                              title="Click to change color"
-                              onClick={() => handleOpenColorPicker(doctor)}
-                            ></div>
-                            <span className="text-xs text-muted-foreground">Click to edit</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditDoctor(doctor)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                      </TableRow>
+                    ) : dentalDoctors.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          <div className="flex flex-col items-center justify-center">
+                            <p className="text-sm text-muted-foreground mb-2">No doctors found</p>
                             <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-500 hover:text-red-700"
-                              onClick={() => {
-                                setCurrentDoctor(doctor);
-                                setIsConfirmDeleteDoctorOpen(true);
-                              }}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setIsAddDoctorDialogOpen(true)}
+                              className="text-xs"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <UserPlus className="h-3 w-3 mr-1" /> Add Doctor
                             </Button>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      dentalDoctors.map((doctor) => (
+                        <TableRow key={doctor.id}>
+                          <TableCell className="font-medium">{doctor.name}</TableCell>
+                          <TableCell>{doctor.specialization}</TableCell>
+                          <TableCell>{doctor.email}</TableCell>
+                          <TableCell>{doctor.phone}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              {doctor.aadhar_doc && (
+                                <button
+                                  className="text-blue-600 hover:underline flex items-center"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleDocumentDownload(doctor.aadhar_doc, 'Aadhar');
+                                  }}
+                                >
+                                  <FileText className="h-3 w-3 mr-1" /> Aadhar
+                                </button>
+                              )}
+                              {doctor.pan_doc && (
+                                <button
+                                  className="text-blue-600 hover:underline flex items-center"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleDocumentDownload(doctor.pan_doc, 'PAN');
+                                  }}
+                                >
+                                  <FileText className="h-3 w-3 mr-1" /> PAN
+                                </button>
+                              )}
+                              {!doctor.aadhar_doc && !doctor.pan_doc && (
+                                <span className="text-gray-400 text-sm">No documents</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-6 h-6 rounded-full border border-gray-200 cursor-pointer hover:border-dental-primary hover:shadow-sm transition-all"
+                                style={{ backgroundColor: doctor.color }}
+                                title="Click to change color"
+                                onClick={() => handleOpenColorPicker(doctor)}
+                              ></div>
+                              <span className="text-xs text-muted-foreground">Click to edit</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditDoctor(doctor)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-500 hover:text-red-700"
+                                onClick={() => {
+                                  setCurrentDoctor(doctor);
+                                  setIsConfirmDeleteDoctorOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -2044,13 +2111,33 @@ const Settings = () => {
                         <Label htmlFor="aadharUpload" className="flex items-center text-sm">
                           <FileText className="h-3 w-3 mr-1" /> Aadhar Card
                         </Label>
-                        <Input id="aadharUpload" type="file" accept=".pdf,.jpg,.jpeg,.png" className="text-sm" />
+                        <Input
+                          id="aadharUpload"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          className="text-sm"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setAadharFile(e.target.files[0]);
+                            }
+                          }}
+                        />
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="panUpload" className="flex items-center text-sm">
                           <FileText className="h-3 w-3 mr-1" /> PAN Card
                         </Label>
-                        <Input id="panUpload" type="file" accept=".pdf,.jpg,.jpeg,.png" className="text-sm" />
+                        <Input
+                          id="panUpload"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          className="text-sm"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setPanFile(e.target.files[0]);
+                            }
+                          }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -2060,7 +2147,7 @@ const Settings = () => {
                     Cancel
                   </Button>
                   <Button className="bg-dental-primary hover:bg-dental-dark"
-                    onClick={() => {
+                    onClick={async () => {
                       // Validate email format
                       const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
                       const isEmailValid = emailRegex.test(newDoctorEmail);
@@ -2088,45 +2175,31 @@ const Settings = () => {
                       }
 
                       if (newDoctorName && newDoctorSpecialization && newDoctorEmail && newDoctorPhone) {
-                        // Get file inputs
-                        const aadharInput = document.getElementById('aadharUpload') as HTMLInputElement;
-                        const panInput = document.getElementById('panUpload') as HTMLInputElement;
-
-                        // Create file paths for documents (in a real app, these would be uploaded to a server)
-                        let aadharPath = "";
-                        let panPath = "";
-
-                        if (aadharInput && aadharInput.files && aadharInput.files.length > 0) {
-                          // In a real app, you would upload the file and get a URL back
-                          // For demo purposes, we'll create a fake path
-                          aadharPath = `/docs/aadhar_${newDoctorName.replace(/\s+/g, '_').toLowerCase()}.${aadharInput.files[0].name.split('.').pop()}`;
-                        }
-
-                        if (panInput && panInput.files && panInput.files.length > 0) {
-                          // In a real app, you would upload the file and get a URL back
-                          // For demo purposes, we'll create a fake path
-                          panPath = `/docs/pan_${newDoctorName.replace(/\s+/g, '_').toLowerCase()}.${panInput.files[0].name.split('.').pop()}`;
-                        }
-
-                        // Add new doctor to the list with a random color
+                        // Add new doctor using the DoctorContext with file uploads
                         const newDoctor = {
-                          id: dentalDoctors.length > 0 ? Math.max(...dentalDoctors.map(d => d.id)) + 1 : 1,
                           name: newDoctorName,
                           specialization: newDoctorSpecialization,
                           email: newDoctorEmail,
                           phone: `${phoneCountryCode} ${newDoctorPhone}`,
-                          aadharDoc: aadharPath,
-                          panDoc: panPath,
                           color: getRandomDentalColor() // Assign a random dental-themed color
                         };
 
-                        setDentalDoctors([newDoctor, ...dentalDoctors]);
+                        // Pass the doctor data and files to the addDoctor function
+                        await addDoctor(newDoctor, aadharFile || undefined, panFile || undefined);
 
                         // Reset form fields
                         setNewDoctorName('');
                         setNewDoctorSpecialization('');
                         setNewDoctorEmail('');
                         setNewDoctorPhone('');
+                        setAadharFile(null);
+                        setPanFile(null);
+
+                        // Reset file input elements
+                        const aadharInput = document.getElementById('aadharUpload') as HTMLInputElement;
+                        const panInput = document.getElementById('panUpload') as HTMLInputElement;
+                        if (aadharInput) aadharInput.value = '';
+                        if (panInput) panInput.value = '';
 
                         toast({
                           title: "Doctor Added",
@@ -2227,36 +2300,58 @@ const Settings = () => {
                             <Label htmlFor="editAadharUpload" className="flex items-center text-sm">
                               <FileText className="h-3 w-3 mr-1" /> Aadhar Card
                             </Label>
-                            {currentDoctor.aadharDoc && (
-                              <a
-                                href={currentDoctor.aadharDoc}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            {currentDoctor.aadhar_doc && (
+                              <button
                                 className="text-blue-600 hover:underline text-xs"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleDocumentDownload(currentDoctor.aadhar_doc, 'Aadhar');
+                                }}
                               >
                                 View Current
-                              </a>
+                              </button>
                             )}
                           </div>
-                          <Input id="editAadharUpload" type="file" accept=".pdf,.jpg,.jpeg,.png" className="text-sm" />
+                          <Input
+                            id="editAadharUpload"
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="text-sm"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                setEditAadharFile(e.target.files[0]);
+                              }
+                            }}
+                          />
                         </div>
                         <div className="space-y-1">
                           <div className="flex justify-between items-center">
                             <Label htmlFor="editPanUpload" className="flex items-center text-sm">
                               <FileText className="h-3 w-3 mr-1" /> PAN Card
                             </Label>
-                            {currentDoctor.panDoc && (
-                              <a
-                                href={currentDoctor.panDoc}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            {currentDoctor.pan_doc && (
+                              <button
                                 className="text-blue-600 hover:underline text-xs"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleDocumentDownload(currentDoctor.pan_doc, 'PAN');
+                                }}
                               >
                                 View Current
-                              </a>
+                              </button>
                             )}
                           </div>
-                          <Input id="editPanUpload" type="file" accept=".pdf,.jpg,.jpeg,.png" className="text-sm" />
+                          <Input
+                            id="editPanUpload"
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="text-sm"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                setEditPanFile(e.target.files[0]);
+                              }
+                            }}
+                          />
                         </div>
                       </div>
                     </div>
@@ -2708,22 +2803,18 @@ const Settings = () => {
                         <TableRow key={rule.id}>
                           <TableCell className="font-medium">{rule.triggering_service_name}</TableCell>
                           <TableCell>
-                            {console.log('Rule followUps:', rule.followUps)}
                             {rule.followUps.map((step, index) => {
-                              console.log(`Rendering step ${index + 1}:`, step);
 
                               // Create a local copy of the step to avoid modifying the original
                               const displayStep = { ...step };
 
                               // Ensure suggested_service_name is set
                               if (!displayStep.suggested_service_name && displayStep.suggestedServiceName) {
-                                console.log(`Setting suggested_service_name from suggestedServiceName: ${displayStep.suggestedServiceName}`);
                                 displayStep.suggested_service_name = displayStep.suggestedServiceName;
                               }
 
                               // If still not set, use a default
                               if (!displayStep.suggested_service_name) {
-                                console.log(`Setting default suggested_service_name for step ${index + 1}`);
                                 displayStep.suggested_service_name = `Follow-up ${index + 1}`;
                               }
 
