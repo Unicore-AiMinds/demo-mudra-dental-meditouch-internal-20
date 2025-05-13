@@ -9,6 +9,7 @@ interface VitalSignsContextType {
   getPatientVitalSigns: (patientId: string) => Promise<VitalSign[]>;
   addVitalSign: (patientId: string, vitalSign: Omit<VitalSign, 'id' | 'vital_sign_id' | 'patient_id' | 'date' | 'created_at' | 'updated_at'>) => Promise<VitalSign>;
   updateVitalSign: (vitalSignId: string, updates: Partial<Omit<VitalSign, 'id' | 'vital_sign_id' | 'patient_id' | 'date' | 'created_at' | 'updated_at'>>) => Promise<VitalSign | null>;
+  deleteVitalSign: (vitalSignId: string) => Promise<boolean>;
   getLatestVitalSign: (patientId: string) => Promise<VitalSign | null>;
   isLoading: boolean;
 }
@@ -88,6 +89,7 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
         vital_sign_id: vitalSignId,
         patient_id: patientId,
         date: new Date().toISOString(),
+        recorded_by: 'System', // Auto-set the recorded_by field
         ...vitalSign
       };
 
@@ -143,6 +145,31 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   };
 
+  // Delete a vital sign record
+  const deleteVitalSign = async (vitalSignId: string): Promise<boolean> => {
+    try {
+      // Delete from Supabase
+      await supabase.from<VitalSign>('vital_signs').delete(vitalSignId);
+
+      toast({
+        title: 'Success',
+        description: 'Vital sign record deleted successfully.',
+      });
+
+      return true;
+    } catch (error) {
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `vital_signs_delete_error_${vitalSignId}`,
+        customMessage: 'Failed to delete vital sign record. Please try again.',
+        showToast: true
+      });
+      return false;
+    }
+  };
+
   // Get the latest vital sign record for a patient
   const getLatestVitalSign = async (patientId: string): Promise<VitalSign | null> => {
     try {
@@ -172,6 +199,7 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
         getPatientVitalSigns,
         addVitalSign,
         updateVitalSign,
+        deleteVitalSign,
         getLatestVitalSign,
         isLoading
       }}

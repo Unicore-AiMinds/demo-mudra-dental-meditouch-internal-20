@@ -29,8 +29,8 @@ interface PrescriptionContextType {
   addPrescription: (patientId: string, prescription: Omit<Prescription, 'id' | 'prescription_id' | 'patient_id' | 'date' | 'created_at' | 'updated_at'>) => Promise<Prescription>;
   updatePrescription: (prescriptionId: string, updates: Partial<Omit<Prescription, 'id' | 'prescription_id' | 'patient_id' | 'date' | 'created_at' | 'updated_at'>>) => Promise<Prescription | null>;
   getActivePrescriptions: (patientId: string) => Promise<Prescription[]>;
-  addMedicationToPrescription: (prescriptionId: string, medication: Omit<Medication, 'id' | 'medication_id' | 'prescription_id' | 'created_at' | 'updated_at'>) => Promise<Medication | null>;
-  removeMedicationFromPrescription: (prescriptionId: string, medicationId: string) => Promise<boolean>;
+  addMedicationToPrescription: (prescriptionId: string, medication: Omit<Medication, 'id' | 'medication_id' | 'prescription_id' | 'created_at' | 'updated_at'>, showToast?: boolean) => Promise<Medication | null>;
+  removeMedicationFromPrescription: (prescriptionId: string, medicationId: string, showToast?: boolean) => Promise<boolean>;
   isLoading: boolean;
 }
 
@@ -215,8 +215,10 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       console.log("Step 2: Fetching prescription-medication links for these prescriptions");
 
       // Build a filter to get links only for these prescriptions
-      const prescriptionFilter = prescriptionUuids.map(id => `prescription_id=eq.${id}`).join('&');
-      const linksUrl = `${SUPABASE_URL}/rest/v1/prescription_medications?${prescriptionFilter}`;
+      // We need to use a different approach since joining with & doesn't work for multiple IDs
+      // Instead, we'll use the "in" operator
+      const prescriptionIdsString = prescriptionUuids.join(',');
+      const linksUrl = `${SUPABASE_URL}/rest/v1/prescription_medications?prescription_id=in.(${prescriptionIdsString})`;
 
       console.log("Fetching links with URL:", linksUrl);
 
@@ -252,9 +254,9 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         const medicationIds = links.map(link => link.medication_id);
         console.log(`Medication IDs to fetch: ${medicationIds.join(', ')}`);
 
-        // Build a filter to get only these medications
-        const medicationsFilter = medicationIds.map(id => `id=eq.${id}`).join('&');
-        const medicationsUrl = `${SUPABASE_URL}/rest/v1/medications?${medicationsFilter}`;
+        // Build a filter to get only these medications using the "in" operator
+        const medicationIdsString = medicationIds.join(',');
+        const medicationsUrl = `${SUPABASE_URL}/rest/v1/medications?id=in.(${medicationIdsString})`;
 
         console.log("Fetching medications with URL:", medicationsUrl);
 
@@ -297,11 +299,15 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       // Process links and medications
       if (links.length > 0 && medications.length > 0) {
         console.log("Adding medications to prescriptions from database...");
+        console.log("Links:", links);
+        console.log("Medications:", medications);
 
         links.forEach(link => {
+          console.log(`Looking for medication with ID ${link.medication_id}`);
           const medication = medications.find(med => med.id === link.medication_id);
+
           if (medication && link.prescription_id) {
-            console.log(`Mapping medication ${medication.id} to prescription ${link.prescription_id}`);
+            console.log(`Mapping medication ${medication.id} (${medication.name}) to prescription ${link.prescription_id}`);
 
             // Convert flat medication fields to the expected structure
             const formattedMedication: Medication = {
@@ -342,7 +348,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       const prescriptionsWithMedications = fetchedPrescriptions.map(prescription => {
         const medsForPrescription = medicationsByPrescription[prescription.id] || [];
-        console.log(`Prescription ${prescription.prescription_id} has ${medsForPrescription.length} medications`);
+        console.log(`Prescription ${prescription.prescription_id} (ID: ${prescription.id}) has ${medsForPrescription.length} medications`);
+
+        if (medsForPrescription.length > 0) {
+          console.log(`Medications for prescription ${prescription.id}:`,
+            medsForPrescription.map(m => ({ id: m.id, name: m.name, dosage: m.dosage }))
+          );
+        }
 
         return {
           ...prescription,
@@ -515,10 +527,17 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       }
 
       // Update in Supabase
-      const updatedPrescription = await supabase.from<Prescription>('prescriptions').update(
+      await supabase.from<Prescription>('prescriptions').update(
         prescriptionToUpdate.id,
         updates
       );
+
+      // Ensure we have a valid prescription object with ID to return
+      const prescriptionToReturn = {
+        ...prescriptionToUpdate,
+        ...updates,
+        id: prescriptionToUpdate.id // Ensure ID is preserved
+      };
 
       // Update local state
       setPrescriptions(prev => {
@@ -546,7 +565,7 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         description: 'Prescription updated successfully.',
       });
 
-      return updatedPrescription;
+      return prescriptionToReturn;
     } catch (error) {
       console.error('Error updating prescription:', error);
       // Use the global error handler
@@ -637,10 +656,17 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Add a medication to an existing prescription
   const addMedicationToPrescription = async (
     prescriptionId: string,
-    medication: Omit<Medication, 'id' | 'medication_id' | 'prescription_id' | 'created_at' | 'updated_at'>
+    medication: Omit<Medication, 'id' | 'medication_id' | 'prescription_id' | 'created_at' | 'updated_at'>,
+    showToast: boolean = true
   ): Promise<Medication | null> => {
     try {
       console.log("Starting addMedicationToPrescription with:", { prescriptionId, medication });
+
+      // Check if prescriptionId is undefined or null
+      if (!prescriptionId) {
+        console.error("Invalid prescription ID: undefined or null");
+        throw new Error("Invalid prescription ID: undefined or null. Please provide a valid prescription ID.");
+      }
 
       // Helper function for safe string comparison - handles null, undefined, case, and whitespace
       const safeEqual = (a: string | null | undefined, b: string | null | undefined): boolean => {
@@ -968,6 +994,35 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         console.error("Error verifying prescription_medications table:", error);
       }
 
+      // Verify that the prescription exists
+      try {
+        console.log(`Verifying prescription with ID ${prescriptionUuid} exists...`);
+        const prescriptionResponse = await fetch(`${SUPABASE_URL}/rest/v1/prescriptions?id=eq.${prescriptionUuid}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!prescriptionResponse.ok) {
+          console.error(`Error verifying prescription: ${prescriptionResponse.status} ${prescriptionResponse.statusText}`);
+          throw new Error(`Failed to verify prescription: ${prescriptionResponse.status}`);
+        }
+
+        const prescriptionData = await prescriptionResponse.json();
+        if (!prescriptionData || prescriptionData.length === 0) {
+          console.error(`Prescription with ID ${prescriptionUuid} not found in database`);
+          throw new Error(`Prescription with ID ${prescriptionUuid} not found in database`);
+        }
+
+        console.log(`Verified prescription exists with ID ${prescriptionUuid}`);
+      } catch (error) {
+        console.error("Error verifying prescription:", error);
+        throw error;
+      }
+
       // Create the link record with explicit ID
       const linkUuid = uuidv4();
       const linkRecord = {
@@ -1117,10 +1172,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         return newPrescriptions;
       });
 
-      toast({
-        title: 'Success',
-        description: 'Medication added to prescription successfully.',
-      });
+      // Toast notification is now optional and controlled by the caller
+      if (showToast) {
+        toast({
+          title: 'Success',
+          description: 'Medication added to prescription successfully.',
+        });
+      }
 
       return createdMedication;
     } catch (error) {
@@ -1140,7 +1198,8 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Remove a medication from a prescription
   const removeMedicationFromPrescription = async (
     prescriptionId: string,
-    medicationId: string
+    medicationId: string,
+    showToast: boolean = true
   ): Promise<boolean> => {
     try {
       // Find the medication to delete
@@ -1232,26 +1291,60 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         medicationToDelete = fetchedMedications[0];
       }
 
-      // Delete from Supabase - try both table names
+      // Delete from Supabase using direct fetch API for more control
       try {
-        // First try with the correct table name from the SQL schema
-        await supabase.from<Medication>('prescription_medications').delete(medicationToDelete.id);
-        console.log(`Deleted medication from prescription_medications table`);
-      } catch (err) {
-        console.error("Error deleting from prescription_medications:", err);
-        // Fallback to potential alternative table name
-        try {
-          await supabase.from<Medication>('prescription_medication').delete(medicationToDelete.id);
-          console.log(`Deleted medication from prescription_medication table`);
-        } catch (fallbackErr) {
-          console.error("Error deleting from prescription_medication:", fallbackErr);
-          throw new Error("Failed to delete medication from any prescription medications table");
+        console.log(`Attempting to delete medication with ID ${medicationId} from prescription ${prescriptionUuid}`);
+
+        // First, try to delete the link in prescription_medications table
+        const linkDeleteUrl = `${SUPABASE_URL}/rest/v1/prescription_medications?medication_id=eq.${medicationId}`;
+        console.log("Deleting link with URL:", linkDeleteUrl);
+
+        const linkDeleteResponse = await fetch(linkDeleteUrl, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!linkDeleteResponse.ok) {
+          console.error(`Error deleting link: ${linkDeleteResponse.status} ${linkDeleteResponse.statusText}`);
+          const errorText = await linkDeleteResponse.text();
+          console.error("Error details:", errorText);
+        } else {
+          console.log("Successfully deleted link from prescription_medications table");
         }
+
+        // Then, delete the medication itself
+        const medicationDeleteUrl = `${SUPABASE_URL}/rest/v1/medications?id=eq.${medicationId}`;
+        console.log("Deleting medication with URL:", medicationDeleteUrl);
+
+        const medicationDeleteResponse = await fetch(medicationDeleteUrl, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!medicationDeleteResponse.ok) {
+          console.error(`Error deleting medication: ${medicationDeleteResponse.status} ${medicationDeleteResponse.statusText}`);
+          const errorText = await medicationDeleteResponse.text();
+          console.error("Error details:", errorText);
+        } else {
+          console.log("Successfully deleted medication from medications table");
+        }
+      } catch (err) {
+        console.error("Error deleting medication:", err);
+        throw new Error("Failed to delete medication: " + err.message);
       }
 
       // Update local state
       setPrescriptions(prev => {
         const newPrescriptions = { ...prev };
+        let updated = false;
 
         // Find the prescription in all patients
         for (const patientId in newPrescriptions) {
@@ -1260,10 +1353,32 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
           );
 
           if (index !== -1) {
+            console.log(`Found prescription at index ${index} for patient ${patientId}`);
+
+            // Make sure medications array exists
+            if (!newPrescriptions[patientId][index].medications) {
+              console.warn(`No medications array found for prescription ${prescriptionId}`);
+              newPrescriptions[patientId][index].medications = [];
+              continue;
+            }
+
+            // Log before deletion
+            console.log(`Before deletion: ${newPrescriptions[patientId][index].medications.length} medications`);
+            console.log('Medications:', newPrescriptions[patientId][index].medications.map(m => ({ id: m.id, name: m.name })));
+            console.log(`Trying to delete medication with ID: ${medicationId}`);
+
             // Filter out the medication
-            const updatedMedications = newPrescriptions[patientId][index].medications.filter(
-              m => m.id !== medicationId && m.medication_id !== medicationId
-            );
+            const updatedMedications = newPrescriptions[patientId][index].medications.filter(m => {
+              const doesNotMatch = m.id !== medicationId && m.medication_id !== medicationId;
+              if (!doesNotMatch) {
+                console.log(`Found matching medication to delete: ${m.id} / ${m.medication_id} - ${m.name}`);
+              }
+              return doesNotMatch;
+            });
+
+            // Log after deletion
+            console.log(`After deletion: ${updatedMedications.length} medications`);
+            console.log('Updated medications:', updatedMedications.map(m => ({ id: m.id, name: m.name })));
 
             // Update the prescription
             const updatedPrescription = {
@@ -1277,17 +1392,25 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
               ...newPrescriptions[patientId].slice(index + 1)
             ];
 
+            updated = true;
             break;
           }
+        }
+
+        if (!updated) {
+          console.warn(`Could not find prescription ${prescriptionId} in local state to update`);
         }
 
         return newPrescriptions;
       });
 
-      toast({
-        title: 'Success',
-        description: 'Medication removed from prescription successfully.',
-      });
+      // Toast notification is now optional and controlled by the caller
+      if (showToast !== false) {
+        toast({
+          title: 'Success',
+          description: 'Medication removed from prescription successfully.',
+        });
+      }
 
       return true;
     } catch (error) {

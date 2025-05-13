@@ -83,7 +83,6 @@ const PendingTreatmentsView: React.FC = () => {
   const [snoozeDate, setSnoozeDate] = useState<Date | undefined>(undefined);
   const [snoozeNotes, setSnoozeNotes] = useState('');
   const [activeTab, setActiveTab] = useState<'pending' | 'snoozed'>('pending');
-  const [sortBy, setSortBy] = useState<'doctor' | 'patient'>('patient');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc'); // Default to alphabetical order
 
   // State to store planned charting entries
@@ -164,13 +163,9 @@ const PendingTreatmentsView: React.FC = () => {
   }, [allPlannedEntries]);
 
   // Toggle sort order
-  const toggleSort = (field: 'doctor' | 'patient') => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('asc');
-    }
+  const toggleSort = () => {
+    // Just toggle the order
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
   };
 
   // Filter entries
@@ -210,26 +205,16 @@ const PendingTreatmentsView: React.FC = () => {
   const filteredAndSortedEntries = useMemo(() => {
     // Sort the filtered entries
     return [...filteredEntries].sort((a, b) => {
-      if (sortBy === 'doctor') {
-        // Handle both camelCase and snake_case field names
-        const doctorA = ((a.doctor || a.doctor || 'Not assigned') as string).toString();
-        const doctorB = ((b.doctor || b.doctor || 'Not assigned') as string).toString();
+      // For patient sorting, we'll use the entry_id or id as a fallback
+      // since we can't do async sorting with patient names
+      const idA = ((a.entry_id || a.id || '') as string).toString();
+      const idB = ((b.entry_id || b.id || '') as string).toString();
 
-        return sortOrder === 'asc'
-          ? doctorA.localeCompare(doctorB)
-          : doctorB.localeCompare(doctorA);
-      } else { // sortBy === 'patient'
-        // For patient sorting, we'll use the entry_id or id as a fallback
-        // since we can't do async sorting with patient names
-        const idA = ((a.entry_id || a.id || '') as string).toString();
-        const idB = ((b.entry_id || b.id || '') as string).toString();
-
-        return sortOrder === 'asc'
-          ? idA.localeCompare(idB)
-          : idB.localeCompare(idA);
-      }
+      return sortOrder === 'asc'
+        ? idA.localeCompare(idB)
+        : idB.localeCompare(idA);
     });
-  }, [filteredEntries, sortBy, sortOrder]);
+  }, [filteredEntries, sortOrder]);
 
   // Handle scheduling an appointment from a pending treatment
   const handleScheduleAppointment = async (entry: ChartingEntry) => {
@@ -458,7 +443,7 @@ const PendingTreatmentsView: React.FC = () => {
                     <TableHead>
                       <Button
                         variant="ghost"
-                        onClick={() => toggleSort('patient')}
+                        onClick={toggleSort}
                         className="flex items-center p-0 h-auto font-medium"
                       >
                         Patient
@@ -467,16 +452,7 @@ const PendingTreatmentsView: React.FC = () => {
                     </TableHead>
                     <TableHead>Teeth</TableHead>
                     <TableHead>Service</TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => toggleSort('doctor')}
-                        className="flex items-center p-0 h-auto font-medium"
-                      >
-                        Doctor
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
-                    </TableHead>
+                    {/* Doctor column removed as requested */}
                     <TableHead>Notes</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -488,7 +464,6 @@ const PendingTreatmentsView: React.FC = () => {
                     const patientId = entry.patient_id || '';
                     const toothNumbers = entry.tooth_numbers || [];
                     const service = entry.service || '';
-                    const doctor = entry.doctor || '';
                     const notes = entry.notes || '';
 
                     // Convert tooth numbers to string
@@ -506,9 +481,6 @@ const PendingTreatmentsView: React.FC = () => {
                         </TableCell>
                         <TableCell>{teethString}</TableCell>
                         <TableCell>{service}</TableCell>
-                        <TableCell>
-                          {doctor || "Not assigned"}
-                        </TableCell>
                         <TableCell>{notes || '-'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">

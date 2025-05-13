@@ -485,7 +485,8 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
         console.log("Adding medication to prescription:", sanitizedMedication);
 
         // Use the context method to add the medication directly to the database
-        const result = await addMedicationToPrescription(createdPrescription.id, sanitizedMedication);
+        // Pass false for showToast to prevent multiple notifications
+        const result = await addMedicationToPrescription(createdPrescription.id, sanitizedMedication, false);
 
         console.log("Successfully added medication:", result);
       }
@@ -576,10 +577,20 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
       console.log("Prescription data:", newPrescription);
       console.log("Medications to update:", newMedications);
 
+      // Ensure we have a valid prescription ID
+      if (!isEditing) {
+        toast({
+          title: "Error",
+          description: "Invalid prescription ID. Cannot update prescription.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // 1️⃣ Update the prescription details
       const updatedPrescription = await updatePrescription(isEditing, newPrescription);
 
-      if (updatedPrescription) {
+      if (updatedPrescription && updatedPrescription.id) {
         // We need to use the UUID (id) for the foreign key relationship
         const prescriptionIdToUse = updatedPrescription.id;
         console.log("Successfully updated prescription. UUID:", updatedPrescription.id);
@@ -592,11 +603,36 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
         if (currentPrescription) {
           // 3️⃣ Delete all existing medications
           console.log("Removing existing medications");
-          for (const med of currentPrescription.medications || []) {
-            if (med.id) {
-              console.log("Removing medication:", med.id);
-              await removeMedicationFromPrescription(prescriptionIdToUse, med.id);
+          if (currentPrescription.medications && currentPrescription.medications.length > 0) {
+            console.log(`Found ${currentPrescription.medications.length} existing medications to remove`);
+
+            // Log all medications for debugging
+            currentPrescription.medications.forEach((med, index) => {
+              console.log(`Medication ${index + 1}:`, {
+                id: med.id,
+                medication_id: med.medication_id,
+                name: med.name,
+                dosage: med.dosage
+              });
+            });
+
+            // Delete each medication one by one
+            for (const med of currentPrescription.medications) {
+              if (med.id) {
+                console.log(`Removing medication: ${med.id} - ${med.name}`);
+                try {
+                  const result = await removeMedicationFromPrescription(prescriptionIdToUse, med.id, false);
+                  console.log(`Removal result for medication ${med.id}:`, result);
+                } catch (error) {
+                  console.error(`Error removing medication ${med.id}:`, error);
+                  // Continue with other medications even if one fails
+                }
+              } else {
+                console.warn(`Medication has no ID:`, med);
+              }
             }
+          } else {
+            console.log("No existing medications to remove");
           }
 
           // 4️⃣ Add all new medications
@@ -617,7 +653,8 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
               console.log("Adding medication:", sanitizedMedication);
 
               // Use the context method to add the medication directly to the database
-              const result = await addMedicationToPrescription(prescriptionIdToUse, sanitizedMedication);
+              // Pass false for showToast to prevent multiple notifications
+              const result = await addMedicationToPrescription(prescriptionIdToUse, sanitizedMedication, false);
 
               console.log("Successfully added medication:", result);
             }
@@ -634,6 +671,14 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
           // 5️⃣ Refresh prescriptions from the database
           console.log("Refreshing prescriptions from database");
           const updatedPrescriptions = await getPatientPrescriptions(patientId);
+          console.log("Updated prescriptions:", updatedPrescriptions);
+
+          // Check if medications are properly loaded
+          const updatedPrescription = updatedPrescriptions.find(p => p.id === prescriptionIdToUse);
+          if (updatedPrescription) {
+            console.log("Updated prescription medications:", updatedPrescription.medications);
+          }
+
           setPrescriptions(updatedPrescriptions);
 
           // 6️⃣ Show success message

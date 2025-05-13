@@ -4,9 +4,10 @@ import { format, parseISO, isBefore } from 'date-fns';
 import { useAppointments } from '@/contexts/AppointmentContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Calendar, ArrowRight } from 'lucide-react';
+import { AlertCircle, Calendar, ArrowRight, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Appointment } from '@/types/appointment';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface UnresolvedAppointmentsAlertProps {
   patientId?: string; // Optional - if provided, only show unresolved appointments for this patient
@@ -18,6 +19,7 @@ interface UnresolvedAppointmentsAlertProps {
 export const UnresolvedAppointmentsAlert = ({ patientId }: UnresolvedAppointmentsAlertProps) => {
   const { dentalAppointments, meditouchAppointments, getPatientAppointments } = useAppointments();
   const [unresolvedAppointments, setUnresolvedAppointments] = useState<Appointment[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   // Find unresolved past appointments
@@ -54,10 +56,31 @@ export const UnresolvedAppointmentsAlert = ({ patientId }: UnresolvedAppointment
         );
       });
 
-      // Sort by date (oldest first)
-      unresolved.sort((a, b) =>
-        parseISO(a.date).getTime() - parseISO(b.date).getTime()
-      );
+      // Sort by date (oldest first), then by time (earliest first)
+      unresolved.sort((a, b) => {
+        // First compare by date
+        const dateComparison = parseISO(a.date).getTime() - parseISO(b.date).getTime();
+
+        // If dates are the same, compare by time
+        if (dateComparison === 0) {
+          // Convert time strings to comparable values (e.g., "9:00 AM" to minutes since midnight)
+          const getTimeMinutes = (timeStr: string) => {
+            const [time, modifier] = timeStr.split(' ');
+            let hours = Number(time.split(':')[0]);
+            const minutes = Number(time.split(':')[1]);
+
+            // Convert to 24-hour format
+            if (modifier === 'PM' && hours < 12) hours += 12;
+            if (modifier === 'AM' && hours === 12) hours = 0;
+
+            return hours * 60 + minutes;
+          };
+
+          return getTimeMinutes(a.time) - getTimeMinutes(b.time);
+        }
+
+        return dateComparison;
+      });
 
       setUnresolvedAppointments(unresolved);
     };
@@ -98,14 +121,73 @@ export const UnresolvedAppointmentsAlert = ({ patientId }: UnresolvedAppointment
               </li>
             ))}
             {unresolvedAppointments.length > 3 && (
-              <li className="text-amber-600 font-medium">
+              <li className="text-amber-600 font-medium cursor-pointer hover:underline" onClick={() => setIsDialogOpen(true)}>
                 +{unresolvedAppointments.length - 3} more unresolved {unresolvedAppointments.length - 3 === 1 ? 'appointment' : 'appointments'}
               </li>
             )}
           </ul>
 
+          {/* No button here as requested */}
         </AlertDescription>
       </div>
+
+      {/* Dialog to show all unresolved appointments */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Unresolved Past Appointments</DialogTitle>
+            <DialogDescription>
+              These appointments need to be marked as completed, cancelled, or rescheduled.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-amber-50 text-amber-800 border-b border-amber-200">
+                  <th className="text-left py-2 px-3">Date</th>
+                  <th className="text-left py-2 px-3">Time</th>
+                  <th className="text-left py-2 px-3">Patient</th>
+                  <th className="text-left py-2 px-3">Service</th>
+                  <th className="text-left py-2 px-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Display appointments sorted by date and time */}
+                {[...unresolvedAppointments].map((app) => (
+                  <tr
+                    key={app.id}
+                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                    onClick={() => {
+                      setIsDialogOpen(false);
+                      navigate('/appointments');
+                    }}
+                  >
+                    <td className="py-2 px-3">{format(parseISO(app.date), 'MMM d, yyyy')}</td>
+                    <td className="py-2 px-3">{app.time}</td>
+                    <td className="py-2 px-3">{app.patient_name}</td>
+                    <td className="py-2 px-3">{app.service}</td>
+                    <td className="py-2 px-3">
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                        {app.status}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex justify-end mt-4">
+            <Button
+              onClick={() => setIsDialogOpen(false)}
+              variant="outline"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Alert>
   );
 };
