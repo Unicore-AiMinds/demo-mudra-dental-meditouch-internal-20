@@ -74,6 +74,30 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
         const dental = fetchedServices.filter((s: Service) => s.clinic_type === 'dental');
         const meditouch = fetchedServices.filter((s: Service) => s.clinic_type === 'meditouch');
 
+        // Check if we need to add a default Dental Checkup service
+        if (dental.length === 0 || !dental.some(s => s.name.toLowerCase() === 'dental checkup')) {
+          console.log('No Dental Checkup service found, adding default...');
+
+          // Add default Dental Checkup service
+          const defaultService = {
+            name: 'Dental Checkup',
+            duration: 30,
+            price: 500,
+            description: 'Regular dental checkup and cleaning',
+            clinic_type: 'dental' as const
+          };
+
+          try {
+            const newService = await addService(defaultService);
+            console.log('Default Dental Checkup service added:', newService);
+
+            // Add to dental services
+            dental.push(newService);
+          } catch (error) {
+            console.error('Error adding default Dental Checkup service:', error);
+          }
+        }
+
         setDentalServices(dental);
         setMeditouchServices(meditouch);
 
@@ -81,6 +105,43 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
         const fetchedServicesWithFollowUp = await supabase
           .from('services_with_follow_up')
           .getAll();
+
+        console.log(`Fetched ${fetchedServicesWithFollowUp?.length || 0} services with follow-up:`,
+          fetchedServicesWithFollowUp?.map(s => ({
+            name: s.name,
+            requires_follow_up: s.requires_follow_up,
+            interval_days: s.default_follow_up_interval_days,
+            follow_up_service: s.follow_up_service_name
+          }))
+        );
+
+        // Check if we need to add a default service with follow-up for Dental Checkup
+        if (fetchedServicesWithFollowUp.length === 0 ||
+            !fetchedServicesWithFollowUp.some(s => s.name.toLowerCase() === 'dental checkup')) {
+          console.log('No service with follow-up found for Dental Checkup, adding default...');
+
+          // Add default service with follow-up for Dental Checkup
+          const defaultServiceWithFollowUp = {
+            name: 'Dental Checkup',
+            duration: 30,
+            price: 500,
+            description: 'Regular dental checkup and cleaning',
+            requires_follow_up: true,
+            default_follow_up_interval_days: 180, // 6 months
+            number_of_follow_ups: 1,
+            follow_up_service_name: 'Dental Checkup'
+          };
+
+          try {
+            const newServiceWithFollowUp = await addServiceWithFollowUp(defaultServiceWithFollowUp);
+            console.log('Default service with follow-up added for Dental Checkup:', newServiceWithFollowUp);
+
+            // Add to services with follow-up
+            fetchedServicesWithFollowUp.push(newServiceWithFollowUp);
+          } catch (error) {
+            console.error('Error adding default service with follow-up for Dental Checkup:', error);
+          }
+        }
 
         setServicesWithFollowUp(fetchedServicesWithFollowUp || []);
       } catch (error) {
@@ -101,6 +162,7 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
 
     initializeServices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, toast]);
 
   // Add a new service

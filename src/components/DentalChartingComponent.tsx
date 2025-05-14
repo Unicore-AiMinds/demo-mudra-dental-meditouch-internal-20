@@ -54,7 +54,7 @@ interface DentalChartingComponentProps {
 const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patientId, patientAge }) => {
   const { toast } = useToast();
   const { addTentativeFollowUps, getPatientName } = useDentalHistory();
-  const { getDentalServiceNames } = useServices(); // Get dental services from context
+  const { getDentalServiceNames, dentalServices, isLoading: isServicesLoading } = useServices(); // Get dental services from context
 
   const { getPatientChartingHistory, addChartingEntry: addChartingEntryToContext } = useDentalCharting();
 
@@ -428,30 +428,51 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
           {/* Service Selection - Only shown for Planned or Completed status */}
           {(selectedStatus === 'Planned' || selectedStatus === 'Completed') && (
             <div className="space-y-2">
-              <Label htmlFor="service" className="font-medium">Service *</Label>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="service" className="font-medium">Service *</Label>
+                {isServicesLoading && (
+                  <span className="text-xs text-muted-foreground">Loading services...</span>
+                )}
+                {!isServicesLoading && dentalServices.length === 0 && (
+                  <span className="text-xs text-amber-600">
+                    No services found. Add services in Settings → Services tab.
+                  </span>
+                )}
+              </div>
               <Select
                 value={selectedService}
                 onValueChange={setSelectedService}
+                disabled={isServicesLoading}
               >
                 <SelectTrigger id="service">
-                  <SelectValue placeholder="Select a service" />
+                  <SelectValue placeholder={isServicesLoading ? "Loading services..." : "Select a service"} />
                 </SelectTrigger>
                 <SelectContent>
                   {/* Use services from context if available, otherwise use fallback */}
-                  {getDentalServiceNames().length > 0
-                    ? getDentalServiceNames().map(item => (
-                        <SelectItem key={item} value={item}>
-                          {item}
-                        </SelectItem>
-                      ))
-                    : servicesList.map(item => (
-                        <SelectItem key={item} value={item}>
-                          {item}
-                        </SelectItem>
-                      ))
-                  }
+                  {getDentalServiceNames().length > 0 ? (
+                    getDentalServiceNames().map(item => (
+                      <SelectItem key={item} value={item}>
+                        {item}
+                      </SelectItem>
+                    ))
+                  ) : !isServicesLoading ? (
+                    <div className="px-2 py-4 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        No services found. Please add services in the Settings → Services tab.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="px-2 py-4 text-center">
+                      <p className="text-sm text-muted-foreground">Loading services...</p>
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
+              {selectedStatus === 'Planned' && dentalServices.length === 0 && !isServicesLoading && (
+                <p className="text-xs text-amber-600 mt-1">
+                  To add planned treatments, first add services in Settings → Services tab.
+                </p>
+              )}
             </div>
           )}
 

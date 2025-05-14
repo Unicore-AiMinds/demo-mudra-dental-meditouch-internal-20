@@ -69,7 +69,14 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
         const followUps = await supabase.from<TentativeFollowUp>('follow_ups').getAll();
 
         // Fetch services with follow-up
-        const services = await supabase.from<ServiceWithFollowUp>('services_with_follow_up').getAll();
+        let services = [];
+        try {
+          services = await supabase.from<ServiceWithFollowUp>('services_with_follow_up').getAll();
+        } catch (error) {
+          console.error('Error fetching services with follow-up:', error);
+          console.log('Using default services with follow-up');
+          services = [];
+        }
 
         // If no dental history entries exist, create default ones
         if (historyEntries.length === 0) {
@@ -295,7 +302,7 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
     }
   };
 
-  // Mark an appointment as completed and generate follow-up if needed
+  // Mark an appointment as completed and generate follow-up needed
   const markAppointmentCompleted = async (
     appointmentId: string,
     patientId: string,
@@ -305,8 +312,46 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
     date: string
   ): Promise<void> => {
     try {
-      // Find the service configuration
-      const serviceConfig = servicesWithFollowUp.find(s => s.name === service);
+      console.log(`=== MARKING APPOINTMENT COMPLETED ===`);
+      console.log(`Patient: ${patientName}, Service: ${service}, Date: ${date}`);
+
+      // Find the service configuration - try exact match first, then case-insensitive
+      let serviceConfig = servicesWithFollowUp.find(s => s.name === service);
+
+      // If no exact match, try case-insensitive match
+      if (!serviceConfig) {
+        console.log(`No exact match found for service "${service}", trying case-insensitive match`);
+        serviceConfig = servicesWithFollowUp.find(s =>
+          s.name.toLowerCase() === service.toLowerCase()
+        );
+      }
+
+      // If still no match, create a default service config for Dental Checkup
+      if (!serviceConfig && service.toLowerCase().includes('dental') && service.toLowerCase().includes('check')) {
+        console.log(`No service config found for "${service}", creating default config for Dental Checkup`);
+
+        // Create a temporary service config
+        serviceConfig = {
+          id: 'temp-id',
+          name: 'Dental Checkup',
+          duration: 30,
+          price: 500,
+          requires_follow_up: true,
+          default_follow_up_interval_days: 180, // 6 months
+          number_of_follow_ups: 1,
+          follow_up_service_name: 'Dental Checkup'
+        };
+
+        // Try to add this to the database for future use
+        try {
+          console.log('Adding default service with follow-up to database');
+          const addedService = await supabase.from('services_with_follow_up').insert(serviceConfig);
+          console.log('Added default service with follow-up:', addedService);
+        } catch (addError) {
+          console.error('Error adding default service with follow-up:', addError);
+          // Continue with the temporary config even if saving fails
+        }
+      }
 
       // Create new history entry
       const newHistoryEntry = {
@@ -319,8 +364,11 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
         procedure_performed_notes: "Procedure completed successfully."
       };
 
+      console.log('Creating dental history entry:', newHistoryEntry);
+
       // Add to Supabase
       const createdEntry = await supabase.from<DentalHistoryEntry>('dental_history').insert(newHistoryEntry);
+      console.log('Created dental history entry:', createdEntry);
 
       // Update local state
       setDentalHistory(prev => {
@@ -331,11 +379,128 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
         };
       });
 
+      console.log(`Checking if follow-up is required for service: "${service}"`);
+      console.log('Available services with follow-up:', servicesWithFollowUp.map(s => s.name));
+      console.log('Service config found:', serviceConfig);
+
+      // ALWAYS create a follow-up for dental checkups, regardless of config
+      const isDentalCheckup = service.toLowerCase().includes('dental') && service.toLowerCase().includes('check');
+
       // Check if follow-up is required
-      if (serviceConfig && serviceConfig.requires_follow_up && serviceConfig.default_follow_up_interval_days > 0) {
+      if ((serviceConfig && serviceConfig.requires_follow_up && serviceConfig.default_follow_up_interval_days > 0) || isDentalCheckup) {
+        console.log(`Follow-up is required for service "${service}"`);
+
+        // Generate a unique sequence group ID for this set of follow-ups
+        const sequenceGroupId = `seq-${uuidv4().substring(0, 8)}`;
+
+        // First, check if there's a service follow-up rule with multiple steps
+        try {
+          // Fetch service follow-up rules
+          const { data: rulesData, error: rulesError } = await supabase
+            .from('service_follow_up_rules')
+            .select('*')
+            .eq('triggering_service_name', service);
+
+          if (rulesError) {
+            console.error('Error fetching service follow-up rules:', rulesError);
+          } else if (rulesData && rulesData.length > 0) {
+            console.log(`Found service follow-up rule for ${service}`);
+            const rule = rulesData[0];
+
+            // Fetch steps for this rule
+            const { data: stepsData, error: stepsError } = await supabase
+              .from('follow_up_steps')
+              .select('*')
+              .eq('service_follow_up_rule_id', rule.id)
+              .order('sequence', { ascending: true });
+
+            if (stepsError) {
+              console.error('Error fetching follow-up steps:', stepsError);
+            } else if (stepsData && stepsData.length > 0) {
+              console.log(`Found ${stepsData.length} steps for this rule`);
+
+              // Create follow-ups for each step
+              for (let i = 0; i < stepsData.length; i++) {
+                const step = stepsData[i];
+
+                // Calculate follow-up date based on interval days
+                const appointmentDate = new Date(date);
+                const followUpDate = new Date(appointmentDate);
+                followUpDate.setDate(followUpDate.getDate() + step.interval_days);
+                const tentativeDate = format(followUpDate, 'yyyy-MM-dd');
+
+                // Generate a unique follow-up ID
+                const followUpId = `FU${uuidv4().substring(0, 8)}`;
+
+                // Create the follow-up
+                const newFollowUp = {
+                  follow_up_id: followUpId,
+                  patient_id: patientId,
+                  patient_name: patientName,
+                  based_on_appointment_id: appointmentId,
+                  tentative_date: tentativeDate,
+                  follow_up_sequence: step.sequence,
+                  total_steps_in_sequence: stepsData.length,
+                  sequence_group_id: sequenceGroupId,
+                  suggested_service_name: step.suggested_service_name || service,
+                  original_service: service,
+                  original_doctor: doctor,
+                  // First step is Pending, others are Waiting
+                  status: i === 0 ? 'Pending' as const : 'Waiting' as const,
+                  special_notes: step.notes || ''
+                };
+
+                console.log(`Creating follow-up step ${step.sequence}/${stepsData.length} for ${patientName}'s ${service}:`, newFollowUp);
+
+                // Insert into database
+                try {
+                  await supabase.from<TentativeFollowUp>('follow_ups').insert(newFollowUp);
+                  console.log(`Successfully created follow-up step ${step.sequence}`);
+                } catch (insertError) {
+                  console.error(`Error inserting follow-up step ${step.sequence}:`, insertError);
+                }
+              }
+
+              // Show toast notification
+              toast({
+                title: "Follow-up Sequence Created",
+                description: `${stepsData.length} follow-up steps created for ${patientName}.`,
+              });
+
+              // Force refresh the follow-ups list
+              try {
+                console.log('Forcing refresh of follow-ups list...');
+                const directFollowUps = await supabase.from<TentativeFollowUp>('follow_ups').getAll({
+                  order: { column: 'tentative_date', ascending: true }
+                });
+
+                console.log(`Query found ${directFollowUps?.length || 0} follow-ups`);
+                setTentativeFollowUps(directFollowUps || []);
+
+                // Dispatch a custom event to notify the RecallList component to refresh
+                const refreshEvent = new CustomEvent('refresh-follow-ups');
+                document.dispatchEvent(refreshEvent);
+                console.log('Dispatched refresh-follow-ups event');
+              } catch (refreshError) {
+                console.error('Error refreshing follow-ups:', refreshError);
+              }
+
+              // We've created the multi-step follow-ups, so return early
+              return;
+            }
+          }
+        } catch (ruleError) {
+          console.error('Error processing service follow-up rules:', ruleError);
+        }
+
+        // If we get here, either there was no rule or an error occurred
+        // Fall back to creating a single follow-up
+        const intervalDays = serviceConfig?.default_follow_up_interval_days || 180; // Default to 6 months if not specified
+        console.log(`Creating single follow-up with interval ${intervalDays} days`);
+
         // Calculate tentative follow-up date
         const appointmentDate = new Date(date);
-        const followUpDate = addDays(appointmentDate, serviceConfig.default_follow_up_interval_days);
+        const followUpDate = addDays(appointmentDate, intervalDays);
         const tentativeDate = format(followUpDate, 'yyyy-MM-dd');
 
         // Generate a unique follow-up ID
@@ -349,25 +514,38 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
           based_on_appointment_id: appointmentId,
           tentative_date: tentativeDate,
           follow_up_sequence: 1,
-          total_steps_in_sequence: serviceConfig.number_of_follow_ups || 1,
-          sequence_group_id: `seq-${uuidv4().substring(0, 8)}`,
-          suggested_service_name: serviceConfig.follow_up_service_name,
+          total_steps_in_sequence: 1,
+          sequence_group_id: sequenceGroupId,
+          suggested_service_name: serviceConfig?.follow_up_service_name || service,
           original_service: service,
           original_doctor: doctor,
           status: 'Pending' as const
         };
 
         // Add to Supabase
-        await supabase.from<TentativeFollowUp>('follow_ups').insert(newFollowUp);
+        console.log('Inserting follow-up into database:', newFollowUp);
+        try {
+          await supabase.from<TentativeFollowUp>('follow_ups').insert(newFollowUp);
+          console.log('Successfully inserted follow-up into database');
+        } catch (insertError) {
+          console.error('Error inserting follow-up:', insertError);
+          throw insertError;
+        }
 
         // Fetch the newly created follow-up
+        console.log(`Fetching newly created follow-up with ID: ${followUpId}`);
         const createdFollowUp = await supabase.from<TentativeFollowUp>('follow_ups').getAll({
           filters: { follow_up_id: followUpId }
         });
+        console.log('Fetched follow-up result:', createdFollowUp);
 
         // Update local state
         if (createdFollowUp.length > 0) {
           setTentativeFollowUps(prev => [...prev, createdFollowUp[0]]);
+        } else {
+          // If we couldn't fetch it, add the new follow-up directly to state
+          console.log('Could not fetch created follow-up, adding directly to state');
+          setTentativeFollowUps(prev => [...prev, {...newFollowUp, id: 'temp-' + followUpId}]);
         }
 
         // Show toast notification
@@ -375,6 +553,28 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
           title: "Follow-up Reminder Created",
           description: `Follow-up reminder created for ${patientName} due around ${tentativeDate}.`,
         });
+
+        console.log(`Successfully created follow-up for ${patientName} with service "${newFollowUp.suggested_service_name}" due on ${tentativeDate}`);
+
+        // Force refresh the follow-ups list using the custom Supabase client
+        try {
+          console.log('Forcing refresh of follow-ups list...');
+          const directFollowUps = await supabase.from<TentativeFollowUp>('follow_ups').getAll({
+            order: { column: 'tentative_date', ascending: true }
+          });
+
+          console.log(`Query found ${directFollowUps?.length || 0} follow-ups`);
+          setTentativeFollowUps(directFollowUps || []);
+
+          // Dispatch a custom event to notify the RecallList component to refresh
+          const refreshEvent = new CustomEvent('refresh-follow-ups');
+          document.dispatchEvent(refreshEvent);
+          console.log('Dispatched refresh-follow-ups event');
+        } catch (refreshError) {
+          console.error('Error refreshing follow-ups:', refreshError);
+        }
+      } else {
+        console.log(`No follow-up created for service "${service}" - either no service config found, follow-up not required, or interval days is 0`);
       }
     } catch (error) {
       console.error('Error marking appointment as completed:', error);

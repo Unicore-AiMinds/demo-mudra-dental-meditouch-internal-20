@@ -554,22 +554,47 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Mark an appointment as completed
   const markAppointmentCompleted = async (appointmentId: string): Promise<void> => {
     try {
+      console.log(`Marking appointment ${appointmentId} as completed`);
       await updateAppointment(appointmentId, { status: 'completed' });
 
       // Dispatch event to update dental charting if needed
       const appointment = dentalAppointments.find(a => a.id === appointmentId || a.appointment_code === appointmentId);
 
-      if (appointment && appointment.charting_entry_id) {
-        // Dispatch event to update charting entry status
-        const event = new CustomEvent('updateChartingEntryStatus', {
-          detail: {
-            entryId: appointment.charting_entry_id,
-            appointmentId: appointmentId,
-            status: 'Completed'
-          }
-        });
+      if (appointment) {
+        console.log('Found appointment:', appointment);
 
-        document.dispatchEvent(event);
+        // Check if this appointment was scheduled from a pending treatment
+        if (appointment.charting_entry_id) {
+          console.log(`Appointment has charting entry ID: ${appointment.charting_entry_id}`);
+
+          // Dispatch event to update charting entry status
+          const event = new CustomEvent('updateChartingEntryStatus', {
+            detail: {
+              entryId: appointment.charting_entry_id,
+              appointmentId: appointmentId,
+              status: 'Completed'
+            }
+          });
+
+          document.dispatchEvent(event);
+          console.log('Dispatched updateChartingEntryStatus event');
+
+          // Also update the pending_treatments table if it exists
+          try {
+            console.log('Updating pending_treatments table');
+            await supabase.from('pending_treatments')
+              .update({ status: 'completed' })
+              .eq('charting_entry_id', appointment.charting_entry_id);
+            console.log('Updated pending_treatments table');
+          } catch (pendingError) {
+            console.error('Error updating pending_treatments:', pendingError);
+            // Continue even if this fails
+          }
+        } else {
+          console.log('Appointment does not have a charting entry ID');
+        }
+      } else {
+        console.log(`Could not find appointment with ID ${appointmentId}`);
       }
 
       toast({

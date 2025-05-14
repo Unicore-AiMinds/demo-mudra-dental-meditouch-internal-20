@@ -18,6 +18,7 @@ interface ServiceFollowUpRuleContextType {
   updateFollowUpRule: (id: string, updates: Partial<ServiceFollowUpRule>) => Promise<ServiceFollowUpRule>;
   deleteFollowUpRule: (id: string) => Promise<void>;
   getFollowUpRuleByServiceName: (serviceName: string) => ServiceFollowUpRule | undefined;
+  cleanupDuplicateRules: () => Promise<void>;
 }
 
 // Create the context
@@ -153,11 +154,99 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  // Function to clean up duplicate rules
+  const cleanupDuplicateRules = async () => {
+    try {
+      console.log('Checking for duplicate follow-up rules...');
+
+      // Group rules by triggering_service_name
+      const rulesByService = followUpRules.reduce((acc, rule) => {
+        const serviceName = rule.triggering_service_name.toLowerCase();
+        if (!acc[serviceName]) {
+          acc[serviceName] = [];
+        }
+        acc[serviceName].push(rule);
+        return acc;
+      }, {} as Record<string, ServiceFollowUpRule[]>);
+
+      // Find services with duplicate rules
+      const servicesWithDuplicates = Object.entries(rulesByService)
+        .filter(([_, rules]) => rules.length > 1)
+        .map(([serviceName, rules]) => ({
+          serviceName,
+          rules,
+          count: rules.length
+        }));
+
+      if (servicesWithDuplicates.length === 0) {
+        console.log('No duplicate rules found');
+        return;
+      }
+
+      console.log(`Found duplicate rules for ${servicesWithDuplicates.length} services:`,
+        servicesWithDuplicates.map(d => `${d.serviceName} (${d.count} rules)`));
+
+      // For each service with duplicates, keep the newest rule and delete the rest
+      for (const { serviceName, rules } of servicesWithDuplicates) {
+        console.log(`Cleaning up duplicates for service: ${serviceName}`);
+
+        // Sort rules by created_at (newest first)
+        const sortedRules = [...rules].sort((a, b) => {
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return dateB - dateA; // Newest first
+        });
+
+        // Keep the newest rule, delete the rest
+        const [newestRule, ...duplicatesToDelete] = sortedRules;
+        console.log(`Keeping newest rule (${newestRule.id}) and deleting ${duplicatesToDelete.length} duplicates`);
+
+        // Delete duplicate rules
+        for (const rule of duplicatesToDelete) {
+          console.log(`Deleting duplicate rule: ${rule.id}`);
+          try {
+            await deleteFollowUpRule(rule.id);
+            console.log(`Successfully deleted duplicate rule: ${rule.id}`);
+          } catch (error) {
+            console.error(`Error deleting duplicate rule ${rule.id}:`, error);
+          }
+        }
+      }
+
+      // Refresh rules after cleanup
+      await fetchFollowUpRules();
+      console.log('Finished cleaning up duplicate rules');
+
+      // Show toast notification
+      toast({
+        title: 'Duplicate Rules Cleaned Up',
+        description: `Removed ${servicesWithDuplicates.reduce((total, { rules }) => total + rules.length - 1, 0)} duplicate follow-up rules.`,
+      });
+    } catch (error) {
+      console.error('Error cleaning up duplicate rules:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to clean up duplicate rules. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Fetch follow-up rules from Supabase on component mount
   useEffect(() => {
-    fetchFollowUpRules();
+    const initializeRules = async () => {
+      await fetchFollowUpRules();
+
+      // Clean up duplicate rules
+      await cleanupDuplicateRules();
+
+      // No longer automatically adding default rules
+      // All rules will be manually added by the user
+    };
+
+    initializeRules();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, toast]);
+  }, [supabase, toast, dentalServices]);
 
   // Add a new follow-up rule
   const addFollowUpRule = async (rule: Omit<ServiceFollowUpRule, 'id' | 'rule_id' | 'created_at' | 'updated_at'>): Promise<ServiceFollowUpRule> => {
@@ -302,25 +391,32 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
         console.log('Using Supabase client directly to insert step');
 
         try {
-          // First, try with the Supabase client
-          const { data: insertedStep, error: insertError } = await supabase
+          // Use the custom Supabase client implementation
+          const insertedStep = await supabase
             .from('follow_up_steps')
-            .insert([
-              {
-                service_follow_up_rule_id: ruleData.id,
-                sequence: step.sequence,
-                interval_days: step.interval_days,
-                suggested_service_name: suggestedServiceName, // Use the validated value
-                notes: step.notes || ''
-              }
-            ])
-            .select();
+            .insert({
+              service_follow_up_rule_id: ruleData.id,
+              sequence: step.sequence,
+              interval_days: step.interval_days,
+              suggested_service_name: suggestedServiceName, // Use the validated value
+              notes: step.notes || ''
+            });
 
-          if (insertError) {
-            console.error('Error inserting step with Supabase client:', insertError);
+          if (!insertedStep) {
+            console.error('Error inserting step with Supabase client');
 
             // Fall back to direct REST API
             console.log('Falling back to direct REST API');
+
+            // Create the step data to insert
+            const stepDataToInsert = {
+              service_follow_up_rule_id: ruleData.id,
+              sequence: step.sequence,
+              interval_days: step.interval_days,
+              suggested_service_name: suggestedServiceName,
+              notes: step.notes || ''
+            };
+
             const stepResponse = await fetch(`${SUPABASE_URL}/rest/v1/follow_up_steps`, {
               method: 'POST',
               headers: {
@@ -351,13 +447,11 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
             console.log('Step inserted successfully with Supabase client:', insertedStep);
 
             // Add the step to the steps array
-            if (insertedStep && insertedStep.length > 0) {
-              steps.push({
-                ...step,
-                id: insertedStep[0].id,
-                service_follow_up_rule_id: ruleData.id
-              });
-            }
+            steps.push({
+              ...step,
+              id: insertedStep.id,
+              service_follow_up_rule_id: ruleData.id
+            });
           }
         } catch (error) {
           console.error('Error in step insertion:', error);
@@ -737,7 +831,27 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
 
   // Get a follow-up rule by service name
   const getFollowUpRuleByServiceName = (serviceName: string): ServiceFollowUpRule | undefined => {
-    return followUpRules.find(rule => rule.triggering_service_name === serviceName);
+    console.log(`Looking for follow-up rule for service: "${serviceName}"`);
+    console.log('Available follow-up rules:', followUpRules.map(r => r.triggering_service_name));
+
+    // Try exact match first
+    let rule = followUpRules.find(rule => rule.triggering_service_name === serviceName);
+
+    // If no exact match, try case-insensitive match
+    if (!rule) {
+      console.log('No exact match found, trying case-insensitive match');
+      rule = followUpRules.find(rule =>
+        rule.triggering_service_name.toLowerCase() === serviceName.toLowerCase()
+      );
+    }
+
+    if (rule) {
+      console.log(`Found follow-up rule for service "${serviceName}":`, rule);
+    } else {
+      console.log(`No follow-up rule found for service "${serviceName}"`);
+    }
+
+    return rule;
   };
 
   return (
@@ -749,7 +863,8 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
         addFollowUpRule,
         updateFollowUpRule,
         deleteFollowUpRule,
-        getFollowUpRuleByServiceName
+        getFollowUpRuleByServiceName,
+        cleanupDuplicateRules
       }}
     >
       {children}

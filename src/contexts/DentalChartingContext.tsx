@@ -82,25 +82,66 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
 
       const { entryId, appointmentId, status } = customEvent.detail;
 
-      try {
-        // Update the charting entry status
-        await updateChartingEntryStatus(entryId, status);
+      console.log(`Received updateChartingEntryStatus event: entryId=${entryId}, appointmentId=${appointmentId}, status=${status}`);
 
-        // Link the charting entry to the appointment
-        await linkChartingEntryToAppointment(entryId, appointmentId);
+      try {
+        // First, fetch the latest charting entries to ensure we have the most up-to-date data
+        console.log('Fetching latest charting entries before updating status');
+        const latestEntries = await supabase.from<ChartingEntry>('dental_charting').getAll();
+        setPatientChartingHistory(latestEntries);
+
+        // Find the entry to update in the latest data
+        const entryToUpdate = latestEntries.find(e => e.entry_id === entryId);
+
+        if (!entryToUpdate) {
+          console.error(`Charting entry with ID ${entryId} not found in latest data`);
+          // Try to find by ID instead of entry_id as a fallback
+          const entryById = latestEntries.find(e => e.id === entryId);
+          if (entryById) {
+            console.log(`Found entry by ID instead: ${entryById.entry_id}`);
+            // Update using the entry_id we found
+            await updateChartingEntryStatus(entryById.entry_id, status);
+            await linkChartingEntryToAppointment(entryById.entry_id, appointmentId);
+          } else {
+            throw new Error(`Charting entry with ID ${entryId} not found`);
+          }
+        } else {
+          console.log(`Found charting entry to update: ${entryToUpdate.entry_id}`);
+          // Update the charting entry status
+          await updateChartingEntryStatus(entryId, status);
+
+          // Link the charting entry to the appointment
+          await linkChartingEntryToAppointment(entryId, appointmentId);
+        }
+
+        // Refresh the charting entries after the update
+        console.log('Refreshing charting entries after update');
+        const updatedEntries = await supabase.from<ChartingEntry>('dental_charting').getAll();
+        setPatientChartingHistory(updatedEntries);
+
+        console.log('Successfully updated charting entry status and refreshed data');
       } catch (error) {
         console.error('Error handling charting entry status update:', error);
+
+        // Show error toast
+        toast({
+          title: 'Error',
+          description: 'Failed to update dental charting status. Please try refreshing the page.',
+          variant: 'destructive',
+        });
       }
     };
 
     // Add event listener
     document.addEventListener('updateChartingEntryStatus', handleUpdateChartingEntryStatus);
+    console.log('Added updateChartingEntryStatus event listener');
 
     // Clean up
     return () => {
       document.removeEventListener('updateChartingEntryStatus', handleUpdateChartingEntryStatus);
+      console.log('Removed updateChartingEntryStatus event listener');
     };
-  }, []);
+  }, [supabase, toast]);
 
   // Add a new charting entry
   const addChartingEntry = async (
@@ -207,31 +248,93 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
   // Update a charting entry status
   const updateChartingEntryStatus = async (entryId: string, status: 'Scheduled' | 'Completed'): Promise<void> => {
     try {
+      console.log(`Updating charting entry ${entryId} status to ${status}`);
+
       // Find the entry to update
       const entry = patientChartingHistory.find(e => e.entry_id === entryId);
 
       if (!entry) {
-        throw new Error('Charting entry not found');
+        console.error(`Charting entry ${entryId} not found in local state`);
+
+        // Try to fetch it directly from the database
+        console.log('Trying to fetch entry directly from database');
+        const { data: entries, error } = await supabase
+          .from('dental_charting')
+          .select('*')
+          .eq('entry_id', entryId);
+
+        if (error) {
+          console.error('Error fetching entry from database:', error);
+          throw new Error('Failed to fetch charting entry from database');
+        }
+
+        if (!entries || entries.length === 0) {
+          console.error(`Charting entry ${entryId} not found in database`);
+          throw new Error('Charting entry not found');
+        }
+
+        // Use the entry from the database
+        const dbEntry = entries[0];
+        console.log('Found charting entry in database:', dbEntry);
+
+        // Update in Supabase
+        await supabase
+          .from('dental_charting')
+          .update({ status })
+          .eq('id', dbEntry.id);
+
+        console.log('Updated charting entry in Supabase');
+
+        // Refresh the local state
+        const updatedEntries = await supabase.from<ChartingEntry>('dental_charting').getAll();
+        setPatientChartingHistory(updatedEntries);
+        console.log('Refreshed local state with latest data');
+      } else {
+        console.log('Found charting entry in local state:', entry);
+
+        // Update in Supabase
+        await supabase.from<ChartingEntry>('dental_charting').update(entry.id, { status });
+        console.log('Updated charting entry in Supabase');
+
+        // Update local state
+        setPatientChartingHistory(prev =>
+          prev.map(e =>
+            e.entry_id === entryId
+              ? { ...e, status }
+              : e
+          )
+        );
+        console.log('Updated local state');
       }
 
-      // Update in Supabase
-      await supabase.from<ChartingEntry>('dental_charting').update(entry.id, { status });
-
-      // Update local state
-      setPatientChartingHistory(prev =>
-        prev.map(e =>
-          e.entry_id === entryId
-            ? { ...e, status }
-            : e
-        )
-      );
+      // If status is Completed, also update any pending_treatments entries
+      if (status === 'Completed') {
+        try {
+          console.log('Updating pending_treatments table');
+          await supabase.from('pending_treatments')
+            .update({ status: 'completed' })
+            .eq('charting_entry_id', entryId);
+          console.log('Updated pending_treatments table');
+        } catch (pendingError) {
+          console.error('Error updating pending_treatments:', pendingError);
+          // Continue even if this fails
+        }
+      }
 
       // Show notification
       toast({
         title: `Treatment ${status}`,
         description: `The treatment has been marked as ${status.toLowerCase()}.`,
       });
+
+      // Refresh the data again to ensure everything is up to date
+      const finalEntries = await supabase.from<ChartingEntry>('dental_charting').getAll();
+      setPatientChartingHistory(finalEntries);
+      console.log('Final refresh of local state completed');
+
     } catch (error) {
+      console.error('Error updating charting entry status:', error);
+
       // Use the global error handler
       handleDatabaseError({
         error,

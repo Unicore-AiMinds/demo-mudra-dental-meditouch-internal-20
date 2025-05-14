@@ -337,6 +337,9 @@ const PatientDetails = () => {
 
         {/* Appointments Tab - Show all upcoming appointments */}
         <TabsContent value="appointments" className="mt-6">
+          {/* Always show the alert for unresolved past appointments */}
+          <UnresolvedAppointmentsAlert patientId={patient.id} />
+
           <PatientUpcomingAppointments
             patientId={patient.id}
             patientName={patient.name}

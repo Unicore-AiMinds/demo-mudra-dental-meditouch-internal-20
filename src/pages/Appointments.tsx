@@ -6,7 +6,9 @@ import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import { useDoctors } from '@/contexts/DoctorContext';
 import { usePatients } from '@/contexts/PatientContext';
 import { useAppointments, Appointment, DentalAppointment, MeditouchAppointment } from '@/contexts/AppointmentContext';
-import { DentalChartingProvider } from '@/contexts/DentalChartingContext';
+import { DentalChartingProvider, useDentalCharting } from '@/contexts/DentalChartingContext';
+import { useSupabase } from '@/contexts/SupabaseContext';
+import { useServices } from '@/contexts/ServiceContext';
 import AppointmentCompletionDialog from '@/components/AppointmentCompletionDialog';
 import UnresolvedAppointmentsAlert from '@/components/UnresolvedAppointmentsAlert';
 import { getLighterColor } from '@/utils/doctorColors';
@@ -57,23 +59,21 @@ import AddPatientDialog from '@/components/AddPatientDialog';
 
 // Using DoctorContext instead of hardcoded doctors array
 
-// Services should be fetched from Supabase, but for now we'll use these
-// TODO: Replace with data from Supabase
-const dentalServices = [
-  { id: 1, name: "Dental Checkup", duration: 15, price: 500 },
-  { id: 2, name: "Root Canal", duration: 60, price: 5000 },
-  { id: 3, name: "Teeth Cleaning", duration: 30, price: 1000 },
-  { id: 4, name: "Crown Fitting", duration: 45, price: 8000 },
-  { id: 5, name: "Dental Filling", duration: 30, price: 1500 }
-];
+// Services are fetched from the ServiceContext
 
-const meditouchServices = [
-  { id: 1, name: "Skin Consultation", duration: 15, price: 800 },
-  { id: 2, name: "Hair Treatment", duration: 30, price: 1500 },
-  { id: 3, name: "Facial", duration: 60, price: 2000 }
+const timeSlots = [
+  '9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM',
+  '10:00 AM', '10:15 AM', '10:30 AM', '10:45 AM',
+  '11:00 AM', '11:15 AM', '11:30 AM', '11:45 AM',
+  '12:00 PM', '12:15 PM', '12:30 PM', '12:45 PM',
+  '1:00 PM', '1:15 PM', '1:30 PM', '1:45 PM',
+  '2:00 PM', '2:15 PM', '2:30 PM', '2:45 PM',
+  '3:00 PM', '3:15 PM', '3:30 PM', '3:45 PM',
+  '4:00 PM', '4:15 PM', '4:30 PM', '4:45 PM',
+  '5:00 PM', '5:15 PM', '5:30 PM', '5:45 PM',
+  '6:00 PM', '6:15 PM', '6:30 PM', '6:45 PM',
+  '7:00 PM', '7:15 PM', '7:30 PM', '7:45 PM'
 ];
-
-const timeSlots = ['9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM', '10:00 AM', '10:15 AM', '10:30 AM', '10:45 AM', '11:00 AM', '11:15 AM', '11:30 AM', '11:45 AM', '12:00 PM', '12:15 PM', '12:30 PM', '12:45 PM', '2:00 PM', '2:15 PM', '2:30 PM', '2:45 PM', '3:00 PM', '3:15 PM', '3:30 PM', '3:45 PM', '4:00 PM', '4:15 PM', '4:30 PM', '4:45 PM', '5:00 PM', '5:15 PM', '5:30 PM', '5:45 PM'];
 
 // Group time slots by hour for the timeline display
 // Move this inside the component to fix the "Invalid hook call" error
@@ -367,6 +367,7 @@ const Appointments = () => {
     deleteAppointment,
     markAppointmentCompleted
   } = useAppointments(); // Get appointments from context
+  const { dentalServices, meditouchServices } = useServices(); // Get services from context
 
   // Local loading state for UI operations
   const [isLoading, setIsLoading] = useState(false);
@@ -543,14 +544,14 @@ const Appointments = () => {
 
   // Get service duration in minutes
   const getServiceDuration = useCallback((serviceName: string) => {
-    // Find the service in the services list
+    // Find the service in the services list from the ServiceContext
     const service = isDental
       ? dentalServices.find(s => s.name === serviceName)
       : meditouchServices.find(s => s.name === serviceName);
 
     // Return the duration or default to 15 minutes if not found
     return service?.duration || 15;
-  }, [isDental]);
+  }, [isDental, dentalServices, meditouchServices]);
 
   // Calculate how many 15-minute slots a service occupies
   const getSlotsOccupied = useCallback((serviceName: string) => {
@@ -956,16 +957,23 @@ const Appointments = () => {
 
   // Handle marking an appointment as completed
   const { markAppointmentCompleted: markAppointmentCompletedInHistory } = useDentalHistory();
+  const { updateChartingEntryStatus } = useDentalCharting();
+  const { supabase } = useSupabase();
   const [completedAppointment, setCompletedAppointment] = useState<AppointmentType | null>(null);
   const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
 
   const handleCompleteAppointment = async (appointment: AppointmentType) => {
     try {
+      console.log('=== HANDLING COMPLETE APPOINTMENT ===');
+      console.log('Appointment:', appointment);
+
       // Update the appointment status to completed in Supabase
       await markAppointmentCompleted(appointment.id || appointment.appointment_id);
+      console.log('Appointment marked as completed in Supabase');
 
       // Get patient ID from the patient_id field
       const patientId = appointment.patient_id;
+      console.log('Patient ID:', patientId);
 
       // Add to dental history and generate follow-up if needed
       await markAppointmentCompletedInHistory(
@@ -976,24 +984,116 @@ const Appointments = () => {
         isDental ? (appointment as DentalAppointment).doctor || 'Unknown Doctor' : 'Unknown Doctor',
         appointment.date || format(new Date(), 'yyyy-MM-dd')
       );
+      console.log('Appointment added to dental history');
 
       // If this is a dental appointment and it's related to a planned treatment, update the charting entry
       if (isDental && appointment.charting_entry_id) {
-        // Create a custom event to update the charting entry status to Completed
-        const event = new CustomEvent('updateChartingEntryStatus', {
-          detail: {
-            entryId: appointment.charting_entry_id,
-            appointmentId: appointment.id || appointment.appointment_id,
-            status: 'Completed'
+        console.log('This is a dental appointment with charting entry ID:', appointment.charting_entry_id);
+
+        try {
+          // First try to directly update the charting entry status using the context function
+          console.log('Directly updating charting entry status...');
+          await updateChartingEntryStatus(appointment.charting_entry_id, 'Completed');
+          console.log('Successfully updated charting entry status directly');
+        } catch (chartingError) {
+          console.error('Error directly updating charting entry status:', chartingError);
+
+          // Try a direct database update as a second fallback
+          try {
+            console.log('Trying direct database update...');
+
+            // First try to find the entry by entry_id
+            const { data: entriesByEntryId, error: entryIdError } = await supabase
+              .from('dental_charting')
+              .select('*')
+              .eq('entry_id', appointment.charting_entry_id);
+
+            if (entryIdError) {
+              console.error('Error fetching by entry_id:', entryIdError);
+              throw entryIdError;
+            }
+
+            if (entriesByEntryId && entriesByEntryId.length > 0) {
+              // Found by entry_id, update it
+              const entry = entriesByEntryId[0];
+              console.log('Found entry by entry_id:', entry);
+
+              const { error: updateError } = await supabase
+                .from('dental_charting')
+                .update({ status: 'Completed' })
+                .eq('id', entry.id);
+
+              if (updateError) {
+                console.error('Error updating entry:', updateError);
+                throw updateError;
+              }
+
+              console.log('Successfully updated entry directly in database');
+            } else {
+              // Try to find by id as a fallback
+              const { data: entriesById, error: idError } = await supabase
+                .from('dental_charting')
+                .select('*')
+                .eq('id', appointment.charting_entry_id);
+
+              if (idError) {
+                console.error('Error fetching by id:', idError);
+                throw idError;
+              }
+
+              if (entriesById && entriesById.length > 0) {
+                // Found by id, update it
+                const entry = entriesById[0];
+                console.log('Found entry by id:', entry);
+
+                const { error: updateError } = await supabase
+                  .from('dental_charting')
+                  .update({ status: 'Completed' })
+                  .eq('id', entry.id);
+
+                if (updateError) {
+                  console.error('Error updating entry:', updateError);
+                  throw updateError;
+                }
+
+                console.log('Successfully updated entry directly in database');
+              } else {
+                throw new Error('Entry not found by either entry_id or id');
+              }
+            }
+          } catch (dbError) {
+            console.error('Error with direct database update:', dbError);
+
+            // Fall back to using the event system as a last resort
+            console.log('Falling back to event system...');
+
+            // Create a custom event to update the charting entry status to Completed
+            const event = new CustomEvent('updateChartingEntryStatus', {
+              detail: {
+                entryId: appointment.charting_entry_id,
+                appointmentId: appointment.id || appointment.appointment_id,
+                status: 'Completed'
+              }
+            });
+
+            console.log('Dispatching updateChartingEntryStatus event with details:', {
+              entryId: appointment.charting_entry_id,
+              appointmentId: appointment.id || appointment.appointment_id,
+              status: 'Completed'
+            });
+
+            document.dispatchEvent(event);
+            console.log('Event dispatched');
           }
-        });
-        document.dispatchEvent(event);
+        }
 
         // Show additional toast notification
         toast({
           title: "Treatment Completed",
           description: "The planned treatment has been marked as completed and will be removed from the pending treatments list."
         });
+      } else {
+        console.log('This is not a dental appointment or does not have a charting entry ID');
       }
 
       // Prepare the appointment data for the completion dialog
@@ -1531,7 +1631,8 @@ const Appointments = () => {
       // If no pending treatment in sessionStorage, check Supabase
       checkPendingTreatments();
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase]);
 
   // Listen for the custom event to open the new appointment form with pre-filled data
   useEffect(() => {
@@ -1573,7 +1674,7 @@ const Appointments = () => {
         setDate(parsedDate); // Also update the UI date
       } else {
         // If no date provided, use current UI date
-        setAppointmentDate(date);
+        setAppointmentDate(new Date(date));
       }
 
       // Reset filtered patients list
@@ -2394,19 +2495,29 @@ const Appointments = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {isDental ? (
-                      <>
-                        <SelectItem value="Dental Checkup">Dental Checkup</SelectItem>
-                        <SelectItem value="Root Canal">Root Canal</SelectItem>
-                        <SelectItem value="Teeth Cleaning">Teeth Cleaning</SelectItem>
-                        <SelectItem value="Crown Fitting">Crown Fitting</SelectItem>
-                        <SelectItem value="Dental Filling">Dental Filling</SelectItem>
-                      </>
+                      dentalServices.length > 0 ? (
+                        dentalServices.map(service => (
+                          <SelectItem key={service.id} value={service.name}>
+                            {service.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                          No services found. Please add services in Settings.
+                        </div>
+                      )
                     ) : (
-                      <>
-                        <SelectItem value="Skin Consultation">Skin Consultation</SelectItem>
-                        <SelectItem value="Hair Treatment">Hair Treatment</SelectItem>
-                        <SelectItem value="Facial">Facial</SelectItem>
-                      </>
+                      meditouchServices.length > 0 ? (
+                        meditouchServices.map(service => (
+                          <SelectItem key={service.id} value={service.name}>
+                            {service.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                          No services found. Please add services in Settings.
+                        </div>
+                      )
                     )}
                   </SelectContent>
                 </Select>
@@ -2620,19 +2731,29 @@ const Appointments = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {isDental ? (
-                      <>
-                        <SelectItem value="Dental Checkup">Dental Checkup</SelectItem>
-                        <SelectItem value="Root Canal">Root Canal</SelectItem>
-                        <SelectItem value="Teeth Cleaning">Teeth Cleaning</SelectItem>
-                        <SelectItem value="Crown Fitting">Crown Fitting</SelectItem>
-                        <SelectItem value="Dental Filling">Dental Filling</SelectItem>
-                      </>
+                      dentalServices.length > 0 ? (
+                        dentalServices.map(service => (
+                          <SelectItem key={service.id} value={service.name}>
+                            {service.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                          No services found. Please add services in Settings.
+                        </div>
+                      )
                     ) : (
-                      <>
-                        <SelectItem value="Skin Consultation">Skin Consultation</SelectItem>
-                        <SelectItem value="Hair Treatment">Hair Treatment</SelectItem>
-                        <SelectItem value="Facial">Facial</SelectItem>
-                      </>
+                      meditouchServices.length > 0 ? (
+                        meditouchServices.map(service => (
+                          <SelectItem key={service.id} value={service.name}>
+                            {service.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                          No services found. Please add services in Settings.
+                        </div>
+                      )
                     )}
                   </SelectContent>
                 </Select>

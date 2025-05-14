@@ -5,6 +5,7 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { usePatients } from '@/contexts/PatientContext';
 import { useAppointments } from '@/contexts/AppointmentContext';
 import { useDoctors } from '@/contexts/DoctorContext';
+import { useServices } from '@/contexts/ServiceContext';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ const NewAppointment = () => {
   const { patients, isLoading: patientsLoading } = usePatients();
   const { appointments, isLoading: appointmentsLoading, addAppointment } = useAppointments();
   const { doctors: doctorsList, isLoading: doctorsLoading } = useDoctors();
+  const { dentalServices, meditouchServices, isLoading: servicesLoading } = useServices();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -48,10 +50,10 @@ const NewAppointment = () => {
 
   const clinicName = isDental ? 'Dental Metrix' : 'Meditouch';
 
-  // Get services from the appropriate clinic
+  // Get services from the ServiceContext
   const services = isDental
-    ? ['Dental Checkup', 'Teeth Cleaning', 'Root Canal', 'Crown Fitting', 'Dental Filling', 'Denture Adjustment']
-    : ['Skin Consultation', 'Hair Treatment', 'Facial', 'Massage Therapy', 'Cosmetic Procedure'];
+    ? dentalServices.map(service => service.name)
+    : meditouchServices.map(service => service.name);
 
   // Filter doctors based on clinic type
   const availableDoctors = isDental
@@ -376,17 +378,45 @@ const NewAppointment = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="service">Service</Label>
-              <Select value={service} onValueChange={setService} required>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="service">Service</Label>
+                {servicesLoading && (
+                  <span className="text-xs text-muted-foreground">Loading services...</span>
+                )}
+                {!servicesLoading && services.length === 0 && (
+                  <span className="text-xs text-amber-600">
+                    No services found. Add services in Settings → Services tab.
+                  </span>
+                )}
+              </div>
+              <Select
+                value={service}
+                onValueChange={setService}
+                required
+                disabled={servicesLoading}
+              >
                 <SelectTrigger id="service">
-                  <SelectValue placeholder="Select service" />
+                  <SelectValue placeholder={servicesLoading ? "Loading services..." : "Select service"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {services.map(s => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
+                  {services.length > 0 ? (
+                    services.map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-4 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        No services found. Please add services in the Settings → Services tab.
+                      </p>
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
+              {!servicesLoading && services.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">
+                  To add appointments, first add services in Settings → Services tab.
+                </p>
+              )}
             </div>
 
             {isDental && (

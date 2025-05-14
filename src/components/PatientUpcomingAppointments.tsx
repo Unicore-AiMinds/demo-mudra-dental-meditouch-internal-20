@@ -14,7 +14,6 @@ import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointments, Appointment, DentalAppointment } from '@/contexts/AppointmentContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import UnresolvedAppointmentsAlert from '@/components/UnresolvedAppointmentsAlert';
 
 // Using Appointment types from AppointmentContext
 
@@ -200,9 +199,6 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
 
   return (
     <>
-      {/* Alert for unresolved past appointments - only shown for this specific patient */}
-      <UnresolvedAppointmentsAlert patientId={patientId} />
-
       <Card>
         <CardHeader className={condensed ? "pb-1 pt-3" : "pb-2"}>
           <CardTitle>{title}</CardTitle>

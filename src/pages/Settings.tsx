@@ -254,30 +254,66 @@ const Settings = () => {
       return;
     }
 
+    // Show a loading toast
+    toast({
+      title: "Processing",
+      description: `Preparing ${docType} document for download...`,
+    });
+
     try {
+      console.log(`Original ${docType} URL:`, docUrl);
+
       // First try to fix the URL format
       const fixedUrl = fixDocumentUrl(docUrl);
       console.log(`Fixed ${docType} URL:`, fixedUrl);
 
-      // Create a signed download link
-      const downloadUrl = await createDownloadLink(fixedUrl || '');
+      if (!fixedUrl) {
+        console.error(`Failed to fix ${docType} document URL`);
+        toast({
+          title: "Error",
+          description: `Invalid ${docType} document URL format.`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create a download link
+      console.log(`Creating download link for ${docType} document...`);
+      const downloadUrl = await createDownloadLink(fixedUrl);
       console.log(`${docType} download URL:`, downloadUrl);
 
       if (downloadUrl) {
+        // Success toast
+        toast({
+          title: "Success",
+          description: `${docType} document ready. Opening in new tab...`,
+        });
+
         // Open the download URL in a new tab
         window.open(downloadUrl, '_blank');
       } else {
+        console.error(`Failed to generate download link for ${docType} document`);
+
+        // Try opening the original URL as a fallback
+        console.log(`Trying to open original URL as fallback: ${docUrl}`);
+        window.open(docUrl, '_blank');
+
         toast({
-          title: "Error",
-          description: `Failed to generate download link for ${docType} document.`,
-          variant: "destructive"
+          title: "Warning",
+          description: `Using direct link for ${docType} document. If it doesn't work, please contact support.`,
+          variant: "default"
         });
       }
     } catch (error) {
       console.error(`Error downloading ${docType} document:`, error);
+
+      // Try opening the original URL as a fallback
+      console.log(`Trying to open original URL after error: ${docUrl}`);
+      window.open(docUrl, '_blank');
+
       toast({
         title: "Error",
-        description: `Failed to download ${docType} document.`,
+        description: `Error processing ${docType} document. Trying direct link instead.`,
         variant: "destructive"
       });
     }
@@ -303,7 +339,7 @@ const Settings = () => {
   // Use service follow-ups from ServiceFollowUpContext
   const { generateFollowUpsForCompletedService } = useServiceFollowUps();
   // Use service follow-up rules from ServiceFollowUpRuleContext
-  const { followUpRules, addFollowUpRule, updateFollowUpRule, deleteFollowUpRule, isLoading: isLoadingRules } = useServiceFollowUpRules();
+  const { followUpRules, addFollowUpRule, updateFollowUpRule, deleteFollowUpRule, cleanupDuplicateRules, isLoading: isLoadingRules } = useServiceFollowUpRules();
   const [dentalLabs, setDentalLabs] = useState(initialDentalLabs);
   const [labWorkTypes, setLabWorkTypes] = useState(initialLabWorkTypes);
   const [currentService, setCurrentService] = useState<Service | null>(null);
@@ -2775,9 +2811,23 @@ const Settings = () => {
                     Configure follow-up protocols for dental services
                   </CardDescription>
                 </div>
-                <Button onClick={() => setIsAddFollowUpRuleDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" /> Add Follow-up Rule
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      cleanupDuplicateRules();
+                      toast({
+                        title: "Cleaning Up Duplicates",
+                        description: "Removing duplicate follow-up rules...",
+                      });
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Clean Up Duplicates
+                  </Button>
+                  <Button onClick={() => setIsAddFollowUpRuleDialogOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> Add Follow-up Rule
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>

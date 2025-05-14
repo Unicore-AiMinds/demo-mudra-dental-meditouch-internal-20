@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { format, addDays, isBefore } from 'date-fns';
-import { Search, Calendar, Clock, AlarmClock, ArrowUpDown } from 'lucide-react';
+import { Search, Calendar, Clock, AlarmClock, ArrowUpDown, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -91,57 +91,87 @@ const PendingTreatmentsView: React.FC = () => {
   // State to track if there was an error loading entries
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  // Function to fetch planned entries
+  const fetchPlannedEntries = async () => {
+    try {
+      console.log('Fetching planned entries...');
+      const entries = await getPlannedChartingEntries();
+      console.log('Fetched planned entries:', entries);
+      setAllPlannedEntries(entries);
+      setLoadError(null);
+    } catch (error) {
+      console.error('Error fetching planned entries:', error);
+      setAllPlannedEntries([]);
+
+      // Use the global error handler
+      const wasHandled = handleDatabaseError({
+        error,
+        toast,
+        errorKey: 'pending_treatments_fetch_error',
+        customMessage: 'Dental charting data will be available after setup is complete.',
+        // Don't show toast here since we're displaying the error in the UI
+        showToast: false
+      });
+
+      // Only set error for non-database errors
+      if (!wasHandled) {
+        setLoadError('Failed to load dental charting entries. Please try again.');
+      } else {
+        setLoadError(null);
+      }
+    }
+  };
+
   // Fetch planned charting entries when component mounts
   useEffect(() => {
-    const fetchPlannedEntries = async () => {
-      try {
-        const entries = await getPlannedChartingEntries();
-        console.log('Fetched planned entries:', entries);
-        setAllPlannedEntries(entries);
-        setLoadError(null);
-      } catch (error) {
-        console.error('Error fetching planned entries:', error);
-        setAllPlannedEntries([]);
-
-        // Use the global error handler
-        const wasHandled = handleDatabaseError({
-          error,
-          toast,
-          errorKey: 'pending_treatments_fetch_error',
-          customMessage: 'Dental charting data will be available after setup is complete.',
-          // Don't show toast here since we're displaying the error in the UI
-          showToast: false
-        });
-
-        // Only set error for non-database errors
-        if (!wasHandled) {
-          setLoadError('Failed to load dental charting entries. Please try again.');
-        } else {
-          setLoadError(null);
-        }
-      }
-    };
-
     fetchPlannedEntries();
-  }, [getPlannedChartingEntries, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Set up an interval to refresh the data every 30 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      console.log('Auto-refreshing pending treatments');
+      fetchPlannedEntries();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Separate entries into pending and snoozed
   const pendingEntries = useMemo(() => {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    return allPlannedEntries.filter(entry => {
+    console.log('Filtering pending entries from', allPlannedEntries.length, 'total entries');
+
+    const filtered = allPlannedEntries.filter(entry => {
       // Get field values with fallbacks
       const status = entry.status;
       const scheduledAppointmentId = entry.scheduled_appointment_id;
       const snoozedUntil = entry.snoozed_until;
 
+      // Log entries that might be problematic
+      if (status === 'Completed') {
+        console.log('Filtering out completed entry:', entry);
+      }
+
+      if (scheduledAppointmentId) {
+        console.log('Filtering out entry with scheduled appointment:', entry);
+      }
+
       // Only show entries that:
       // 1. Are not completed
       // 2. Don't have a scheduled appointment
       // 3. Are not snoozed or the snooze date has passed
-      return status !== 'Completed' &&
+      const shouldInclude = status !== 'Completed' &&
         !scheduledAppointmentId &&
         (!snoozedUntil || snoozedUntil < today);
+
+      return shouldInclude;
     });
+
+    console.log('Filtered to', filtered.length, 'pending entries');
+    return filtered;
   }, [allPlannedEntries]);
 
   const snoozedEntries = useMemo(() => {
@@ -411,7 +441,7 @@ const PendingTreatmentsView: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Search bar */}
+          {/* Search bar and refresh button */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -423,6 +453,20 @@ const PendingTreatmentsView: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                toast({
+                  title: "Refreshing",
+                  description: "Refreshing pending treatments list...",
+                });
+                fetchPlannedEntries();
+              }}
+              className="whitespace-nowrap"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh List
+            </Button>
           </div>
 
           {/* Display error message if there was an error loading entries */}

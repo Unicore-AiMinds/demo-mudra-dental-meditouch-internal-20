@@ -261,62 +261,107 @@ export const fixDocumentUrl = (url: string | null | undefined, bucket: string = 
 };
 
 /**
- * Create a direct download link for a document
+ * Create a download link for a file in Supabase Storage
  *
- * This function creates a direct download link for a document that will work
- * even if the bucket is private. It uses the Supabase client to create a
- * signed URL that will work for a limited time.
+ * This function takes a document URL and creates a signed download link
+ * that can be used to download the file directly.
  *
- * @param path The path of the document within the bucket
+ * @param url The document URL to create a download link for
  * @param bucket The storage bucket name (defaults to doctor-documents)
- * @returns A promise that resolves to the download URL or null if it fails
+ * @returns The signed download URL or null if creation fails
  */
 export const createDownloadLink = async (
-  path: string,
+  url: string,
   bucket: string = DOCTOR_DOCUMENTS_BUCKET
 ): Promise<string | null> => {
   try {
-    console.log(`Creating download link for ${bucket}/${path}`);
+    if (!url) {
+      console.error('No URL provided to createDownloadLink');
+      return null;
+    }
 
-    // Extract the path from the URL if a full URL was provided
-    if (path.startsWith('http')) {
-      try {
-        const urlObj = new URL(path);
-        const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/public\/${bucket}\/(.+)$/);
-        if (pathMatch) {
-          path = pathMatch[1];
+    console.log('Creating download link for URL:', url);
+
+    // For simplicity, let's just use the original URL as a fallback
+    // This will at least allow users to open the document in a new tab
+    // even if we can't create a proper signed URL
+
+    // Try to extract the path using various methods
+    let path = '';
+
+    // Method 1: Try to extract from a standard Supabase URL
+    try {
+      const urlObj = new URL(url);
+      const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/public\/${bucket}\/(.+)$/);
+
+      if (pathMatch) {
+        path = pathMatch[1];
+        console.log('Extracted path using standard pattern:', path);
+      } else {
+        // Method 2: Try to extract UUID and filename pattern
+        const uuidMatch = url.match(/\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/([^\/]+)$/i);
+        if (uuidMatch) {
+          path = `${uuidMatch[1]}/${uuidMatch[2]}`;
+          console.log('Extracted path using UUID pattern:', path);
         } else {
-          // Try to extract the last two parts of the path (usually UUID/filename)
-          const pathParts = urlObj.pathname.split('/');
-          if (pathParts.length >= 2) {
-            path = pathParts.slice(-2).join('/');
+          // Method 3: Just take the last two segments of the path
+          const segments = urlObj.pathname.split('/').filter(Boolean);
+          if (segments.length >= 2) {
+            path = `${segments[segments.length - 2]}/${segments[segments.length - 1]}`;
+            console.log('Extracted path using last segments:', path);
           }
         }
-      } catch (error) {
-        console.error('Error parsing URL:', error);
+      }
+    } catch (e) {
+      console.error('Error parsing URL:', e);
+    }
+
+    if (!path) {
+      console.warn('Could not extract path from URL, using URL as-is');
+      return url; // Return the original URL as fallback
+    }
+
+    // Try to create a signed URL
+    try {
+      console.log(`Attempting to create signed URL for path: ${path} in bucket: ${bucket}`);
+
+      // Create a signed URL that expires in 60 seconds
+      const { data, error } = await supabaseClient.storage
+        .from(bucket)
+        .createSignedUrl(path, 60);
+
+      if (error) {
+        console.error('Error creating signed URL:', error);
+        // Fall back to using the original URL
+        return url;
+      }
+
+      if (!data || !data.signedUrl) {
+        console.error('No signed URL returned');
+        // Fall back to using the original URL
+        return url;
+      }
+
+      console.log('Created signed download link:', data.signedUrl);
+      return data.signedUrl;
+    } catch (signedUrlError) {
+      console.error('Error creating signed URL:', signedUrlError);
+
+      // As a last resort, try to create a direct download URL
+      try {
+        const directUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+        console.log('Created direct download URL as fallback:', directUrl);
+        return directUrl;
+      } catch (directUrlError) {
+        console.error('Error creating direct URL:', directUrlError);
+        // Return the original URL as the ultimate fallback
+        return url;
       }
     }
-
-    // Create a signed URL that will work for 60 seconds
-    const { data, error } = await supabaseClient.storage
-      .from(bucket)
-      .createSignedUrl(path, 60);
-
-    if (error) {
-      console.error('Error creating signed URL:', error);
-      return null;
-    }
-
-    if (!data || !data.signedUrl) {
-      console.error('No signed URL returned');
-      return null;
-    }
-
-    console.log('Created signed URL:', data.signedUrl);
-    return data.signedUrl;
   } catch (error) {
-    console.error('Error creating download link:', error);
-    return null;
+    console.error('Error in createDownloadLink:', error);
+    // Return the original URL as fallback
+    return url;
   }
 };
 
