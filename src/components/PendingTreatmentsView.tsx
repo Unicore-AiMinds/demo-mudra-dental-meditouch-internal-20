@@ -271,13 +271,24 @@ const PendingTreatmentsView: React.FC = () => {
         ? toothNumbers.join(', ')
         : String(toothNumbers || '');
 
+      // Log the entry we're scheduling
+      console.log('Scheduling appointment for dental charting entry:', {
+        entryId,
+        patientId,
+        patientName,
+        service,
+        doctor,
+        teeth: teethString,
+        notes
+      });
+
       // Get the current user
       const { user } = JSON.parse(localStorage.getItem('mudraUser') || '{}');
 
       if (user?.id) {
         // Store the treatment details in Supabase
         try {
-          await supabase.from('pending_treatments').insert({
+          const { data, error } = await supabase.from('pending_treatments').insert({
             user_id: user.id,
             patient_id: patientId,
             patient_name: patientName,
@@ -288,7 +299,13 @@ const PendingTreatmentsView: React.FC = () => {
             notes: notes,
             status: 'pending',
             created_at: new Date().toISOString()
-          });
+          }).select();
+
+          if (error) {
+            console.error('Error inserting pending treatment:', error);
+          } else {
+            console.log('Successfully inserted pending treatment:', data);
+          }
         } catch (supabaseError) {
           // Use the global error handler
           handleDatabaseError({
@@ -302,7 +319,7 @@ const PendingTreatmentsView: React.FC = () => {
       }
 
       // Always set in sessionStorage as a fallback
-      sessionStorage.setItem('pendingTreatment', JSON.stringify({
+      const pendingTreatmentData = {
         patientId: patientId,
         patientName: patientName,
         serviceName: service,
@@ -310,7 +327,10 @@ const PendingTreatmentsView: React.FC = () => {
         chartingEntryId: entryId,
         teeth: teethString,
         notes: notes
-      }));
+      };
+
+      sessionStorage.setItem('pendingTreatment', JSON.stringify(pendingTreatmentData));
+      console.log('Stored pending treatment in sessionStorage:', pendingTreatmentData);
 
       // Show toast notification
       toast({

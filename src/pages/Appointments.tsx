@@ -995,6 +995,24 @@ const Appointments = () => {
           console.log('Directly updating charting entry status...');
           await updateChartingEntryStatus(appointment.charting_entry_id, 'Completed');
           console.log('Successfully updated charting entry status directly');
+
+          // Also update any pending_treatments entries
+          try {
+            console.log('Updating pending_treatments entries...');
+            const { data, error } = await supabase
+              .from('pending_treatments')
+              .update({ status: 'completed' })
+              .eq('charting_entry_id', appointment.charting_entry_id)
+              .select();
+
+            if (error) {
+              console.error('Error updating pending_treatments:', error);
+            } else {
+              console.log('Successfully updated pending_treatments:', data);
+            }
+          } catch (pendingError) {
+            console.error('Error updating pending_treatments:', pendingError);
+          }
         } catch (chartingError) {
           console.error('Error directly updating charting entry status:', chartingError);
 
@@ -1029,6 +1047,24 @@ const Appointments = () => {
               }
 
               console.log('Successfully updated entry directly in database');
+
+              // Also update any pending_treatments entries
+              try {
+                console.log('Updating pending_treatments entries...');
+                const { data, error } = await supabase
+                  .from('pending_treatments')
+                  .update({ status: 'completed' })
+                  .eq('charting_entry_id', appointment.charting_entry_id)
+                  .select();
+
+                if (error) {
+                  console.error('Error updating pending_treatments:', error);
+                } else {
+                  console.log('Successfully updated pending_treatments:', data);
+                }
+              } catch (pendingError) {
+                console.error('Error updating pending_treatments:', pendingError);
+              }
             } else {
               // Try to find by id as a fallback
               const { data: entriesById, error: idError } = await supabase
@@ -1057,6 +1093,24 @@ const Appointments = () => {
                 }
 
                 console.log('Successfully updated entry directly in database');
+
+                // Also update any pending_treatments entries
+                try {
+                  console.log('Updating pending_treatments entries...');
+                  const { data, error } = await supabase
+                    .from('pending_treatments')
+                    .update({ status: 'completed' })
+                    .eq('charting_entry_id', appointment.charting_entry_id)
+                    .select();
+
+                  if (error) {
+                    console.error('Error updating pending_treatments:', error);
+                  } else {
+                    console.log('Successfully updated pending_treatments:', data);
+                  }
+                } catch (pendingError) {
+                  console.error('Error updating pending_treatments:', pendingError);
+                }
               } else {
                 throw new Error('Entry not found by either entry_id or id');
               }
@@ -1084,6 +1138,24 @@ const Appointments = () => {
 
             document.dispatchEvent(event);
             console.log('Event dispatched');
+
+            // Also update any pending_treatments entries
+            try {
+              console.log('Updating pending_treatments entries...');
+              const { data, error } = await supabase
+                .from('pending_treatments')
+                .update({ status: 'completed' })
+                .eq('charting_entry_id', appointment.charting_entry_id)
+                .select();
+
+              if (error) {
+                console.error('Error updating pending_treatments:', error);
+              } else {
+                console.log('Successfully updated pending_treatments:', data);
+              }
+            } catch (pendingError) {
+              console.error('Error updating pending_treatments:', pendingError);
+            }
           }
         }
 
@@ -1398,6 +1470,9 @@ const Appointments = () => {
           // If this appointment is for a planned treatment, link it to the charting entry
           charting_entry_id: pendingChartingEntryId
         };
+
+        // Log the appointment we're creating
+        console.log('Creating dental appointment with charting entry ID:', pendingChartingEntryId);
         console.log('Creating dental appointment:', JSON.stringify(newAppointment, null, 2));
         await addAppointment(newAppointment);
 
@@ -1652,6 +1727,8 @@ const Appointments = () => {
       // Get the data from the event
       const { patientName, patientId, serviceName, doctorName, date, followUpId, chartingEntryId, teeth, notes } = customEvent.detail;
 
+      console.log('Received openNewAppointmentFormWithData event with data:', customEvent.detail);
+
       // Reset form first
       resetAppointmentForm();
 
@@ -1665,7 +1742,10 @@ const Appointments = () => {
       }
 
       // Store the chartingEntryId if provided
-      setPendingChartingEntryId(chartingEntryId);
+      if (chartingEntryId) {
+        console.log('Setting pending charting entry ID:', chartingEntryId);
+        setPendingChartingEntryId(chartingEntryId);
+      }
 
       // Parse the date if provided
       if (date) {
@@ -1674,7 +1754,7 @@ const Appointments = () => {
         setDate(parsedDate); // Also update the UI date
       } else {
         // If no date provided, use current UI date
-        setAppointmentDate(new Date(date));
+        setAppointmentDate(date);
       }
 
       // Reset filtered patients list
@@ -1686,10 +1766,15 @@ const Appointments = () => {
           title: "Planned Treatment Appointment",
           description: `Creating appointment for ${patientName} based on planned treatment.`,
         });
-      } else {
+      } else if (followUpId) {
         toast({
           title: "Follow-up Appointment",
           description: `Creating appointment for ${patientName} based on a follow-up reminder.`,
+        });
+      } else {
+        toast({
+          title: "New Appointment",
+          description: `Creating appointment for ${patientName}.`,
         });
       }
 
