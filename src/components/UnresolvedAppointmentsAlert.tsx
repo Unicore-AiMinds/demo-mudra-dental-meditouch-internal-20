@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, isBefore } from 'date-fns';
 import { useAppointments } from '@/contexts/AppointmentContext';
+import { useClinic } from '@/contexts/ClinicContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Calendar, ArrowRight, X } from 'lucide-react';
@@ -11,16 +12,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 
 interface UnresolvedAppointmentsAlertProps {
   patientId?: string; // Optional - if provided, only show unresolved appointments for this patient
+  clinicType?: 'dental' | 'meditouch' | 'both'; // Optional - if provided, only show appointments for this clinic type
 }
 
 /**
  * Component that displays an alert for past appointments that haven't been marked as completed or cancelled
  */
-export const UnresolvedAppointmentsAlert = ({ patientId }: UnresolvedAppointmentsAlertProps) => {
+export const UnresolvedAppointmentsAlert = ({ patientId, clinicType }: UnresolvedAppointmentsAlertProps) => {
   const { dentalAppointments, meditouchAppointments, getPatientAppointments } = useAppointments();
+  const { activeClinic } = useClinic();
   const [unresolvedAppointments, setUnresolvedAppointments] = useState<Appointment[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Determine which clinic type to use
+  const effectiveClinicType = clinicType || activeClinic || 'both';
 
   // Find unresolved past appointments
   useEffect(() => {
@@ -33,16 +39,23 @@ export const UnresolvedAppointmentsAlert = ({ patientId }: UnresolvedAppointment
       // If patientId is provided, fetch appointments for that patient only
       if (patientId) {
         try {
-          // Get appointments for this specific patient
-          const patientAppointments = await getPatientAppointments(patientId, 'both');
+          // Get appointments for this specific patient with the specified clinic type
+          const patientAppointments = await getPatientAppointments(patientId, effectiveClinicType);
           allAppointments = patientAppointments;
         } catch (error) {
           console.error('Error fetching patient appointments:', error);
           allAppointments = [];
         }
       } else {
-        // Otherwise, use all appointments
-        allAppointments = [...dentalAppointments, ...meditouchAppointments];
+        // Otherwise, filter appointments based on clinic type
+        if (effectiveClinicType === 'dental') {
+          allAppointments = [...dentalAppointments];
+        } else if (effectiveClinicType === 'meditouch') {
+          allAppointments = [...meditouchAppointments];
+        } else {
+          // 'both'
+          allAppointments = [...dentalAppointments, ...meditouchAppointments];
+        }
       }
 
       // Filter for past appointments that are not completed, cancelled, or scheduled
@@ -86,7 +99,7 @@ export const UnresolvedAppointmentsAlert = ({ patientId }: UnresolvedAppointment
     };
 
     fetchUnresolvedAppointments();
-  }, [patientId, dentalAppointments, meditouchAppointments, getPatientAppointments]);
+  }, [patientId, dentalAppointments, meditouchAppointments, getPatientAppointments, effectiveClinicType]);
 
   // If no unresolved appointments, don't render anything
   if (unresolvedAppointments.length === 0) {

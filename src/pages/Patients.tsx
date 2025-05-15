@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { useClinic } from '@/contexts/ClinicContext';
 import { usePatients, Patient } from '@/contexts/PatientContext';
+import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import {
   Card,
   CardContent,
@@ -711,6 +712,46 @@ const Patients = () => {
     console.log('Filtered patients list:', filteredPatientsList);
   }, [filteredPatientsList]);
 
+  // Import the dental history context
+  const { getPatientHistory } = useDentalHistory();
+
+  // State to store the latest visit dates for each patient
+  const [patientLastVisitDates, setPatientLastVisitDates] = useState<Record<string, string>>({});
+
+  // Function to get the latest visit dates for all patients
+  const fetchAllPatientLastVisitDates = useCallback(async () => {
+    const visitDates: Record<string, string> = {};
+
+    // Process patients in batches to avoid overwhelming the system
+    const batchSize = 10;
+    for (let i = 0; i < filteredPatientsList.length; i += batchSize) {
+      const batch = filteredPatientsList.slice(i, i + batchSize);
+
+      // Process each patient in the batch
+      await Promise.all(batch.map(async (patient) => {
+        try {
+          // Get dental history for the patient
+          const history = await getPatientHistory(patient.id);
+
+          // If there's history, store the date of the most recent entry
+          if (history && history.length > 0) {
+            // History is already sorted by date in descending order
+            visitDates[patient.id] = history[0].date;
+          }
+        } catch (error) {
+          console.error(`Error getting latest visit date for patient ${patient.id}:`, error);
+        }
+      }));
+    }
+
+    setPatientLastVisitDates(visitDates);
+  }, [filteredPatientsList, getPatientHistory]);
+
+  // Fetch the latest visit dates when the filtered patients list changes
+  useEffect(() => {
+    fetchAllPatientLastVisitDates();
+  }, [fetchAllPatientLastVisitDates]);
+
   // Memoize the columns definition to prevent recreating it on every render
   const columns = useMemo<ColumnDef<Patient>[]>(() => [
     {
@@ -776,12 +817,20 @@ const Patients = () => {
           Last Visit <ArrowUpDown className="ml-2 h-4 w-4 inline" />
         </div>
       ),
-      cell: ({ row }) => (
-        <div className="flex items-center">
-          <CalendarRange className="mr-2 h-4 w-4 text-muted-foreground" />
-          {row.getValue("lastVisit") || "No visits"}
-        </div>
-      ),
+      cell: ({ row }) => {
+        // Get the patient ID
+        const patientId = row.original.id;
+
+        // Get the latest visit date from our state
+        const lastVisitDate = patientLastVisitDates[patientId] || '';
+
+        return (
+          <div className="flex items-center">
+            <CalendarRange className="mr-2 h-4 w-4 text-muted-foreground" />
+            {lastVisitDate ? new Date(lastVisitDate).toLocaleDateString() : "No visits"}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "created_at",
@@ -827,7 +876,7 @@ const Patients = () => {
         </DropdownMenu>
       ),
     },
-  ], [activeClinic, handleViewDetails]); // Depend on activeClinic and handleViewDetails
+  ], [activeClinic, handleViewDetails, patientLastVisitDates]); // Depend on activeClinic, handleViewDetails, and patientLastVisitDates
 
   // Memoize the table options to prevent unnecessary re-renders
   const tableOptions = useMemo(() => ({

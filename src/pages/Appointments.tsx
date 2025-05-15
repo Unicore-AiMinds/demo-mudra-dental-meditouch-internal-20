@@ -34,6 +34,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Textarea } from '@/components/ui/textarea';
 
 import { Calendar } from '@/components/ui/calendar';
 import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday, parseISO } from 'date-fns';
@@ -172,7 +173,7 @@ const CalendarAppointmentItem = ({
   isDental: boolean,
   onClick: () => void,
   isCompact?: boolean,
-  doctorsList: { id: number; name: string; color: string }[],
+  doctorsList: { id: string; name: string; color?: string }[],
   getServiceDuration: (serviceName: string) => number
 }) => {
   // Default colors
@@ -180,23 +181,27 @@ const CalendarAppointmentItem = ({
   const borderColor = isDental ? 'border-dental-primary' : 'border-meditouch-primary';
   const textColor = isDental ? 'text-dental-primary' : 'text-meditouch-primary';
 
-  // Custom styles for inline styling with doctor colors
+  // Custom styles for inline styling with provider colors
   let customStyles = {};
 
-  // If it's a dental appointment, try to find the doctor's color
+  // Get the provider name (doctor for dental, therapist for meditouch)
+  let providerName = '';
   if (isDental && 'doctor' in appointment) {
-    const doctorName = appointment.doctor;
-    // Find the doctor in the doctors array passed as prop
-    const doctor = doctorsList.find(d => d.name === doctorName);
-    if (doctor && doctor.color) {
-      // Use the doctor's color for styling
-      const doctorColor = doctor.color;
-      customStyles = {
-        backgroundColor: getLighterColor(doctorColor, 0.15),
-        borderLeftColor: doctorColor,
-        color: doctorColor
-      };
-    }
+    providerName = appointment.doctor;
+  } else if (!isDental && 'therapist' in appointment && appointment.therapist) {
+    providerName = appointment.therapist;
+  }
+
+  // Find the provider in the doctors array passed as prop
+  const provider = doctorsList.find(d => d.name === providerName);
+  if (provider && provider.color) {
+    // Use the provider's color for styling
+    const providerColor = provider.color;
+    customStyles = {
+      backgroundColor: getLighterColor(providerColor, 0.15),
+      borderLeftColor: providerColor,
+      color: providerColor
+    };
   }
 
   // Create tooltip content for appointment details
@@ -204,8 +209,8 @@ const CalendarAppointmentItem = ({
     <div className="text-xs">
       <div className="font-bold">{appointment.patient_name}</div>
       <div>{appointment.service}</div>
-      {isDental && (appointment as DentalAppointment).doctor && (
-        <div>Doctor: {(appointment as DentalAppointment).doctor}</div>
+      {providerName && (
+        <div>Doctor: {providerName}</div>
       )}
       <div>Time: {appointment.time}</div>
       <div>Duration: {getServiceDuration(appointment.service)} min</div>
@@ -274,21 +279,28 @@ const TimeSlotAppointment = ({
   isMultiSlot?: boolean,
   isFirstSlot?: boolean,
   slotsOccupied?: number,
-  doctorsList: { id: number; name: string; color: string }[]
+  doctorsList: { id: string; name: string; color?: string }[]
 }) => {
   // Get doctor color from the doctors array if it's a dental appointment
   const bgColor = isDental ? 'bg-dental-primary' : 'bg-meditouch-primary';
 
-  // If it's a dental appointment, try to find the doctor's color
+  // Get the provider name (doctor for dental, therapist for meditouch)
+  let providerName = '';
   if (isDental && 'doctor' in appointment) {
-    const doctorName = appointment.doctor;
-    // Find the doctor in the doctors array passed as prop
-    const doctor = doctorsList.find(d => d.name === doctorName);
-    if (doctor && doctor.color) {
-      // We'll use inline styles instead of Tailwind classes for doctor colors
-      // Just keep the default bgColor for the className
+    providerName = appointment.doctor;
+  } else if (!isDental) {
+    // For Meditouch, check if therapist exists
+    if ('therapist' in appointment && appointment.therapist) {
+      providerName = appointment.therapist;
     }
+    // Log for debugging
+    console.log('Meditouch appointment:', appointment);
   }
+
+  // Find the provider in the doctors array passed as prop
+  const provider = doctorsList.find(d => d.name === providerName);
+  // We'll use inline styles instead of Tailwind classes for provider colors
+  // Just keep the default bgColor for the className
 
   // Create tooltip content with complete appointment details
   const tooltipContent = (
@@ -298,8 +310,8 @@ const TimeSlotAppointment = ({
       {isMultiSlot && (
         <div><span className="font-medium">Duration:</span> {slotsOccupied * 15} min</div>
       )}
-      {isDental && (appointment as DentalAppointment).doctor && (
-        <div><span className="font-medium">Doctor:</span> {(appointment as DentalAppointment).doctor}</div>
+      {providerName && (
+        <div><span className="font-medium">Doctor:</span> {providerName}</div>
       )}
       <div><span className="font-medium">Time:</span> {appointment.time}</div>
     </div>
@@ -314,18 +326,15 @@ const TimeSlotAppointment = ({
         onClick();
       }}
       style={{
-        backgroundColor: isDental && 'doctor' in appointment ?
-          doctorsList.find(d => d.name === appointment.doctor)?.color ||
-          (isDental ? '#4A90E2' : '#16A085') :
-          (isDental ? '#4A90E2' : '#16A085')
+        backgroundColor: provider?.color || (isDental ? '#4A90E2' : '#16A085')
       }}
     >
       <div className="font-medium truncate">{appointment.service}</div>
       <div className="text-white/90 text-[10px] truncate font-bold">
         {appointment.patient_name}
       </div>
-      {!isCompact && isDental && (appointment as DentalAppointment).doctor && (
-        <div className="text-white/90 text-[10px] font-medium truncate">{(appointment as DentalAppointment).doctor}</div>
+      {!isCompact && providerName && (
+        <div className="text-white/90 text-[10px] font-medium truncate">{providerName}</div>
       )}
 
       {/* Show continuation indicator for multi-slot appointments */}
@@ -408,6 +417,7 @@ const Appointments = () => {
   const [appointmentService, setAppointmentService] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
   const [appointmentDoctor, setAppointmentDoctor] = useState("");
+  const [appointmentNotes, setAppointmentNotes] = useState("");
   const [appointmentDate, setAppointmentDate] = useState<Date | undefined>(undefined);
   const [pendingChartingEntryId, setPendingChartingEntryId] = useState<string | undefined>(undefined);
 
@@ -417,6 +427,8 @@ const Appointments = () => {
 
   // State for appointment creation confirmation dialog
   const [isConfirmCreateOpen, setIsConfirmCreateOpen] = useState(false);
+  const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
+  const [warningMessage, setWarningMessage] = useState("");
   const [pendingAppointment, setPendingAppointment] = useState<{
     patient?: string;
     patient_name?: string;
@@ -424,6 +436,7 @@ const Appointments = () => {
     time: string;
     date: Date | undefined;
     doctor?: string;
+    notes?: string;
   } | null>(null);
 
   // Group time slots by hour for the timeline display - moved inside component
@@ -609,16 +622,123 @@ const Appointments = () => {
         app.status !== 'completed'
       );
 
-    // Count appointments per time slot
+    // Count appointments per time slot, accounting for multi-slot appointments
     const slotCounts: Record<string, number> = {};
+
+    // Initialize all slots with 0 count
+    timeSlots.forEach(slot => {
+      slotCounts[slot] = 0;
+    });
+
+    // For each appointment, increment count for all slots it occupies
     dateAppointments.forEach(app => {
-      if (!slotCounts[app.time]) {
-        slotCounts[app.time] = 0;
+      const startSlot = app.time;
+      const slotsOccupied = getSlotsOccupied(app.service);
+
+      // Find the starting index of this appointment
+      const startIndex = timeSlots.indexOf(startSlot);
+      if (startIndex === -1) return;
+
+      // Increment count for each slot this appointment occupies
+      for (let i = 0; i < slotsOccupied; i++) {
+        const slotIndex = startIndex + i;
+        if (slotIndex < timeSlots.length) {
+          const slot = timeSlots[slotIndex];
+          slotCounts[slot] = (slotCounts[slot] || 0) + 1;
+        }
       }
-      slotCounts[app.time]++;
     });
 
     return slotCounts;
+  };
+
+  // Function to check if a doctor is already booked in the other clinic type for a specific time slot
+  const isDoctorBookedInOtherClinic = (doctorName: string, timeSlot: string, serviceToCheck?: string) => {
+    // Get all appointments for the current date (not cancelled or completed)
+    // We need to check both dental and meditouch appointments, regardless of current clinic type
+    const allAppointments = [...dentalAppointments, ...meditouchAppointments]
+      .filter(app =>
+        app.date === format(date, 'yyyy-MM-dd') &&
+        app.status !== 'cancelled' &&
+        app.status !== 'completed'
+      );
+
+    // Get the time slot index
+    const timeSlotIndex = timeSlots.indexOf(timeSlot);
+    if (timeSlotIndex === -1) return false;
+
+    // Calculate how many slots the new appointment would occupy
+    // If serviceToCheck is provided, use it, otherwise use the currently selected service
+    const newAppointmentService = serviceToCheck || appointmentService;
+    const newAppointmentSlots = newAppointmentService ? getSlotsOccupied(newAppointmentService) : 1;
+    const newAppointmentEndIndex = timeSlotIndex + newAppointmentSlots - 1;
+
+    // Filter appointments to only include those from the other clinic type
+    const otherClinicAppointments = allAppointments.filter(app => {
+      const isAppDental = app.clinic_type === 'dental';
+      return isAppDental !== isDental; // Only include appointments from the other clinic type
+    });
+
+    // Log for debugging
+    console.log(`Checking if doctor ${doctorName} is booked at ${timeSlot} in the ${isDental ? 'Meditouch' : 'Dental'} clinic`);
+    console.log(`Found ${otherClinicAppointments.length} appointments in the other clinic type`);
+    console.log(`New appointment would occupy ${newAppointmentSlots} slots, from index ${timeSlotIndex} to ${newAppointmentEndIndex}`);
+
+    // Check if the doctor is booked in any appointment at this time slot or overlapping slots
+    return otherClinicAppointments.some(app => {
+      // Get the doctor/therapist name from the appointment
+      const appDoctorName = 'doctor' in app ? app.doctor :
+                           ('therapist' in app && app.therapist) ? app.therapist : '';
+
+      // If not the same doctor, no conflict
+      if (appDoctorName !== doctorName) return false;
+
+      // Get the appointment's time slot index
+      const appTimeSlotIndex = timeSlots.indexOf(app.time);
+      if (appTimeSlotIndex === -1) return false;
+
+      // Calculate how many slots this appointment occupies
+      const slotsOccupied = getSlotsOccupied(app.service);
+      const appointmentEndIndex = appTimeSlotIndex + slotsOccupied - 1;
+
+      // Log for debugging
+      console.log(`Found appointment for doctor ${appDoctorName} at ${app.time} (slots: ${slotsOccupied}, ends at index: ${appointmentEndIndex})`);
+      console.log(`Checking if it overlaps with new appointment from index ${timeSlotIndex} to ${newAppointmentEndIndex}`);
+
+      // Check for overlap between the two appointments
+      // Two appointments overlap if:
+      // 1. The existing appointment starts during the new appointment time range
+      // 2. The new appointment starts during the existing appointment time range
+      // 3. The existing appointment completely contains the new appointment
+      // 4. The new appointment completely contains the existing appointment
+      const overlaps = (
+        // Case 1: Existing appointment starts during the new appointment
+        (appTimeSlotIndex >= timeSlotIndex && appTimeSlotIndex <= newAppointmentEndIndex) ||
+        // Case 2: New appointment starts during the existing appointment
+        (timeSlotIndex >= appTimeSlotIndex && timeSlotIndex <= appointmentEndIndex) ||
+        // Case 3: Existing appointment completely contains the new appointment
+        (appTimeSlotIndex <= timeSlotIndex && appointmentEndIndex >= newAppointmentEndIndex) ||
+        // Case 4: New appointment completely contains the existing appointment
+        (timeSlotIndex <= appTimeSlotIndex && newAppointmentEndIndex >= appointmentEndIndex)
+      );
+
+      if (overlaps) {
+        console.log(`OVERLAP DETECTED: Doctor ${doctorName} is already booked at ${app.time} in the ${app.clinic_type} clinic`);
+        console.log(`Existing appointment: Starts at index ${appTimeSlotIndex}, ends at index ${appointmentEndIndex}`);
+        console.log(`New appointment: Starts at index ${timeSlotIndex}, ends at index ${newAppointmentEndIndex}`);
+        console.log(`Overlap reason: ${
+          (appTimeSlotIndex >= timeSlotIndex && appTimeSlotIndex <= newAppointmentEndIndex) ?
+            "Existing appointment starts during new appointment" :
+          (timeSlotIndex >= appTimeSlotIndex && timeSlotIndex <= appointmentEndIndex) ?
+            "New appointment starts during existing appointment" :
+          (appTimeSlotIndex <= timeSlotIndex && appointmentEndIndex >= newAppointmentEndIndex) ?
+            "Existing appointment completely contains new appointment" :
+            "New appointment completely contains existing appointment"
+        }`);
+      }
+
+      return overlaps;
+    });
   };
 
   const getAvailableTimeSlots = () => {
@@ -665,55 +785,33 @@ const Appointments = () => {
       }
     });
 
-    // If we're creating a new appointment, we need to check if there are enough consecutive slots
-    if (appointmentService) {
-      const requiredSlots = getSlotsOccupied(appointmentService);
-
-      // Filter slots that have enough consecutive availability
+    // Filter out past time slots if we're looking at today
+    if (isToday) {
       return timeSlots.filter(slot => {
-        // If this slot has no availability, it's not valid
-        if (slotAvailability[slot] <= 0) return false;
+        // Parse the time slot
+        const [timeStr, modifier] = slot.split(' ');
+        let hours = parseInt(timeStr.split(':')[0]);
+        const minutes = parseInt(timeStr.split(':')[1]);
 
-        // For single-slot services, just check this slot
-        if (requiredSlots <= 1) return true;
+        // Convert to 24-hour format
+        if (modifier === 'PM' && hours < 12) hours += 12;
+        if (modifier === 'AM' && hours === 12) hours = 0;
 
-        // For multi-slot services, check if there are enough consecutive available slots
-        const startIndex = timeSlots.indexOf(slot);
-        if (startIndex === -1) return false;
+        // Create a date object for this time slot
+        const slotTime = new Date(today);
+        slotTime.setHours(hours, minutes, 0, 0);
 
-        // Check all required slots
-        for (let i = 0; i < requiredSlots; i++) {
-          const slotIndex = startIndex + i;
-          if (slotIndex >= timeSlots.length) return false; // Not enough slots left in the day
-
-          const currentSlot = timeSlots[slotIndex];
-          if (slotAvailability[currentSlot] <= 0) return false; // This slot is already fully booked
-        }
-
-        return true;
+        // Only include future time slots
+        return slotTime > now;
       });
     }
 
-    // If no service is selected, just return all slots with any availability
-    return timeSlots.filter(slot => slotAvailability[slot] > 0);
+    // Return all time slots, regardless of availability
+    // This is the key change - we no longer filter out fully booked slots
+    return timeSlots;
   };
 
   const handleNewAppointmentForTimeSlot = (time: string) => {
-    // Check if the slot is available based on clinic type
-    const slotCounts = getBookedTimeSlots();
-    const currentCount = slotCounts[time] || 0;
-    const maxAllowed = isDental ? 2 : 1;
-
-    if (currentCount >= maxAllowed) {
-      // Slot is already fully booked
-      toast({
-        title: "Time Slot Unavailable",
-        description: `This time slot is already fully booked. Please select another time.`,
-        variant: "destructive"
-      });
-      return;
-    }
-
     // Check if the time slot is in the past
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -743,6 +841,38 @@ const Appointments = () => {
           variant: "destructive"
         });
         return;
+      }
+    }
+
+    // Check if the service will require multiple slots and if those slots are available
+    if (appointmentService) {
+      const requiredSlots = getSlotsOccupied(appointmentService);
+      if (requiredSlots > 1) {
+        // Check if all required slots are available
+        const startIndex = timeSlots.indexOf(time);
+        let hasConflict = false;
+        const slotCounts = getBookedTimeSlots();
+        const maxAllowed = isDental ? 2 : 1;
+
+        for (let i = 0; i < requiredSlots; i++) {
+          const slotIndex = startIndex + i;
+          if (slotIndex >= timeSlots.length) {
+            hasConflict = true;
+            break;
+          }
+
+          const slot = timeSlots[slotIndex];
+          if (slotCounts[slot] >= maxAllowed) {
+            hasConflict = true;
+            break;
+          }
+        }
+
+        if (hasConflict) {
+          setWarningMessage(`This service requires ${requiredSlots} consecutive time slots (${requiredSlots * 15} minutes), and some slots are already fully booked. This may cause scheduling conflicts. Do you want to continue?`);
+          setIsWarningDialogOpen(true);
+          return; // Wait for user confirmation before proceeding
+        }
       }
     }
 
@@ -782,6 +912,7 @@ const Appointments = () => {
     setAppointmentPatient(appointment.patient_name);
     setAppointmentService(appointment.service);
     setAppointmentTime(appointment.time);
+    setAppointmentNotes(appointment.notes || "");
 
     // Parse and set the date
     if (appointment.date) {
@@ -789,9 +920,11 @@ const Appointments = () => {
       setAppointmentDate(parsedDate);
     }
 
-    // Set doctor for dental appointments
+    // Set doctor/therapist field
     if (isDental && 'doctor' in appointment) {
       setAppointmentDoctor((appointment as DentalAppointment).doctor);
+    } else if (!isDental && 'therapist' in appointment && appointment.therapist) {
+      setAppointmentDoctor(appointment.therapist);
     }
 
     // Reset filtered patients list for the search - only show patients for current clinic
@@ -879,12 +1012,15 @@ const Appointments = () => {
         const updateData: Partial<Appointment> = {
           time: appointmentTime,
           service: appointmentService,
-          date: appointmentDate ? format(appointmentDate, 'yyyy-MM-dd') : editingAppointment.date
+          date: appointmentDate ? format(appointmentDate, 'yyyy-MM-dd') : editingAppointment.date,
+          notes: appointmentNotes
         };
 
-        // Add doctor for dental appointments
+        // Add doctor for dental appointments or therapist for meditouch
         if (isDental) {
           updateData.doctor = appointmentDoctor;
+        } else {
+          updateData.therapist = appointmentDoctor;
         }
 
         // Update the appointment in Supabase
@@ -953,6 +1089,111 @@ const Appointments = () => {
   const cancelCancel = () => {
     setIsConfirmCancelOpen(false);
     setIsEditAppointmentOpen(true); // Go back to edit dialog
+  };
+
+  // Handle warning dialog confirmation
+  const handleWarningConfirm = () => {
+    setIsWarningDialogOpen(false);
+
+    // Check if we're in the appointment creation form or time slot click
+    if (isNewAppointmentOpen) {
+      // We're in the appointment creation form, proceed with creating the appointment
+      // Store the pending appointment data and open confirmation dialog
+      setPendingAppointment({
+        patient_name: appointmentPatient,
+        service: appointmentService,
+        time: appointmentTime,
+        date: appointmentDate,
+        doctor: isDental ? appointmentDoctor : undefined,
+        notes: appointmentNotes
+      });
+
+      // Close the new appointment form and open the confirmation dialog
+      setIsNewAppointmentOpen(false);
+      setIsConfirmCreateOpen(true);
+    } else {
+      // We're clicking on a time slot, open the new appointment form
+      // Make sure we're not already editing and close any open new appointment dialog
+      setIsNewAppointmentOpen(false);
+
+      // Reset all form fields
+      resetAppointmentForm();
+
+      // Set only the time and date from the clicked slot
+      // Note: appointmentTime is already set when the warning dialog was opened
+      setAppointmentDate(date);
+
+      // Debug log
+      console.log('Setting appointment date from warning dialog:', format(date, 'yyyy-MM-dd'));
+
+      // Reset filtered patients list - only show patients for current clinic
+      const clinicPatients = patients.filter(p =>
+        p.clinic === activeClinic || p.clinic === 'both'
+      );
+      setFilteredPatients(clinicPatients.map(p => ({ id: p.id, name: p.name })));
+
+      // Open the dialog
+      setTimeout(() => {
+        setIsNewAppointmentOpen(true);
+        console.log('Opening new appointment form after warning confirmation');
+      }, 50);
+    }
+  };
+
+  // Handle warning dialog cancellation
+  const handleWarningCancel = () => {
+    setIsWarningDialogOpen(false);
+  };
+
+  // Function to handle doctor double-booking warning
+  const handleDoctorDoubleBookingWarning = (doctorName: string, timeSlot: string) => {
+    // Find the overlapping appointment in the other clinic
+    const otherClinicType = isDental ? 'meditouch' : 'dental';
+    const otherClinicAppointments = (isDental ? meditouchAppointments : dentalAppointments)
+      .filter(app =>
+        app.date === format(date, 'yyyy-MM-dd') &&
+        app.status !== 'cancelled' &&
+        app.status !== 'completed'
+      );
+
+    // Find the doctor's appointments in the other clinic
+    const doctorAppointments = otherClinicAppointments.filter(app => {
+      const appDoctorName = 'doctor' in app ? app.doctor :
+                           ('therapist' in app && app.therapist) ? app.therapist : '';
+      return appDoctorName === doctorName;
+    });
+
+    // Get the time slot index
+    const timeSlotIndex = timeSlots.indexOf(timeSlot);
+
+    // Find the overlapping appointment
+    const overlappingAppointment = doctorAppointments.find(app => {
+      const appTimeSlotIndex = timeSlots.indexOf(app.time);
+      const slotsOccupied = getSlotsOccupied(app.service);
+      const appointmentEndIndex = appTimeSlotIndex + slotsOccupied - 1;
+
+      // Check for overlap
+      return (
+        (appTimeSlotIndex <= timeSlotIndex && appointmentEndIndex >= timeSlotIndex) ||
+        (timeSlotIndex <= appTimeSlotIndex && timeSlotIndex + getSlotsOccupied(appointmentService || '') - 1 >= appTimeSlotIndex)
+      );
+    });
+
+    // Create a more specific warning message
+    let warningMsg = `Doctor ${doctorName} is already booked in the ${isDental ? 'Meditouch' : 'Dental'} clinic `;
+
+    if (overlappingAppointment) {
+      warningMsg += `for ${overlappingAppointment.service} from ${overlappingAppointment.time} to ${
+        timeSlots[timeSlots.indexOf(overlappingAppointment.time) + getSlotsOccupied(overlappingAppointment.service) - 1] || 'end of session'
+      }. `;
+    } else {
+      warningMsg += `during this time. `;
+    }
+
+    warningMsg += `You can still proceed with booking, but be aware that the doctor will have appointments in both clinics at overlapping times.`;
+
+    setWarningMessage(warningMsg);
+    setIsWarningDialogOpen(true);
   };
 
   // Handle marking an appointment as completed
@@ -1337,29 +1578,27 @@ const Appointments = () => {
 
     // Check if all required slots are available
     const startIndex = timeSlots.indexOf(appointmentTime);
-    let allSlotsAvailable = true;
+    let hasConflict = false;
 
     for (let i = 0; i < requiredSlots; i++) {
       const slotIndex = startIndex + i;
       if (slotIndex >= timeSlots.length) {
-        allSlotsAvailable = false;
+        hasConflict = true;
         break;
       }
 
       const slot = timeSlots[slotIndex];
       if (slotAvailability[slot] <= 0) {
-        allSlotsAvailable = false;
+        hasConflict = true;
         break;
       }
     }
 
-    if (!allSlotsAvailable) {
-      toast({
-        title: "Time Slot Unavailable",
-        description: `This service requires ${requiredSlots} consecutive time slots (${requiredSlots * 15} minutes), but some are already fully booked. Please select another time.`,
-        variant: "destructive"
-      });
-      return;
+    if (hasConflict) {
+      // Show warning dialog instead of toast
+      setWarningMessage(`This service requires ${requiredSlots} consecutive time slots (${requiredSlots * 15} minutes), and some slots are already fully booked. This may cause scheduling conflicts. Do you want to continue?`);
+      setIsWarningDialogOpen(true);
+      return; // Wait for user confirmation before proceeding
     }
 
     // Store the pending appointment data and open confirmation dialog
@@ -1368,7 +1607,8 @@ const Appointments = () => {
       service: appointmentService,
       time: appointmentTime,
       date: appointmentDate,
-      doctor: isDental ? appointmentDoctor : undefined
+      doctor: isDental ? appointmentDoctor : undefined,
+      notes: appointmentNotes
     });
 
     // Close the new appointment form and open the confirmation dialog
@@ -1468,7 +1708,8 @@ const Appointments = () => {
           payment_status: 'unpaid' as const,
           clinic_type: 'dental' as const,
           // If this appointment is for a planned treatment, link it to the charting entry
-          charting_entry_id: pendingChartingEntryId
+          charting_entry_id: pendingChartingEntryId,
+          notes: pendingAppointment.notes || ''
         };
 
         // Log the appointment we're creating
@@ -1489,7 +1730,9 @@ const Appointments = () => {
           date: formattedDate,
           status: 'confirmed' as const,
           payment_status: 'unpaid' as const,
-          clinic_type: 'meditouch' as const
+          clinic_type: 'meditouch' as const,
+          therapist: appointmentDoctor || pendingAppointment.doctor || '', // Use doctor field for therapist
+          notes: pendingAppointment.notes || ''
         };
         console.log('Creating meditouch appointment:', JSON.stringify(newAppointment, null, 2));
         await addAppointment(newAppointment);
@@ -1568,6 +1811,7 @@ const Appointments = () => {
     setAppointmentService("");
     setAppointmentTime("");
     setAppointmentDoctor("");
+    setAppointmentNotes("");
     setAppointmentDate(undefined);
     setPendingChartingEntryId(undefined);
   }, []);
@@ -1741,6 +1985,11 @@ const Appointments = () => {
         setAppointmentDoctor(doctorName);
       }
 
+      // Set notes if provided
+      if (notes) {
+        setAppointmentNotes(notes);
+      }
+
       // Store the chartingEntryId if provided
       if (chartingEntryId) {
         console.log('Setting pending charting entry ID:', chartingEntryId);
@@ -1754,7 +2003,7 @@ const Appointments = () => {
         setDate(parsedDate); // Also update the UI date
       } else {
         // If no date provided, use current UI date
-        setAppointmentDate(date);
+        setAppointmentDate(new Date());
       }
 
       // Reset filtered patients list
@@ -1876,8 +2125,7 @@ const Appointments = () => {
         </div>
       </div>
 
-      {/* Alert for unresolved past appointments */}
-      <UnresolvedAppointmentsAlert />
+      {/* Alert for unresolved past appointments is now shown globally in AppLayout */}
 
       <div className="flex flex-col gap-4">
         <div className="w-full">
@@ -1986,21 +2234,65 @@ const Appointments = () => {
                               <div className="absolute inset-0 grid grid-cols-4 divide-x">
                                 {slots.map(slot => {
                                   const appointments = getAppointmentsForTimeSlot(slot);
+                                  // Get the booking status for this slot
+                                  const slotCounts = getBookedTimeSlots();
+                                  const currentCount = slotCounts[slot] || 0;
+                                  const maxAllowed = isDental ? 2 : 1;
+                                  const isFullyBooked = currentCount >= maxAllowed;
+
                                   return (
                                     <div
                                       key={slot}
-                                      className={`p-1 cursor-pointer hover:bg-gray-50 h-full ${appointments.length === 0 ? 'border-dashed border-gray-200 border' : ''}`}
+                                      className={`p-1 cursor-pointer hover:bg-gray-50 h-full ${
+                                        appointments.length === 0
+                                          ? isFullyBooked
+                                            ? 'border-dashed border-orange-200 border bg-orange-50'
+                                            : 'border-dashed border-gray-200 border'
+                                          : ''
+                                      }`}
                                       onClick={() => {
-                                        // Only open new appointment dialog if there are no appointments for this slot
-                                        if (appointments.length === 0) {
-                                          handleNewAppointmentForTimeSlot(slot);
+                                        // Check if the slot is fully booked
+                                        const slotCounts = getBookedTimeSlots();
+                                        const currentCount = slotCounts[slot] || 0;
+                                        const maxAllowed = isDental ? 2 : 1;
+                                        const isFullyBooked = currentCount >= maxAllowed;
+
+                                        // Set the appointment time
+                                        setAppointmentTime(slot);
+
+                                        // If fully booked, show warning dialog
+                                        if (isFullyBooked) {
+                                          setWarningMessage(`This time slot already has ${currentCount} appointment(s). Adding more may cause scheduling conflicts. Do you want to continue?`);
+                                          setIsWarningDialogOpen(true);
+                                          return;
                                         }
-                                        // Otherwise, the click will be handled by the appointment item
+
+                                        // If a doctor is already selected, check if they're double-booked in the other clinic
+                                        if (selectedDoctor && selectedDoctor !== 'all') {
+                                          // Get the service that would be selected (use default service if none selected)
+                                          const defaultService = isDental ? 'Dental Checkup' : 'General Consultation';
+                                          const serviceToCheck = appointmentService || defaultService;
+
+                                          if (isDoctorBookedInOtherClinic(selectedDoctor, slot, serviceToCheck)) {
+                                            handleDoctorDoubleBookingWarning(selectedDoctor, slot);
+                                            return;
+                                          }
+                                        }
+
+                                        // Otherwise, proceed with normal flow
+                                        handleNewAppointmentForTimeSlot(slot);
                                       }}
                                     >
                                       {appointments.length === 0 ? (
                                         <div className="h-full w-full flex items-center justify-center">
-                                          <div className="text-xs text-gray-400">{slot}</div>
+                                          <div className={`text-xs ${isFullyBooked ? 'text-orange-500 font-medium' : 'text-gray-400'}`}>
+                                            {slot}
+                                            {isFullyBooked && (
+                                              <span className="ml-1 text-[8px] bg-orange-100 text-orange-700 px-1 rounded">
+                                                Full
+                                              </span>
+                                            )}
+                                          </div>
                                         </div>
                                       ) : (
                                         <div className="h-full">
@@ -2640,7 +2932,14 @@ const Appointments = () => {
                 <Label htmlFor="time">Time Slot</Label>
                 <Select
                   value={appointmentTime}
-                  onValueChange={setAppointmentTime}
+                  onValueChange={(value) => {
+                    setAppointmentTime(value);
+
+                    // If a doctor is already selected, check if they're double-booked
+                    if (appointmentDoctor && appointmentService && isDoctorBookedInOtherClinic(appointmentDoctor, value, appointmentService)) {
+                      handleDoctorDoubleBookingWarning(appointmentDoctor, value);
+                    }
+                  }}
                   onOpenChange={(open) => {
                     if (open && appointmentDate) {
                       // When opening, make sure we're using the current date for available slots
@@ -2666,7 +2965,17 @@ const Appointments = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="doctor">Doctor</Label>
-                <Select value={appointmentDoctor} onValueChange={setAppointmentDoctor}>
+                <Select
+                  value={appointmentDoctor}
+                  onValueChange={(value) => {
+                    setAppointmentDoctor(value);
+
+                    // Check if this doctor is already booked in the other clinic type
+                    if (value && appointmentTime && appointmentService && isDoctorBookedInOtherClinic(value, appointmentTime, appointmentService)) {
+                      handleDoctorDoubleBookingWarning(value, appointmentTime);
+                    }
+                  }}
+                >
                   <SelectTrigger id="doctor">
                     <SelectValue placeholder="Select doctor" />
                   </SelectTrigger>
@@ -2678,6 +2987,17 @@ const Appointments = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Add any special requirements or information"
+                  value={appointmentNotes}
+                  onChange={(e) => setAppointmentNotes(e.target.value)}
+                  rows={3}
+                />
               </div>
             </div>
           </div>
@@ -2875,7 +3195,14 @@ const Appointments = () => {
                 <Label htmlFor="edit-time">Time Slot</Label>
                 <Select
                   value={appointmentTime || ''}
-                  onValueChange={setAppointmentTime}
+                  onValueChange={(value) => {
+                    setAppointmentTime(value);
+
+                    // If a doctor is already selected, check if they're double-booked
+                    if (appointmentDoctor && appointmentService && isDoctorBookedInOtherClinic(appointmentDoctor, value, appointmentService)) {
+                      handleDoctorDoubleBookingWarning(appointmentDoctor, value);
+                    }
+                  }}
                   defaultValue={appointmentTime || ''}
                   onOpenChange={(open) => {
                     if (open && appointmentDate) {
@@ -2917,7 +3244,14 @@ const Appointments = () => {
                 <Label htmlFor="edit-doctor">Doctor</Label>
                 <Select
                   value={appointmentDoctor || ''}
-                  onValueChange={setAppointmentDoctor}
+                  onValueChange={(value) => {
+                    setAppointmentDoctor(value);
+
+                    // Check if this doctor is already booked in the other clinic type
+                    if (value && appointmentTime && appointmentService && isDoctorBookedInOtherClinic(value, appointmentTime, appointmentService)) {
+                      handleDoctorDoubleBookingWarning(value, appointmentTime);
+                    }
+                  }}
                   defaultValue={appointmentDoctor || ''}
                 >
                   <SelectTrigger id="edit-doctor">
@@ -2931,6 +3265,17 @@ const Appointments = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-notes">Notes</Label>
+                <Textarea
+                  id="edit-notes"
+                  placeholder="Add any special requirements or information"
+                  value={appointmentNotes}
+                  onChange={(e) => setAppointmentNotes(e.target.value)}
+                  rows={3}
+                />
               </div>
             </div>
           </div>
@@ -3062,6 +3407,11 @@ const Appointments = () => {
                     <span className="font-semibold">Doctor:</span> {pendingAppointment.doctor}
                   </p>
                 )}
+                {pendingAppointment.notes && (
+                  <p className="text-sm">
+                    <span className="font-semibold">Notes:</span> {pendingAppointment.notes}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -3095,6 +3445,29 @@ const Appointments = () => {
         onClose={() => setIsAddPatientDialogOpen(false)}
         onPatientAdded={handlePatientAdded}
       />
+
+      {/* Warning Dialog for Fully Booked Slots */}
+      <Dialog open={isWarningDialogOpen} onOpenChange={setIsWarningDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Warning: Time Slot Conflict</DialogTitle>
+            <DialogDescription>
+              {warningMessage}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleWarningCancel}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleWarningConfirm}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              Continue Anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

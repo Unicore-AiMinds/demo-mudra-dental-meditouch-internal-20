@@ -6,19 +6,20 @@ import AppHeader from './AppHeader';
 import AppSidebar from './AppSidebar';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import UnresolvedAppointmentsAlert from './UnresolvedAppointmentsAlert';
 
 const AppLayout = () => {
   const { activeClinic } = useClinic();
   const location = useLocation();
   const isMobile = useIsMobile();
-  
+
   // Set page title based on current route and active clinic
   useEffect(() => {
     const pathSegments = location.pathname.split('/').filter(Boolean);
-    const currentPage = pathSegments.length > 0 
-      ? pathSegments[0].charAt(0).toUpperCase() + pathSegments[0].slice(1) 
+    const currentPage = pathSegments.length > 0
+      ? pathSegments[0].charAt(0).toUpperCase() + pathSegments[0].slice(1)
       : 'Dashboard';
-    
+
     const clinicName = activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch';
     document.title = `${currentPage} | ${clinicName} - Mudra Clinic`;
   }, [location.pathname, activeClinic]);
@@ -31,6 +32,8 @@ const AppLayout = () => {
           <AppHeader />
           <main className="flex-1 bg-gray-50 overflow-auto">
             <div className="container mx-auto p-2 sm:p-4 md:p-6">
+              {/* Show unresolved appointments alert filtered by active clinic type */}
+              <UnresolvedAppointmentsAlert />
               <Outlet />
             </div>
           </main>

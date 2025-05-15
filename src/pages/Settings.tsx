@@ -1781,7 +1781,7 @@ const Settings = () => {
       <Tabs defaultValue="clinic" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="clinic">Clinic Details</TabsTrigger>
-          {activeClinic === 'dental' && <TabsTrigger value="doctors">Doctors</TabsTrigger>}
+          <TabsTrigger value="doctors">Doctors</TabsTrigger>
           <TabsTrigger value="services">Services</TabsTrigger>
           {activeClinic === 'dental' && <TabsTrigger value="service-followups">Service Follow-ups</TabsTrigger>}
           {activeClinic === 'dental' && <TabsTrigger value="labs">Labs</TabsTrigger>}
@@ -1925,8 +1925,7 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
-        {activeClinic === 'dental' && (
-          <TabsContent value="doctors" className="space-y-6">
+        <TabsContent value="doctors" className="space-y-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -1935,7 +1934,7 @@ const Settings = () => {
                     Manage Doctors
                   </CardTitle>
                   <CardDescription>
-                    Add and manage doctors for Dental Metrix Clinic
+                    Add and manage doctors for {activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch'} Clinic
                   </CardDescription>
                 </div>
                 <Button onClick={() => setIsAddDoctorDialogOpen(true)}>
@@ -2452,7 +2451,7 @@ const Settings = () => {
                   <div className="py-4">
                     <div className="flex items-center gap-2 mb-2">
                       <p className="font-medium">Doctor:</p>
-                      <p>{document.getElementById('editDoctorName')?.value || currentDoctor.name}</p>
+                      <p>{(document.getElementById('editDoctorName') as HTMLInputElement)?.value || currentDoctor.name}</p>
                     </div>
                   </div>
                 )}
@@ -2524,7 +2523,6 @@ const Settings = () => {
               </DialogContent>
             </Dialog>
           </TabsContent>
-        )}
 
         <TabsContent value="services" className="space-y-6">
           <Card>
@@ -2859,8 +2857,8 @@ const Settings = () => {
                               const displayStep = { ...step };
 
                               // Ensure suggested_service_name is set
-                              if (!displayStep.suggested_service_name && displayStep.suggestedServiceName) {
-                                displayStep.suggested_service_name = displayStep.suggestedServiceName;
+                              if (!displayStep.suggested_service_name && (displayStep as any).suggestedServiceName) {
+                                displayStep.suggested_service_name = (displayStep as any).suggestedServiceName;
                               }
 
                               // If still not set, use a default
@@ -3285,7 +3283,14 @@ const Settings = () => {
                       <div className="flex">
                         <Select
                           defaultValue="+91"
-                          id="labContactCountryCode"
+                          onValueChange={(value) => {
+                            // Store the selected value in a hidden input
+                            const hiddenInput = document.createElement('input');
+                            hiddenInput.type = 'hidden';
+                            hiddenInput.id = 'labContactCountryCode';
+                            hiddenInput.value = value;
+                            document.body.appendChild(hiddenInput);
+                          }}
                         >
                           <SelectTrigger className="w-[100px] rounded-r-none border-r-0">
                             <SelectValue placeholder="+91" />
