@@ -56,7 +56,11 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
   const { addTentativeFollowUps, getPatientName } = useDentalHistory();
   const { getDentalServiceNames, dentalServices, isLoading: isServicesLoading } = useServices(); // Get dental services from context
 
-  const { getPatientChartingHistory, addChartingEntry: addChartingEntryToContext } = useDentalCharting();
+  const {
+    getPatientChartingHistory,
+    addChartingEntry: addChartingEntryToContext,
+    updateChartingEntryStatus
+  } = useDentalCharting();
 
   // State for the patient's charting history
   const [patientChartingHistory, setPatientChartingHistory] = useState<ChartingEntry[]>([]);
@@ -77,6 +81,45 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
 
   // Get patient name for follow-ups
   const patientName = getPatientName(patientId) || "Unknown Patient";
+
+  // Handle toggling the status of a charting entry
+  const handleStatusToggle = async (entry: ChartingEntry) => {
+    try {
+      // Only allow toggling for Planned entries
+      if (entry.status !== 'Planned') return;
+
+      // Show loading toast
+      toast({
+        title: "Updating Status",
+        description: "Changing status from Planned to Completed...",
+      });
+
+      // Update the status in the database
+      await updateChartingEntryStatus(entry.entry_id, 'Completed');
+
+      // Update the local state
+      setPatientChartingHistory(prev =>
+        prev.map(e =>
+          e.entry_id === entry.entry_id
+            ? { ...e, status: 'Completed' }
+            : e
+        )
+      );
+
+      // Show success toast
+      toast({
+        title: "Status Updated",
+        description: "Treatment has been marked as completed.",
+      });
+    } catch (error) {
+      console.error('Error updating charting entry status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update status. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Load the patient's charting history when the component mounts or patientId changes
   useEffect(() => {
@@ -570,15 +613,27 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
                         }
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={
-                            entry.status === 'Completed' ? 'default' :
-                            entry.status === 'Planned' ? 'outline' :
-                            'secondary'
-                          }
-                        >
-                          {entry.status}
-                        </Badge>
+                        {entry.status === 'Planned' ? (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">Planned</Badge>
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                id={`status-toggle-${entry.entry_id}`}
+                                checked={false}
+                                onCheckedChange={() => handleStatusToggle(entry)}
+                              />
+                              <span className="text-xs text-muted-foreground">Mark Completed</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <Badge
+                            variant={
+                              entry.status === 'Completed' ? 'default' : 'secondary'
+                            }
+                          >
+                            {entry.status}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="max-w-[300px] group relative">
                         <div className={`truncate cursor-help ${entry.notes && entry.notes.length > 30 ? 'flex items-center' : ''}`}>
