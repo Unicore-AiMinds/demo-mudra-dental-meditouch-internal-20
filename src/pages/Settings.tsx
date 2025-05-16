@@ -1150,7 +1150,7 @@ const Settings = () => {
     setIsConfirmUpdateMedicineOpen(true);
   };
 
-  const handleUpdateMedicine = () => {
+  const handleUpdateMedicine = async () => {
     if (currentMedicine) {
       const nameInput = document.getElementById('editMedicineName') as HTMLInputElement;
       const dosageInput = document.getElementById('editMedicineDosage') as HTMLInputElement;
@@ -1170,58 +1170,92 @@ const Settings = () => {
           return;
         }
 
-        // Update medicine
-        const updated = updateMedicine(currentMedicine.id, {
-          name: updatedName,
-          dosage: updatedDosage,
-          description: updatedDescription || undefined
+        try {
+          // Show loading toast
+          toast({
+            title: "Updating Medicine",
+            description: "Please wait while the medicine is being updated...",
+          });
+
+          // Update medicine - make sure to await the Promise
+          const updated = await updateMedicine(currentMedicine.id, {
+            name: updatedName,
+            dosage: updatedDosage,
+            description: updatedDescription || undefined
+          });
+
+          console.log("Medicine updated successfully:", updated);
+
+          if (updated) {
+            toast({
+              title: "Medicine Updated",
+              description: `${updatedName} has been updated successfully.`,
+            });
+          } else {
+            toast({
+              title: "Update Failed",
+              description: "Could not update medicine information.",
+              variant: "destructive"
+            });
+          }
+        } catch (error) {
+          console.error("Error updating medicine:", error);
+          toast({
+            title: "Error",
+            description: "Failed to update medicine. Please try again.",
+            variant: "destructive"
+          });
+        } finally {
+          setIsConfirmUpdateMedicineOpen(false);
+          setIsEditMedicineDialogOpen(false);
+          setCurrentMedicine(null);
+        }
+      }
+    }
+  };
+
+  const handleDeleteMedicine = async () => {
+    if (currentMedicine) {
+      try {
+        // Show loading toast
+        toast({
+          title: "Removing Medicine",
+          description: "Please wait while the medicine is being removed...",
         });
 
-        if (updated) {
+        // Delete medicine - make sure to await the Promise
+        const success = await deleteMedicine(currentMedicine.id);
+
+        console.log("Medicine delete result:", success);
+
+        if (success) {
           toast({
-            title: "Medicine Updated",
-            description: `${updatedName} has been updated successfully.`,
+            title: "Medicine Removed",
+            description: `${currentMedicine.name} has been removed from the system.`,
           });
         } else {
           toast({
-            title: "Update Failed",
-            description: "Could not update medicine information.",
+            title: "Removal Failed",
+            description: "Could not remove the medicine.",
             variant: "destructive"
           });
         }
-
-        setIsConfirmUpdateMedicineOpen(false);
+      } catch (error) {
+        console.error("Error deleting medicine:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete medicine. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsConfirmDeleteMedicineOpen(false);
         setIsEditMedicineDialogOpen(false);
         setCurrentMedicine(null);
       }
     }
   };
 
-  const handleDeleteMedicine = () => {
-    if (currentMedicine) {
-      // Delete medicine
-      const success = deleteMedicine(currentMedicine.id);
-
-      if (success) {
-        toast({
-          title: "Medicine Removed",
-          description: `${currentMedicine.name} has been removed from the system.`,
-        });
-      } else {
-        toast({
-          title: "Removal Failed",
-          description: "Could not remove the medicine.",
-          variant: "destructive"
-        });
-      }
-
-      setIsConfirmDeleteMedicineOpen(false);
-      setIsEditMedicineDialogOpen(false);
-      setCurrentMedicine(null);
-    }
-  };
-
-  const handleAddMedicine = () => {
+  const handleAddMedicine = async () => {
     const nameInput = document.getElementById('newMedicineName') as HTMLInputElement;
     const dosageInput = document.getElementById('newMedicineDosage') as HTMLInputElement;
     const descriptionInput = document.getElementById('newMedicineDescription') as HTMLTextAreaElement;
@@ -1240,23 +1274,40 @@ const Settings = () => {
         return;
       }
 
-      // Add new medicine
-      const newMedicine = addMedicine({
-        name,
-        dosage,
-        description: description || undefined
-      });
+      try {
+        // Show loading toast
+        toast({
+          title: "Adding Medicine",
+          description: "Please wait while the medicine is being added...",
+        });
 
-      toast({
-        title: "Medicine Added",
-        description: `${name} has been added successfully.`,
-      });
+        // Add new medicine - make sure to await the Promise
+        const newMedicine = await addMedicine({
+          name,
+          dosage,
+          description: description || undefined
+        });
 
-      // Reset form and close dialog
-      nameInput.value = '';
-      dosageInput.value = '';
-      if (descriptionInput) descriptionInput.value = '';
-      setIsAddMedicineDialogOpen(false);
+        console.log("Medicine added successfully:", newMedicine);
+
+        toast({
+          title: "Medicine Added",
+          description: `${name} has been added successfully.`,
+        });
+
+        // Reset form and close dialog
+        nameInput.value = '';
+        dosageInput.value = '';
+        if (descriptionInput) descriptionInput.value = '';
+        setIsAddMedicineDialogOpen(false);
+      } catch (error) {
+        console.error("Error adding medicine:", error);
+        toast({
+          title: "Error",
+          description: "Failed to add medicine. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -1788,7 +1839,7 @@ const Settings = () => {
           {activeClinic === 'dental' && <TabsTrigger value="labwork">Lab Work Types</TabsTrigger>}
           {activeClinic === 'dental' && <TabsTrigger value="stock">Stock</TabsTrigger>}
           {activeClinic === 'dental' && <TabsTrigger value="dealers">Dealers</TabsTrigger>}
-          {activeClinic === 'dental' && <TabsTrigger value="medicines">Medicines</TabsTrigger>}
+          <TabsTrigger value="medicines">Medicines</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
         </TabsList>
@@ -3848,8 +3899,7 @@ const Settings = () => {
           </TabsContent>
         )}
 
-        {activeClinic === 'dental' && (
-          <TabsContent value="medicines" className="space-y-6">
+        <TabsContent value="medicines" className="space-y-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -3858,10 +3908,13 @@ const Settings = () => {
                     Manage Medicines
                   </CardTitle>
                   <CardDescription>
-                    Add and manage medicines for Dental Metrix Clinic
+                    Add and manage medicines for {activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch'} Clinic
                   </CardDescription>
                 </div>
-                <Button onClick={() => setIsAddMedicineDialogOpen(true)}>
+                <Button
+                  onClick={() => setIsAddMedicineDialogOpen(true)}
+                  className={activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
+                >
                   <Plus className="mr-2 h-4 w-4" /> Add Medicine
                 </Button>
               </CardHeader>
@@ -3883,7 +3936,12 @@ const Settings = () => {
                         <TableCell>{medicine.description || '-'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditMedicine(medicine)}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditMedicine(medicine)}
+                              className={activeClinic === 'dental' ? 'hover:text-dental-primary' : 'hover:text-meditouch-primary'}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
@@ -3912,7 +3970,7 @@ const Settings = () => {
                 <DialogHeader>
                   <DialogTitle>Add New Medicine</DialogTitle>
                   <DialogDescription>
-                    Enter the details for the new medicine. Name and dosage are required.
+                    Enter the details for the new medicine for {activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch'} Clinic. Name and dosage are required.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -3952,7 +4010,7 @@ const Settings = () => {
                     Cancel
                   </Button>
                   <Button
-                    className="bg-dental-primary hover:bg-dental-dark"
+                    className={activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
                     onClick={handleAddMedicine}
                   >
                     Add Medicine
@@ -3967,7 +4025,7 @@ const Settings = () => {
                 <DialogHeader>
                   <DialogTitle>Edit Medicine</DialogTitle>
                   <DialogDescription>
-                    Update medicine information.
+                    Update medicine information for {activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch'} Clinic.
                   </DialogDescription>
                 </DialogHeader>
                 {currentMedicine && (
@@ -4008,7 +4066,7 @@ const Settings = () => {
                     Cancel
                   </Button>
                   <Button
-                    className="bg-dental-primary hover:bg-dental-dark"
+                    className={activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
                     onClick={handleUpdateMedicineConfirm}
                   >
                     <Save className="h-4 w-4 mr-2" /> Save Changes
@@ -4405,7 +4463,6 @@ const Settings = () => {
               </DialogContent>
             </Dialog>
           </TabsContent>
-        )}
 
         {activeClinic === 'dental' && (
           <TabsContent value="stock" className="space-y-6">

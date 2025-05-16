@@ -93,11 +93,24 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Add a new medicine
   const addMedicine = async (medicine: Omit<Medicine, 'id' | 'created_at' | 'updated_at'>): Promise<Medicine> => {
     try {
+      console.log('Adding medicine to database:', medicine);
+
       // Add medicine to Supabase
       const newMedicine = await supabase.from<Medicine>('medicines').insert(medicine);
 
-      // Update local state
-      setMedicines(prev => [...prev, newMedicine]);
+      console.log('Medicine added to database, response:', newMedicine);
+
+      // Fetch all medicines to ensure we have the latest data
+      // This is a workaround for the issue where the UI doesn't update immediately
+      console.log('Fetching all medicines to refresh the state');
+      const refreshedMedicines = await supabase.from<Medicine>('medicines').getAll({
+        order: { column: 'name', ascending: true }
+      });
+
+      console.log(`Fetched ${refreshedMedicines.length} medicines after adding new one`);
+
+      // Update local state with all medicines
+      setMedicines(refreshedMedicines);
 
       toast({
         title: 'Success',
@@ -119,21 +132,24 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Update an existing medicine
   const updateMedicine = async (id: string, updates: Partial<Omit<Medicine, 'id' | 'created_at' | 'updated_at'>>): Promise<Medicine | null> => {
     try {
+      console.log('Updating medicine in database:', id, updates);
+
       // Update medicine in Supabase
       const updatedMedicine = await supabase.from<Medicine>('medicines').update(id, updates);
 
-      // Update local state
-      setMedicines(prev => {
-        const index = prev.findIndex(medicine => medicine.id === id);
+      console.log('Medicine updated in database, response:', updatedMedicine);
 
-        if (index === -1) return prev;
-
-        return [
-          ...prev.slice(0, index),
-          updatedMedicine,
-          ...prev.slice(index + 1)
-        ];
+      // Fetch all medicines to ensure we have the latest data
+      // This is a workaround for the issue where the UI doesn't update immediately
+      console.log('Fetching all medicines to refresh the state');
+      const refreshedMedicines = await supabase.from<Medicine>('medicines').getAll({
+        order: { column: 'name', ascending: true }
       });
+
+      console.log(`Fetched ${refreshedMedicines.length} medicines after updating`);
+
+      // Update local state with all medicines
+      setMedicines(refreshedMedicines);
 
       toast({
         title: 'Success',
@@ -155,11 +171,24 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Delete a medicine
   const deleteMedicine = async (id: string): Promise<boolean> => {
     try {
+      console.log('Deleting medicine from database:', id);
+
       // Delete medicine from Supabase
       await supabase.from<Medicine>('medicines').delete(id);
 
-      // Update local state
-      setMedicines(prev => prev.filter(medicine => medicine.id !== id));
+      console.log('Medicine deleted from database');
+
+      // Fetch all medicines to ensure we have the latest data
+      // This is a workaround for the issue where the UI doesn't update immediately
+      console.log('Fetching all medicines to refresh the state');
+      const refreshedMedicines = await supabase.from<Medicine>('medicines').getAll({
+        order: { column: 'name', ascending: true }
+      });
+
+      console.log(`Fetched ${refreshedMedicines.length} medicines after deletion`);
+
+      // Update local state with all medicines
+      setMedicines(refreshedMedicines);
 
       toast({
         title: 'Success',
