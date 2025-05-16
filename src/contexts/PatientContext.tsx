@@ -28,6 +28,7 @@ export interface Patient {
 interface PatientContextType {
   patients: Patient[];
   isLoading: boolean;
+  refreshPatients: () => Promise<void>;
   addPatient: (patient: Omit<Patient, 'id' | 'patient_code' | 'created_at' | 'updated_at'>) => Promise<Patient>;
   updatePatient: (id: string, patient: Partial<Patient>) => Promise<Patient>;
   deletePatient: (id: string) => Promise<void>;
@@ -99,8 +100,8 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
   const { supabase } = useSupabase();
   const { toast } = useToast();
 
-  // Define fetchPatients as a function that can be called from anywhere in the component
-  const fetchPatients = async () => {
+  // Define refreshPatients as a public function that can be called from outside the component
+  const refreshPatients = async (): Promise<void> => {
       try {
         setIsLoading(true);
 
@@ -137,42 +138,10 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         console.log('Processed patients:', processedPatients);
 
-        // If no patients exist, create default ones
+        // No automatic creation of default patients
         if (processedPatients.length === 0) {
-          for (const patient of defaultPatients) {
-            await supabase.from<Patient>('patients').insert(patient);
-          }
-
-          // Fetch the newly created patients, sorted by created_at date (newest first)
-          const newPatients = await supabase.from<Patient>('patients').getAll({
-            order: { column: 'created_at', ascending: false }
-          });
-
-          // Process the new patients
-          const processedNewPatients = newPatients.map(patient => ({
-            ...patient,
-            // Ensure all fields are properly set for display
-            id: patient.id,
-            patient_code: patient.patient_code || `PT${Date.now().toString().slice(-6)}`,
-            name: patient.name,
-            gender: patient.gender,
-            age: patient.age,
-            date_of_birth: patient.date_of_birth,
-            email: patient.email,
-            phone: patient.phone || '',
-            alt_phone: patient.alt_phone,
-            address: patient.address,
-            city: patient.city,
-            pincode: patient.pincode,
-            blood_group: patient.blood_group,
-            referred_by: patient.referred_by,
-            clinic: patient.clinic,
-            last_visit: patient.last_visit,
-            created_at: patient.created_at,
-            updated_at: patient.updated_at
-          }));
-
-          setPatients(processedNewPatients);
+          console.log("No patients found in database.");
+          setPatients([]);
         } else {
           setPatients(processedPatients);
         }
@@ -193,7 +162,7 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Fetch patients on component mount
   useEffect(() => {
-    fetchPatients();
+    refreshPatients();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -294,7 +263,7 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         // Trigger a refresh of the patients list to ensure we have the latest data
         setTimeout(() => {
-          fetchPatients();
+          refreshPatients();
         }, 500);
 
         return createdPatient;
@@ -361,7 +330,7 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         // Trigger a refresh of the patients list to ensure we have the latest data
         setTimeout(() => {
-          fetchPatients();
+          refreshPatients();
         }, 500);
 
         return createdPatient;
@@ -460,6 +429,11 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
         prev.map(p => p.id === id ? completeUpdatedPatient : p)
       );
 
+      // Refresh patients to ensure we have the latest data
+      setTimeout(() => {
+        refreshPatients();
+      }, 500);
+
       toast({
         title: 'Success',
         description: 'Patient updated successfully.',
@@ -488,6 +462,11 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       // Update local state
       setPatients(prev => prev.filter(p => p.id !== id));
+
+      // Refresh patients to ensure we have the latest data
+      setTimeout(() => {
+        refreshPatients();
+      }, 500);
 
       toast({
         title: 'Success',
@@ -550,6 +529,7 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
       value={{
         patients,
         isLoading,
+        refreshPatients,
         addPatient,
         updatePatient,
         deletePatient,

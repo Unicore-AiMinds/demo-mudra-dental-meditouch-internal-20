@@ -38,23 +38,10 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
           console.log(`Fetched ${fetchedMedicines.length} medicines from Supabase`);
 
-          // If no medicines exist, create default ones
+          // No automatic creation of default medicines
           if (fetchedMedicines.length === 0) {
-            console.log("No medicines found in database. Creating default medicines...");
-
-            // Insert default medicines one by one
-            for (const medicine of defaultMedicines) {
-              console.log(`Adding default medicine: ${medicine.name} ${medicine.dosage}`);
-              await supabase.from<Medicine>('medicines').insert(medicine);
-            }
-
-            // Fetch the newly created medicines
-            const newMedicines = await supabase.from<Medicine>('medicines').getAll({
-              order: { column: 'name', ascending: true }
-            });
-
-            console.log(`Created ${newMedicines.length} default medicines`);
-            setMedicines(newMedicines);
+            console.log("No medicines found in database.");
+            setMedicines([]);
           } else {
             console.log("Using existing medicines from database");
             setMedicines(fetchedMedicines);

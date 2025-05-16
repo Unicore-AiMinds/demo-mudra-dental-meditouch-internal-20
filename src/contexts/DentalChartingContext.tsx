@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { ChartingEntry, defaultChartingEntries } from '@/types/dental-charting';
-import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useDentalHistory } from './DentalHistoryContext';
 import { useSupabase } from './SupabaseContext';
-import { v4 as uuidv4 } from 'uuid';
 import { handleDatabaseError } from '@/utils/error-handler';
+
+// Define Supabase constants
+const SUPABASE_URL = 'https://otvhtpnmunoazgqhennu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90dmh0cG5tdW5vYXpncWhlbm51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2MDEwMTAsImV4cCI6MjA2MjE3NzAxMH0.TeZa-YGzfToszrWrMomsjw3R9mRxFR-7NE7sNLFi9JM';
 
 interface DentalChartingContextType {
   patientChartingHistory: ChartingEntry[];
@@ -258,10 +260,21 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
 
         // Try to fetch it directly from the database
         console.log('Trying to fetch entry directly from database');
-        const { data: entries, error } = await supabase
-          .from('dental_charting')
-          .select('*')
-          .eq('entry_id', entryId);
+
+        const fetchResponse = await fetch(`${SUPABASE_URL}/rest/v1/dental_charting?entry_id=eq.${entryId}`, {
+          method: 'GET',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!fetchResponse.ok) {
+          throw new Error(`Failed to fetch charting entry: ${fetchResponse.statusText}`);
+        }
+
+        const entries = await fetchResponse.json();
+        const error = null;
 
         if (error) {
           console.error('Error fetching entry from database:', error);
@@ -277,13 +290,61 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
         const dbEntry = entries[0];
         console.log('Found charting entry in database:', dbEntry);
 
-        // Update in Supabase
-        await supabase
-          .from('dental_charting')
-          .update({ status })
-          .eq('id', dbEntry.id);
+        // Update in Supabase using the REST API directly
+        console.log(`Updating charting entry with ID ${dbEntry.id} to status ${status} using direct REST API`);
 
-        console.log('Updated charting entry in Supabase');
+        try {
+          // First, log the current entry in the database
+          const checkBeforeResponse = await fetch(`${SUPABASE_URL}/rest/v1/dental_charting?id=eq.${dbEntry.id}`, {
+            method: 'GET',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          });
+
+          const entryBeforeUpdate = await checkBeforeResponse.json();
+          console.log('Entry before update:', entryBeforeUpdate);
+
+          // Now perform the update
+          const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/dental_charting?id=eq.${dbEntry.id}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+              status,
+              updated_at: new Date().toISOString()
+            })
+          });
+
+          if (!updateResponse.ok) {
+            console.error(`Error response from Supabase: ${updateResponse.status} ${updateResponse.statusText}`);
+            const errorText = await updateResponse.text();
+            console.error('Error details:', errorText);
+            throw new Error(`Failed to update charting entry: ${updateResponse.statusText}`);
+          }
+
+          // Check if the update was successful
+          const checkAfterResponse = await fetch(`${SUPABASE_URL}/rest/v1/dental_charting?id=eq.${dbEntry.id}`, {
+            method: 'GET',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          });
+
+          const entryAfterUpdate = await checkAfterResponse.json();
+          console.log('Entry after update:', entryAfterUpdate);
+
+          console.log('Successfully updated charting entry in Supabase');
+        } catch (error) {
+          console.error('Error during REST API update:', error);
+          throw error;
+        }
 
         // Refresh the local state
         const updatedEntries = await supabase.from<ChartingEntry>('dental_charting').getAll();
@@ -292,17 +353,72 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
       } else {
         console.log('Found charting entry in local state:', entry);
 
-        // Update in Supabase
-        await supabase.from<ChartingEntry>('dental_charting').update(entry.id, { status });
-        console.log('Updated charting entry in Supabase');
+        // Update in Supabase using the REST API directly
+        console.log(`Updating charting entry with ID ${entry.id} to status ${status} using direct REST API`);
+
+        try {
+          // First, log the current entry in the database
+          const checkBeforeResponse = await fetch(`${SUPABASE_URL}/rest/v1/dental_charting?id=eq.${entry.id}`, {
+            method: 'GET',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          });
+
+          const entryBeforeUpdate = await checkBeforeResponse.json();
+          console.log('Entry before update:', entryBeforeUpdate);
+
+          // Now perform the update
+          const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/dental_charting?id=eq.${entry.id}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+              status,
+              updated_at: new Date().toISOString()
+            })
+          });
+
+          if (!updateResponse.ok) {
+            console.error(`Error response from Supabase: ${updateResponse.status} ${updateResponse.statusText}`);
+            const errorText = await updateResponse.text();
+            console.error('Error details:', errorText);
+            throw new Error(`Failed to update charting entry: ${updateResponse.statusText}`);
+          }
+
+          // Check if the update was successful
+          const checkAfterResponse = await fetch(`${SUPABASE_URL}/rest/v1/dental_charting?id=eq.${entry.id}`, {
+            method: 'GET',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          });
+
+          const entryAfterUpdate = await checkAfterResponse.json();
+          console.log('Entry after update:', entryAfterUpdate);
+
+          console.log('Successfully updated charting entry in Supabase');
+        } catch (error) {
+          console.error('Error during REST API update:', error);
+          throw error;
+        }
 
         // Update local state
         setPatientChartingHistory(prev =>
-          prev.map(e =>
-            e.entry_id === entryId
-              ? { ...e, status }
-              : e
-          )
+          prev.map(e => {
+            if (e.entry_id === entryId) {
+              // Ensure status is a valid ChartingEntry status
+              const validStatus = status === 'Scheduled' ? 'Planned' : status;
+              return { ...e, status: validStatus as 'Existing' | 'Planned' | 'Completed' };
+            }
+            return e;
+          })
         );
         console.log('Updated local state');
       }
@@ -310,11 +426,54 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
       // If status is Completed, also update any pending_treatments entries
       if (status === 'Completed') {
         try {
-          console.log('Updating pending_treatments table');
-          await supabase.from('pending_treatments')
-            .update({ status: 'completed' })
-            .eq('charting_entry_id', entryId);
-          console.log('Updated pending_treatments table');
+          console.log('Updating pending_treatments table for charting entry:', entryId);
+
+          // First check if there are any pending treatments for this charting entry
+          const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/pending_treatments?charting_entry_id=eq.${entryId}`, {
+            method: 'GET',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          });
+
+          const pendingTreatments = await checkResponse.json();
+          console.log('Found pending treatments:', pendingTreatments);
+
+          // Use direct REST API for this update as well
+          const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/pending_treatments?charting_entry_id=eq.${entryId}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+              status: 'completed',
+              updated_at: new Date().toISOString()
+            })
+          });
+
+          if (!updateResponse.ok) {
+            console.error(`Error updating pending_treatments: ${updateResponse.status} ${updateResponse.statusText}`);
+            const errorText = await updateResponse.text();
+            console.error('Error details:', errorText);
+          } else {
+            console.log('Successfully updated pending_treatments table');
+
+            // Verify the update
+            const verifyResponse = await fetch(`${SUPABASE_URL}/rest/v1/pending_treatments?charting_entry_id=eq.${entryId}`, {
+              method: 'GET',
+              headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+              }
+            });
+
+            const updatedTreatments = await verifyResponse.json();
+            console.log('Pending treatments after update:', updatedTreatments);
+          }
         } catch (pendingError) {
           console.error('Error updating pending_treatments:', pendingError);
           // Continue even if this fails
@@ -328,9 +487,31 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
       });
 
       // Refresh the data again to ensure everything is up to date
-      const finalEntries = await supabase.from<ChartingEntry>('dental_charting').getAll();
-      setPatientChartingHistory(finalEntries);
-      console.log('Final refresh of local state completed');
+      console.log('Performing final refresh of data from Supabase');
+
+      // Use direct REST API to get the latest data
+      const finalResponse = await fetch(`${SUPABASE_URL}/rest/v1/dental_charting`, {
+        method: 'GET',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+
+      if (!finalResponse.ok) {
+        console.error('Error fetching final data:', finalResponse.statusText);
+      } else {
+        const finalEntries = await finalResponse.json();
+        console.log('Final entries from Supabase:', finalEntries);
+
+        // Update the local state with the latest data
+        setPatientChartingHistory(finalEntries);
+        console.log('Final refresh of local state completed');
+
+        // Double-check that our specific entry was updated
+        const updatedEntry = finalEntries.find((e: { entry_id: string }) => e.entry_id === entryId);
+        console.log('Our updated entry in final refresh:', updatedEntry);
+      }
 
     } catch (error) {
       console.error('Error updating charting entry status:', error);

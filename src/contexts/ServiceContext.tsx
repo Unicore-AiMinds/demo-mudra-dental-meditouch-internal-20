@@ -35,6 +35,7 @@ interface ServiceContextType {
   meditouchServices: Service[];
   servicesWithFollowUp: ServiceWithFollowUp[];
   isLoading: boolean;
+  refreshServices: () => Promise<void>;
   addService: (service: Omit<Service, 'id' | 'created_at' | 'updated_at'>) => Promise<Service>;
   updateService: (id: string, updates: Partial<Service>) => Promise<Service>;
   deleteService: (id: string) => Promise<void>;
@@ -60,9 +61,8 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [servicesWithFollowUp, setServicesWithFollowUp] = useState<ServiceWithFollowUp[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize services
-  useEffect(() => {
-    const initializeServices = async () => {
+  // Function to refresh services from Supabase
+  const refreshServices = async (): Promise<void> => {
       setIsLoading(true);
       try {
         // Fetch services from Supabase
@@ -74,29 +74,9 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
         const dental = fetchedServices.filter((s: Service) => s.clinic_type === 'dental');
         const meditouch = fetchedServices.filter((s: Service) => s.clinic_type === 'meditouch');
 
-        // Check if we need to add a default Dental Checkup service
-        if (dental.length === 0 || !dental.some(s => s.name.toLowerCase() === 'dental checkup')) {
-          console.log('No Dental Checkup service found, adding default...');
-
-          // Add default Dental Checkup service
-          const defaultService = {
-            name: 'Dental Checkup',
-            duration: 30,
-            price: 500,
-            description: 'Regular dental checkup and cleaning',
-            clinic_type: 'dental' as const
-          };
-
-          try {
-            const newService = await addService(defaultService);
-            console.log('Default Dental Checkup service added:', newService);
-
-            // Add to dental services
-            dental.push(newService);
-          } catch (error) {
-            console.error('Error adding default Dental Checkup service:', error);
-          }
-        }
+        // No automatic creation of default services
+        console.log('Dental services found:', dental.length);
+        console.log('Meditouch services found:', meditouch.length);
 
         setDentalServices(dental);
         setMeditouchServices(meditouch);
@@ -115,33 +95,8 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
           }))
         );
 
-        // Check if we need to add a default service with follow-up for Dental Checkup
-        if (fetchedServicesWithFollowUp.length === 0 ||
-            !fetchedServicesWithFollowUp.some(s => s.name.toLowerCase() === 'dental checkup')) {
-          console.log('No service with follow-up found for Dental Checkup, adding default...');
-
-          // Add default service with follow-up for Dental Checkup
-          const defaultServiceWithFollowUp = {
-            name: 'Dental Checkup',
-            duration: 30,
-            price: 500,
-            description: 'Regular dental checkup and cleaning',
-            requires_follow_up: true,
-            default_follow_up_interval_days: 180, // 6 months
-            number_of_follow_ups: 1,
-            follow_up_service_name: 'Dental Checkup'
-          };
-
-          try {
-            const newServiceWithFollowUp = await addServiceWithFollowUp(defaultServiceWithFollowUp);
-            console.log('Default service with follow-up added for Dental Checkup:', newServiceWithFollowUp);
-
-            // Add to services with follow-up
-            fetchedServicesWithFollowUp.push(newServiceWithFollowUp);
-          } catch (error) {
-            console.error('Error adding default service with follow-up for Dental Checkup:', error);
-          }
-        }
+        // No automatic creation of default services with follow-up
+        console.log(`Services with follow-up found: ${fetchedServicesWithFollowUp?.length || 0}`);
 
         setServicesWithFollowUp(fetchedServicesWithFollowUp || []);
       } catch (error) {
@@ -159,11 +114,13 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
       } finally {
         setIsLoading(false);
       }
-    };
+  };
 
-    initializeServices();
+  // Initialize services on component mount
+  useEffect(() => {
+    refreshServices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, toast]);
+  }, []);
 
   // Add a new service
   const addService = async (service: Omit<Service, 'id' | 'created_at' | 'updated_at'>): Promise<Service> => {
@@ -201,6 +158,11 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: 'Success',
         description: `${service.name} has been added to ${service.clinic_type} services.`,
       });
+
+      // Refresh services to ensure we have the latest data
+      setTimeout(() => {
+        refreshServices();
+      }, 500);
 
       return newService;
     } catch (error) {
@@ -259,6 +221,11 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
         description: 'Service has been updated.',
       });
 
+      // Refresh services to ensure we have the latest data
+      setTimeout(() => {
+        refreshServices();
+      }, 500);
+
       return updatedService;
     } catch (error) {
       console.error('Error updating service:', error);
@@ -300,6 +267,11 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: 'Success',
         description: 'Service has been deleted.',
       });
+
+      // Refresh services to ensure we have the latest data
+      setTimeout(() => {
+        refreshServices();
+      }, 500);
     } catch (error) {
       console.error('Error deleting service:', error);
       toast({
@@ -460,6 +432,7 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
         meditouchServices,
         servicesWithFollowUp,
         isLoading,
+        refreshServices,
         addService,
         updateService,
         deleteService,

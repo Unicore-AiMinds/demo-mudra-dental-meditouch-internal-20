@@ -26,6 +26,7 @@ export interface Doctor {
 interface DoctorContextType {
   doctors: Doctor[];
   isLoading: boolean;
+  refreshDoctors: () => Promise<void>;
   addDoctor: (doctor: Omit<Doctor, 'id'>, aadharFile?: File, panFile?: File) => Promise<Doctor>;
   updateDoctor: (id: string, doctor: Partial<Doctor>, aadharFile?: File, panFile?: File) => Promise<Doctor>;
   deleteDoctor: (id: string) => Promise<void>;
@@ -67,9 +68,8 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Fetch doctors from Supabase
-  useEffect(() => {
-    const fetchDoctors = async () => {
+  // Function to refresh doctors from Supabase
+  const refreshDoctors = async (): Promise<void> => {
       try {
         setIsLoading(true);
         console.log('Fetching doctors from Supabase using direct client...');
@@ -93,40 +93,10 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           throw error;
         }
 
-        // If no doctors exist, create default ones
+        // No automatic creation of default doctors
         if (!fetchedDoctors || fetchedDoctors.length === 0) {
-          console.log('No doctors found, creating defaults...');
-
-          // Insert default doctors one by one
-          for (const doctor of defaultDoctors) {
-            try {
-              // Use direct Supabase client for insert
-              const { data: newDoctor, error: insertError } = await supabaseClient
-                .from('doctors')
-                .insert(doctor)
-                .select();
-
-              if (insertError) {
-                throw insertError;
-              }
-
-              console.log('Created default doctor:', newDoctor);
-            } catch (insertError) {
-              console.error('Error creating default doctor:', insertError);
-            }
-          }
-
-          // Fetch the newly created doctors
-          const { data: newDoctors, error: fetchError } = await supabaseClient
-            .from('doctors')
-            .select('*');
-
-          if (fetchError) {
-            throw fetchError;
-          }
-
-          console.log('Fetched newly created doctors:', newDoctors);
-          setDoctors(newDoctors || []);
+          console.log('No doctors found in database.');
+          setDoctors([]);
         } else {
           console.log('Setting doctors state with fetched doctors:', fetchedDoctors);
           setDoctors(fetchedDoctors);
@@ -143,8 +113,12 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     };
 
-    fetchDoctors();
-  }, [toast]);
+    // Initialize doctors on component mount
+    useEffect(() => {
+      refreshDoctors();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
 
   // Add a new doctor
   const addDoctor = async (doctor: Omit<Doctor, 'id'>, aadharFile?: File, panFile?: File): Promise<Doctor> => {
@@ -295,6 +269,11 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         description: `Doctor ${doctor.name} added successfully.`,
       });
 
+      // Refresh doctors to ensure we have the latest data
+      setTimeout(() => {
+        refreshDoctors();
+      }, 500);
+
       return newDoctor;
     } catch (error) {
       console.error('Error adding doctor:', error);
@@ -383,6 +362,11 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         description: 'Doctor updated successfully.',
       });
 
+      // Refresh doctors to ensure we have the latest data
+      setTimeout(() => {
+        refreshDoctors();
+      }, 500);
+
       return updatedDoctor;
     } catch (error) {
       console.error('Error updating doctor:', error);
@@ -464,6 +448,11 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         title: 'Success',
         description: 'Doctor deleted successfully.',
       });
+
+      // Refresh doctors to ensure we have the latest data
+      setTimeout(() => {
+        refreshDoctors();
+      }, 500);
     } catch (error) {
       console.error('Error deleting doctor:', error);
       toast({
@@ -527,6 +516,7 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     <DoctorContext.Provider value={{
       doctors,
       isLoading,
+      refreshDoctors,
       addDoctor,
       updateDoctor,
       deleteDoctor,
