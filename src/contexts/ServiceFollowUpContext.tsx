@@ -59,8 +59,10 @@ export const ServiceFollowUpProvider: React.FC<{ children: ReactNode }> = ({ chi
         // Fetch follow-ups from Supabase
         const { data, error } = await supabase
           .from('follow_ups')
-          .select('*')
-          .order('follow_up_date', { ascending: true });
+          .getAll({
+            select: '*',
+            order: { column: 'follow_up_date', ascending: true }
+          });
 
         if (error) throw error;
 
@@ -87,8 +89,7 @@ export const ServiceFollowUpProvider: React.FC<{ children: ReactNode }> = ({ chi
       const { data, error } = await supabase
         .from('follow_ups')
         .insert(followUp)
-        .select()
-        .single();
+        .getById('id');
 
       if (error) throw error;
       if (!data) throw new Error('Failed to create follow-up');
@@ -121,10 +122,8 @@ export const ServiceFollowUpProvider: React.FC<{ children: ReactNode }> = ({ chi
       // Update follow-up in Supabase
       const { data, error } = await supabase
         .from('follow_ups')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+        .update(id, updates)
+        .getById('id');
 
       if (error) throw error;
       if (!data) throw new Error('Failed to update follow-up');
@@ -157,8 +156,7 @@ export const ServiceFollowUpProvider: React.FC<{ children: ReactNode }> = ({ chi
       // Delete follow-up from Supabase
       const { error } = await supabase
         .from('follow_ups')
-        .delete()
-        .eq('id', id);
+        .delete(id);
 
       if (error) throw error;
 

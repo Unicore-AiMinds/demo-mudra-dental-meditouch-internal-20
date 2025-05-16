@@ -143,11 +143,12 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
       console.log('Updated follow-up rules state with fetched data');
     } catch (error) {
       console.error('Error fetching follow-up rules:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load follow-up rules. Please try again.',
-        variant: 'destructive',
-      });
+      // Commenting out error toast
+      // toast({
+      //   title: 'Error',
+      //   description: 'Failed to load follow-up rules. Please try again.',
+      //   variant: 'destructive',
+      // });
     } finally {
       setIsLoading(false);
       console.log('Finished loading follow-up rules');

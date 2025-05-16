@@ -216,11 +216,12 @@ export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }
       setFollowUps(uniqueFollowUps);
     } catch (error) {
       console.error('Error fetching follow-ups:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load follow-ups. Please try again.',
-        variant: 'destructive',
-      });
+      // Commenting out error toast
+      // toast({
+      //   title: 'Error',
+      //   description: 'Failed to load follow-ups. Please try again.',
+      //   variant: 'destructive',
+      // });
     } finally {
       setIsLoading(false);
     }

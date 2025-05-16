@@ -115,11 +115,12 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
         setUpcomingAppointments(limited);
       } catch (error) {
         console.error('Error fetching patient appointments:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load appointments. Please try again.',
-          variant: 'destructive',
-        });
+        // Commenting out error toast
+        // toast({
+        //   title: 'Error',
+        //   description: 'Failed to load appointments. Please try again.',
+        //   variant: 'destructive',
+        // });
       } finally {
         setIsLoadingAppointments(false);
       }
