@@ -27,9 +27,7 @@ const StockAlerts: React.FC = () => {
       <CardHeader>
         <CardTitle>Stock Alerts</CardTitle>
         <CardDescription>
-          {expiredItems.length > 0 
-            ? `${expiredItems.length} expired items, ${lowStockItems.length} below threshold` 
-            : `Items below minimum threshold`}
+          {`${expiredItems.length} expired ${expiredItems.length === 1 ? 'item' : 'items'}, ${lowStockItems.length} below threshold`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -48,19 +46,19 @@ const StockAlerts: React.FC = () => {
               >
                 <div>
                   <p className="text-sm font-medium">
-                    {item.name} {item.subItem ? `(${item.subItem})` : ''}
+                    {item.name} {item.sub_item ? `(${item.sub_item})` : ''}
                   </p>
                   {item.alertType === 'expired' ? (
                     <p className="text-xs text-muted-foreground">
-                      Expired: {item.nearestExpiryDate}
+                      Expired: {item.nearest_expiry_date}
                     </p>
                   ) : item.alertType === 'low' ? (
                     <p className="text-xs text-muted-foreground">
-                      Current: {item.currentQuantity}, Min: {item.minimumThreshold}
+                      Current: {item.current_quantity}, Min: {item.minimum_threshold}
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Expires: {item.nearestExpiryDate}
+                      Expires: {item.nearest_expiry_date}
                     </p>
                   )}
                 </div>

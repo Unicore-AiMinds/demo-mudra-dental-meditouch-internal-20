@@ -73,7 +73,104 @@ interface StockContextType {
 const StockContext = createContext<StockContextType | undefined>(undefined);
 
 export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [stockItems, setStockItems] = useState<StockItem[]>([
+    {
+      id: '1',
+      name: 'Dental Composite',
+      sub_item: 'Filtek Supreme Ultra',
+      item_type: 'Consumable',
+      dealer: 'Dental Depot',
+      rate: 2500,
+      description: 'Light-cured restorative material',
+      unit: 'syringe',
+      current_quantity: 8,
+      minimum_threshold: 5,
+      nearest_expiry_date: '2025-04-15',
+      created_at: '2025-05-01T10:00:00Z'
+    },
+    {
+      id: '2',
+      name: 'Impression Material',
+      sub_item: 'Jeltrate Plus',
+      item_type: 'Consumable',
+      dealer: 'Henry Schein',
+      rate: 1200,
+      description: 'Alginate impression material',
+      unit: 'pack',
+      current_quantity: 3,
+      minimum_threshold: 4,
+      nearest_expiry_date: '2025-05-01',
+      created_at: '2025-05-02T11:30:00Z'
+    },
+    {
+      id: '3',
+      name: 'Orthodontic Wire',
+      sub_item: 'Ormco NiTi',
+      item_type: 'Inventory',
+      dealer: 'Ormco Direct',
+      rate: 800,
+      description: 'Nickel titanium archwires',
+      unit: 'piece',
+      current_quantity: 15,
+      minimum_threshold: 6,
+      created_at: '2025-05-03T09:15:00Z'
+    },
+    {
+      id: '4',
+      name: 'Dental Cement',
+      sub_item: 'GC Fuji II LC',
+      item_type: 'Consumable',
+      dealer: 'GC India',
+      rate: 1800,
+      description: 'Light-cured glass ionomer cement',
+      unit: 'kit',
+      current_quantity: 2,
+      minimum_threshold: 3,
+      nearest_expiry_date: '2025-04-30',
+      created_at: '2025-05-04T14:45:00Z'
+    },
+    {
+      id: '5',
+      name: 'Dental Burs',
+      sub_item: 'Mani Diamond',
+      item_type: 'Inventory',
+      dealer: 'Mani Inc',
+      rate: 300,
+      description: 'Diamond dental burs',
+      unit: 'piece',
+      current_quantity: 25,
+      minimum_threshold: 10,
+      created_at: '2025-05-05T16:20:00Z'
+    },
+    {
+      id: '6',
+      name: 'Local Anesthetic',
+      subItem: 'Lignocaine 2%',
+      itemType: 'Consumable',
+      dealer: 'Patterson Dental',
+      rate: 950,
+      description: 'Local anesthetic solution',
+      unit: 'box',
+      currentQuantity: 4,
+      minimumThreshold: 5,
+      nearestExpiryDate: '2025-07-01',
+      createdAt: '2025-05-06T13:10:00Z'
+    },
+    {
+      id: '7',
+      name: 'Bonding Agent',
+      subItem: '3M Single Bond',
+      itemType: 'Consumable',
+      dealer: '3M Healthcare',
+      rate: 1500,
+      description: 'Dental bonding agent',
+      unit: 'bottle',
+      currentQuantity: 6,
+      minimumThreshold: 4,
+      nearestExpiryDate: '2026-01-15',
+      createdAt: '2025-05-07T15:30:00Z'
+    }
+  ]);
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();

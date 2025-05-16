@@ -70,7 +70,109 @@ interface AuditLogEntry {
   };
 }
 
-// Audit log data will be fetched from Supabase
+// Demo audit log data
+const demoAuditLogs: AuditLogEntry[] = [
+  {
+    id: '1',
+    timestamp: '2025-05-16 10:30:15',
+    user: 'Dr. Sharma',
+    userRole: 'Doctor',
+    actionCategory: 'appointment',
+    actionType: 'Create Appointment',
+    targetEntity: 'Appointment #APT123',
+    details: 'Created new appointment for patient Rahul Patel - Dental Checkup',
+  },
+  {
+    id: '2',
+    timestamp: '2025-05-16 10:15:00',
+    user: 'Dr. Sharma',
+    userRole: 'Doctor',
+    actionCategory: 'patient',
+    actionType: 'Update Patient',
+    targetEntity: 'Patient #PT456',
+    details: 'Updated medical history for Priya Singh',
+  },
+  {
+    id: '3',
+    timestamp: '2025-05-16 09:45:22',
+    user: 'Neha Kapoor',
+    userRole: 'Receptionist',
+    actionCategory: 'auth',
+    actionType: 'User Login',
+    targetEntity: 'System',
+    details: 'Successful login from Mumbai office IP',
+  },
+  {
+    id: '4',
+    timestamp: '2025-05-16 09:30:00',
+    user: 'Dr. Patel',
+    userRole: 'Doctor',
+    actionCategory: 'lab',
+    actionType: 'Create Lab Work',
+    targetEntity: 'Lab Work #LW789',
+    details: 'Created new lab work order for patient Amit Shah - Crown preparation',
+  },
+  {
+    id: '5',
+    timestamp: '2025-05-15 18:45:10',
+    user: 'Admin',
+    userRole: 'Administrator',
+    actionCategory: 'stock',
+    actionType: 'Update Stock',
+    targetEntity: 'Stock Item #ST101',
+    details: 'Updated quantity for Dental Composite (Filtek Supreme Ultra)',
+  },
+  {
+    id: '6',
+    timestamp: '2025-05-15 17:30:00',
+    user: 'Dr. Sharma',
+    userRole: 'Doctor',
+    actionCategory: 'appointment',
+    actionType: 'Reschedule Appointment',
+    targetEntity: 'Appointment #APT120',
+    details: 'Rescheduled appointment for Sonia Verma from 2025-05-17 to 2025-05-20',
+  },
+  {
+    id: '7',
+    timestamp: '2025-05-15 16:20:15',
+    user: 'Neha Kapoor',
+    userRole: 'Receptionist',
+    actionCategory: 'patient',
+    actionType: 'Create Patient',
+    targetEntity: 'Patient #PT789',
+    details: 'Created new patient record for Rajesh Kumar',
+  },
+  {
+    id: '8',
+    timestamp: '2025-05-15 15:45:30',
+    user: 'Dr. Patel',
+    userRole: 'Doctor',
+    actionCategory: 'lab',
+    actionType: 'Update Lab Work',
+    targetEntity: 'Lab Work #LW785',
+    details: 'Updated status to Ready for patient Meera Reddy',
+  },
+  {
+    id: '9',
+    timestamp: '2025-05-15 14:30:00',
+    user: 'Admin',
+    userRole: 'Administrator',
+    actionCategory: 'settings',
+    actionType: 'Update Settings',
+    targetEntity: 'System Settings',
+    details: 'Updated clinic working hours for weekends',
+  },
+  {
+    id: '10',
+    timestamp: '2025-05-15 14:15:45',
+    user: 'Dr. Sharma',
+    userRole: 'Doctor',
+    actionCategory: 'patient',
+    actionType: 'Delete Patient',
+    targetEntity: 'Patient #PT445',
+    details: 'Deleted inactive patient record for John Doe',
+  }
+];
 
 // Get icon for action category
 const getActionIcon = (category: AuditLogEntry['actionCategory']) => {
@@ -125,32 +227,25 @@ const AuditLog = () => {
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch audit logs from Supabase
+  // Initialize with demo data
   useEffect(() => {
-    const fetchAuditLogs = async () => {
+    const loadDemoData = async () => {
       try {
         setIsLoading(true);
-
-        // Fetch audit logs from Supabase
-        const logs = await supabase.from<AuditLogEntry>('audit_logs').getAll({
-          order: { column: 'timestamp', ascending: false }
-        });
-
-        setAuditLogs(logs || []);
+        setAuditLogs(demoAuditLogs);
       } catch (error) {
-        console.error('Error fetching audit logs:', error);
+        console.error('Error loading demo audit logs:', error);
         toast({
           title: 'Error',
-          description: 'Failed to load audit logs. Please try again.',
+          description: 'Failed to load audit logs',
           variant: 'destructive',
         });
-        setAuditLogs([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchAuditLogs();
+    loadDemoData();
   }, [supabase, toast]);
 
   // Check if the user is an admin
