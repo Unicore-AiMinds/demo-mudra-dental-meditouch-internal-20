@@ -15,6 +15,8 @@ import { PrescriptionProvider } from "@/contexts/PrescriptionContext";
 import { StockProvider } from "@/contexts/StockContext";
 import { LabWorkProvider } from "@/contexts/LabWorkContext";
 import { MedicineProvider } from "@/contexts/MedicineContext";
+import { DentalLabsProvider } from "@/contexts/DentalLabsContext";
+import { LabWorkTypesProvider } from "@/contexts/LabWorkTypesContext";
 import { PatientProvider } from "@/contexts/PatientContext";
 import { AppointmentProvider } from "@/contexts/AppointmentContext";
 import { ServiceProvider } from "@/contexts/ServiceContext";
@@ -62,86 +64,90 @@ const App = () => (
                                 <DentalChartingProvider>
                                   <VitalSignsProvider>
                                     <PrescriptionProvider>
-                                      <StockProvider>
-                                        <LabWorkProvider>
-                                          <MedicineProvider>
-                            <Routes>
-                              <Route path="/login" element={<Login />} />
-                              <Route path="/unauthorized" element={<Unauthorized />} />
+                                      {/* Important: DentalLabsProvider must come before LabWorkProvider */}
+                                      <DentalLabsProvider>
+                                        <LabWorkTypesProvider>
+                                          <LabWorkProvider>
+                                            <StockProvider>
+                                              <MedicineProvider>
+                                              <Routes>
+                                                <Route path="/login" element={<Login />} />
+                                                <Route path="/unauthorized" element={<Unauthorized />} />
 
-                              {/* Protected Routes */}
-                              <Route
-                                element={
-                                  <ProtectedRoute>
-                                    <AppLayout />
-                                  </ProtectedRoute>
-                                }
-                              >
-                                <Route path="/dashboard" element={<Dashboard />} />
-                                <Route path="/appointments" element={<Appointments />} />
-                                <Route path="/appointments/new" element={<NewAppointment />} />
-                                <Route
-                                  path="/stock"
-                                  element={
-                                    <ProtectedRoute allowedRoles={['admin', 'inventory']}>
-                                      <StockTracker />
-                                    </ProtectedRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/lab"
-                                  element={
-                                    <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
-                                      <LabWork />
-                                    </ProtectedRoute>
-                                  }
-                                />
-                                <Route path="/patients" element={<Patients />} />
-                                <Route path="/patients/:patientId" element={<PatientDetails />} />
-                                <Route path="/recall-list" element={<RecallList />} />
-                                <Route
-                                  path="/reports"
-                                  element={
-                                    <ProtectedRoute allowedRoles={['admin']}>
-                                      <Reports />
-                                    </ProtectedRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/audit"
-                                  element={
-                                    <ProtectedRoute allowedRoles={['admin']}>
-                                      <AuditLog />
-                                    </ProtectedRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings"
-                                  element={
-                                    <ProtectedRoute allowedRoles={['admin']}>
-                                      <Settings />
-                                    </ProtectedRoute>
-                                  }
-                                />
+                                                {/* Protected Routes */}
+                                                <Route
+                                                  element={
+                                                    <ProtectedRoute>
+                                                      <AppLayout />
+                                                    </ProtectedRoute>
+                                                  }
+                                                >
+                                                  <Route path="/dashboard" element={<Dashboard />} />
+                                                  <Route path="/appointments" element={<Appointments />} />
+                                                  <Route path="/appointments/new" element={<NewAppointment />} />
+                                                  <Route
+                                                    path="/stock"
+                                                    element={
+                                                      <ProtectedRoute allowedRoles={['admin', 'inventory']}>
+                                                        <StockTracker />
+                                                      </ProtectedRoute>
+                                                    }
+                                                  />
+                                                  <Route
+                                                    path="/lab"
+                                                    element={
+                                                      <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
+                                                        <LabWork />
+                                                      </ProtectedRoute>
+                                                    }
+                                                  />
+                                                  <Route path="/patients" element={<Patients />} />
+                                                  <Route path="/patients/:patientId" element={<PatientDetails />} />
+                                                  <Route path="/recall-list" element={<RecallList />} />
+                                                  <Route
+                                                    path="/reports"
+                                                    element={
+                                                      <ProtectedRoute allowedRoles={['admin']}>
+                                                        <Reports />
+                                                      </ProtectedRoute>
+                                                    }
+                                                  />
+                                                  <Route
+                                                    path="/audit"
+                                                    element={
+                                                      <ProtectedRoute allowedRoles={['admin']}>
+                                                        <AuditLog />
+                                                      </ProtectedRoute>
+                                                    }
+                                                  />
+                                                  <Route
+                                                    path="/settings"
+                                                    element={
+                                                      <ProtectedRoute allowedRoles={['admin']}>
+                                                        <Settings />
+                                                      </ProtectedRoute>
+                                                    }
+                                                  />
+                                                </Route>
 
-                              </Route>
+                                                {/* Redirect root to dashboard if logged in, otherwise to login */}
+                                                <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-                              {/* Redirect root to dashboard if logged in, otherwise to login */}
-                              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-                              {/* 404 route */}
-                              <Route path="*" element={<NotFound />} />
-                            </Routes>
-                                    </MedicineProvider>
-                                  </LabWorkProvider>
-                                </StockProvider>
-                              </PrescriptionProvider>
-                            </VitalSignsProvider>
-                          </DentalChartingProvider>
-                        </DentalHistoryProvider>
-                      </FollowUpProvider>
-                    </ServiceFollowUpRuleProvider>
-                  </ServiceFollowUpProvider>
+                                                {/* 404 route */}
+                                                <Route path="*" element={<NotFound />} />
+                                              </Routes>
+                                            </MedicineProvider>
+                                          </StockProvider>
+                                        </LabWorkProvider>
+                                      </LabWorkTypesProvider>
+                                    </DentalLabsProvider>
+                                    </PrescriptionProvider>
+                                  </VitalSignsProvider>
+                                </DentalChartingProvider>
+                              </DentalHistoryProvider>
+                            </FollowUpProvider>
+                          </ServiceFollowUpRuleProvider>
+                        </ServiceFollowUpProvider>
                       </ServiceProvider>
                     </AppointmentProvider>
                   </PatientProvider>

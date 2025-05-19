@@ -6,8 +6,8 @@ import { uploadFile, deleteFile, checkStorageAccess } from '@/lib/supabase-stora
 import { createClient } from '@supabase/supabase-js';
 
 // Create a direct Supabase client
-const SUPABASE_URL = 'https://otvhtpnmunoazgqhennu.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90dmh0cG5tdW5vYXpncWhlbm51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2MDEwMTAsImV4cCI6MjA2MjE3NzAxMH0.TeZa-YGzfToszrWrMomsjw3R9mRxFR-7NE7sNLFi9JM';
+const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw';
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Define the Doctor type
@@ -399,7 +399,7 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const extractPathFromUrl = (url: string | undefined) => {
               if (!url) return null;
               try {
-                // The URL format is like: https://otvhtpnmunoazgqhennu.supabase.co/storage/v1/object/public/doctor-documents/[path]
+                // The URL format is like: https://cqtloiklvpvafeoiyyhy.supabase.co/storage/v1/object/public/doctor-documents/[path]
                 const urlObj = new URL(url);
                 const pathMatch = urlObj.pathname.match(/\/public\/doctor-documents\/(.+)$/);
                 return pathMatch ? pathMatch[1] : null;

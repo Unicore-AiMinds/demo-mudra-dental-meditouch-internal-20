@@ -1,6 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
-import { useLabWork, LabJob } from '@/contexts/LabWorkContext';
+import { useLabWork, LabJob, NewLabJob } from '@/contexts/LabWorkContext';
+import { useDentalLabs, DentalLab } from '@/contexts/DentalLabsContext';
+import { useLabWorkTypes, LabWorkType } from '@/contexts/LabWorkTypesContext';
+import { useServices } from '@/contexts/ServiceContext';
+import { createClient } from '@supabase/supabase-js';
+
+// Create a direct Supabase client
+const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw';
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 import {
   Card,
   CardContent
@@ -89,6 +98,58 @@ const LabWork = () => {
     isOverdue,
     isApproachingDelivery
   } = useLabWork();
+  const { dentalLabs } = useDentalLabs();
+  const { labWorkTypes } = useLabWorkTypes();
+  const { dentalServices, getDentalServiceNames } = useServices();
+
+  // State for patients and services
+  const [patients, setPatients] = useState<{ id: string, name: string, patient_code: string }[]>([]);
+  const [services, setServices] = useState<string[]>([]);
+
+  // Fetch patients from Supabase
+  useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        const { data, error } = await supabaseClient
+          .from('patients')
+          .select('id, name, patient_code')
+          .eq('clinic', 'dental')
+          .order('name');
+
+        if (error) {
+          console.error('Error fetching patients:', error);
+          return;
+        }
+
+        if (data) {
+          setPatients(data);
+        }
+      } catch (error) {
+        console.error('Error fetching patients:', error);
+      }
+    };
+
+    fetchPatients();
+  }, []);
+
+  // Get dental services
+  useEffect(() => {
+    // Get service names from the dental services
+    const serviceNames = getDentalServiceNames();
+
+    // If no services found, use default list
+    if (serviceNames.length === 0) {
+      const defaultServices = [
+        'Crown Placement', 'Bridge Procedure', 'Complete Denture', 'Implant Restoration',
+        'Root Canal Treatment', 'Orthodontic Treatment', 'Teeth Whitening', 'Dental Filling'
+      ];
+      setServices(defaultServices);
+      console.log('No dental services found, using defaults:', defaultServices);
+    } else {
+      setServices(serviceNames);
+      console.log('Dental services loaded:', serviceNames);
+    }
+  }, [dentalServices, getDentalServiceNames]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [isNewLabDialogOpen, setIsNewLabDialogOpen] = useState(false);
@@ -109,9 +170,12 @@ const LabWork = () => {
 
   // Form state for new lab entry
   const [newPatient, setNewPatient] = useState<string>("");
+  const [newPatientId, setNewPatientId] = useState<string>("");
   const [newService, setNewService] = useState<string>("");
   const [newLabWorkType, setNewLabWorkType] = useState<string>("");
+  const [selectedLabWorkType, setSelectedLabWorkType] = useState<LabWorkType | null>(null);
   const [newAssignedLab, setNewAssignedLab] = useState<string>("");
+  const [newLabId, setNewLabId] = useState<string>("");
   const [newDateSent, setNewDateSent] = useState<string>("");
   const [newExpectedDelivery, setNewExpectedDelivery] = useState<string>("");
   const [newStatus, setNewStatus] = useState<LabJob['status']>("pending-send");
@@ -121,9 +185,12 @@ const LabWork = () => {
 
   // Form state for edit lab entry
   const [editPatient, setEditPatient] = useState<string>("");
+  const [editPatientId, setEditPatientId] = useState<string>("");
   const [editService, setEditService] = useState<string>("");
   const [editLabWorkType, setEditLabWorkType] = useState<string>("");
+  const [selectedEditLabWorkType, setSelectedEditLabWorkType] = useState<LabWorkType | null>(null);
   const [editAssignedLab, setEditAssignedLab] = useState<string>("");
+  const [editLabId, setEditLabId] = useState<string>("");
   const [editDateSent, setEditDateSent] = useState<string>("");
   const [editExpectedDelivery, setEditExpectedDelivery] = useState<string>("");
   const [editStatus, setEditStatus] = useState<LabJob['status']>("pending-send");
@@ -313,39 +380,53 @@ const LabWork = () => {
     setIsCreateConfirmOpen(true);
   };
 
-  const handleCreateLabEntry = () => {
-    // Create new lab job
-    addLabJob({
-      patient: newPatient,
-      service: newService,
-      labWorkType: newLabWorkType,
-      dateSent: newDateSent,
-      assignedLab: newAssignedLab,
-      expectedDelivery: newExpectedDelivery,
-      paymentStatus: newPaymentStatus,
-      status: newStatus,
-      materialSpecs: newMaterialSpecs,
-      notes: newNotes
-    });
+  const handleCreateLabEntry = async () => {
+    try {
+      // Create new lab job
+      await addLabJob({
+        patient: newPatient,
+        patient_id: newPatientId,
+        service: newService,
+        labWorkType: newLabWorkType,
+        dateSent: newDateSent,
+        assignedLab: newAssignedLab,
+        lab_id: newLabId,
+        expectedDelivery: newExpectedDelivery,
+        paymentStatus: newPaymentStatus,
+        status: newStatus,
+        materialSpecs: newMaterialSpecs,
+        notes: newNotes
+      });
 
-    // Reset form fields
-    setNewPatient("");
-    setNewService("");
-    setNewLabWorkType("");
-    setNewAssignedLab("");
-    setNewDateSent("");
-    setNewExpectedDelivery("");
-    setNewStatus("pending-send");
-    setNewPaymentStatus("unpaid");
-    setNewMaterialSpecs("");
-    setNewNotes("");
+      // Reset form fields
+      setNewPatient("");
+      setNewPatientId("");
+      setNewService("");
+      setNewLabWorkType("");
+      setSelectedLabWorkType(null);
+      setNewAssignedLab("");
+      setNewLabId("");
+      setNewDateSent("");
+      setNewExpectedDelivery("");
+      setNewStatus("pending-send");
+      setNewPaymentStatus("unpaid");
+      setNewMaterialSpecs("");
+      setNewNotes("");
 
-    // Close dialog and show success message
-    setIsCreateConfirmOpen(false);
-    toast({
-      title: "Lab Entry Created",
-      description: "The new lab work entry has been added successfully.",
-    });
+      // Close dialog and show success message
+      setIsCreateConfirmOpen(false);
+      toast({
+        title: "Lab Entry Created",
+        description: "The new lab work entry has been added successfully.",
+      });
+    } catch (error) {
+      console.error("Error creating lab job:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create lab job. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const cancelCreate = () => {
@@ -358,9 +439,16 @@ const LabWork = () => {
 
     // Set edit form state variables
     setEditPatient(job.patient);
+    setEditPatientId(job.patient_id || "");
     setEditService(job.service);
     setEditLabWorkType(job.labWorkType);
+
+    // Find the lab work type by name
+    const selectedType = labWorkTypes.find(type => type.name === job.labWorkType);
+    setSelectedEditLabWorkType(selectedType || null);
+
     setEditAssignedLab(job.assignedLab);
+    setEditLabId(job.lab_id || "");
     setEditDateSent(job.dateSent);
     setEditExpectedDelivery(job.expectedDelivery);
     setEditStatus(job.status);
@@ -378,29 +466,41 @@ const LabWork = () => {
     }
   };
 
-  const handleUpdateLabEntry = () => {
+  const handleUpdateLabEntry = async () => {
     if (editingJob) {
-      // Update the job with new values
-      updateLabJob(editingJob.id, {
-        patient: editPatient,
-        service: editService,
-        labWorkType: editLabWorkType,
-        assignedLab: editAssignedLab,
-        dateSent: editDateSent,
-        expectedDelivery: editExpectedDelivery,
-        status: editStatus,
-        paymentStatus: editPaymentStatus,
-        materialSpecs: editMaterialSpecs,
-        notes: editNotes
-      });
+      try {
+        // Update the job with new values
+        await updateLabJob(editingJob.id, {
+          patient: editPatient,
+          patient_id: editPatientId,
+          service: editService,
+          labWorkType: editLabWorkType,
+          assignedLab: editAssignedLab,
+          lab_id: editLabId,
+          dateSent: editDateSent,
+          expectedDelivery: editExpectedDelivery,
+          status: editStatus,
+          paymentStatus: editPaymentStatus,
+          materialSpecs: editMaterialSpecs,
+          notes: editNotes
+        });
 
-      setIsUpdateConfirmOpen(false);
-      setEditingJob(null);
+        setIsUpdateConfirmOpen(false);
+        setEditingJob(null);
+        setSelectedEditLabWorkType(null);
 
-      toast({
-        title: "Lab Entry Updated",
-        description: "Lab work entry has been updated successfully.",
-      });
+        toast({
+          title: "Lab Entry Updated",
+          description: "Lab work entry has been updated successfully.",
+        });
+      } catch (error) {
+        console.error("Error updating lab job:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update lab job. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -416,23 +516,58 @@ const LabWork = () => {
     }
   };
 
-  const handleDeleteLabEntry = () => {
+  const handleDeleteLabEntry = async () => {
     if (editingJob) {
-      deleteLabJob(editingJob.id);
+      try {
+        await deleteLabJob(editingJob.id);
 
-      setIsDeleteConfirmOpen(false);
-      setEditingJob(null);
+        setIsDeleteConfirmOpen(false);
+        setEditingJob(null);
+        setSelectedEditLabWorkType(null);
 
-      toast({
-        title: "Lab Entry Deleted",
-        description: "Lab work entry has been deleted successfully.",
-      });
+        toast({
+          title: "Lab Entry Deleted",
+          description: "Lab work entry has been deleted successfully.",
+        });
+      } catch (error) {
+        console.error("Error deleting lab job:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete lab job. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
   const cancelDelete = () => {
     setIsDeleteConfirmOpen(false);
     setIsEditLabDialogOpen(true); // Go back to edit dialog
+  };
+
+  // Function to calculate expected delivery date based on date sent and lab work type
+  const calculateExpectedDelivery = (dateSent: string, labWorkType: LabWorkType | null): string => {
+    if (!dateSent || !labWorkType) return "";
+
+    const sentDate = new Date(dateSent);
+
+    // Parse turnaround duration and unit
+    const duration = labWorkType.turnaround_duration;
+    const unit = labWorkType.turnaround_unit;
+
+    // Calculate expected delivery date
+    const expectedDate = new Date(sentDate);
+
+    if (unit === 'days') {
+      expectedDate.setDate(expectedDate.getDate() + duration);
+    } else if (unit === 'weeks') {
+      expectedDate.setDate(expectedDate.getDate() + (duration * 7));
+    } else if (unit === 'months') {
+      expectedDate.setMonth(expectedDate.getMonth() + duration);
+    }
+
+    // Format as YYYY-MM-DD for input field
+    return expectedDate.toISOString().split('T')[0];
   };
 
   return (
@@ -521,8 +656,8 @@ const LabWork = () => {
                 <TableHead>Patient</TableHead>
                 <TableHead className="hidden md:table-cell">Service</TableHead>
                 <TableHead>Lab Work Type</TableHead>
-                <TableHead className="hidden lg:table-cell">Date Sent</TableHead>
                 <TableHead className="hidden md:table-cell">Laboratory</TableHead>
+                <TableHead className="hidden lg:table-cell">Date Sent</TableHead>
                 <TableHead>Expected</TableHead>
                 <TableHead>Payment Due</TableHead>
                 <TableHead>Status</TableHead>
@@ -543,12 +678,12 @@ const LabWork = () => {
                         {job.labWorkType}
                       </div>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">{job.dateSent}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       <div className="cursor-help" title={job.notes ? `Notes: ${job.notes}` : 'No additional notes'}>
                         {job.assignedLab}
                       </div>
                     </TableCell>
+                    <TableCell className="hidden lg:table-cell">{job.dateSent}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <span className={isOverdue(job) ? "text-red-600 font-medium" : ""}>
@@ -639,15 +774,33 @@ const LabWork = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="patient">Patient Name *</Label>
-                <Select value={newPatient} onValueChange={setNewPatient}>
+                <Select
+                  value={newPatient}
+                  onValueChange={(value) => {
+                    setNewPatient(value);
+                    // Find the patient by name to get the ID
+                    const selectedPatient = patients.find(p => p.name === value);
+                    if (selectedPatient) {
+                      // Store patient_id for later use
+                      setNewPatientId(selectedPatient.id);
+                    } else {
+                      setNewPatientId("");
+                    }
+                  }}
+                >
                   <SelectTrigger id="patient">
                     <SelectValue placeholder="Select Patient" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Aarav Sharma">Aarav Sharma</SelectItem>
-                    <SelectItem value="Priya Patel">Priya Patel</SelectItem>
-                    <SelectItem value="Vikram Singh">Vikram Singh</SelectItem>
-                    <SelectItem value="Neha Kapoor">Neha Kapoor</SelectItem>
+                    {patients.length > 0 ? (
+                      patients.map((patient) => (
+                        <SelectItem key={patient.id} value={patient.name}>
+                          {patient.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>No patients found</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -658,52 +811,108 @@ const LabWork = () => {
                     <SelectValue placeholder="Select Service" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Crown Placement">Crown Placement</SelectItem>
-                    <SelectItem value="Bridge Procedure">Bridge Procedure</SelectItem>
-                    <SelectItem value="Complete Denture">Complete Denture</SelectItem>
-                    <SelectItem value="Implant Restoration">Implant Restoration</SelectItem>
+                    {services.map((service) => (
+                      <SelectItem key={service} value={service}>
+                        {service}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="labWorkType">Lab Work Type *</Label>
-                <Select value={newLabWorkType} onValueChange={setNewLabWorkType}>
+                <Select
+                  value={newLabWorkType}
+                  onValueChange={(value) => {
+                    setNewLabWorkType(value);
+                    // Find the lab work type by name
+                    const selectedType = labWorkTypes.find(type => type.name === value);
+                    setSelectedLabWorkType(selectedType || null);
+
+                    // If date sent is already selected, calculate expected delivery date
+                    if (newDateSent && selectedType) {
+                      const calculatedDate = calculateExpectedDelivery(newDateSent, selectedType);
+                      setNewExpectedDelivery(calculatedDate);
+                    }
+                  }}
+                >
                   <SelectTrigger id="labWorkType">
                     <SelectValue placeholder="Select Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PFM Crown">PFM Crown</SelectItem>
-                    <SelectItem value="Ceramic Bridge">Ceramic Bridge</SelectItem>
-                    <SelectItem value="Acrylic Denture">Acrylic Denture</SelectItem>
-                    <SelectItem value="Custom Abutment">Custom Abutment</SelectItem>
+                    {labWorkTypes.length > 0 ? (
+                      labWorkTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.name}>
+                          {type.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>No lab work types found</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="assignedLab">Assigned Lab *</Label>
-                <Select value={newAssignedLab} onValueChange={setNewAssignedLab}>
+                <Select
+                  value={newAssignedLab}
+                  onValueChange={(value) => {
+                    setNewAssignedLab(value);
+                    // Find the lab by name to get the ID
+                    const selectedLab = dentalLabs.find(lab => lab.name === value);
+                    if (selectedLab) {
+                      // Store lab_id for later use
+                      setNewLabId(selectedLab.id);
+                    } else {
+                      setNewLabId("");
+                    }
+                  }}
+                >
                   <SelectTrigger id="assignedLab">
                     <SelectValue placeholder="Select Lab" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Precision Dental Lab">Precision Dental Lab</SelectItem>
-                    <SelectItem value="Nova Dental Solutions">Nova Dental Solutions</SelectItem>
-                    <SelectItem value="Dent Creations India">Dent Creations India</SelectItem>
-                    <SelectItem value="Implant Specialists">Implant Specialists</SelectItem>
+                    {dentalLabs.length > 0 ? (
+                      dentalLabs.map((lab) => (
+                        <SelectItem key={lab.id} value={lab.name}>
+                          {lab.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>No labs found</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dateSent">Date Sent *</Label>
+                <Label htmlFor="dateSent" className="flex items-center">
+                  Date Sent *
+                  {selectedLabWorkType && (
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      (Turnaround: {selectedLabWorkType.turnaround_duration} {selectedLabWorkType.turnaround_unit})
+                    </span>
+                  )}
+                </Label>
                 <Input
                   type="date"
                   id="dateSent"
                   value={newDateSent}
-                  onChange={(e) => setNewDateSent(e.target.value)}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    setNewDateSent(newDate);
+
+                    // If lab work type is already selected, calculate expected delivery date
+                    if (newDate && selectedLabWorkType) {
+                      const calculatedDate = calculateExpectedDelivery(newDate, selectedLabWorkType);
+                      setNewExpectedDelivery(calculatedDate);
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="expectedDelivery">Expected Delivery *</Label>
+                <Label htmlFor="expectedDelivery" className="flex items-center">
+                  Expected Delivery *
+                </Label>
                 <Input
                   type="date"
                   id="expectedDelivery"
@@ -913,15 +1122,33 @@ const LabWork = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label htmlFor="edit-patient">Patient Name *</Label>
-                  <Select value={editPatient} onValueChange={setEditPatient}>
+                  <Select
+                    value={editPatient}
+                    onValueChange={(value) => {
+                      setEditPatient(value);
+                      // Find the patient by name to get the ID
+                      const selectedPatient = patients.find(p => p.name === value);
+                      if (selectedPatient) {
+                        // Store patient_id for later use
+                        setEditPatientId(selectedPatient.id);
+                      } else {
+                        setEditPatientId("");
+                      }
+                    }}
+                  >
                     <SelectTrigger id="edit-patient">
                       <SelectValue placeholder="Select Patient" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Aarav Sharma">Aarav Sharma</SelectItem>
-                      <SelectItem value="Priya Patel">Priya Patel</SelectItem>
-                      <SelectItem value="Vikram Singh">Vikram Singh</SelectItem>
-                      <SelectItem value="Neha Kapoor">Neha Kapoor</SelectItem>
+                      {patients.length > 0 ? (
+                        patients.map((patient) => (
+                          <SelectItem key={patient.id} value={patient.name}>
+                            {patient.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>No patients found</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -932,52 +1159,108 @@ const LabWork = () => {
                       <SelectValue placeholder="Select Service" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Crown Placement">Crown Placement</SelectItem>
-                      <SelectItem value="Bridge Procedure">Bridge Procedure</SelectItem>
-                      <SelectItem value="Complete Denture">Complete Denture</SelectItem>
-                      <SelectItem value="Implant Restoration">Implant Restoration</SelectItem>
+                      {services.map((service) => (
+                        <SelectItem key={service} value={service}>
+                          {service}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-labWorkType">Lab Work Type *</Label>
-                  <Select value={editLabWorkType} onValueChange={setEditLabWorkType}>
+                  <Select
+                    value={editLabWorkType}
+                    onValueChange={(value) => {
+                      setEditLabWorkType(value);
+                      // Find the lab work type by name
+                      const selectedType = labWorkTypes.find(type => type.name === value);
+                      setSelectedEditLabWorkType(selectedType || null);
+
+                      // If date sent is already selected, calculate expected delivery date
+                      if (editDateSent && selectedType) {
+                        const calculatedDate = calculateExpectedDelivery(editDateSent, selectedType);
+                        setEditExpectedDelivery(calculatedDate);
+                      }
+                    }}
+                  >
                     <SelectTrigger id="edit-labWorkType">
                       <SelectValue placeholder="Select Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="PFM Crown">PFM Crown</SelectItem>
-                      <SelectItem value="Ceramic Bridge">Ceramic Bridge</SelectItem>
-                      <SelectItem value="Acrylic Denture">Acrylic Denture</SelectItem>
-                      <SelectItem value="Custom Abutment">Custom Abutment</SelectItem>
+                      {labWorkTypes.length > 0 ? (
+                        labWorkTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.name}>
+                            {type.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>No lab work types found</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-assignedLab">Assigned Lab *</Label>
-                  <Select value={editAssignedLab} onValueChange={setEditAssignedLab}>
+                  <Select
+                    value={editAssignedLab}
+                    onValueChange={(value) => {
+                      setEditAssignedLab(value);
+                      // Find the lab by name to get the ID
+                      const selectedLab = dentalLabs.find(lab => lab.name === value);
+                      if (selectedLab) {
+                        // Store lab_id for later use
+                        setEditLabId(selectedLab.id);
+                      } else {
+                        setEditLabId("");
+                      }
+                    }}
+                  >
                     <SelectTrigger id="edit-assignedLab">
                       <SelectValue placeholder="Select Lab" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Precision Dental Lab">Precision Dental Lab</SelectItem>
-                      <SelectItem value="Nova Dental Solutions">Nova Dental Solutions</SelectItem>
-                      <SelectItem value="Dent Creations India">Dent Creations India</SelectItem>
-                      <SelectItem value="Implant Specialists">Implant Specialists</SelectItem>
+                      {dentalLabs.length > 0 ? (
+                        dentalLabs.map((lab) => (
+                          <SelectItem key={lab.id} value={lab.name}>
+                            {lab.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>No labs found</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-dateSent">Date Sent *</Label>
+                  <Label htmlFor="edit-dateSent" className="flex items-center">
+                    Date Sent *
+                    {selectedEditLabWorkType && (
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        (Turnaround: {selectedEditLabWorkType.turnaround_duration} {selectedEditLabWorkType.turnaround_unit})
+                      </span>
+                    )}
+                  </Label>
                   <Input
                     type="date"
                     id="edit-dateSent"
                     value={editDateSent}
-                    onChange={(e) => setEditDateSent(e.target.value)}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setEditDateSent(newDate);
+
+                      // If lab work type is already selected, calculate expected delivery date
+                      if (newDate && selectedEditLabWorkType) {
+                        const calculatedDate = calculateExpectedDelivery(newDate, selectedEditLabWorkType);
+                        setEditExpectedDelivery(calculatedDate);
+                      }
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-expectedDelivery">Expected Delivery *</Label>
+                  <Label htmlFor="edit-expectedDelivery" className="flex items-center">
+                    Expected Delivery *
+                  </Label>
                   <Input
                     type="date"
                     id="edit-expectedDelivery"

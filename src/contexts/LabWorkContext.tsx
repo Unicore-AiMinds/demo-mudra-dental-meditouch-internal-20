@@ -1,16 +1,25 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
+import { useDentalLabs } from '@/contexts/DentalLabsContext';
+import { createClient } from '@supabase/supabase-js';
+
+// Create a direct Supabase client
+const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw';
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Define the LabJob interface
 export interface LabJob {
   id: string;
   labJobId: string;
   patient: string;
+  patient_id?: string;
   service: string;
   labWorkType: string;
   dateSent: string;
   assignedLab: string;
+  lab_id?: string;
   expectedDelivery: string;
   paymentStatus: 'paid' | 'unpaid';
   status: 'pending-send' | 'sent' | 'received' | 'ready' | 'completed';
@@ -19,11 +28,17 @@ export interface LabJob {
   createdAt: string;
 }
 
+// Define the type for adding a new lab job
+export type NewLabJob = Omit<LabJob, 'id' | 'labJobId' | 'createdAt'> & {
+  patient_id?: string;
+  lab_id?: string;
+};
+
 // Define the context type
 interface LabWorkContextType {
   labJobs: LabJob[];
   isLoading: boolean;
-  addLabJob: (job: Omit<LabJob, 'id' | 'lab_job_id' | 'created_at'>) => Promise<LabJob>;
+  addLabJob: (job: NewLabJob) => Promise<LabJob>;
   updateLabJob: (id: string, updatedJob: Partial<LabJob>) => Promise<LabJob>;
   deleteLabJob: (id: string) => Promise<void>;
   isOverdue: (job: LabJob) => boolean;
@@ -77,94 +92,64 @@ const defaultLabJobs = [
 
 // Provider component
 export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [labJobs, setLabJobs] = useState<LabJob[]>([
-    {
-      id: '1',
-      labJobId: 'LJ001',
-      patient: 'John Smith',
-      service: 'Crown',
-      labWorkType: 'PFM Crown',
-      assignedLab: 'Dental Arts Lab',
-      dateSent: '2025-05-10',
-      expectedDelivery: '2025-05-20',
-      status: 'sent',
-      paymentStatus: 'unpaid',
-      materialSpecs: 'A2 Shade, Metal-free',
-      notes: 'Please ensure proper occlusal contacts',
-      createdAt: '2025-05-10T10:00:00Z'
-    },
-    {
-      id: '2',
-      labJobId: 'LJ002',
-      patient: 'Sarah Johnson',
-      service: 'Bridge',
-      labWorkType: '3-Unit Bridge',
-      assignedLab: 'Crown Masters',
-      dateSent: '2025-05-08',
-      expectedDelivery: '2025-05-22',
-      status: 'received',
-      paymentStatus: 'paid',
-      materialSpecs: 'Zirconia, B1 Shade',
-      notes: 'Patient has metal allergy',
-      createdAt: '2025-05-08T14:30:00Z'
-    },
-    {
-      id: '3',
-      labJobId: 'LJ003',
-      patient: 'Michael Brown',
-      service: 'Denture',
-      labWorkType: 'Complete Denture',
-      assignedLab: 'Prosthetic Solutions',
-      dateSent: '2025-05-15',
-      expectedDelivery: '2025-05-25',
-      status: 'pending-send',
-      paymentStatus: 'unpaid',
-      materialSpecs: 'High Impact Acrylic',
-      notes: 'Try-in required before final processing',
-      createdAt: '2025-05-15T09:15:00Z'
-    },
-    {
-      id: '4',
-      labJobId: 'LJ004',
-      patient: 'Emily Davis',
-      service: 'Implant',
-      labWorkType: 'Implant Crown',
-      assignedLab: 'Dental Arts Lab',
-      dateSent: '2025-05-01',
-      expectedDelivery: '2025-05-16',
-      status: 'ready',
-      paymentStatus: 'paid',
-      materialSpecs: 'Screw-retained, D2 Shade',
-      notes: 'Use provided implant components',
-      createdAt: '2025-05-01T11:45:00Z'
-    },
-    {
-      id: '5',
-      labJobId: 'LJ005',
-      patient: 'David Wilson',
-      service: 'Crown',
-      labWorkType: 'Zirconia Crown',
-      assignedLab: 'Crown Masters',
-      dateSent: '2025-04-25',
-      expectedDelivery: '2025-05-10',
-      status: 'completed',
-      paymentStatus: 'paid',
-      materialSpecs: 'Full Zirconia, A3 Shade',
-      notes: 'Patient satisfied with final result',
-      createdAt: '2025-04-25T16:20:00Z'
-    }
-  ]);
+  const [labJobs, setLabJobs] = useState<LabJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+
+  // Try to use DentalLabsContext, but provide a fallback if it's not available
+  let dentalLabsContext;
+  try {
+    dentalLabsContext = useDentalLabs();
+  } catch (error) {
+    console.warn('DentalLabsProvider not found, using empty array for dentalLabs');
+    dentalLabsContext = { dentalLabs: [] };
+  }
+
+  const { dentalLabs } = dentalLabsContext;
 
   // Fetch lab jobs from Supabase
   useEffect(() => {
     const fetchLabJobs = async () => {
       try {
         setIsLoading(true);
-        // Skip Supabase operations for demo
-        // The demo data is already set in the initial state
+        console.log('Fetching lab jobs from Supabase...');
+
+        // Fetch lab jobs from Supabase using direct client
+        const { data: labJobsData, error } = await supabaseClient
+          .from('lab_jobs')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+
+        if (labJobsData && labJobsData.length > 0) {
+          // Transform the data to match our interface
+          const transformedJobs: LabJob[] = labJobsData.map(job => ({
+            id: job.id,
+            labJobId: job.lab_job_id,
+            patient: job.patient,
+            patient_id: job.patient_id,
+            service: job.service,
+            labWorkType: job.lab_work_type,
+            dateSent: job.date_sent,
+            assignedLab: job.assigned_lab,
+            lab_id: job.lab_id,
+            expectedDelivery: job.expected_delivery,
+            paymentStatus: job.payment_status as 'paid' | 'unpaid',
+            status: job.status as 'pending-send' | 'sent' | 'received' | 'ready' | 'completed',
+            materialSpecs: job.material_specs,
+            notes: job.notes,
+            createdAt: job.created_at
+          }));
+
+          setLabJobs(transformedJobs);
+          console.log('Fetched lab jobs:', transformedJobs);
+        } else {
+          console.log('No lab jobs found in database');
+        }
       } catch (error) {
         console.error('Error fetching lab jobs:', error);
         toast({
@@ -178,7 +163,7 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     fetchLabJobs();
-  }, [supabase, toast]);
+  }, [toast]);
 
   // Check if a lab job is overdue (expected delivery date is in the past)
   const isOverdue = (job: LabJob) => {
@@ -211,22 +196,111 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // Add a new lab job
-  const addLabJob = async (job: Omit<LabJob, 'id' | 'labJobId' | 'createdAt'>): Promise<LabJob> => {
+  const addLabJob = async (job: NewLabJob): Promise<LabJob> => {
     try {
       // Generate a unique lab job ID
       const newJobNumber = labJobs.length + 1;
       const labJobId = `LJ${String(newJobNumber).padStart(3, '0')}`;
 
-      // Create new lab job with ID
-      const newLabJob = {
-        id: String(newJobNumber),
+      // Find the lab ID from the lab name
+      let lab_id = job.lab_id;
+      if (!lab_id && job.assignedLab) {
+        const lab = dentalLabs.find(lab => lab.name === job.assignedLab);
+        if (lab) {
+          lab_id = lab.id;
+        }
+      }
+
+      // Prepare the data for Supabase
+      const labJobData = {
         lab_job_id: labJobId,
-        created_at: new Date().toISOString(),
-        ...job
+        patient: job.patient,
+        patient_id: job.patient_id,
+        service: job.service,
+        lab_work_type: job.labWorkType,
+        date_sent: job.dateSent,
+        assigned_lab: job.assignedLab,
+        lab_id: lab_id,
+        expected_delivery: job.expectedDelivery,
+        payment_status: job.paymentStatus,
+        status: job.status,
+        material_specs: job.materialSpecs,
+        notes: job.notes
       };
 
-      // Update local state
+      // Insert into Supabase using direct client
+      const { data, error } = await supabaseClient
+        .from('lab_jobs')
+        .insert(labJobData)
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error('No data returned after insertion');
+      }
+
+      // Supabase returns an array, so we need to get the first item
+      const insertedData = data[0];
+      console.log('Inserted lab job data:', insertedData);
+
+      // Transform the returned data to match our interface
+      const newLabJob: LabJob = {
+        id: insertedData.id,
+        labJobId: insertedData.lab_job_id,
+        patient: insertedData.patient,
+        patient_id: insertedData.patient_id,
+        service: insertedData.service,
+        labWorkType: insertedData.lab_work_type,
+        dateSent: insertedData.date_sent,
+        assignedLab: insertedData.assigned_lab,
+        lab_id: insertedData.lab_id,
+        expectedDelivery: insertedData.expected_delivery,
+        paymentStatus: insertedData.payment_status,
+        status: insertedData.status,
+        materialSpecs: insertedData.material_specs,
+        notes: insertedData.notes,
+        createdAt: insertedData.created_at
+      };
+
+      // Update local state and refresh data
       setLabJobs(prevJobs => [newLabJob, ...prevJobs]);
+
+      // Fetch all lab jobs again to ensure UI is in sync with database
+      try {
+        const { data: refreshedData, error: refreshError } = await supabaseClient
+          .from('lab_jobs')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!refreshError && refreshedData && refreshedData.length > 0) {
+          // Transform the data to match our interface
+          const transformedJobs: LabJob[] = refreshedData.map(job => ({
+            id: job.id,
+            labJobId: job.lab_job_id,
+            patient: job.patient,
+            patient_id: job.patient_id,
+            service: job.service,
+            labWorkType: job.lab_work_type,
+            dateSent: job.date_sent,
+            assignedLab: job.assigned_lab,
+            lab_id: job.lab_id,
+            expectedDelivery: job.expected_delivery,
+            paymentStatus: job.payment_status as 'paid' | 'unpaid',
+            status: job.status as 'pending-send' | 'sent' | 'received' | 'ready' | 'completed',
+            materialSpecs: job.material_specs,
+            notes: job.notes,
+            createdAt: job.created_at
+          }));
+
+          setLabJobs(transformedJobs);
+          console.log('Refreshed lab jobs after adding:', transformedJobs);
+        }
+      } catch (refreshErr) {
+        console.error('Error refreshing lab jobs after add:', refreshErr);
+      }
 
       toast({
         title: 'Success',
@@ -248,8 +322,55 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Update an existing lab job
   const updateLabJob = async (id: string, updatedJob: Partial<LabJob>): Promise<LabJob> => {
     try {
+      // Find the job to update
+      const existingJob = labJobs.find(job => job.id === id);
+      if (!existingJob) {
+        throw new Error('Lab job not found');
+      }
+
+      // Find the lab ID from the lab name if needed
+      let lab_id = updatedJob.lab_id;
+      if (!lab_id && updatedJob.assignedLab) {
+        const lab = dentalLabs.find(lab => lab.name === updatedJob.assignedLab);
+        if (lab) {
+          lab_id = lab.id;
+        }
+      }
+
+      // Prepare the data for Supabase
+      const updateData: any = {};
+      if (updatedJob.patient) updateData.patient = updatedJob.patient;
+      if (updatedJob.patient_id) updateData.patient_id = updatedJob.patient_id;
+      if (updatedJob.service) updateData.service = updatedJob.service;
+      if (updatedJob.labWorkType) updateData.lab_work_type = updatedJob.labWorkType;
+      if (updatedJob.dateSent) updateData.date_sent = updatedJob.dateSent;
+      if (updatedJob.assignedLab) updateData.assigned_lab = updatedJob.assignedLab;
+      if (lab_id) updateData.lab_id = lab_id;
+      if (updatedJob.expectedDelivery) updateData.expected_delivery = updatedJob.expectedDelivery;
+      if (updatedJob.paymentStatus) updateData.payment_status = updatedJob.paymentStatus;
+      if (updatedJob.status) updateData.status = updatedJob.status;
+      if (updatedJob.materialSpecs !== undefined) updateData.material_specs = updatedJob.materialSpecs;
+      if (updatedJob.notes !== undefined) updateData.notes = updatedJob.notes;
+      updateData.updated_at = new Date().toISOString();
+
+      // Update in Supabase using direct client
+      const { data, error } = await supabaseClient
+        .from('lab_jobs')
+        .update(updateData)
+        .eq('id', id)
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      // Log the updated data for debugging
+      console.log('Updated lab job data:', data);
+
+      // Create updated job object
+      const updatedJobFull = { ...existingJob, ...updatedJob, lab_id: lab_id || existingJob.lab_id };
+
       // Update local state
-      const updatedJobFull = { ...labJobs.find(job => job.id === id), ...updatedJob };
       setLabJobs(prevJobs =>
         prevJobs.map(job =>
           job.id === id
@@ -257,6 +378,40 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
             : job
         )
       );
+
+      // Fetch all lab jobs again to ensure UI is in sync with database
+      try {
+        const { data: refreshedData, error: refreshError } = await supabaseClient
+          .from('lab_jobs')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!refreshError && refreshedData && refreshedData.length > 0) {
+          // Transform the data to match our interface
+          const transformedJobs: LabJob[] = refreshedData.map(job => ({
+            id: job.id,
+            labJobId: job.lab_job_id,
+            patient: job.patient,
+            patient_id: job.patient_id,
+            service: job.service,
+            labWorkType: job.lab_work_type,
+            dateSent: job.date_sent,
+            assignedLab: job.assigned_lab,
+            lab_id: job.lab_id,
+            expectedDelivery: job.expected_delivery,
+            paymentStatus: job.payment_status as 'paid' | 'unpaid',
+            status: job.status as 'pending-send' | 'sent' | 'received' | 'ready' | 'completed',
+            materialSpecs: job.material_specs,
+            notes: job.notes,
+            createdAt: job.created_at
+          }));
+
+          setLabJobs(transformedJobs);
+          console.log('Refreshed lab jobs after update:', transformedJobs);
+        }
+      } catch (refreshErr) {
+        console.error('Error refreshing lab jobs after update:', refreshErr);
+      }
 
       toast({
         title: 'Success',
@@ -278,8 +433,52 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Delete a lab job
   const deleteLabJob = async (id: string): Promise<void> => {
     try {
+      // Delete from Supabase using direct client
+      const { error } = await supabaseClient
+        .from('lab_jobs')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
       // Update local state
       setLabJobs(prevJobs => prevJobs.filter(job => job.id !== id));
+
+      // Fetch all lab jobs again to ensure UI is in sync with database
+      try {
+        const { data: refreshedData, error: refreshError } = await supabaseClient
+          .from('lab_jobs')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!refreshError && refreshedData) {
+          // Transform the data to match our interface
+          const transformedJobs: LabJob[] = refreshedData.map(job => ({
+            id: job.id,
+            labJobId: job.lab_job_id,
+            patient: job.patient,
+            patient_id: job.patient_id,
+            service: job.service,
+            labWorkType: job.lab_work_type,
+            dateSent: job.date_sent,
+            assignedLab: job.assigned_lab,
+            lab_id: job.lab_id,
+            expectedDelivery: job.expected_delivery,
+            paymentStatus: job.payment_status as 'paid' | 'unpaid',
+            status: job.status as 'pending-send' | 'sent' | 'received' | 'ready' | 'completed',
+            materialSpecs: job.material_specs,
+            notes: job.notes,
+            createdAt: job.created_at
+          }));
+
+          setLabJobs(transformedJobs);
+          console.log('Refreshed lab jobs after delete:', transformedJobs);
+        }
+      } catch (refreshErr) {
+        console.error('Error refreshing lab jobs after delete:', refreshErr);
+      }
 
       toast({
         title: 'Success',
