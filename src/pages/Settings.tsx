@@ -12,6 +12,8 @@ import { useLabWorkTypes } from '@/contexts/LabWorkTypesContext';
 import { fixDocumentUrl, createDownloadLink } from '@/lib/supabase-storage';
 import LabsTab from '@/components/settings/LabsTab';
 import LabWorkTypesTab from '@/components/settings/LabWorkTypesTab';
+import StockItemsTab from '@/components/settings/StockItemsTab';
+import DealersTab from '@/components/settings/DealersTab';
 
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { demoFollowUpRules } from '@/data/demo-dental-history';
@@ -132,12 +134,7 @@ const initialDentalLabs = [
   { id: 4, name: "Implant Specialists", contact: "+91 65432 10987", address: "321 Crown Lane", city: "Chennai", pincode: "600001", specialization: "Custom Abutments" }
 ];
 
-const initialDealers = [
-  { id: 1, name: "Dental Supplies Co.", email: "contact@dentalsupplies.com", contact: "+91 98765 43210", address: "123 Supplier Street", city: "Mumbai", pincode: "400001" },
-  { id: 2, name: "MediDent Distributors", email: "info@medident.com", contact: "+91 87654 32109", address: "456 Distributor Lane", city: "Delhi", pincode: "110001" },
-  { id: 3, name: "Prime Dental Products", email: "sales@primedentalproducts.com", contact: "+91 76543 21098", address: "789 Product Road", city: "Bangalore", pincode: "560001" },
-  { id: 4, name: "Dental Depot", email: "support@dentaldepot.com", contact: "+91 65432 10987", address: "321 Depot Avenue", city: "Chennai", pincode: "600001" }
-];
+
 
 const initialLabWorkTypes = [
   { id: 1, name: "PFM Crown", turnaround: "7-10 days" },
@@ -148,13 +145,7 @@ const initialLabWorkTypes = [
   { id: 6, name: "Hard Acrylic Splint", turnaround: "3-5 days" }
 ];
 
-const initialStockItems = [
-  { id: 1, name: "Dental Composite", subItem: "Filtek Supreme Ultra", description: "Light-cured restorative material for anterior and posterior restorations", itemType: "Consumable", minimumThreshold: 5 },
-  { id: 2, name: "Impression Material", subItem: "Jeltrate Plus", description: "Alginate impression material for preliminary impressions", itemType: "Consumable", minimumThreshold: 3 },
-  { id: 3, name: "Orthodontic Wire", subItem: "Ormco NiTi", description: "Nickel titanium archwires for orthodontic treatment", itemType: "Inventory", minimumThreshold: 2 },
-  { id: 4, name: "Dental Cement", subItem: "GC Fuji II LC", description: "Light-cured glass ionomer restorative cement", itemType: "Consumable", minimumThreshold: 4 },
-  { id: 5, name: "Dental Burs", subItem: "Mani Diamond", description: "Diamond dental burs for cavity preparation", itemType: "Inventory", minimumThreshold: 10 }
-];
+
 
 const systemUsers = [
   { id: 1, name: "Dr. Rajan Khanna", email: "rajan.khanna@mudraclinic.com", role: "admin", status: "active" },
@@ -174,8 +165,8 @@ const Settings = () => {
   const [isAddLabDialogOpen, setIsAddLabDialogOpen] = useState(false);
   const [isAddLabWorkTypeDialogOpen, setIsAddLabWorkTypeDialogOpen] = useState(false);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
-  const [isAddStockItemDialogOpen, setIsAddStockItemDialogOpen] = useState(false);
-  const [isAddDealerDialogOpen, setIsAddDealerDialogOpen] = useState(false);
+
+
   const [isAddMedicineDialogOpen, setIsAddMedicineDialogOpen] = useState(false);
   const [isAddFollowUpRuleDialogOpen, setIsAddFollowUpRuleDialogOpen] = useState(false);
 
@@ -185,8 +176,8 @@ const Settings = () => {
   const [isEditLabDialogOpen, setIsEditLabDialogOpen] = useState(false);
   const [isEditLabWorkTypeDialogOpen, setIsEditLabWorkTypeDialogOpen] = useState(false);
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
-  const [isEditStockItemDialogOpen, setIsEditStockItemDialogOpen] = useState(false);
-  const [isEditDealerDialogOpen, setIsEditDealerDialogOpen] = useState(false);
+
+
   const [isEditMedicineDialogOpen, setIsEditMedicineDialogOpen] = useState(false);
   const [isEditFollowUpRuleDialogOpen, setIsEditFollowUpRuleDialogOpen] = useState(false);
 
@@ -196,8 +187,8 @@ const Settings = () => {
   const [isConfirmDeleteLabOpen, setIsConfirmDeleteLabOpen] = useState(false);
   const [isConfirmDeleteLabWorkTypeOpen, setIsConfirmDeleteLabWorkTypeOpen] = useState(false);
   const [isConfirmDeleteUserOpen, setIsConfirmDeleteUserOpen] = useState(false);
-  const [isConfirmDeleteStockItemOpen, setIsConfirmDeleteStockItemOpen] = useState(false);
-  const [isConfirmDeleteDealerOpen, setIsConfirmDeleteDealerOpen] = useState(false);
+
+
   const [isConfirmDeleteMedicineOpen, setIsConfirmDeleteMedicineOpen] = useState(false);
   const [isConfirmDeleteFollowUpRuleOpen, setIsConfirmDeleteFollowUpRuleOpen] = useState(false);
 
@@ -206,8 +197,8 @@ const Settings = () => {
   const [isConfirmUpdateLabOpen, setIsConfirmUpdateLabOpen] = useState(false);
   const [isConfirmUpdateLabWorkTypeOpen, setIsConfirmUpdateLabWorkTypeOpen] = useState(false);
   const [isConfirmUpdateUserOpen, setIsConfirmUpdateUserOpen] = useState(false);
-  const [isConfirmUpdateStockItemOpen, setIsConfirmUpdateStockItemOpen] = useState(false);
-  const [isConfirmUpdateDealerOpen, setIsConfirmUpdateDealerOpen] = useState(false);
+
+
   const [isConfirmUpdateMedicineOpen, setIsConfirmUpdateMedicineOpen] = useState(false);
   const [isConfirmUpdateFollowUpRuleOpen, setIsConfirmUpdateFollowUpRuleOpen] = useState(false);
 
@@ -335,8 +326,8 @@ const Settings = () => {
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
   const [selectedDoctorForColor, setSelectedDoctorForColor] = useState<Doctor | null>(null);
   const [tempColor, setTempColor] = useState("");
-  const [stockItems, setStockItems] = useState(initialStockItems);
-  const [dealers, setDealers] = useState(initialDealers);
+
+
   // Use services from ServiceContext
   const { dentalServices, meditouchServices, servicesWithFollowUp, addService, updateService, deleteService, addServiceWithFollowUp, updateServiceWithFollowUp, deleteServiceWithFollowUp } = useServices();
 
@@ -350,8 +341,8 @@ const Settings = () => {
   const [currentLab, setCurrentLab] = useState(null);
   const [currentLabWorkType, setCurrentLabWorkType] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [currentStockItem, setCurrentStockItem] = useState(null);
-  const [currentDealer, setCurrentDealer] = useState(null);
+
+
   const [currentFollowUpRule, setCurrentFollowUpRule] = useState<ServiceFollowUpRule | null>(null);
   const [currentServiceWithFollowUp, setCurrentServiceWithFollowUp] = useState<ServiceWithFollowUp | null>(null);
 
@@ -373,21 +364,9 @@ const Settings = () => {
     follow_up_service_name: ''
   });
 
-  // Stock item form states
-  const [newStockItemName, setNewStockItemName] = useState('');
-  const [newStockItemSubItem, setNewStockItemSubItem] = useState('');
-  const [newStockItemDescription, setNewStockItemDescription] = useState('');
-  const [newStockItemType, setNewStockItemType] = useState('Consumable');
-  const [newStockItemMinThreshold, setNewStockItemMinThreshold] = useState<number>(0);
 
-  // Dealer form states
-  const [newDealerName, setNewDealerName] = useState('');
-  const [newDealerEmail, setNewDealerEmail] = useState('');
-  const [newDealerContact, setNewDealerContact] = useState('');
-  const [newDealerContactCountryCode, setNewDealerContactCountryCode] = useState('+91');
-  const [newDealerAddress, setNewDealerAddress] = useState('');
-  const [newDealerCity, setNewDealerCity] = useState('');
-  const [newDealerPincode, setNewDealerPincode] = useState('');
+
+
 
   // Check if user is admin
   if (user?.role !== 'admin') {
@@ -906,105 +885,7 @@ const Settings = () => {
     setCurrentUser(null);
   };
 
-  // Stock Item handlers
-  interface StockItem {
-    id: number;
-    name: string;
-    subItem?: string;
-    description?: string;
-    itemType: string;
-    minimumThreshold: number;
-  }
 
-  const handleEditStockItem = (item: StockItem) => {
-    setCurrentStockItem(item);
-    setIsEditStockItemDialogOpen(true);
-  };
-
-  const handleUpdateStockItemConfirm = () => {
-    setIsConfirmUpdateStockItemOpen(true);
-  };
-
-  const handleUpdateStockItem = () => {
-    if (currentStockItem) {
-      // Get updated values from form fields
-      const updatedName = document.getElementById('editStockItemName') as HTMLInputElement;
-      const updatedSubItem = document.getElementById('editStockItemSubItem') as HTMLInputElement;
-      const updatedDescription = document.getElementById('editStockItemDescription') as HTMLTextAreaElement;
-      const updatedMinThreshold = document.getElementById('editStockItemMinThreshold') as HTMLInputElement;
-
-      // For the Select component, we need to get the value differently
-      // We'll use the current item type as a fallback if we can't get the updated value
-      let updatedItemType = currentStockItem.itemType;
-
-      // Try to get the selected value from our temporary element
-      const tempElement = document.getElementById('tempEditStockItemType');
-      if (tempElement) {
-        updatedItemType = tempElement.getAttribute('data-value') || currentStockItem.itemType;
-        // Clean up the temporary element
-        tempElement.remove();
-      }
-
-      if (!updatedName.value.trim()) {
-        toast({
-          title: "Error",
-          description: "Item name is required.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      if (!updatedMinThreshold.value || parseInt(updatedMinThreshold.value) < 0) {
-        toast({
-          title: "Error",
-          description: "Minimum threshold is required and must be a positive number.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Update the stock items state
-      setStockItems(prevItems =>
-        prevItems.map(item =>
-          item.id === currentStockItem.id
-            ? {
-                ...item,
-                name: updatedName.value,
-                subItem: updatedSubItem.value,
-                description: updatedDescription.value,
-                itemType: updatedItemType,
-                minimumThreshold: parseInt(updatedMinThreshold.value)
-              }
-            : item
-        )
-      );
-
-      toast({
-        title: "Stock Item Updated",
-        description: `${updatedName.value} has been updated successfully.`,
-      });
-      setIsConfirmUpdateStockItemOpen(false);
-      setIsEditStockItemDialogOpen(false);
-      setCurrentStockItem(null);
-    }
-  };
-
-  const handleDeleteStockItem = () => {
-    if (currentStockItem) {
-      // Remove the item from the stock items state
-      setStockItems(prevItems =>
-        prevItems.filter(item => item.id !== currentStockItem.id)
-      );
-
-      toast({
-        title: "Stock Item Removed",
-        description: `${currentStockItem.name} has been removed from the system.`,
-      });
-      setIsConfirmDeleteStockItemOpen(false);
-      setIsEditStockItemDialogOpen(false);
-      setCurrentStockItem(null);
-    }
-  };
 
   // Dealer handlers
   interface Dealer {
@@ -3266,69 +3147,7 @@ const Settings = () => {
 
         {activeClinic === 'dental' && (
           <TabsContent value="dealers" className="space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center">
-                    <User className="mr-2 h-5 w-5" />
-                    Manage Dealers
-                  </CardTitle>
-                  <CardDescription>
-                    Add and manage dealers for Dental Metrix Clinic
-                  </CardDescription>
-                </div>
-                <Button onClick={() => setIsAddDealerDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" /> Add Dealer
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Address</TableHead>
-                      <TableHead>City</TableHead>
-                      <TableHead>Pincode</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {[...dealers]
-                      .sort((a, b) => b.id - a.id) // Sort by ID in descending order (newest first)
-                      .map((dealer) => (
-                        <TableRow key={dealer.id}>
-                          <TableCell className="font-medium">{dealer.name}</TableCell>
-                          <TableCell>{dealer.email || '-'}</TableCell>
-                          <TableCell>{dealer.contact}</TableCell>
-                          <TableCell>{dealer.address}</TableCell>
-                          <TableCell>{dealer.city}</TableCell>
-                          <TableCell>{dealer.pincode}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="icon" onClick={() => handleEditDealer(dealer)}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-red-500 hover:text-red-700"
-                                onClick={() => {
-                                  setCurrentDealer(dealer);
-                                  setIsConfirmDeleteDealerOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <DealersTab />
           </TabsContent>
         )}
 
@@ -3553,693 +3372,12 @@ const Settings = () => {
               </DialogContent>
             </Dialog>
 
-            {/* Add Dealer Dialog */}
-            <Dialog open={isAddDealerDialogOpen} onOpenChange={setIsAddDealerDialogOpen}>
-              <DialogContent className="max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Add New Dealer</DialogTitle>
-                  <DialogDescription>
-                    Enter the details for the new dealer. Name and contact number are required.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="dealerName" className="flex items-center">
-                        Dealer Name <span className="text-red-500 ml-1">*</span>
-                      </Label>
-                      <Input
-                        id="dealerName"
-                        placeholder="e.g., Dental Supplies Co."
-                        value={newDealerName}
-                        onChange={(e) => setNewDealerName(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dealerEmail">
-                        Email
-                      </Label>
-                      <Input
-                        id="dealerEmail"
-                        type="email"
-                        placeholder="e.g., contact@dentalsupplies.com"
-                        value={newDealerEmail}
-                        onChange={(e) => setNewDealerEmail(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dealerContact" className="flex items-center">
-                        Contact Number <span className="text-red-500 ml-1">*</span>
-                      </Label>
-                      <div className="flex">
-                        <Select
-                          defaultValue="+91"
-                          value={newDealerContactCountryCode}
-                          onValueChange={setNewDealerContactCountryCode}
-                        >
-                          <SelectTrigger className="w-[100px] rounded-r-none border-r-0">
-                            <SelectValue placeholder="+91" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="+91">+91 (IN)</SelectItem>
-                            <SelectItem value="+1">+1 (US)</SelectItem>
-                            <SelectItem value="+44">+44 (UK)</SelectItem>
-                            <SelectItem value="+61">+61 (AU)</SelectItem>
-                            <SelectItem value="+971">+971 (UAE)</SelectItem>
-                            <SelectItem value="+65">+65 (SG)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          id="dealerContact"
-                          className="rounded-l-none"
-                          placeholder="Contact Number"
-                          required
-                          pattern="\d+"
-                          title="Please enter only digits"
-                          value={newDealerContact}
-                          onChange={(e) => setNewDealerContact(e.target.value.replace(/\D/g, ''))}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dealerAddress">
-                        Address
-                      </Label>
-                      <Input
-                        id="dealerAddress"
-                        placeholder="Enter street address"
-                        value={newDealerAddress}
-                        onChange={(e) => setNewDealerAddress(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dealerCity">
-                        City
-                      </Label>
-                      <Input
-                        id="dealerCity"
-                        placeholder="Enter city"
-                        value={newDealerCity}
-                        onChange={(e) => setNewDealerCity(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dealerPincode">
-                        Pincode
-                      </Label>
-                      <Input
-                        id="dealerPincode"
-                        placeholder="Enter pincode"
-                        value={newDealerPincode}
-                        onChange={(e) => setNewDealerPincode(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddDealerDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    className="bg-dental-primary hover:bg-dental-dark"
-                    onClick={() => {
-                      // Validate required fields
-                      if (!newDealerName.trim()) {
-                        toast({
-                          title: "Error",
-                          description: "Dealer name is required.",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
 
-                      if (!newDealerContact.trim()) {
-                        toast({
-                          title: "Error",
-                          description: "Contact number is required.",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-
-                      // Validate email format if provided
-                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                      if (newDealerEmail.trim() && !emailRegex.test(newDealerEmail.trim())) {
-                        toast({
-                          title: "Error",
-                          description: "Please enter a valid email address.",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-
-                      // Generate a new ID
-                      const newId = Math.max(...dealers.map(dealer => dealer.id)) + 1;
-
-                      // Format the contact number with country code
-                      const formattedContact = `${newDealerContactCountryCode} ${newDealerContact.trim()}`;
-
-                      // Add the new dealer to the dealers state
-                      setDealers(prevDealers => [
-                        {
-                          id: newId,
-                          name: capitalizeWords(newDealerName.trim()),
-                          email: newDealerEmail.trim(),
-                          contact: formattedContact,
-                          address: capitalizeWords(newDealerAddress.trim()),
-                          city: capitalizeWords(newDealerCity.trim()),
-                          pincode: newDealerPincode.trim()
-                        },
-                        ...prevDealers
-                      ]);
-
-                      toast({
-                        title: "Dealer Added",
-                        description: "The new dealer has been successfully added.",
-                      });
-                      setNewDealerName('');
-                      setNewDealerEmail('');
-                      setNewDealerContact('');
-                      setNewDealerAddress('');
-                      setNewDealerCity('');
-                      setNewDealerPincode('');
-                      setNewDealerContactCountryCode('+91');
-                      setIsAddDealerDialogOpen(false);
-                    }}
-                  >
-                    Add Dealer
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            {/* Edit Dealer Dialog */}
-            <Dialog open={isEditDealerDialogOpen} onOpenChange={setIsEditDealerDialogOpen}>
-              <DialogContent className="max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Edit Dealer</DialogTitle>
-                  <DialogDescription>
-                    Update dealer information.
-                  </DialogDescription>
-                </DialogHeader>
-                {currentDealer && (
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="editDealerName" className="flex items-center">
-                          Dealer Name <span className="text-red-500 ml-1">*</span>
-                        </Label>
-                        <Input
-                          id="editDealerName"
-                          defaultValue={currentDealer.name}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="editDealerEmail">
-                          Email
-                        </Label>
-                        <Input
-                          id="editDealerEmail"
-                          type="email"
-                          defaultValue={currentDealer.email || ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="editDealerContact" className="flex items-center">
-                          Contact Number <span className="text-red-500 ml-1">*</span>
-                        </Label>
-                        <div className="flex">
-                          <Select
-                            defaultValue="+91"
-                            onValueChange={(value) => {
-                              // Create a temporary element to store the selected value
-                              const tempElement = document.createElement('div');
-                              tempElement.id = 'tempDealerCountryCode';
-                              tempElement.setAttribute('data-value', value);
-                              document.body.appendChild(tempElement);
-                            }}
-                          >
-                            <SelectTrigger className="w-[100px] rounded-r-none border-r-0">
-                              <SelectValue placeholder="+91" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="+91">+91 (IN)</SelectItem>
-                              <SelectItem value="+1">+1 (US)</SelectItem>
-                              <SelectItem value="+44">+44 (UK)</SelectItem>
-                              <SelectItem value="+61">+61 (AU)</SelectItem>
-                              <SelectItem value="+971">+971 (UAE)</SelectItem>
-                              <SelectItem value="+65">+65 (SG)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            id="editDealerContact"
-                            className="rounded-l-none"
-                            defaultValue={newDealerContact}
-                            pattern="\d+"
-                            title="Please enter only digits"
-                            onInput={(e) => {
-                              const input = e.target as HTMLInputElement;
-                              input.value = input.value.replace(/\D/g, '');
-                            }}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="editDealerAddress">
-                          Address
-                        </Label>
-                        <Input
-                          id="editDealerAddress"
-                          defaultValue={currentDealer.address || ''}
-                          placeholder="Enter street address"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="editDealerCity">
-                          City
-                        </Label>
-                        <Input
-                          id="editDealerCity"
-                          defaultValue={currentDealer.city || ''}
-                          placeholder="Enter city"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="editDealerPincode">
-                          Pincode
-                        </Label>
-                        <Input
-                          id="editDealerPincode"
-                          defaultValue={currentDealer.pincode || ''}
-                          placeholder="Enter pincode"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsEditDealerDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    className="bg-dental-primary hover:bg-dental-dark"
-                    onClick={handleUpdateDealerConfirm}
-                  >
-                    <Save className="h-4 w-4 mr-2" /> Save Changes
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            {/* Confirmation Dialogs */}
-            <Dialog open={isConfirmDeleteDealerOpen} onOpenChange={setIsConfirmDeleteDealerOpen}>
-              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Confirm Deletion</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to delete this dealer? This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                {currentDealer && (
-                  <div className="py-4">
-                    <p className="font-medium">{currentDealer.name}</p>
-                    <p className="text-sm text-muted-foreground">{currentDealer.contact}</p>
-                  </div>
-                )}
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsConfirmDeleteDealerOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button variant="destructive" onClick={handleDeleteDealer}>
-                    Delete
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={isConfirmUpdateDealerOpen} onOpenChange={setIsConfirmUpdateDealerOpen}>
-              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Confirm Update</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to save these changes?
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsConfirmUpdateDealerOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleUpdateDealer}>
-                    Save Changes
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
           </TabsContent>
 
         {activeClinic === 'dental' && (
           <TabsContent value="stock" className="space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center">
-                    <Package className="mr-2 h-5 w-5" />
-                    Manage Stock Items
-                  </CardTitle>
-                  <CardDescription>
-                    Configure stock items, sub-items, and item types for Dental Metrix Clinic
-                  </CardDescription>
-                </div>
-                <Button onClick={() => setIsAddStockItemDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" /> Add Stock Item
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Sub-item</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Item Type</TableHead>
-                      <TableHead>Min Threshold</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {[...stockItems]
-                      .sort((a, b) => b.id - a.id) // Sort by ID in descending order (newest first)
-                      .map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell>{item.subItem || '-'}</TableCell>
-                          <TableCell className="max-w-xs truncate" title={item.description}>
-                            {item.description || '-'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={item.itemType === 'Consumable' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-teal-50 text-teal-700 border-teal-200'}>
-                              {item.itemType}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{item.minimumThreshold || '-'}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="icon" onClick={() => handleEditStockItem(item)}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-red-500 hover:text-red-700"
-                                onClick={() => {
-                                  setCurrentStockItem(item);
-                                  setIsConfirmDeleteStockItemOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-            {/* Add Stock Item Dialog */}
-            <Dialog open={isAddStockItemDialogOpen} onOpenChange={setIsAddStockItemDialogOpen}>
-              <DialogContent className="max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Add New Stock Item</DialogTitle>
-                  <DialogDescription>
-                    Enter the details for the new stock item. Item name is required.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="stockItemName" className="flex items-center">
-                        Item Name <span className="text-red-500 ml-1">*</span>
-                      </Label>
-                      <Input
-                        id="stockItemName"
-                        placeholder="e.g., Dental Composite"
-                        value={newStockItemName}
-                        onChange={(e) => setNewStockItemName(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="stockItemSubItem">Sub-item</Label>
-                      <Input
-                        id="stockItemSubItem"
-                        placeholder="e.g., Filtek Supreme Ultra"
-                        value={newStockItemSubItem}
-                        onChange={(e) => setNewStockItemSubItem(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="stockItemDescription">Description</Label>
-                      <Textarea
-                        id="stockItemDescription"
-                        placeholder="e.g., Light-cured restorative material for anterior and posterior restorations"
-                        value={newStockItemDescription}
-                        onChange={(e) => setNewStockItemDescription(e.target.value)}
-                        rows={3}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="stockItemType" className="flex items-center">
-                        Item Type <span className="text-red-500 ml-1">*</span>
-                      </Label>
-                      <Select
-                        value={newStockItemType}
-                        onValueChange={setNewStockItemType}
-                      >
-                        <SelectTrigger id="stockItemType">
-                          <SelectValue placeholder="Select Item Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Consumable">Consumable</SelectItem>
-                          <SelectItem value="Inventory">Inventory</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="stockItemMinThreshold" className="flex items-center">
-                        Minimum Threshold <span className="text-red-500 ml-1">*</span>
-                      </Label>
-                      <Input
-                        id="stockItemMinThreshold"
-                        type="number"
-                        min="0"
-                        placeholder="Minimum quantity to maintain"
-                        value={newStockItemMinThreshold}
-                        onChange={(e) => setNewStockItemMinThreshold(parseInt(e.target.value))}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Items will be marked as low stock when quantity falls below this threshold
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddStockItemDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    className="bg-dental-primary hover:bg-dental-dark"
-                    onClick={() => {
-                      if (!newStockItemName.trim()) {
-                        toast({
-                          title: "Error",
-                          description: "Item name is required.",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-
-                      // Generate a new ID (in a real app, this would come from the backend)
-                      const newId = Math.max(...stockItems.map(item => item.id)) + 1;
-
-                      // Validate minimum threshold
-                      if (!newStockItemMinThreshold || newStockItemMinThreshold < 0) {
-                        toast({
-                          title: "Error",
-                          description: "Minimum threshold is required and must be a positive number.",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-
-                      // Add the new item to the stock items state
-                      // New item is added to the array, and will appear at the top due to our sorting
-                      setStockItems(prevItems => [
-                        {
-                          id: newId,
-                          name: newStockItemName,
-                          subItem: newStockItemSubItem,
-                          description: newStockItemDescription,
-                          itemType: newStockItemType,
-                          minimumThreshold: newStockItemMinThreshold
-                        },
-                        ...prevItems
-                      ]);
-
-                      toast({
-                        title: "Stock Item Added",
-                        description: "The new stock item has been successfully added.",
-                      });
-                      setNewStockItemName('');
-                      setNewStockItemSubItem('');
-                      setNewStockItemDescription('');
-                      setNewStockItemType('Consumable');
-                      setNewStockItemMinThreshold(0);
-                      setIsAddStockItemDialogOpen(false);
-                    }}
-                  >
-                    Add Stock Item
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            {/* Edit Stock Item Dialog */}
-            <Dialog open={isEditStockItemDialogOpen} onOpenChange={setIsEditStockItemDialogOpen}>
-              <DialogContent className="max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Edit Stock Item</DialogTitle>
-                  <DialogDescription>
-                    Update stock item information.
-                  </DialogDescription>
-                </DialogHeader>
-                {currentStockItem && (
-                  <div className="grid gap-3 py-3">
-                    <div className="grid grid-cols-1 gap-3">
-                      <div className="space-y-1">
-                        <Label htmlFor="editStockItemName" className="flex items-center">
-                          Item Name <span className="text-red-500 ml-1">*</span>
-                        </Label>
-                        <Input
-                          id="editStockItemName"
-                          defaultValue={currentStockItem.name}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="editStockItemSubItem">Sub-item</Label>
-                        <Input
-                          id="editStockItemSubItem"
-                          defaultValue={currentStockItem.subItem || ''}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="editStockItemDescription">Description</Label>
-                        <Textarea
-                          id="editStockItemDescription"
-                          defaultValue={currentStockItem.description || ''}
-                          placeholder="Enter item description"
-                          rows={3}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="editStockItemType" className="flex items-center">
-                          Item Type <span className="text-red-500 ml-1">*</span>
-                        </Label>
-                        <Select
-                          defaultValue={currentStockItem.itemType}
-                          onValueChange={(value) => {
-                            // Create a temporary element to store the selected value
-                            const tempElement = document.createElement('div');
-                            tempElement.id = 'tempEditStockItemType';
-                            tempElement.setAttribute('data-value', value);
-                            document.body.appendChild(tempElement);
-                          }}
-                        >
-                          <SelectTrigger id="editStockItemType">
-                            <SelectValue placeholder="Select Item Type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Consumable">Consumable</SelectItem>
-                            <SelectItem value="Inventory">Inventory</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="editStockItemMinThreshold" className="flex items-center">
-                          Minimum Threshold <span className="text-red-500 ml-1">*</span>
-                        </Label>
-                        <Input
-                          id="editStockItemMinThreshold"
-                          type="number"
-                          min="0"
-                          defaultValue={currentStockItem.minimumThreshold}
-                          placeholder="Minimum quantity to maintain"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Items will be marked as low stock when quantity falls below this threshold
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsEditStockItemDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    className="bg-dental-primary hover:bg-dental-dark"
-                    onClick={handleUpdateStockItemConfirm}
-                  >
-                    <Save className="h-4 w-4 mr-2" /> Save Changes
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            {/* Confirmation Dialogs */}
-            <Dialog open={isConfirmDeleteStockItemOpen} onOpenChange={setIsConfirmDeleteStockItemOpen}>
-              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Confirm Deletion</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to delete this stock item? This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                {currentStockItem && (
-                  <div className="py-4">
-                    <p className="font-medium">{currentStockItem.name}</p>
-                    <p className="text-sm text-muted-foreground">{currentStockItem.subItem || ''}</p>
-                  </div>
-                )}
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsConfirmDeleteStockItemOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button variant="destructive" onClick={handleDeleteStockItem}>
-                    Delete
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={isConfirmUpdateStockItemOpen} onOpenChange={setIsConfirmUpdateStockItemOpen}>
-              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Confirm Update</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to save these changes?
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsConfirmUpdateStockItemOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleUpdateStockItem}>
-                    Save Changes
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <StockItemsTab />
           </TabsContent>
         )}
 

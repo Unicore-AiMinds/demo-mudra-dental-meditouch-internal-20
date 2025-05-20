@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStock } from '@/contexts/StockContext';
+import { useStockDefinitions } from '@/contexts/StockDefinitionsContext';
+import { useDealers } from '@/contexts/DealersContext';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, AlertTriangle, Package, FileDown, Filter, X, ArrowUpDown, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -108,28 +110,60 @@ const initialStockItems = [
   }
 ];
 
-// Dealers from Settings page
-const initialDealers = [
-  { id: 1, name: "Dental Depot", contact: "+91 98765 43210", city: "Mumbai" },
-  { id: 2, name: "Henry Schein", contact: "+91 87654 32109", city: "Delhi" },
-  { id: 3, name: "Ormco Direct", contact: "+91 76543 21098", city: "Bangalore" },
-  { id: 4, name: "GC India", contact: "+91 65432 10987", city: "Chennai" },
-  { id: 5, name: "Mani Inc", contact: "+91 54321 09876", city: "Hyderabad" },
-  { id: 6, name: "Patterson Dental", contact: "+91 43210 98765", city: "Pune" },
-  { id: 7, name: "3M Healthcare", contact: "+91 32109 87654", city: "Kolkata" }
-];
+// Dealers are now managed by DealersContext
 
 const StockTracker = () => {
   const { activeClinic, isDental } = useClinic();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { stockDefinitions } = useStockDefinitions();
+  const { stockItems: dbStockItems, isLoading: isStockLoading, addStockItem, updateStockItem, deleteStockItem } = useStock();
 
-  // Stock items list for dropdown
-  const stockItemsList = initialStockItems;
+  // Group stock items by name for dropdown
+  const stockItemsList = useMemo(() => {
+    // Create a map to group items by name
+    const itemMap = new Map();
 
-  // Dealers list for dropdown
-  const dealersList = initialDealers;
+    stockDefinitions.forEach(item => {
+      if (!itemMap.has(item.name)) {
+        // Create a new entry with the first item
+        itemMap.set(item.name, {
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          item_type: item.item_type,
+          minimum_threshold: item.minimum_threshold,
+          unit: item.unit,
+          sub_items: [],
+          // Store sub-item details with their properties
+          sub_item_details: {}
+        });
+      }
+
+      // Get the existing item
+      const existingItem = itemMap.get(item.name);
+
+      // Add sub-item to existing entry if it exists
+      if (item.sub_item && !existingItem.sub_items.includes(item.sub_item)) {
+        existingItem.sub_items.push(item.sub_item);
+
+        // Store the sub-item details with its properties
+        existingItem.sub_item_details[item.sub_item] = {
+          id: item.id,
+          minimum_threshold: item.minimum_threshold,
+          unit: item.unit,
+          description: item.description
+        };
+      }
+    });
+
+    // Convert map to array
+    return Array.from(itemMap.values());
+  }, [stockDefinitions]);
+
+  // Get dealers from DealersContext
+  const { dealers: dealersList } = useDealers();
 
   // State for selected item's sub-items
   const [selectedItemSubItems, setSelectedItemSubItems] = useState<string[]>([]);
@@ -141,146 +175,7 @@ const StockTracker = () => {
   const [currentEditItem, setCurrentEditItem] = useState<StockItem | null>(null);
   const [editSelectedItemSubItems, setEditSelectedItemSubItems] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
-  const [stockItems, setStockItems] = useState<StockItem[]>([
-    {
-      id: '1',
-      name: 'Dental Composite',
-      subItem: 'Filtek Supreme Ultra',
-      itemType: 'Consumable',
-      dealer: 'Dental Depot',
-      rate: 1250,
-      description: 'A2 Shade - Universal',
-      unit: 'syringe',
-      currentQuantity: 2,
-      minimumThreshold: 5,
-      nearestExpiryDate: '2025-08-15',
-      createdAt: '2023-10-15',
-    },
-    {
-      id: '2',
-      name: 'Impression Material',
-      subItem: 'Jeltrate Plus',
-      itemType: 'Consumable',
-      dealer: 'Henry Schein',
-      rate: 850,
-      description: 'Alginate - Medium Set',
-      unit: 'pack',
-      currentQuantity: 3,
-      minimumThreshold: 5,
-      nearestExpiryDate: '2025-06-30',
-      createdAt: '2023-10-16',
-    },
-    {
-      id: '3',
-      name: 'Orthodontic Wire',
-      subItem: 'Ormco NiTi',
-      itemType: 'Inventory',
-      dealer: 'Ormco Direct',
-      rate: 3200,
-      description: '0.016 inch - NiTi',
-      unit: 'spool',
-      currentQuantity: 4,
-      minimumThreshold: 6,
-      createdAt: '2023-10-10',
-    },
-    {
-      id: '4',
-      name: 'Dental Cement',
-      subItem: 'GC Fuji II LC',
-      itemType: 'Consumable',
-      dealer: 'GC India',
-      rate: 1450,
-      description: 'Glass Ionomer - Light Cure',
-      unit: 'bottle',
-      currentQuantity: 8,
-      minimumThreshold: 4,
-      nearestExpiryDate: '2025-04-25',
-      createdAt: '2023-09-28',
-    },
-    {
-      id: '5',
-      name: 'Dental Burs',
-      subItem: 'Mani Diamond',
-      itemType: 'Inventory',
-      dealer: 'Mani Inc',
-      rate: 2100,
-      description: 'Diamond - Assorted',
-      unit: 'pack',
-      currentQuantity: 12,
-      minimumThreshold: 5,
-      createdAt: '2023-10-03',
-    },
-    {
-      id: '6',
-      name: 'Topical Anesthetic',
-      subItem: 'Benzodent',
-      itemType: 'Consumable',
-      dealer: 'Patterson Dental',
-      rate: 550,
-      description: 'Benzocaine 20%',
-      unit: 'jar',
-      currentQuantity: 6,
-      minimumThreshold: 3,
-      nearestExpiryDate: '2024-09-10',
-      createdAt: '2023-10-12',
-    },
-    {
-      id: '8',
-      name: 'Disposable Gloves',
-      subItem: 'Latex Free',
-      itemType: 'Consumable',
-      dealer: 'Dental Depot',
-      rate: 450,
-      description: 'Medium size - Powder free',
-      unit: 'box',
-      currentQuantity: 10,
-      minimumThreshold: 5,
-      nearestExpiryDate: '2023-10-15', // Expired item
-      createdAt: '2023-08-01',
-    },
-    {
-      id: '9',
-      name: 'Dental Floss',
-      subItem: 'Waxed',
-      itemType: 'Consumable',
-      dealer: 'GC India',
-      rate: 120,
-      description: 'Mint flavored',
-      unit: 'pack',
-      currentQuantity: 3,
-      minimumThreshold: 5, // Low stock item
-      nearestExpiryDate: '2024-01-20', // Expired item
-      createdAt: '2023-07-15',
-    },
-    {
-      id: '10',
-      name: 'Dental Sealant',
-      subItem: 'Light Cure',
-      itemType: 'Consumable',
-      dealer: 'Henry Schein',
-      rate: 850,
-      description: 'Clear - For pits and fissures',
-      unit: 'syringe',
-      currentQuantity: 8,
-      minimumThreshold: 4,
-      // Calculate a date that's 30 days from now for "expiring soon"
-      nearestExpiryDate: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0],
-      createdAt: '2023-09-05',
-    },
-    {
-      id: '7',
-      name: 'Face Masks',
-      subItem: '3M Earloop',
-      itemType: 'Consumable',
-      dealer: '3M Healthcare',
-      rate: 750,
-      description: 'Surgical - Level 3',
-      unit: 'box',
-      currentQuantity: 15,
-      minimumThreshold: 5,
-      createdAt: '2023-10-05',
-    },
-  ]);
+  const [stockItems, setStockItems] = useState<StockItem[]>([]);
 
   const [newItem, setNewItem] = useState<Omit<StockItem, 'id'>>({
     name: '',
@@ -299,6 +194,28 @@ const StockTracker = () => {
   if (!isDental) {
     navigate('/dashboard');
   }
+
+  // Update stockItems when dbStockItems changes
+  useEffect(() => {
+    if (dbStockItems.length > 0) {
+      // Convert from database format to component format
+      const convertedItems = dbStockItems.map(item => ({
+        id: item.id,
+        name: item.name,
+        subItem: item.sub_item,
+        itemType: item.item_type,
+        dealer: item.dealer,
+        rate: item.rate,
+        description: item.description,
+        unit: item.unit,
+        currentQuantity: item.current_quantity,
+        minimumThreshold: item.minimum_threshold,
+        nearestExpiryDate: item.nearest_expiry_date,
+        createdAt: item.created_at
+      }));
+      setStockItems(convertedItems);
+    }
+  }, [dbStockItems]);
 
   const isLowStock = (item: StockItem) => item.currentQuantity <= item.minimumThreshold;
 
@@ -369,7 +286,7 @@ const StockTracker = () => {
     setIsAddDialogOpen(true);
   };
 
-  const handleSaveNewItem = () => {
+  const handleSaveNewItem = async () => {
     if (
       !newItem.name ||
       !newItem.itemType ||
@@ -388,40 +305,65 @@ const StockTracker = () => {
       return;
     }
 
-    const newId = `${stockItems.length + 1}`;
-    const itemToAdd = { id: newId, ...newItem };
+    try {
+      // Convert from component format to database format
+      const dbItem = {
+        name: newItem.name,
+        sub_item: newItem.subItem,
+        item_type: newItem.itemType,
+        dealer: newItem.dealer,
+        rate: newItem.rate,
+        description: newItem.description,
+        unit: newItem.unit,
+        current_quantity: newItem.currentQuantity,
+        minimum_threshold: newItem.minimumThreshold,
+        nearest_expiry_date: newItem.nearestExpiryDate
+      };
 
-    setStockItems(prev => [itemToAdd, ...prev]);
-    toast({
-      title: "Item Added",
-      description: `${newItem.name} has been added to inventory.`,
-    });
+      await addStockItem(dbItem);
 
-    setNewItem({
-      name: '',
-      subItem: '',
-      itemType: 'Consumable',
-      dealer: '',
-      rate: 0,
-      description: '',
-      unit: '',
-      currentQuantity: 0,
-      minimumThreshold: 0,
-      nearestExpiryDate: undefined,
-      createdAt: new Date().toISOString().split('T')[0] // Current date in YYYY-MM-DD format
-    });
+      setNewItem({
+        name: '',
+        subItem: '',
+        itemType: 'Consumable',
+        dealer: '',
+        rate: 0,
+        description: '',
+        unit: '',
+        currentQuantity: 0,
+        minimumThreshold: 0,
+        nearestExpiryDate: undefined,
+        createdAt: new Date().toISOString().split('T')[0] // Current date in YYYY-MM-DD format
+      });
 
-    setIsAddDialogOpen(false);
+      // Show success toast
+      toast({
+        title: "Stock Item Added",
+        description: "The new stock item has been added successfully.",
+        variant: "default"
+      });
+
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Error adding stock item:', error);
+
+      // Show error toast
+      toast({
+        title: "Error",
+        description: "Failed to add stock item. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleIncomingStock = (itemId: string) => {
+  const handleIncomingStock = (_itemId: string) => {
     toast({
       title: "Feature in Development",
       description: "Record incoming stock functionality will be available soon.",
     });
   };
 
-  const handleConsumeStock = (itemId: string) => {
+  const handleConsumeStock = (_itemId: string) => {
     toast({
       title: "Feature in Development",
       description: "Record stock consumption functionality will be available soon.",
@@ -431,11 +373,28 @@ const StockTracker = () => {
   const handleEditItem = (item: StockItem) => {
     setCurrentEditItem(item);
 
-    // Find the corresponding stock item to get sub-items
-    const stockItem = stockItemsList.find(si => si.name === item.name);
-    if (stockItem && stockItem.subItems) {
-      // Map the subItems objects to just their names for the dropdown
-      setEditSelectedItemSubItems(stockItem.subItems.map(subItem => subItem.name));
+    // Find the corresponding stock definition from our grouped items
+    const stockDefinition = stockItemsList.find(def => def.name === item.name);
+    if (stockDefinition) {
+      // Get all sub-items for this item
+      if (stockDefinition.sub_items && stockDefinition.sub_items.length > 0) {
+        setEditSelectedItemSubItems(stockDefinition.sub_items);
+
+        // If the item has a sub-item, update the form with the sub-item's details
+        if (item.subItem && stockDefinition.sub_item_details[item.subItem]) {
+          const subItemDetails = stockDefinition.sub_item_details[item.subItem];
+
+          // Update the minimum threshold and unit based on the sub-item
+          setCurrentEditItem({
+            ...item,
+            minimumThreshold: subItemDetails.minimum_threshold,
+            unit: subItemDetails.unit || 'Piece',
+            description: subItemDetails.description || item.description
+          });
+        }
+      } else {
+        setEditSelectedItemSubItems([]);
+      }
     } else {
       setEditSelectedItemSubItems([]);
     }
@@ -450,7 +409,7 @@ const StockTracker = () => {
     setIsConfirmUpdateOpen(true);
   };
 
-  const handleUpdateItem = () => {
+  const handleUpdateItem = async () => {
     if (!currentEditItem) return;
 
     if (
@@ -471,39 +430,75 @@ const StockTracker = () => {
       return;
     }
 
-    setStockItems(prev =>
-      prev.map(item =>
-        item.id === currentEditItem.id ? currentEditItem : item
-      )
-    );
+    try {
+      // Convert from component format to database format
+      const dbItem = {
+        name: currentEditItem.name,
+        sub_item: currentEditItem.subItem,
+        item_type: currentEditItem.itemType,
+        dealer: currentEditItem.dealer,
+        rate: currentEditItem.rate,
+        description: currentEditItem.description,
+        unit: currentEditItem.unit,
+        current_quantity: currentEditItem.currentQuantity,
+        minimum_threshold: currentEditItem.minimumThreshold,
+        nearest_expiry_date: currentEditItem.nearestExpiryDate
+      };
 
-    toast({
-      title: "Item Updated",
-      description: `${currentEditItem.name} has been updated successfully.`,
-    });
+      await updateStockItem(currentEditItem.id, dbItem);
 
-    setIsConfirmUpdateOpen(false);
-    setIsEditDialogOpen(false);
-    setCurrentEditItem(null);
+      // Show success toast
+      toast({
+        title: "Stock Item Updated",
+        description: "The stock item has been updated successfully.",
+        variant: "default"
+      });
+
+      setIsConfirmUpdateOpen(false);
+      setIsEditDialogOpen(false);
+      setCurrentEditItem(null);
+    } catch (error) {
+      console.error('Error updating stock item:', error);
+
+      // Show error toast
+      toast({
+        title: "Error",
+        description: "Failed to update stock item. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDeleteConfirm = () => {
     setIsConfirmDeleteOpen(true);
   };
 
-  const handleDeleteItem = () => {
+  const handleDeleteItem = async () => {
     if (!currentEditItem) return;
 
-    setStockItems(prev => prev.filter(item => item.id !== currentEditItem.id));
+    try {
+      await deleteStockItem(currentEditItem.id);
 
-    toast({
-      title: "Item Deleted",
-      description: `${currentEditItem.name} has been removed from inventory.`,
-    });
+      // Show success toast
+      toast({
+        title: "Stock Item Deleted",
+        description: `${currentEditItem.name}${currentEditItem.subItem ? ` (${currentEditItem.subItem})` : ''} has been deleted successfully.`,
+        variant: "default"
+      });
 
-    setIsConfirmDeleteOpen(false);
-    setIsEditDialogOpen(false);
-    setCurrentEditItem(null);
+      setIsConfirmDeleteOpen(false);
+      setIsEditDialogOpen(false);
+      setCurrentEditItem(null);
+    } catch (error) {
+      console.error('Error deleting stock item:', error);
+
+      // Show error toast
+      toast({
+        title: "Error",
+        description: "Failed to delete stock item. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -538,31 +533,35 @@ const StockTracker = () => {
                   <Select
                     value={newItem.name || undefined}
                     onValueChange={(value) => {
-                      // Find the selected stock item
+                      // Find the selected stock definition
                       const selectedItem = stockItemsList.find(item => item.name === value);
                       if (selectedItem) {
-                        // Update the selected item's sub-items
-                        setSelectedItemSubItems(selectedItem.subItems.map(subItem => subItem.name) || []);
+                        // Get all sub-items for this item from our grouped data
+                        if (selectedItem.sub_items && selectedItem.sub_items.length > 0) {
+                          setSelectedItemSubItems(selectedItem.sub_items);
+                        } else {
+                          setSelectedItemSubItems([]);
+                        }
 
                         // Get the first sub-item if available
-                        const firstSubItem = selectedItem.subItems && selectedItem.subItems.length > 0
-                          ? selectedItem.subItems[0].name
+                        const subItem = selectedItem.sub_items && selectedItem.sub_items.length > 0
+                          ? selectedItem.sub_items[0]
                           : '';
 
-                        // Get the minimum threshold for the first sub-item if available
-                        const firstSubItemThreshold = selectedItem.subItems && selectedItem.subItems.length > 0
-                          ? selectedItem.subItems[0].minimumThreshold
-                          : 0;
+                        // Get the sub-item details if available
+                        const subItemDetails = subItem && selectedItem.sub_item_details[subItem]
+                          ? selectedItem.sub_item_details[subItem]
+                          : null;
 
                         // Update the form with the selected item's details
-                        // Description is pre-populated but can be edited by the user
                         setNewItem({
                           ...newItem,
                           name: selectedItem.name,
-                          subItem: firstSubItem,
-                          itemType: selectedItem.itemType as 'Consumable' | 'Inventory',
-                          description: selectedItem.description || '',
-                          minimumThreshold: firstSubItemThreshold
+                          subItem: subItem,
+                          itemType: selectedItem.item_type,
+                          description: subItemDetails ? subItemDetails.description : (selectedItem.description || ''),
+                          minimumThreshold: subItemDetails ? subItemDetails.minimum_threshold : selectedItem.minimum_threshold,
+                          unit: subItemDetails ? (subItemDetails.unit || 'Piece') : (selectedItem.unit || 'Piece')
                         });
                       }
                     }}
@@ -583,47 +582,54 @@ const StockTracker = () => {
               <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="subItem" className="text-right text-xs">Sub-item</Label>
                 <div className="col-span-3">
-                  <Select
-                    value={newItem.subItem || undefined}
-                    onValueChange={(value) => {
-                      // Find the selected stock item
-                      const selectedItem = stockItemsList.find(item => item.name === newItem.name);
-                      if (selectedItem) {
-                        // Find the selected sub-item
-                        const selectedSubItem = selectedItem.subItems.find(subItem => subItem.name === value);
-                        if (selectedSubItem) {
-                          // Update the form with the selected sub-item's minimum threshold
+                  {selectedItemSubItems.length > 0 ? (
+                    <Select
+                      value={newItem.subItem || undefined}
+                      onValueChange={(value) => {
+                        // Find the selected item
+                        const selectedItem = stockItemsList.find(item => item.name === newItem.name);
+                        if (selectedItem && selectedItem.sub_item_details[value]) {
+                          // Get the sub-item details
+                          const subItemDetails = selectedItem.sub_item_details[value];
+
+                          // Update the form with the selected sub-item's details
                           setNewItem({
                             ...newItem,
                             subItem: value,
-                            minimumThreshold: selectedSubItem.minimumThreshold
+                            minimumThreshold: subItemDetails.minimum_threshold,
+                            unit: subItemDetails.unit || 'Piece',
+                            description: subItemDetails.description || newItem.description
                           });
                         } else {
+                          // Just update the sub-item if no details found
                           setNewItem({
                             ...newItem,
                             subItem: value
                           });
                         }
-                      } else {
-                        setNewItem({
-                          ...newItem,
-                          subItem: value
-                        });
-                      }
-                    }}
-                    disabled={selectedItemSubItems.length === 0}
-                  >
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder={selectedItemSubItems.length === 0 ? "Select an item first" : "Select a sub-item"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedItemSubItems.map((subItem) => (
-                        <SelectItem key={subItem} value={subItem}>
-                          {subItem}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                      }}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select a sub-item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedItemSubItems.map((subItem) => (
+                          <SelectItem key={subItem} value={subItem}>
+                            {subItem}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="subItem"
+                      value=""
+                      readOnly
+                      disabled
+                      className="col-span-3 h-8"
+                      placeholder="No sub-item available"
+                    />
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
@@ -697,13 +703,17 @@ const StockTracker = () => {
                 <Input
                   id="unit"
                   value={newItem.unit}
+                  readOnly={!!newItem.name} // Make it read-only if an item is selected
                   onChange={(e) => {
-                    // Capitalize the first letter
-                    const value = e.target.value;
-                    const capitalizedValue = value.charAt(0).toUpperCase() + value.slice(1);
-                    setNewItem({...newItem, unit: capitalizedValue});
+                    // Only allow changes if no item is selected
+                    if (!newItem.name) {
+                      // Capitalize the first letter
+                      const value = e.target.value;
+                      const capitalizedValue = value.charAt(0).toUpperCase() + value.slice(1);
+                      setNewItem({...newItem, unit: capitalizedValue});
+                    }
                   }}
-                  className="col-span-3 h-8"
+                  className={`col-span-3 h-8 ${newItem.name ? 'bg-gray-100' : ''}`}
                   placeholder="e.g., Pack, Bottle"
                 />
               </div>
@@ -815,31 +825,35 @@ const StockTracker = () => {
                     <Select
                       value={currentEditItem.name || undefined}
                       onValueChange={(value) => {
-                        // Find the selected stock item
+                        // Find the selected stock definition
                         const selectedItem = stockItemsList.find(item => item.name === value);
                         if (selectedItem) {
-                          // Update the selected item's sub-items
-                          setEditSelectedItemSubItems(selectedItem.subItems.map(subItem => subItem.name) || []);
+                          // Get all sub-items for this item from our grouped data
+                          if (selectedItem.sub_items && selectedItem.sub_items.length > 0) {
+                            setEditSelectedItemSubItems(selectedItem.sub_items);
+                          } else {
+                            setEditSelectedItemSubItems([]);
+                          }
 
                           // Get the first sub-item if available
-                          const firstSubItem = selectedItem.subItems && selectedItem.subItems.length > 0
-                            ? selectedItem.subItems[0].name
+                          const subItem = selectedItem.sub_items && selectedItem.sub_items.length > 0
+                            ? selectedItem.sub_items[0]
                             : '';
 
-                          // Get the minimum threshold for the first sub-item if available
-                          const firstSubItemThreshold = selectedItem.subItems && selectedItem.subItems.length > 0
-                            ? selectedItem.subItems[0].minimumThreshold
-                            : 0;
+                          // Get the sub-item details if available
+                          const subItemDetails = subItem && selectedItem.sub_item_details[subItem]
+                            ? selectedItem.sub_item_details[subItem]
+                            : null;
 
                           // Update the form with the selected item's details
-                          // Description is pre-populated but can be edited by the user
                           setCurrentEditItem({
                             ...currentEditItem,
                             name: selectedItem.name,
-                            subItem: firstSubItem,
-                            itemType: selectedItem.itemType as 'Consumable' | 'Inventory',
-                            description: selectedItem.description || '',
-                            minimumThreshold: firstSubItemThreshold
+                            subItem: subItem,
+                            itemType: selectedItem.item_type,
+                            description: subItemDetails ? subItemDetails.description : (selectedItem.description || ''),
+                            minimumThreshold: subItemDetails ? subItemDetails.minimum_threshold : selectedItem.minimum_threshold,
+                            unit: subItemDetails ? (subItemDetails.unit || 'Piece') : (selectedItem.unit || 'Piece')
                           });
                         }
                       }}
@@ -860,47 +874,54 @@ const StockTracker = () => {
                 <div className="grid grid-cols-4 items-center gap-2">
                   <Label htmlFor="editSubItem" className="text-right text-xs">Sub-item</Label>
                   <div className="col-span-3">
-                    <Select
-                      value={currentEditItem.subItem || undefined}
-                      onValueChange={(value) => {
-                        // Find the selected stock item
-                        const selectedItem = stockItemsList.find(item => item.name === currentEditItem.name);
-                        if (selectedItem) {
-                          // Find the selected sub-item
-                          const selectedSubItem = selectedItem.subItems.find(subItem => subItem.name === value);
-                          if (selectedSubItem) {
-                            // Update the form with the selected sub-item's minimum threshold
+                    {editSelectedItemSubItems.length > 0 ? (
+                      <Select
+                        value={currentEditItem.subItem || undefined}
+                        onValueChange={(value) => {
+                          // Find the selected item
+                          const selectedItem = stockItemsList.find(item => item.name === currentEditItem.name);
+                          if (selectedItem && selectedItem.sub_item_details[value]) {
+                            // Get the sub-item details
+                            const subItemDetails = selectedItem.sub_item_details[value];
+
+                            // Update the form with the selected sub-item's details
                             setCurrentEditItem({
                               ...currentEditItem,
                               subItem: value,
-                              minimumThreshold: selectedSubItem.minimumThreshold
+                              minimumThreshold: subItemDetails.minimum_threshold,
+                              unit: subItemDetails.unit || 'Piece',
+                              description: subItemDetails.description || currentEditItem.description
                             });
                           } else {
+                            // Just update the sub-item if no details found
                             setCurrentEditItem({
                               ...currentEditItem,
                               subItem: value
                             });
                           }
-                        } else {
-                          setCurrentEditItem({
-                            ...currentEditItem,
-                            subItem: value
-                          });
-                        }
-                      }}
-                      disabled={editSelectedItemSubItems.length === 0}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder={editSelectedItemSubItems.length === 0 ? "Select an item first" : "Select a sub-item"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {editSelectedItemSubItems.map((subItem) => (
-                          <SelectItem key={subItem} value={subItem}>
-                            {subItem}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        }}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select a sub-item" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {editSelectedItemSubItems.map((subItem) => (
+                            <SelectItem key={subItem} value={subItem}>
+                              {subItem}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id="editSubItem"
+                        value=""
+                        readOnly
+                        disabled
+                        className="col-span-3 h-8"
+                        placeholder="No sub-item available"
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
@@ -974,13 +995,17 @@ const StockTracker = () => {
                   <Input
                     id="editUnit"
                     value={currentEditItem.unit}
+                    readOnly={!!currentEditItem.name} // Make it read-only if an item is selected
                     onChange={(e) => {
-                      // Capitalize the first letter
-                      const value = e.target.value;
-                      const capitalizedValue = value.charAt(0).toUpperCase() + value.slice(1);
-                      setCurrentEditItem({...currentEditItem, unit: capitalizedValue});
+                      // Only allow changes if no item is selected
+                      if (!currentEditItem.name) {
+                        // Capitalize the first letter
+                        const value = e.target.value;
+                        const capitalizedValue = value.charAt(0).toUpperCase() + value.slice(1);
+                        setCurrentEditItem({...currentEditItem, unit: capitalizedValue});
+                      }
                     }}
-                    className="col-span-3 h-8"
+                    className={`col-span-3 h-8 ${currentEditItem.name ? 'bg-gray-100' : ''}`}
                     placeholder="e.g., Pack, Bottle"
                   />
                 </div>

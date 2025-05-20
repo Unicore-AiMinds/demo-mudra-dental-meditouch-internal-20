@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
+import { useStockDefinitions, StockDefinition } from '@/contexts/StockDefinitionsContext';
 
 export interface StockItem {
   id: string;
@@ -17,44 +18,7 @@ export interface StockItem {
   created_at: string; // Date when the item was added to inventory
 }
 
-// Default stock items for initialization
-const defaultStockItems = [
-  {
-    name: 'Dental Composite',
-    sub_item: 'Filtek Supreme Ultra',
-    item_type: 'Consumable' as const,
-    dealer: 'Dental Depot',
-    rate: 1250,
-    description: 'A2 Shade - Universal',
-    unit: 'syringe',
-    current_quantity: 2,
-    minimum_threshold: 5,
-    nearest_expiry_date: '2025-08-15',
-  },
-  {
-    name: 'Impression Material',
-    sub_item: 'Jeltrate Plus',
-    item_type: 'Consumable' as const,
-    dealer: 'Henry Schein',
-    rate: 850,
-    description: 'Alginate - Medium Set',
-    unit: 'pack',
-    current_quantity: 3,
-    minimum_threshold: 5,
-    nearest_expiry_date: '2025-06-30',
-  },
-  {
-    name: 'Orthodontic Wire',
-    sub_item: 'Ormco NiTi',
-    item_type: 'Inventory' as const,
-    dealer: 'Ormco Direct',
-    rate: 3200,
-    description: '0.016 inch - NiTi',
-    unit: 'spool',
-    current_quantity: 4,
-    minimum_threshold: 6,
-  }
-];
+
 
 interface StockContextType {
   stockItems: StockItem[];
@@ -68,112 +32,17 @@ interface StockContextType {
   getLowStockItems: () => StockItem[];
   getExpiredItems: () => StockItem[];
   getExpiringSoonItems: () => StockItem[];
+  getStockDefinitionByName: (name: string) => StockDefinition | undefined;
 }
 
 const StockContext = createContext<StockContextType | undefined>(undefined);
 
 export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [stockItems, setStockItems] = useState<StockItem[]>([
-    {
-      id: '1',
-      name: 'Dental Composite',
-      sub_item: 'Filtek Supreme Ultra',
-      item_type: 'Consumable',
-      dealer: 'Dental Depot',
-      rate: 2500,
-      description: 'Light-cured restorative material',
-      unit: 'syringe',
-      current_quantity: 8,
-      minimum_threshold: 5,
-      nearest_expiry_date: '2025-04-15',
-      created_at: '2025-05-01T10:00:00Z'
-    },
-    {
-      id: '2',
-      name: 'Impression Material',
-      sub_item: 'Jeltrate Plus',
-      item_type: 'Consumable',
-      dealer: 'Henry Schein',
-      rate: 1200,
-      description: 'Alginate impression material',
-      unit: 'pack',
-      current_quantity: 3,
-      minimum_threshold: 4,
-      nearest_expiry_date: '2025-05-01',
-      created_at: '2025-05-02T11:30:00Z'
-    },
-    {
-      id: '3',
-      name: 'Orthodontic Wire',
-      sub_item: 'Ormco NiTi',
-      item_type: 'Inventory',
-      dealer: 'Ormco Direct',
-      rate: 800,
-      description: 'Nickel titanium archwires',
-      unit: 'piece',
-      current_quantity: 15,
-      minimum_threshold: 6,
-      created_at: '2025-05-03T09:15:00Z'
-    },
-    {
-      id: '4',
-      name: 'Dental Cement',
-      sub_item: 'GC Fuji II LC',
-      item_type: 'Consumable',
-      dealer: 'GC India',
-      rate: 1800,
-      description: 'Light-cured glass ionomer cement',
-      unit: 'kit',
-      current_quantity: 2,
-      minimum_threshold: 3,
-      nearest_expiry_date: '2025-04-30',
-      created_at: '2025-05-04T14:45:00Z'
-    },
-    {
-      id: '5',
-      name: 'Dental Burs',
-      sub_item: 'Mani Diamond',
-      item_type: 'Inventory',
-      dealer: 'Mani Inc',
-      rate: 300,
-      description: 'Diamond dental burs',
-      unit: 'piece',
-      current_quantity: 25,
-      minimum_threshold: 10,
-      created_at: '2025-05-05T16:20:00Z'
-    },
-    {
-      id: '6',
-      name: 'Local Anesthetic',
-      subItem: 'Lignocaine 2%',
-      itemType: 'Consumable',
-      dealer: 'Patterson Dental',
-      rate: 950,
-      description: 'Local anesthetic solution',
-      unit: 'box',
-      currentQuantity: 4,
-      minimumThreshold: 5,
-      nearestExpiryDate: '2025-07-01',
-      createdAt: '2025-05-06T13:10:00Z'
-    },
-    {
-      id: '7',
-      name: 'Bonding Agent',
-      subItem: '3M Single Bond',
-      itemType: 'Consumable',
-      dealer: '3M Healthcare',
-      rate: 1500,
-      description: 'Dental bonding agent',
-      unit: 'bottle',
-      currentQuantity: 6,
-      minimumThreshold: 4,
-      nearestExpiryDate: '2026-01-15',
-      createdAt: '2025-05-07T15:30:00Z'
-    }
-  ]);
+  const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { stockDefinitions } = useStockDefinitions();
 
   // Fetch stock items from Supabase
   useEffect(() => {
@@ -181,26 +50,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       try {
         setIsLoading(true);
 
-        // Fetch stock items from Supabase
-        const fetchedItems = await supabase.from<StockItem>('stock_items').getAll({
-          order: { column: 'name', ascending: true }
+        // For older Supabase versions, we need to use getAll with options
+        const data = await supabase.from('stock_items').getAll({
+          order: { column: 'created_at', ascending: false }
         });
 
-        // If no stock items exist, create default ones
-        if (fetchedItems.length === 0) {
-          for (const item of defaultStockItems) {
-            await supabase.from<StockItem>('stock_items').insert(item);
-          }
-
-          // Fetch the newly created stock items
-          const newItems = await supabase.from<StockItem>('stock_items').getAll({
-            order: { column: 'name', ascending: true }
-          });
-          setStockItems(newItems);
-        } else {
-          setStockItems(fetchedItems);
-        }
-      } catch (error) {
+        setStockItems(data as StockItem[] || []);
+      } catch (error: unknown) {
         console.error('Error fetching stock items:', error);
         toast({
           title: 'Error',
@@ -218,19 +74,42 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Add a new stock item
   const addStockItem = async (item: Omit<StockItem, 'id' | 'created_at'>): Promise<StockItem> => {
     try {
-      // Add stock item to Supabase
-      const newItem = await supabase.from<StockItem>('stock_items').insert(item);
+      // First insert the data
+      const insertedItem = await supabase
+        .from('stock_items')
+        .insert(item);
+
+      // Check if there was an error with the insert
+      if (!insertedItem) {
+        throw new Error('Failed to insert stock item');
+      }
+
+      // Then fetch the newly inserted data
+      // For older Supabase versions, we need to use getAll with filters
+      const fetchedData = await supabase.from('stock_items').getAll({
+        filters: { name: item.name },
+        order: { column: 'created_at', ascending: false },
+        limit: 1
+      }) as StockItem[];
+
+      // Get the first item (most recently created)
+      const data = fetchedData.length > 0 ? fetchedData[0] : null;
+      const fetchError = !data ? new Error('Failed to fetch newly created item') : null;
+
+      if (fetchError) {
+        throw fetchError;
+      }
 
       // Update local state
-      setStockItems(prev => [...prev, newItem]);
+      setStockItems(prev => [data as StockItem, ...prev]);
 
       toast({
         title: 'Success',
         description: `${item.name} added to stock successfully.`,
       });
 
-      return newItem;
-    } catch (error) {
+      return data as StockItem;
+    } catch (error: unknown) {
       console.error('Error adding stock item:', error);
       toast({
         title: 'Error',
@@ -244,12 +123,33 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Update a stock item
   const updateStockItem = async (id: string, item: Partial<StockItem>): Promise<StockItem> => {
     try {
-      // Update stock item in Supabase
-      const updatedItem = await supabase.from<StockItem>('stock_items').update(id, item);
+      // First update the data
+      const updatedData = await supabase
+        .from('stock_items')
+        .update(id, item);
+
+      // In older Supabase versions, update returns the updated data directly
+      // If it's an array with data, use the first item
+      let data: StockItem | null = null;
+      if (Array.isArray(updatedData) && updatedData.length > 0) {
+        data = updatedData[0] as StockItem;
+      } else if (!Array.isArray(updatedData) && updatedData) {
+        // If it's a single object
+        data = updatedData as StockItem;
+      } else {
+        // If no data was returned, fetch it
+        data = await supabase.from('stock_items').getById(id) as StockItem;
+      }
+
+      const fetchError = !data ? new Error('Failed to fetch updated item') : null;
+
+      if (fetchError) {
+        throw fetchError;
+      }
 
       // Update local state
       setStockItems(prev =>
-        prev.map(i => i.id === id ? { ...i, ...item } : i)
+        prev.map(i => i.id === id ? { ...i, ...(data as StockItem) } : i)
       );
 
       toast({
@@ -257,8 +157,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         description: 'Stock item updated successfully.',
       });
 
-      return updatedItem;
-    } catch (error) {
+      return data as StockItem;
+    } catch (error: unknown) {
       console.error('Error updating stock item:', error);
       toast({
         title: 'Error',
@@ -273,7 +173,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const deleteStockItem = async (id: string): Promise<void> => {
     try {
       // Delete stock item from Supabase
-      await supabase.from<StockItem>('stock_items').delete(id);
+      await supabase
+        .from('stock_items')
+        .delete(id);
 
       // Update local state
       setStockItems(prev => prev.filter(i => i.id !== id));
@@ -282,7 +184,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         title: 'Success',
         description: 'Stock item deleted successfully.',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error deleting stock item:', error);
       toast({
         title: 'Error',
@@ -335,6 +237,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Get all items expiring soon
   const getExpiringSoonItems = () => stockItems.filter(item => isExpiringSoon(item) && !isExpired(item));
 
+  // Get stock definition by name
+  const getStockDefinitionByName = (name: string) => {
+    return stockDefinitions.find(def => def.name === name);
+  };
+
   return (
     <StockContext.Provider
       value={{
@@ -348,7 +255,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         isExpired,
         getLowStockItems,
         getExpiredItems,
-        getExpiringSoonItems
+        getExpiringSoonItems,
+        getStockDefinitionByName
       }}
     >
       {children}

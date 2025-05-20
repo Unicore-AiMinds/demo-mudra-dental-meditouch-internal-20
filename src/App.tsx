@@ -13,10 +13,12 @@ import { DentalChartingProvider } from "@/contexts/DentalChartingContext";
 import { VitalSignsProvider } from "@/contexts/VitalSignsContext";
 import { PrescriptionProvider } from "@/contexts/PrescriptionContext";
 import { StockProvider } from "@/contexts/StockContext";
+import { StockDefinitionsProvider } from "@/contexts/StockDefinitionsContext";
 import { LabWorkProvider } from "@/contexts/LabWorkContext";
 import { MedicineProvider } from "@/contexts/MedicineContext";
 import { DentalLabsProvider } from "@/contexts/DentalLabsContext";
 import { LabWorkTypesProvider } from "@/contexts/LabWorkTypesContext";
+import { DealersProvider } from "@/contexts/DealersContext";
 import { PatientProvider } from "@/contexts/PatientContext";
 import { AppointmentProvider } from "@/contexts/AppointmentContext";
 import { ServiceProvider } from "@/contexts/ServiceContext";
@@ -68,8 +70,10 @@ const App = () => (
                                       <DentalLabsProvider>
                                         <LabWorkTypesProvider>
                                           <LabWorkProvider>
-                                            <StockProvider>
-                                              <MedicineProvider>
+                                            <StockDefinitionsProvider>
+                                              <StockProvider>
+                                                <DealersProvider>
+                                                  <MedicineProvider>
                                               <Routes>
                                                 <Route path="/login" element={<Login />} />
                                                 <Route path="/unauthorized" element={<Unauthorized />} />
@@ -137,7 +141,9 @@ const App = () => (
                                                 <Route path="*" element={<NotFound />} />
                                               </Routes>
                                             </MedicineProvider>
-                                          </StockProvider>
+                                                </DealersProvider>
+                                              </StockProvider>
+                                            </StockDefinitionsProvider>
                                         </LabWorkProvider>
                                       </LabWorkTypesProvider>
                                     </DentalLabsProvider>
