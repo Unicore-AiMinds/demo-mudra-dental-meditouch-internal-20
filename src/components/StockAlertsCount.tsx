@@ -1,5 +1,5 @@
 import React from 'react';
-import { useStock } from '@/contexts/StockContext';
+import { useStock } from '@/hooks/use-stock';
 
 const StockAlertsCount: React.FC = () => {
   const { getLowStockItems, getExpiredItems, getExpiringSoonItems } = useStock();

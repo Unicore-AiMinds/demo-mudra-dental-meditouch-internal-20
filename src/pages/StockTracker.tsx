@@ -1,13 +1,16 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStock } from '@/contexts/StockContext';
+import { useStock } from '@/hooks/use-stock';
 import { useStockDefinitions } from '@/contexts/StockDefinitionsContext';
 import { useDealers } from '@/contexts/DealersContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, AlertTriangle, Package, FileDown, Filter, X, ArrowUpDown, CalendarDays } from 'lucide-react';
+import { Plus, Search, AlertTriangle, Package, FileDown, Filter, X, ArrowUpDown, CalendarDays, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import IncomingStockDialog from '@/components/IncomingStockDialog';
+import ConsumeStockDialog from '@/components/ConsumeStockDialog';
+import StockBatchesDialog from '@/components/StockBatchesDialog';
 import {
   Card,
   CardContent,
@@ -27,6 +30,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
@@ -176,6 +180,17 @@ const StockTracker = () => {
   const [editSelectedItemSubItems, setEditSelectedItemSubItems] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
+
+  // State for batch management dialogs
+  const [isIncomingDialogOpen, setIsIncomingDialogOpen] = useState(false);
+  const [isConsumeDialogOpen, setIsConsumeDialogOpen] = useState(false);
+  const [isBatchesDialogOpen, setIsBatchesDialogOpen] = useState(false);
+  const [selectedStockItem, setSelectedStockItem] = useState<{
+    id: string;
+    name: string;
+    unit: string;
+    currentQuantity: number;
+  } | null>(null);
 
   const [newItem, setNewItem] = useState<Omit<StockItem, 'id'>>({
     name: '',
@@ -356,18 +371,55 @@ const StockTracker = () => {
     }
   };
 
-  const handleIncomingStock = (_itemId: string) => {
-    toast({
-      title: "Feature in Development",
-      description: "Record incoming stock functionality will be available soon.",
+  const handleIncomingStock = (itemId: string) => {
+    // Find the stock item
+    const item = stockItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    // Set the selected item for the dialog
+    setSelectedStockItem({
+      id: itemId,
+      name: `${item.name}${item.subItem ? ` (${item.subItem})` : ''}`,
+      unit: item.unit,
+      currentQuantity: item.currentQuantity
     });
+
+    // Open the dialog
+    setIsIncomingDialogOpen(true);
   };
 
-  const handleConsumeStock = (_itemId: string) => {
-    toast({
-      title: "Feature in Development",
-      description: "Record stock consumption functionality will be available soon.",
+  const handleConsumeStock = (itemId: string) => {
+    // Find the stock item
+    const item = stockItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    // Set the selected item for the dialog
+    setSelectedStockItem({
+      id: itemId,
+      name: `${item.name}${item.subItem ? ` (${item.subItem})` : ''}`,
+      unit: item.unit,
+      currentQuantity: item.currentQuantity
     });
+
+    // Open the dialog
+    setIsConsumeDialogOpen(true);
+  };
+
+  const handleViewBatches = (itemId: string) => {
+    // Find the stock item
+    const item = stockItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    // Set the selected item for the dialog
+    setSelectedStockItem({
+      id: itemId,
+      name: `${item.name}${item.subItem ? ` (${item.subItem})` : ''}`,
+      unit: item.unit,
+      currentQuantity: item.currentQuantity
+    });
+
+    // Open the dialog
+    setIsBatchesDialogOpen(true);
   };
 
   const handleEditItem = (item: StockItem) => {
@@ -1431,6 +1483,11 @@ const StockTracker = () => {
                                 <DropdownMenuItem onClick={() => handleConsumeStock(item.id)}>
                                   Record Consumption
                                 </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleViewBatches(item.id)}>
+                                  <Info className="h-4 w-4 mr-2" />
+                                  View Batches & History
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -1444,6 +1501,35 @@ const StockTracker = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Batch Management Dialogs */}
+      {selectedStockItem && (
+        <>
+          <IncomingStockDialog
+            isOpen={isIncomingDialogOpen}
+            onClose={() => setIsIncomingDialogOpen(false)}
+            stockItemId={selectedStockItem.id}
+            stockItemName={selectedStockItem.name}
+            stockItemUnit={selectedStockItem.unit}
+          />
+
+          <ConsumeStockDialog
+            isOpen={isConsumeDialogOpen}
+            onClose={() => setIsConsumeDialogOpen(false)}
+            stockItemId={selectedStockItem.id}
+            stockItemName={selectedStockItem.name}
+            stockItemUnit={selectedStockItem.unit}
+            currentQuantity={selectedStockItem.currentQuantity}
+          />
+
+          <StockBatchesDialog
+            isOpen={isBatchesDialogOpen}
+            onClose={() => setIsBatchesDialogOpen(false)}
+            stockItemId={selectedStockItem.id}
+            stockItemName={selectedStockItem.name}
+          />
+        </>
+      )}
     </div>
   );
 };
