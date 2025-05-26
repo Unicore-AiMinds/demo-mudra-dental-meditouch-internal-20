@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { IncomingStockData } from '@/contexts/StockContext';
 import { useStock } from '@/hooks/use-stock';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,7 +40,6 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
   stockItemName,
   stockItemUnit,
 }) => {
-  const { toast } = useToast();
   const { recordIncomingStock } = useStock();
   const { user } = useAuth();
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -43,11 +50,17 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
     batch_number: '',
     received_date: today,
     cost_per_unit: undefined,
-    performed_by: user?.name || '',
-    notes: '',
+    performed_by: user?.name || 'System',
+    notes: 'Stock addition',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [validationDialog, setValidationDialog] = useState<{isOpen: boolean, title: string, message: string}>({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -66,25 +79,54 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
 
     // Validate form
     if (!formData.quantity_received || formData.quantity_received <= 0) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please enter a valid quantity greater than 0.',
-        variant: 'destructive',
+      setValidationDialog({
+        isOpen: true,
+        title: 'Record Received Stock',
+        message: 'Please enter the quantity of stock received.'
       });
       return;
     }
 
     if (!formData.received_date) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please enter a received date.',
-        variant: 'destructive',
+      setValidationDialog({
+        isOpen: true,
+        title: 'Record Received Stock',
+        message: 'Please select the date when this stock was received.'
       });
       return;
     }
 
+    if (!formData.expiry_date) {
+      setValidationDialog({
+        isOpen: true,
+        title: 'Record Received Stock',
+        message: 'Please select the expiry date for this stock batch.'
+      });
+      return;
+    }
+
+    // Check if expiry date is in the past
+    const expiryDate = new Date(formData.expiry_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+
+    if (expiryDate < today) {
+      setValidationDialog({
+        isOpen: true,
+        title: 'Record Received Stock',
+        message: 'Expiry date cannot be in the past. Please select a future date.'
+      });
+      return;
+    }
+
+    // Show confirmation dialog
+    setIsConfirmDialogOpen(true);
+  };
+
+  const handleConfirmSubmit = async () => {
     try {
       setIsSubmitting(true);
+      setIsConfirmDialogOpen(false);
       await recordIncomingStock(stockItemId, formData);
 
       // Reset form and close dialog
@@ -94,8 +136,8 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
         batch_number: '',
         received_date: today,
         cost_per_unit: undefined,
-        performed_by: user?.name || '',
-        notes: '',
+        performed_by: user?.name || 'System',
+        notes: 'Stock addition',
       });
 
       onClose();
@@ -107,7 +149,8 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Record Incoming Stock</DialogTitle>
@@ -155,7 +198,7 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
 
             <div className="grid grid-cols-4 items-center gap-2">
               <Label htmlFor="expiry_date" className="text-right text-xs">
-                Expiry Date
+                Expiry Date *
               </Label>
               <div className="col-span-3">
                 <Input
@@ -202,36 +245,7 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="performed_by" className="text-right text-xs">
-                Received By
-              </Label>
-              <div className="col-span-3">
-                <Input
-                  id="performed_by"
-                  name="performed_by"
-                  value={formData.performed_by || ''}
-                  onChange={handleChange}
-                  placeholder="Person who received the stock"
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="notes" className="text-right text-xs">
-                Notes
-              </Label>
-              <div className="col-span-3">
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes || ''}
-                  onChange={handleChange}
-                  placeholder="Optional notes about this stock"
-                  className="resize-none"
-                />
-              </div>
-            </div>
           </div>
 
           <DialogFooter>
@@ -254,6 +268,53 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
         </form>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm Stock Addition</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to add {formData.quantity_received} {stockItemUnit} of {stockItemName} to the inventory?
+            {formData.batch_number && (
+              <><br />Batch: {formData.batch_number}</>
+            )}
+            {formData.expiry_date && (
+              <><br />Expiry: {formData.expiry_date}</>
+            )}
+            {formData.cost_per_unit && (
+              <><br />Cost: ₹{formData.cost_per_unit} per unit</>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmSubmit}
+            disabled={isSubmitting}
+            className="bg-dental-primary hover:bg-dental-dark"
+          >
+            {isSubmitting ? 'Adding...' : 'Confirm'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog open={validationDialog.isOpen} onOpenChange={(open) => setValidationDialog({...validationDialog, isOpen: open})}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{validationDialog.title}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {validationDialog.message}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={() => setValidationDialog({...validationDialog, isOpen: false})}>
+            OK
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
 

@@ -154,6 +154,64 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         throw fetchError;
       }
 
+      // Create an initial batch record for the stock if quantity > 0
+      if (item.current_quantity > 0) {
+        try {
+          // Create a batch record for the initial stock
+          await supabase.from('stock_batches').insert({
+            stock_item_id: data.id,
+            batch_number: null, // No batch number for initial stock
+            quantity_received: item.current_quantity,
+            current_quantity: item.current_quantity,
+            expiry_date: item.nearest_expiry_date,
+            received_date: new Date().toISOString().split('T')[0], // Today's date
+            cost_per_unit: item.rate,
+            notes: 'Initial stock entry'
+          });
+
+          // Create a transaction record for the initial stock
+          await supabase.from('stock_transactions').insert({
+            stock_item_id: data.id,
+            batch_id: null, // Will be updated after we get the batch ID
+            transaction_type: 'incoming',
+            quantity: item.current_quantity,
+            remaining_quantity: item.current_quantity,
+            transaction_date: new Date().toISOString().split('T')[0],
+            performed_by: 'System',
+            purpose: 'Initial Stock Entry',
+            notes: 'Initial stock entry when item was created'
+          });
+
+          // Get the newly created batch to update the transaction with batch_id
+          const batches = await supabase.from('stock_batches').getAll({
+            filters: { stock_item_id: data.id },
+            order: { column: 'created_at', ascending: false },
+            limit: 1
+          });
+
+          if (batches.length > 0) {
+            const newBatch = batches[0] as StockBatch;
+
+            // Update the transaction with the correct batch_id
+            const transactions = await supabase.from('stock_transactions').getAll({
+              filters: { stock_item_id: data.id, batch_id: null },
+              order: { column: 'created_at', ascending: false },
+              limit: 1
+            });
+
+            if (transactions.length > 0) {
+              await supabase.from('stock_transactions').update(transactions[0].id, {
+                batch_id: newBatch.id
+              });
+            }
+          }
+        } catch (batchError) {
+          console.error('Error creating initial batch record:', batchError);
+          // Don't throw here - the stock item was created successfully
+          // Just log the error and continue
+        }
+      }
+
       // Update local state
       setStockItems(prev => [data as StockItem, ...prev]);
 
@@ -407,11 +465,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
     } catch (error) {
       console.error('Error recording incoming stock:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to record incoming stock. Please try again.',
-        variant: 'destructive',
-      });
+      // Don't show toast for validation errors - let the component handle them
+      // Only show toast for actual system errors
+      if (error instanceof Error &&
+          !error.message.includes('validation') &&
+          !error.message.includes('required')) {
+        toast({
+          title: 'Error',
+          description: 'Failed to record incoming stock. Please try again.',
+          variant: 'destructive',
+        });
+      }
       throw error;
     }
   };
@@ -425,14 +489,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         throw new Error('Stock item not found');
       }
 
-      // Check if there's enough stock
+      // Get all batches for this stock item to calculate actual available quantity
+      const allBatches = await getBatchesForStockItem(stockItemId);
+      const totalAvailableQuantity = allBatches.reduce((total, batch) => total + batch.current_quantity, 0);
+
+      // Check if there's enough stock across all batches
+      if (totalAvailableQuantity < data.quantity) {
+        throw new Error(`Insufficient stock available. Only ${totalAvailableQuantity} units remaining in inventory.`);
+      }
+
+      // Additional check against main stock item quantity (should match batch totals)
       if (stockItem.current_quantity < data.quantity) {
-        toast({
-          title: 'Insufficient Stock',
-          description: `Only ${stockItem.current_quantity} units available.`,
-          variant: 'destructive',
-        });
-        throw new Error('Insufficient stock');
+        throw new Error(`Insufficient stock available. Only ${stockItem.current_quantity} units remaining.`);
       }
 
       let remainingToConsume = data.quantity;
@@ -442,6 +510,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (data.specific_batch_id) {
         const specificBatch = (await getBatchesForStockItem(stockItemId))
           .find(batch => batch.id === data.specific_batch_id);
+
+        if (!specificBatch) {
+          throw new Error('The selected batch could not be found. Please choose a different batch.');
+        }
+
+        if (specificBatch.current_quantity < data.quantity) {
+          throw new Error(`Insufficient stock in selected batch. Only ${specificBatch.current_quantity} units available.`);
+        }
 
         if (specificBatch && specificBatch.current_quantity > 0) {
           const consumeAmount = Math.min(specificBatch.current_quantity, remainingToConsume);
@@ -535,8 +611,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const newQuantity = stockItem.current_quantity - data.quantity;
 
       // Get all batches to determine the nearest expiry date
-      const allBatches = await getBatchesForStockItem(stockItemId);
-      const validExpiryBatches = allBatches.filter(batch =>
+      const updatedBatches = await getBatchesForStockItem(stockItemId);
+      const validExpiryBatches = updatedBatches.filter(batch =>
         batch.expiry_date && batch.current_quantity > 0
       );
 
@@ -560,11 +636,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
     } catch (error) {
       console.error('Error recording stock consumption:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to record stock consumption. Please try again.',
-        variant: 'destructive',
-      });
+      // Don't show toast for validation errors - let the component handle them
+      // Only show toast for actual system errors
+      if (error instanceof Error &&
+          !error.message.includes('Insufficient stock') &&
+          !error.message.includes('batch')) {
+        toast({
+          title: 'Error',
+          description: 'Failed to record stock consumption. Please try again.',
+          variant: 'destructive',
+        });
+      }
       throw error;
     }
   };

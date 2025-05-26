@@ -125,6 +125,7 @@ const StockBatchesDialog: React.FC<StockBatchesDialogProps> = ({
                       <TableHead>Received</TableHead>
                       <TableHead>Expiry</TableHead>
                       <TableHead>Quantity</TableHead>
+                      <TableHead>Cost</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -133,11 +134,16 @@ const StockBatchesDialog: React.FC<StockBatchesDialogProps> = ({
                       const { status, color } = getBatchStatus(batch);
                       return (
                         <TableRow key={batch.id}>
-                          <TableCell>{batch.batch_number || '-'}</TableCell>
+                          <TableCell>
+                            {batch.batch_number || (batch.expiry_date ? `Exp: ${batch.expiry_date}` : 'Auto-batch')}
+                          </TableCell>
                           <TableCell>{batch.received_date || '-'}</TableCell>
                           <TableCell>{batch.expiry_date || 'No Expiry'}</TableCell>
                           <TableCell>
                             {batch.current_quantity} / {batch.quantity_received}
+                          </TableCell>
+                          <TableCell>
+                            {batch.cost_per_unit ? `₹${batch.cost_per_unit}` : '-'}
                           </TableCell>
                           <TableCell>
                             <Badge className={color}>{status}</Badge>
@@ -167,8 +173,6 @@ const StockBatchesDialog: React.FC<StockBatchesDialogProps> = ({
                       <TableHead>Type</TableHead>
                       <TableHead>Quantity</TableHead>
                       <TableHead>Batch #</TableHead>
-                      <TableHead>Performed By</TableHead>
-                      <TableHead>Purpose</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -187,13 +191,19 @@ const StockBatchesDialog: React.FC<StockBatchesDialogProps> = ({
                         </TableCell>
                         <TableCell>{transaction.quantity}</TableCell>
                         <TableCell>
-                          {transaction.batch_id
-                            ? batches.find(b => b.id === transaction.batch_id)?.batch_number || '-'
-                            : '-'
-                          }
+                          {transaction.batch_id ? (() => {
+                            const batch = batches.find(b => b.id === transaction.batch_id);
+                            if (batch) {
+                              if (batch.batch_number) {
+                                return batch.batch_number;
+                              } else {
+                                // Show expiry date if no batch number
+                                return batch.expiry_date ? `Exp: ${batch.expiry_date}` : 'Auto-batch';
+                              }
+                            }
+                            return 'Unknown';
+                          })() : '-'}
                         </TableCell>
-                        <TableCell>{transaction.performed_by || '-'}</TableCell>
-                        <TableCell>{transaction.purpose || '-'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

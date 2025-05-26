@@ -391,7 +391,10 @@ const StockTracker = () => {
   const handleConsumeStock = (itemId: string) => {
     // Find the stock item
     const item = stockItems.find(i => i.id === itemId);
-    if (!item) return;
+    if (!item) {
+      console.error('Stock item not found:', itemId);
+      return;
+    }
 
     // Set the selected item for the dialog
     setSelectedStockItem({

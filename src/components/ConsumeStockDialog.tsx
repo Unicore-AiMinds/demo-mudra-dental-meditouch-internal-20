@@ -12,6 +12,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -49,15 +59,24 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
   const [formData, setFormData] = useState<ConsumeStockData>({
     quantity: 0,
     transaction_date: today,
-    performed_by: user?.name || '',
-    purpose: '',
-    notes: '',
+    performed_by: user?.name || 'System',
+    purpose: 'Stock consumption',
+    notes: 'Stock consumption',
     specific_batch_id: undefined,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [batches, setBatches] = useState<StockBatch[]>([]);
   const [isLoadingBatches, setIsLoadingBatches] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [validationDialog, setValidationDialog] = useState<{isOpen: boolean, title: string, message: string}>({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
+
+  // Debug logging
+  console.log('ConsumeStockDialog props:', { isOpen, stockItemId, stockItemName, stockItemUnit, currentQuantity });
 
   // Fetch batches when dialog opens
   useEffect(() => {
@@ -97,7 +116,9 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    // Convert "FEFO" back to undefined for the backend
+    const actualValue = value === "FEFO" ? undefined : value;
+    setFormData(prev => ({ ...prev, [name]: actualValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,61 +126,88 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
 
     // Validate form
     if (!formData.quantity || formData.quantity <= 0) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please enter a valid quantity greater than 0.',
-        variant: 'destructive',
+      setValidationDialog({
+        isOpen: true,
+        title: 'Record Stock Usage',
+        message: 'Please enter a valid quantity to consume.'
       });
       return;
     }
 
     if (formData.quantity > currentQuantity) {
-      toast({
-        title: 'Validation Error',
-        description: `Cannot consume more than available quantity (${currentQuantity} ${stockItemUnit}).`,
-        variant: 'destructive',
+      setValidationDialog({
+        isOpen: true,
+        title: 'Insufficient Stock',
+        message: `Insufficient stock available. You can consume up to ${currentQuantity} ${stockItemUnit}.`
       });
       return;
     }
 
     if (!formData.transaction_date) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please enter a transaction date.',
-        variant: 'destructive',
+      setValidationDialog({
+        isOpen: true,
+        title: 'Record Stock Usage',
+        message: 'Please select the date when this stock was consumed.'
       });
       return;
     }
 
+    // Show confirmation dialog
+    setIsConfirmDialogOpen(true);
+  };
+
+  const handleConfirmSubmit = async () => {
     try {
       setIsSubmitting(true);
+      setIsConfirmDialogOpen(false);
       await recordStockConsumption(stockItemId, formData);
 
       // Reset form and close dialog
       setFormData({
         quantity: 0,
         transaction_date: today,
-        performed_by: user?.name || '',
-        purpose: '',
-        notes: '',
+        performed_by: user?.name || 'System',
+        purpose: 'Stock consumption',
+        notes: 'Stock consumption',
         specific_batch_id: undefined,
       });
 
       onClose();
     } catch (error) {
       console.error('Error recording stock consumption:', error);
+      // Show error in validation dialog with appropriate title
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while recording stock consumption.';
+      let title = 'Unable to Process Request';
+
+      if (errorMessage.includes('Insufficient stock')) {
+        title = 'Insufficient Stock';
+      } else if (errorMessage.includes('batch')) {
+        title = 'Issue with Batch Details';
+      }
+
+      setValidationDialog({
+        isOpen: true,
+        title: title,
+        message: errorMessage
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Don't render if essential props are missing
+  if (!stockItemId || !stockItemName || !stockItemUnit || currentQuantity === undefined) {
+    return null;
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Record Stock Consumption</DialogTitle>
           <DialogDescription>
-            Record usage of {stockItemName}
+            Record usage of {stockItemName} (Current: {currentQuantity} {stockItemUnit})
           </DialogDescription>
         </DialogHeader>
 
@@ -193,14 +241,14 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
                 </Label>
                 <div className="col-span-3">
                   <Select
-                    value={formData.specific_batch_id}
+                    value={formData.specific_batch_id || "FEFO"}
                     onValueChange={(value) => handleSelectChange('specific_batch_id', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Use FEFO (First Expiry, First Out)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Use FEFO (First Expiry, First Out)</SelectItem>
+                      <SelectItem value="FEFO">Use FEFO (First Expiry, First Out)</SelectItem>
                       {batches.map((batch) => (
                         <SelectItem key={batch.id} value={batch.id}>
                           {batch.batch_number || 'Batch'} - {batch.current_quantity} {stockItemUnit}
@@ -229,51 +277,9 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="performed_by" className="text-right text-xs">
-                Used By
-              </Label>
-              <div className="col-span-3">
-                <Input
-                  id="performed_by"
-                  name="performed_by"
-                  value={formData.performed_by || ''}
-                  onChange={handleChange}
-                  placeholder="Person who used the item"
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="purpose" className="text-right text-xs">
-                Purpose
-              </Label>
-              <div className="col-span-3">
-                <Input
-                  id="purpose"
-                  name="purpose"
-                  value={formData.purpose || ''}
-                  onChange={handleChange}
-                  placeholder="Purpose of consumption"
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="notes" className="text-right text-xs">
-                Notes
-              </Label>
-              <div className="col-span-3">
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes || ''}
-                  onChange={handleChange}
-                  placeholder="Optional notes about this consumption"
-                  className="resize-none"
-                />
-              </div>
-            </div>
+
           </div>
 
           <DialogFooter>
@@ -296,6 +302,54 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
         </form>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm Stock Consumption</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to consume {formData.quantity} {stockItemUnit} of {stockItemName}?
+            <br />Method: {formData.specific_batch_id ?
+              (() => {
+                const batch = batches.find(b => b.id === formData.specific_batch_id);
+                return batch ?
+                  (batch.batch_number || `Exp: ${batch.expiry_date}` || 'Specific batch') :
+                  'Specific batch';
+              })() :
+              'FEFO (First Expiry, First Out)'
+            }
+            <br />Date: {formData.transaction_date}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmSubmit}
+            disabled={isSubmitting}
+            className="bg-dental-primary hover:bg-dental-dark"
+          >
+            {isSubmitting ? 'Consuming...' : 'Confirm'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog open={validationDialog.isOpen} onOpenChange={(open) => setValidationDialog({...validationDialog, isOpen: open})}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{validationDialog.title}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {validationDialog.message}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={() => setValidationDialog({...validationDialog, isOpen: false})}>
+            OK
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
 
