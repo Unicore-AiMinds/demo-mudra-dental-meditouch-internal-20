@@ -232,7 +232,8 @@ const StockTracker = () => {
     }
   }, [dbStockItems]);
 
-  const isLowStock = (item: StockItem) => item.currentQuantity <= item.minimumThreshold;
+  const isOutOfStock = (item: StockItem) => item.currentQuantity === 0;
+  const isLowStock = (item: StockItem) => item.currentQuantity > 0 && item.currentQuantity <= item.minimumThreshold;
 
   // Check if item is expiring soon (within 60 days)
   const isExpiringSoon = (item: StockItem) => {
@@ -273,6 +274,7 @@ const StockTracker = () => {
       // Filter by status
       const matchesStatus =
         filterStatus === 'all' ||
+        (filterStatus === 'outofstock' && isOutOfStock(item)) ||
         (filterStatus === 'low' && isLowStock(item)) ||
         (filterStatus === 'expiring' && isExpiringSoon(item)) ||
         (filterStatus === 'expired' && isExpired(item));
@@ -1196,7 +1198,7 @@ const StockTracker = () => {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-4">
         <Card className="card-shadow">
           <div className="p-4 flex items-center space-x-4">
             <div className="bg-blue-50 p-2 rounded-full">
@@ -1212,12 +1214,25 @@ const StockTracker = () => {
 
         <Card className="card-shadow">
           <div className="p-4 flex items-center space-x-4">
+            <div className="bg-red-50 p-2 rounded-full">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-muted-foreground">Out of Stock</div>
+              <div className="text-2xl font-bold">{stockItems.filter(item => isOutOfStock(item)).length}</div>
+              <div className="text-xs text-muted-foreground">Items with zero quantity</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="card-shadow">
+          <div className="p-4 flex items-center space-x-4">
             <div className="bg-amber-50 p-2 rounded-full">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
             </div>
             <div>
               <div className="text-sm font-medium text-muted-foreground">Low Stock</div>
-              <div className="text-2xl font-bold">{stockItems.filter(item => item.currentQuantity <= item.minimumThreshold).length}</div>
+              <div className="text-2xl font-bold">{stockItems.filter(item => isLowStock(item)).length}</div>
               <div className="text-xs text-muted-foreground">Items below minimum threshold</div>
             </div>
           </div>
@@ -1225,8 +1240,8 @@ const StockTracker = () => {
 
         <Card className="card-shadow">
           <div className="p-4 flex items-center space-x-4">
-            <div className="bg-red-50 p-2 rounded-full">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
+            <div className="bg-orange-50 p-2 rounded-full">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
             </div>
             <div>
               <div className="text-sm font-medium text-muted-foreground">Expiring Soon</div>
@@ -1271,6 +1286,7 @@ const StockTracker = () => {
               <Tabs value={filterStatus} onValueChange={setFilterStatus} className="w-full sm:w-auto">
                 <TabsList>
                   <TabsTrigger value="all">All Status</TabsTrigger>
+                  <TabsTrigger value="outofstock">Out of Stock</TabsTrigger>
                   <TabsTrigger value="low">Low Stock</TabsTrigger>
                   <TabsTrigger value="expiring">Expiring Soon</TabsTrigger>
                   <TabsTrigger value="expired">Expired</TabsTrigger>
@@ -1304,12 +1320,16 @@ const StockTracker = () => {
                     let status = 'OK';
                     if (isExpired(item)) {
                       status = 'Expired';
+                    } else if (isOutOfStock(item) && isExpiringSoon(item)) {
+                      status = 'Out of Stock, Expiring';
+                    } else if (isOutOfStock(item)) {
+                      status = 'Out of Stock';
                     } else if (isLowStock(item) && isExpiringSoon(item)) {
-                      status = 'Low, Expiring';
+                      status = 'Low Stock, Expiring';
                     } else if (isLowStock(item)) {
-                      status = 'Low';
+                      status = 'Low Stock';
                     } else if (isExpiringSoon(item)) {
-                      status = 'Expiring';
+                      status = 'Expiring Soon';
                     }
                     return [
                       `"${item.name}"`,
@@ -1398,7 +1418,10 @@ const StockTracker = () => {
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <span>{item.currentQuantity}</span>
-                            {isLowStock(item) && (
+                            {isOutOfStock(item) && (
+                              <AlertTriangle className="h-3 w-3 text-red-600" />
+                            )}
+                            {isLowStock(item) && !isOutOfStock(item) && (
                               <AlertTriangle className="h-3 w-3 text-amber-500" />
                             )}
                           </div>
@@ -1432,9 +1455,14 @@ const StockTracker = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
-                            {isLowStock(item) && (
+                            {isOutOfStock(item) && (
+                              <Badge variant="outline" className="bg-red-100 text-red-700 border-red-300 font-medium">
+                                Out of Stock
+                              </Badge>
+                            )}
+                            {isLowStock(item) && !isOutOfStock(item) && (
                               <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                                Low
+                                Low Stock
                               </Badge>
                             )}
                             {isExpired(item) && (
@@ -1443,11 +1471,11 @@ const StockTracker = () => {
                               </Badge>
                             )}
                             {isExpiringSoon(item) && !isExpired(item) && (
-                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                                Expiring
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                                Expiring Soon
                               </Badge>
                             )}
-                            {!isLowStock(item) && !isExpiringSoon(item) && !isExpired(item) && (
+                            {!isOutOfStock(item) && !isLowStock(item) && !isExpiringSoon(item) && !isExpired(item) && (
                               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                                 OK
                               </Badge>

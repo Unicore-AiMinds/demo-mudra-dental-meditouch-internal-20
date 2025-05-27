@@ -124,6 +124,25 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Debug logging
+    console.log('ConsumeStockDialog - Attempting consumption:', {
+      stockItemId,
+      stockItemName,
+      currentQuantity,
+      requestedQuantity: formData.quantity,
+      formData
+    });
+
+    // Check if there's any stock available
+    if (currentQuantity === 0) {
+      setValidationDialog({
+        isOpen: true,
+        title: 'No Stock Available',
+        message: 'This item is currently out of stock. No consumption can be recorded until new stock is received.'
+      });
+      return;
+    }
+
     // Validate form
     if (!formData.quantity || formData.quantity <= 0) {
       setValidationDialog({
@@ -138,7 +157,7 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
       setValidationDialog({
         isOpen: true,
         title: 'Insufficient Stock',
-        message: `Insufficient stock available. You can consume up to ${currentQuantity} ${stockItemUnit}.`
+        message: `Insufficient stock available. You can consume up to ${currentQuantity} ${stockItemUnit}. Current stock will become ${currentQuantity - formData.quantity} after consumption.`
       });
       return;
     }
@@ -208,6 +227,11 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
           <DialogTitle>Record Stock Consumption</DialogTitle>
           <DialogDescription>
             Record usage of {stockItemName} (Current: {currentQuantity} {stockItemUnit})
+            {currentQuantity === 0 && (
+              <span className="block text-red-600 font-medium mt-1">
+                ⚠️ This item is currently out of stock
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -229,6 +253,7 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
                   onChange={handleChange}
                   required
                   className="w-full"
+                  disabled={currentQuantity === 0}
                 />
                 <span className="text-sm text-muted-foreground">{stockItemUnit}</span>
               </div>

@@ -8,8 +8,14 @@ const StockAlertsCount: React.FC = () => {
   const expiredItems = getExpiredItems();
   const expiringSoonItems = getExpiringSoonItems();
 
-  // Total count of all alerts
-  const totalAlerts = lowStockItems.length + expiredItems.length + expiringSoonItems.length;
+  // Count unique items that have any alert condition (avoid counting duplicates)
+  const uniqueAlertItems = new Set([
+    ...lowStockItems.map(item => item.id),
+    ...expiredItems.map(item => item.id),
+    ...expiringSoonItems.map(item => item.id)
+  ]);
+
+  const totalAlerts = uniqueAlertItems.size;
 
   return <>{totalAlerts}</>;
 };

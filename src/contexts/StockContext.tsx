@@ -493,14 +493,48 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const allBatches = await getBatchesForStockItem(stockItemId);
       const totalAvailableQuantity = allBatches.reduce((total, batch) => total + batch.current_quantity, 0);
 
-      // Check if there's enough stock across all batches
-      if (totalAvailableQuantity < data.quantity) {
-        throw new Error(`Insufficient stock available. Only ${totalAvailableQuantity} units remaining in inventory.`);
+      // Handle case where no batches exist but main stock has quantity (legacy data or failed batch creation)
+      if (allBatches.length === 0 && stockItem.current_quantity > 0) {
+        console.warn(`No batches found for stock item ${stockItemId} but main stock shows ${stockItem.current_quantity}. Creating emergency batch.`);
+
+        // Create an emergency batch for the existing stock
+        try {
+          await supabase.from('stock_batches').insert({
+            stock_item_id: stockItemId,
+            batch_number: null,
+            quantity_received: stockItem.current_quantity,
+            current_quantity: stockItem.current_quantity,
+            expiry_date: stockItem.nearest_expiry_date,
+            received_date: new Date().toISOString().split('T')[0],
+            cost_per_unit: stockItem.rate || 0,
+            notes: 'Emergency batch created for existing stock without batches'
+          });
+
+          // Re-fetch batches after creating the emergency batch
+          const updatedBatches = await getBatchesForStockItem(stockItemId);
+          const updatedTotalQuantity = updatedBatches.reduce((total, batch) => total + batch.current_quantity, 0);
+
+          console.log(`Emergency batch created. Updated total quantity: ${updatedTotalQuantity}`);
+        } catch (batchError) {
+          console.error('Failed to create emergency batch:', batchError);
+          // Continue with consumption using main stock quantity as fallback
+        }
       }
 
-      // Additional check against main stock item quantity (should match batch totals)
-      if (stockItem.current_quantity < data.quantity) {
-        throw new Error(`Insufficient stock available. Only ${stockItem.current_quantity} units remaining.`);
+      // Re-calculate total available quantity after potential emergency batch creation
+      const finalBatches = await getBatchesForStockItem(stockItemId);
+      const finalTotalQuantity = finalBatches.reduce((total, batch) => total + batch.current_quantity, 0);
+
+      // Check if there's enough stock (use main stock quantity as fallback if no batches)
+      const availableQuantity = finalBatches.length > 0 ? finalTotalQuantity : stockItem.current_quantity;
+
+      if (availableQuantity < data.quantity) {
+        throw new Error(`Insufficient stock available. Only ${availableQuantity} units remaining. (Requested: ${data.quantity}, Available: ${availableQuantity})`);
+      }
+
+      // Debug logging to help identify discrepancies
+      if (finalTotalQuantity !== stockItem.current_quantity && finalBatches.length > 0) {
+        console.warn(`Stock quantity mismatch for item ${stockItemId}: Main stock shows ${stockItem.current_quantity}, but batches total ${finalTotalQuantity}`);
       }
 
       let remainingToConsume = data.quantity;
@@ -561,39 +595,59 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
           });
 
-        // Consume from batches in FEFO order
-        for (const batch of batches) {
-          if (remainingToConsume <= 0) break;
+        if (batches.length === 0 && remainingToConsume > 0) {
+          // No batches available but we still need to consume - this shouldn't happen after emergency batch creation
+          // But as a final fallback, create a transaction without a batch
+          console.warn(`No batches available for consumption, creating transaction without batch for ${remainingToConsume} units`);
 
-          // Skip the specific batch if it was already processed
-          if (data.specific_batch_id && batch.id === data.specific_batch_id) continue;
-
-          const consumeAmount = Math.min(batch.current_quantity, remainingToConsume);
-
-          // Update the batch
-          try {
-            await supabase.from('stock_batches').update(batch.id, {
-              current_quantity: batch.current_quantity - consumeAmount
-            });
-          } catch (error) {
-            console.error('Error updating batch:', error);
-            throw error;
-          }
-
-          // Create transaction record
           transactionRecords.push({
             stock_item_id: stockItemId,
-            batch_id: batch.id,
+            batch_id: null, // No batch available
             transaction_type: 'outgoing',
-            quantity: consumeAmount,
-            remaining_quantity: batch.current_quantity - consumeAmount,
+            quantity: remainingToConsume,
+            remaining_quantity: stockItem.current_quantity - remainingToConsume,
             transaction_date: data.transaction_date,
             performed_by: data.performed_by,
             purpose: data.purpose,
-            notes: data.notes
+            notes: `${data.notes} (No batch available - emergency consumption)`
           });
 
-          remainingToConsume -= consumeAmount;
+          remainingToConsume = 0;
+        } else {
+          // Consume from batches in FEFO order
+          for (const batch of batches) {
+            if (remainingToConsume <= 0) break;
+
+            // Skip the specific batch if it was already processed
+            if (data.specific_batch_id && batch.id === data.specific_batch_id) continue;
+
+            const consumeAmount = Math.min(batch.current_quantity, remainingToConsume);
+
+            // Update the batch
+            try {
+              await supabase.from('stock_batches').update(batch.id, {
+                current_quantity: batch.current_quantity - consumeAmount
+              });
+            } catch (error) {
+              console.error('Error updating batch:', error);
+              throw error;
+            }
+
+            // Create transaction record
+            transactionRecords.push({
+              stock_item_id: stockItemId,
+              batch_id: batch.id,
+              transaction_type: 'outgoing',
+              quantity: consumeAmount,
+              remaining_quantity: batch.current_quantity - consumeAmount,
+              transaction_date: data.transaction_date,
+              performed_by: data.performed_by,
+              purpose: data.purpose,
+              notes: data.notes
+            });
+
+            remainingToConsume -= consumeAmount;
+          }
         }
       }
 
