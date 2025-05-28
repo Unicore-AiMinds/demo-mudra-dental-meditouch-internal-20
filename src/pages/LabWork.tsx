@@ -113,7 +113,7 @@ const LabWork = () => {
         const { data, error } = await supabaseClient
           .from('patients')
           .select('id, name, patient_code')
-          .eq('clinic', 'dental')
+          .or('clinic.eq.dental,clinic.eq.both')
           .order('name');
 
         if (error) {
@@ -799,7 +799,7 @@ const LabWork = () => {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="" disabled>No patients found</SelectItem>
+                      <SelectItem value="no-patients-found" disabled>No patients found</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -847,7 +847,7 @@ const LabWork = () => {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="" disabled>No lab work types found</SelectItem>
+                      <SelectItem value="no-lab-work-types" disabled>No lab work types found</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -879,7 +879,7 @@ const LabWork = () => {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="" disabled>No labs found</SelectItem>
+                      <SelectItem value="no-labs-found" disabled>No labs found</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -1147,7 +1147,7 @@ const LabWork = () => {
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="" disabled>No patients found</SelectItem>
+                        <SelectItem value="no-patients-found" disabled>No patients found</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
@@ -1195,7 +1195,7 @@ const LabWork = () => {
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="" disabled>No lab work types found</SelectItem>
+                        <SelectItem value="no-lab-work-types" disabled>No lab work types found</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
@@ -1227,7 +1227,7 @@ const LabWork = () => {
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="" disabled>No labs found</SelectItem>
+                        <SelectItem value="no-labs-found" disabled>No labs found</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
