@@ -232,23 +232,9 @@ const StockTracker = () => {
     }
   }, [dbStockItems]);
 
+  // Priority-based status functions to avoid logical conflicts
   const isOutOfStock = (item: StockItem) => item.currentQuantity === 0;
   const isLowStock = (item: StockItem) => item.currentQuantity > 0 && item.currentQuantity <= item.minimumThreshold;
-
-  // Check if item is expiring soon (within 60 days)
-  const isExpiringSoon = (item: StockItem) => {
-    if (!item.nearestExpiryDate) return false;
-
-    const expiryDate = new Date(item.nearestExpiryDate);
-    const today = new Date();
-
-    // Calculate the difference in days
-    const differenceInTime = expiryDate.getTime() - today.getTime();
-    const differenceInDays = differenceInTime / (1000 * 3600 * 24);
-
-    // Return true if expiring within 60 days but not expired yet
-    return differenceInDays > 0 && differenceInDays <= 60;
-  };
 
   // Check if item is expired (expiry date is today or in the past)
   const isExpired = (item: StockItem) => {
@@ -263,6 +249,30 @@ const StockTracker = () => {
 
     // Return true if expiry date is today or in the past
     return expiryDate <= today;
+  };
+
+  // Check if item is expiring soon (within 60 days) - only if not out of stock or expired
+  const isExpiringSoon = (item: StockItem) => {
+    if (!item.nearestExpiryDate || isOutOfStock(item) || isExpired(item)) return false;
+
+    const expiryDate = new Date(item.nearestExpiryDate);
+    const today = new Date();
+
+    // Calculate the difference in days
+    const differenceInTime = expiryDate.getTime() - today.getTime();
+    const differenceInDays = differenceInTime / (1000 * 3600 * 24);
+
+    // Return true if expiring within 60 days but not expired yet
+    return differenceInDays > 0 && differenceInDays <= 60;
+  };
+
+  // Get primary status for an item (priority-based, only one status)
+  const getPrimaryStatus = (item: StockItem) => {
+    if (isOutOfStock(item)) return 'outofstock';
+    if (isExpired(item)) return 'expired';
+    if (isExpiringSoon(item)) return 'expiring';
+    if (isLowStock(item)) return 'low';
+    return 'normal';
   };
 
   const sortedAndFilteredItems = useMemo(() => {
@@ -1317,19 +1327,24 @@ const StockTracker = () => {
                 const csvContent = [
                   headers.join(','),
                   ...sortedAndFilteredItems.map((item: StockItem) => {
+                    const primaryStatus = getPrimaryStatus(item);
                     let status = 'OK';
-                    if (isExpired(item)) {
-                      status = 'Expired';
-                    } else if (isOutOfStock(item) && isExpiringSoon(item)) {
-                      status = 'Out of Stock, Expiring';
-                    } else if (isOutOfStock(item)) {
-                      status = 'Out of Stock';
-                    } else if (isLowStock(item) && isExpiringSoon(item)) {
-                      status = 'Low Stock, Expiring';
-                    } else if (isLowStock(item)) {
-                      status = 'Low Stock';
-                    } else if (isExpiringSoon(item)) {
-                      status = 'Expiring Soon';
+
+                    switch (primaryStatus) {
+                      case 'outofstock':
+                        status = 'Out of Stock';
+                        break;
+                      case 'expired':
+                        status = 'Expired';
+                        break;
+                      case 'expiring':
+                        status = 'Expiring Soon';
+                        break;
+                      case 'low':
+                        status = 'Low Stock';
+                        break;
+                      default:
+                        status = 'OK';
                     }
                     return [
                       `"${item.name}"`,
@@ -1455,31 +1470,41 @@ const StockTracker = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
-                            {isOutOfStock(item) && (
-                              <Badge variant="outline" className="bg-red-100 text-red-700 border-red-300 font-medium">
-                                Out of Stock
-                              </Badge>
-                            )}
-                            {isLowStock(item) && !isOutOfStock(item) && (
-                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                                Low Stock
-                              </Badge>
-                            )}
-                            {isExpired(item) && (
-                              <Badge variant="outline" className="bg-red-100 text-red-700 border-red-300 font-medium">
-                                Expired
-                              </Badge>
-                            )}
-                            {isExpiringSoon(item) && !isExpired(item) && (
-                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                                Expiring Soon
-                              </Badge>
-                            )}
-                            {!isOutOfStock(item) && !isLowStock(item) && !isExpiringSoon(item) && !isExpired(item) && (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                OK
-                              </Badge>
-                            )}
+                            {(() => {
+                              const primaryStatus = getPrimaryStatus(item);
+                              switch (primaryStatus) {
+                                case 'outofstock':
+                                  return (
+                                    <Badge variant="outline" className="bg-red-100 text-red-700 border-red-300 font-medium">
+                                      Out of Stock
+                                    </Badge>
+                                  );
+                                case 'expired':
+                                  return (
+                                    <Badge variant="outline" className="bg-red-100 text-red-700 border-red-300 font-medium">
+                                      Expired
+                                    </Badge>
+                                  );
+                                case 'expiring':
+                                  return (
+                                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                                      Expiring Soon
+                                    </Badge>
+                                  );
+                                case 'low':
+                                  return (
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                                      Low Stock
+                                    </Badge>
+                                  );
+                                default:
+                                  return (
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                      Normal
+                                    </Badge>
+                                  );
+                              }
+                            })()}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">

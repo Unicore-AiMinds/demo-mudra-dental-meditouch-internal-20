@@ -275,7 +275,7 @@ const Dashboard = () => {
                 onClick={() => navigate('/stock')}
               >
                 <CardHeader className="text-center pb-2">
-                  <CardTitle className="text-sm font-medium">Stock Alerts</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Items</CardTitle>
                   <PackageOpen className="h-4 w-4 mx-auto mt-1 text-dental-primary" />
                 </CardHeader>
                 <CardContent className="flex flex-col justify-between h-24">

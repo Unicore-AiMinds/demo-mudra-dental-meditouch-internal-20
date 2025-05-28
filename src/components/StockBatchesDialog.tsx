@@ -76,15 +76,25 @@ const StockBatchesDialog: React.FC<StockBatchesDialogProps> = ({
     fetchData();
   }, [isOpen, stockItemId, getBatchesForStockItem, getTransactionsForStockItem, toast]);
 
-  // Helper function to determine batch status
+  // Helper function to determine batch status with priority-based logic
   const getBatchStatus = (batch: StockBatch) => {
-    if (!batch.expiry_date) return { status: 'No Expiry', color: 'bg-gray-100 text-gray-800' };
+    const isOutOfStock = batch.current_quantity === 0;
+
+    if (!batch.expiry_date) {
+      if (isOutOfStock) {
+        return { status: 'Out of Stock', color: 'bg-red-100 text-red-800' };
+      }
+      return { status: 'No Expiry', color: 'bg-gray-100 text-gray-800' };
+    }
 
     const today = new Date();
     const expiryDate = new Date(batch.expiry_date);
     const sixtyDaysFromNow = addDays(today, 60);
 
-    if (isBefore(expiryDate, today)) {
+    // Priority-based status (highest priority first)
+    if (isOutOfStock) {
+      return { status: 'Out of Stock', color: 'bg-red-100 text-red-800' };
+    } else if (isBefore(expiryDate, today)) {
       return { status: 'Expired', color: 'bg-red-100 text-red-800' };
     } else if (isBefore(expiryDate, sixtyDaysFromNow)) {
       return { status: 'Expiring Soon', color: 'bg-amber-100 text-amber-800' };

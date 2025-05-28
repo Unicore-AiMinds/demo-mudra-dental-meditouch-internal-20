@@ -2,46 +2,38 @@ import React from 'react';
 import { useStock } from '@/hooks/use-stock';
 
 const StockAlertsAnalytics: React.FC = () => {
-  const { getLowStockItems, getExpiredItems, getExpiringSoonItems } = useStock();
+  const { stockItems } = useStock();
 
-  const lowStockItems = getLowStockItems();
-  const expiredItems = getExpiredItems();
-  const expiringSoonItems = getExpiringSoonItems();
+  // Check if item is out of stock
+  const isOutOfStock = (item: any) => item.current_quantity === 0;
 
-  // Count different types of alerts
-  const outOfStockItems = lowStockItems.filter(item => item.current_quantity === 0);
-  const lowButNotOutItems = lowStockItems.filter(item => item.current_quantity > 0);
+  // Check if item is expired
+  const isExpired = (item: any) => {
+    if (!item.nearest_expiry_date) return false;
 
-  // Create analytical message
+    const expiryDate = new Date(item.nearest_expiry_date);
+    const today = new Date();
+
+    // Set both dates to midnight to compare just the dates
+    expiryDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    // Return true if expiry date is today or in the past
+    return expiryDate <= today;
+  };
+
+  // Create analytical message based on out of stock and expired items only
   const getAnalyticalMessage = () => {
-    const parts = [];
+    const totalItems = stockItems.length;
+    const outOfStockCount = stockItems.filter(isOutOfStock).length;
+    const expiredCount = stockItems.filter(isExpired).length;
 
-    // Priority: Expired items first
-    if (expiredItems.length > 0) {
-      parts.push(`${expiredItems.length} expired`);
+    if (totalItems === 0) {
+      return "No stock items";
     }
 
-    // Then out of stock
-    if (outOfStockItems.length > 0) {
-      parts.push(`${outOfStockItems.length} out of stock`);
-    }
-
-    // Then low stock (but not out of stock)
-    if (lowButNotOutItems.length > 0 && parts.length < 2) {
-      parts.push(`${lowButNotOutItems.length} low stock`);
-    }
-
-    // If no critical issues, show expiring soon
-    if (parts.length === 0 && expiringSoonItems.length > 0) {
-      parts.push(`${expiringSoonItems.length} expiring soon`);
-    }
-
-    // If no alerts at all
-    if (parts.length === 0) {
-      return "All stock levels healthy";
-    }
-
-    return parts.join(', ');
+    // Only show out of stock and expired information
+    return `${outOfStockCount} out of stock, ${expiredCount} expired`;
   };
 
   return <>{getAnalyticalMessage()}</>;

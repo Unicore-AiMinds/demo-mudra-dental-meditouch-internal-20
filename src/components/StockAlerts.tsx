@@ -6,11 +6,14 @@ import { useStock } from '@/hooks/use-stock';
 
 const StockAlerts: React.FC = () => {
   const navigate = useNavigate();
-  const { getLowStockItems, getExpiredItems, getExpiringSoonItems } = useStock();
+  const { getLowStockItems, getExpiredItems, getExpiringSoonItems, stockItems } = useStock();
 
   const lowStockItems = getLowStockItems();
   const expiredItems = getExpiredItems();
   const expiringSoonItems = getExpiringSoonItems();
+
+  // Get out-of-stock items (missing from context)
+  const outOfStockItems = stockItems.filter(item => item.current_quantity === 0);
 
   // Helper function to calculate days to expiry
   const getDaysToExpiry = (expiryDate: string): number => {
@@ -20,89 +23,49 @@ const StockAlerts: React.FC = () => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  // Enhanced priority system for compound conditions
+  // Priority-based alert system (no compound conditions)
   const getStockAlertPriority = (item: any) => {
     const isExpired = item.nearest_expiry_date && new Date(item.nearest_expiry_date) < new Date();
     const isExpiringSoon = item.nearest_expiry_date && getDaysToExpiry(item.nearest_expiry_date) <= 60 && getDaysToExpiry(item.nearest_expiry_date) > 0;
-    const isLowStock = item.current_quantity <= item.minimum_threshold;
+    const isLowStock = item.current_quantity > 0 && item.current_quantity <= item.minimum_threshold;
     const isOutOfStock = item.current_quantity === 0;
 
-    // Compound conditions (highest priority)
-    if (isOutOfStock && isExpired) {
+    // Priority-based single status (highest priority first)
+    if (isOutOfStock) {
       return {
         priority: 1000,
         type: 'critical' as const,
-        label: 'Out of Stock & Expired',
+        label: 'Out of Stock',
         icon: '🚨',
-        description: `Expired: ${item.nearest_expiry_date}`
+        description: `No items available`
       };
     }
-    if (isOutOfStock && isExpiringSoon) {
-      const days = getDaysToExpiry(item.nearest_expiry_date);
-      return {
-        priority: 950,
-        type: 'critical' as const,
-        label: 'Out of Stock & Expiring',
-        icon: '🚨',
-        description: `Expires in ${days} days`
-      };
-    }
-    if (isLowStock && isExpired) {
+    if (isExpired) {
       return {
         priority: 900,
         type: 'critical' as const,
-        label: 'Low Stock & Expired',
-        icon: '⚠️',
-        description: `Current: ${item.current_quantity}, Expired: ${item.nearest_expiry_date}`
-      };
-    }
-    if (isLowStock && isExpiringSoon) {
-      const days = getDaysToExpiry(item.nearest_expiry_date);
-      return {
-        priority: 850,
-        type: 'urgent' as const,
-        label: 'Low Stock & Expiring',
-        icon: '⚠️',
-        description: `Current: ${item.current_quantity}, Expires in ${days} days`
-      };
-    }
-
-    // Single conditions
-    if (isExpired) {
-      return {
-        priority: 800,
-        type: 'expired' as const,
         label: 'Expired',
-        icon: '❌',
+        icon: '⚠️',
         description: `Expired: ${item.nearest_expiry_date}`
-      };
-    }
-    if (isOutOfStock) {
-      return {
-        priority: 750,
-        type: 'urgent' as const,
-        label: 'Out of Stock',
-        icon: '📉',
-        description: 'No stock remaining'
-      };
-    }
-    if (isLowStock) {
-      return {
-        priority: 500,
-        type: 'low' as const,
-        label: 'Low Stock',
-        icon: '📉',
-        description: `Current: ${item.current_quantity}, Min: ${item.minimum_threshold}`
       };
     }
     if (isExpiringSoon) {
       const days = getDaysToExpiry(item.nearest_expiry_date);
       return {
-        priority: 300,
-        type: 'expiring' as const,
+        priority: 800,
+        type: 'urgent' as const,
         label: 'Expiring Soon',
         icon: '⏰',
         description: `Expires in ${days} days`
+      };
+    }
+    if (isLowStock) {
+      return {
+        priority: 700,
+        type: 'warning' as const,
+        label: 'Low Stock',
+        icon: '📉',
+        description: `Current: ${item.current_quantity}, Min: ${item.minimum_threshold}`
       };
     }
 
@@ -157,9 +120,9 @@ const StockAlerts: React.FC = () => {
     }
   };
 
-  // Process all stock items with compound priority logic
+  // Process all stock items with priority logic
   const processStockAlerts = () => {
-    const allItems = [...lowStockItems, ...expiredItems, ...expiringSoonItems];
+    const allItems = [...outOfStockItems, ...expiredItems, ...expiringSoonItems, ...lowStockItems];
 
     // Remove duplicates and assign compound priorities
     const uniqueItems = allItems.reduce((acc: any[], item) => {
@@ -178,6 +141,16 @@ const StockAlerts: React.FC = () => {
   };
 
   const displayAlerts = processStockAlerts();
+
+  // Debug logging to compare with count
+  console.log('StockAlerts Debug:', {
+    outOfStockItems: outOfStockItems.length,
+    expiredItems: expiredItems.length,
+    expiringSoonItems: expiringSoonItems.length,
+    lowStockItems: lowStockItems.length,
+    totalUniqueAlerts: displayAlerts.length,
+    allAlertsBeforeLimit: processStockAlerts().length
+  });
 
   return (
     <Card className="card-shadow card-hover flex flex-col">

@@ -307,23 +307,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // Check if item is low on stock
-  const isLowStock = (item: StockItem) => item.current_quantity <= item.minimum_threshold;
-
-  // Check if item is expiring soon (within 60 days)
-  const isExpiringSoon = (item: StockItem) => {
-    if (!item.nearest_expiry_date) return false;
-
-    const expiryDate = new Date(item.nearest_expiry_date);
-    const today = new Date();
-
-    // Calculate the difference in days
-    const differenceInTime = expiryDate.getTime() - today.getTime();
-    const differenceInDays = differenceInTime / (1000 * 3600 * 24);
-
-    // Return true if expiring within 60 days but not expired yet
-    return differenceInDays > 0 && differenceInDays <= 60;
-  };
+  // Priority-based status functions to avoid logical conflicts
+  const isOutOfStock = (item: StockItem) => item.current_quantity === 0;
+  const isLowStock = (item: StockItem) => item.current_quantity > 0 && item.current_quantity <= item.minimum_threshold;
 
   // Check if item is expired (expiry date is today or in the past)
   const isExpired = (item: StockItem) => {
@@ -340,14 +326,45 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return expiryDate <= today;
   };
 
-  // Get all low stock items
-  const getLowStockItems = () => stockItems.filter(item => isLowStock(item));
+  // Check if item is expiring soon (within 60 days) - only if not out of stock or expired
+  const isExpiringSoon = (item: StockItem) => {
+    if (!item.nearest_expiry_date || isOutOfStock(item) || isExpired(item)) return false;
 
-  // Get all expired items
-  const getExpiredItems = () => stockItems.filter(item => isExpired(item));
+    const expiryDate = new Date(item.nearest_expiry_date);
+    const today = new Date();
 
-  // Get all items expiring soon
-  const getExpiringSoonItems = () => stockItems.filter(item => isExpiringSoon(item) && !isExpired(item));
+    // Calculate the difference in days
+    const differenceInTime = expiryDate.getTime() - today.getTime();
+    const differenceInDays = differenceInTime / (1000 * 3600 * 24);
+
+    // Return true if expiring within 60 days but not expired yet
+    return differenceInDays > 0 && differenceInDays <= 60;
+  };
+
+  // Get items by priority-based status (no overlapping categories)
+  const getLowStockItems = () => stockItems.filter(item => {
+    const primaryStatus = getPrimaryStatus(item);
+    return primaryStatus === 'low';
+  });
+
+  const getExpiredItems = () => stockItems.filter(item => {
+    const primaryStatus = getPrimaryStatus(item);
+    return primaryStatus === 'expired';
+  });
+
+  const getExpiringSoonItems = () => stockItems.filter(item => {
+    const primaryStatus = getPrimaryStatus(item);
+    return primaryStatus === 'expiring';
+  });
+
+  // Get primary status for an item (priority-based, only one status)
+  const getPrimaryStatus = (item: StockItem) => {
+    if (isOutOfStock(item)) return 'outofstock';
+    if (isExpired(item)) return 'expired';
+    if (isExpiringSoon(item)) return 'expiring';
+    if (isLowStock(item)) return 'low';
+    return 'normal';
+  };
 
   // Get stock definition by name
   const getStockDefinitionByName = (name: string) => {
