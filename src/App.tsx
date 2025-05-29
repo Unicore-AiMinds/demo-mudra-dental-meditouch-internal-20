@@ -19,6 +19,7 @@ import { MedicineProvider } from "@/contexts/MedicineContext";
 import { DentalLabsProvider } from "@/contexts/DentalLabsContext";
 import { LabWorkTypesProvider } from "@/contexts/LabWorkTypesContext";
 import { DealersProvider } from "@/contexts/DealersContext";
+import { UnitsProvider } from "@/contexts/UnitsContext";
 import { PatientProvider } from "@/contexts/PatientContext";
 import { AppointmentProvider } from "@/contexts/AppointmentContext";
 import { ServiceProvider } from "@/contexts/ServiceContext";
@@ -71,9 +72,10 @@ const App = () => (
                                         <LabWorkTypesProvider>
                                           <LabWorkProvider>
                                             <StockDefinitionsProvider>
-                                              <StockProvider>
-                                                <DealersProvider>
-                                                  <MedicineProvider>
+                                              <UnitsProvider>
+                                                <StockProvider>
+                                                  <DealersProvider>
+                                                    <MedicineProvider>
                                               <Routes>
                                                 <Route path="/login" element={<Login />} />
                                                 <Route path="/unauthorized" element={<Unauthorized />} />
@@ -140,9 +142,10 @@ const App = () => (
                                                 {/* 404 route */}
                                                 <Route path="*" element={<NotFound />} />
                                               </Routes>
-                                            </MedicineProvider>
-                                                </DealersProvider>
-                                              </StockProvider>
+                                              </MedicineProvider>
+                                                  </DealersProvider>
+                                                </StockProvider>
+                                              </UnitsProvider>
                                             </StockDefinitionsProvider>
                                         </LabWorkProvider>
                                       </LabWorkTypesProvider>

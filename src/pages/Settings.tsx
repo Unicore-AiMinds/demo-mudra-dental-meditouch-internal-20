@@ -2534,7 +2534,21 @@ const Settings = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="serviceDuration">Duration (minutes)</Label>
-                    <Input id="serviceDuration" type="number" placeholder="e.g., 30" />
+                    <Select defaultValue="30">
+                      <SelectTrigger id="serviceDuration">
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="15">15 mins</SelectItem>
+                        <SelectItem value="30">30 mins</SelectItem>
+                        <SelectItem value="45">45 mins</SelectItem>
+                        <SelectItem value="60">60 mins (1 hour)</SelectItem>
+                        <SelectItem value="75">75 mins (1:15 hour)</SelectItem>
+                        <SelectItem value="90">90 mins (1:30 hour)</SelectItem>
+                        <SelectItem value="105">105 mins (1:45 hour)</SelectItem>
+                        <SelectItem value="120">120 mins (2 hours)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="servicePrice">Price (₹)</Label>
@@ -2553,9 +2567,11 @@ const Settings = () => {
                 <Button
                   className={activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
                   onClick={async () => {
-                    // Get values from form fields
+                     // Get values from form fields
                     const serviceName = document.getElementById('serviceName') as HTMLInputElement;
-                    const serviceDuration = document.getElementById('serviceDuration') as HTMLInputElement;
+                    // For the dropdown, we need to get the selected value from the trigger element
+                    const serviceDurationTrigger = document.getElementById('serviceDuration') as HTMLButtonElement;
+                    const serviceDurationValue = serviceDurationTrigger?.textContent?.trim().split(' ')[0] || '30';
                     const servicePrice = document.getElementById('servicePrice') as HTMLInputElement;
                     const serviceDescription = document.getElementById('serviceDescription') as HTMLTextAreaElement;
 
@@ -2569,14 +2585,7 @@ const Settings = () => {
                       return;
                     }
 
-                    if (!serviceDuration.value || parseInt(serviceDuration.value) <= 0) {
-                      toast({
-                        title: "Error",
-                        description: "Duration must be a positive number.",
-                        variant: "destructive"
-                      });
-                      return;
-                    }
+                    // Duration validation is not needed as it's a dropdown with predefined values
 
                     const priceValue = parseFloat(servicePrice.value);
                     if (!servicePrice.value || isNaN(priceValue) || priceValue < 0) {
@@ -2592,7 +2601,7 @@ const Settings = () => {
                       // Create new service object
                       const newService = {
                         name: capitalizeWords(serviceName.value.trim()),
-                        duration: parseInt(serviceDuration.value),
+                        duration: parseInt(serviceDurationValue),
                         price: parseFloat(servicePrice.value),
                         description: serviceDescription?.value?.trim() || '',
                         clinic_type: activeClinic as 'dental' | 'meditouch'
@@ -2603,7 +2612,7 @@ const Settings = () => {
 
                       // Reset form fields
                       serviceName.value = '';
-                      serviceDuration.value = '';
+                      // No need to reset dropdown as it will maintain its selected value
                       servicePrice.value = '';
                       if (serviceDescription) serviceDescription.value = '';
 
@@ -2647,11 +2656,23 @@ const Settings = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="editServiceDuration">Duration (minutes)</Label>
-                      <Input
-                        id="editServiceDuration"
-                        type="number"
-                        defaultValue={currentService.duration}
-                      />
+                      <Select
+                        defaultValue={currentService.duration.toString()}
+                      >
+                        <SelectTrigger id="editServiceDuration">
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="15">15 mins</SelectItem>
+                          <SelectItem value="30">30 mins</SelectItem>
+                          <SelectItem value="45">45 mins</SelectItem>
+                          <SelectItem value="60">60 mins (1 hour)</SelectItem>
+                          <SelectItem value="75">75 mins (1:15 hour)</SelectItem>
+                          <SelectItem value="90">90 mins (1:30 hour)</SelectItem>
+                          <SelectItem value="105">105 mins (1:45 hour)</SelectItem>
+                          <SelectItem value="120">120 mins (2 hours)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="editServicePrice">Price (₹)</Label>

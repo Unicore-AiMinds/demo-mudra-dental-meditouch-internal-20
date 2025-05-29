@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, Plus, Package, AlertCircle } from 'lucide-react';
+import { UnitsSelect } from '@/components/ui/units-select';
 
 const StockItemsTab: React.FC = () => {
   const { stockDefinitions, isLoading, addStockDefinition, updateStockDefinition, deleteStockDefinition } = useStockDefinitions();
@@ -310,26 +311,11 @@ const StockItemsTab: React.FC = () => {
                 <Label htmlFor="itemUnit" className="flex items-center">
                   Unit <span className="text-red-500 ml-1">*</span>
                 </Label>
-                <Select
+                <UnitsSelect
                   value={newItemUnit}
                   onValueChange={setNewItemUnit}
-                >
-                  <SelectTrigger id="itemUnit">
-                    <SelectValue placeholder="Select Unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Piece">Piece</SelectItem>
-                    <SelectItem value="Pack">Pack</SelectItem>
-                    <SelectItem value="Box">Box</SelectItem>
-                    <SelectItem value="Bottle">Bottle</SelectItem>
-                    <SelectItem value="Jar">Jar</SelectItem>
-                    <SelectItem value="Tube">Tube</SelectItem>
-                    <SelectItem value="Syringe">Syringe</SelectItem>
-                    <SelectItem value="Cartridge">Cartridge</SelectItem>
-                    <SelectItem value="Roll">Roll</SelectItem>
-                    <SelectItem value="Kit">Kit</SelectItem>
-                  </SelectContent>
-                </Select>
+                  placeholder="Select Unit"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="itemMinThreshold" className="flex items-center">
@@ -421,26 +407,11 @@ const StockItemsTab: React.FC = () => {
                 <Label htmlFor="editItemUnit" className="flex items-center">
                   Unit <span className="text-red-500 ml-1">*</span>
                 </Label>
-                <Select
+                <UnitsSelect
                   value={editItemUnit}
                   onValueChange={setEditItemUnit}
-                >
-                  <SelectTrigger id="editItemUnit">
-                    <SelectValue placeholder="Select Unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Piece">Piece</SelectItem>
-                    <SelectItem value="Pack">Pack</SelectItem>
-                    <SelectItem value="Box">Box</SelectItem>
-                    <SelectItem value="Bottle">Bottle</SelectItem>
-                    <SelectItem value="Jar">Jar</SelectItem>
-                    <SelectItem value="Tube">Tube</SelectItem>
-                    <SelectItem value="Syringe">Syringe</SelectItem>
-                    <SelectItem value="Cartridge">Cartridge</SelectItem>
-                    <SelectItem value="Roll">Roll</SelectItem>
-                    <SelectItem value="Kit">Kit</SelectItem>
-                  </SelectContent>
-                </Select>
+                  placeholder="Select Unit"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="editItemMinThreshold" className="flex items-center">
