@@ -555,22 +555,49 @@ const Appointments = () => {
     return filtered;
   }, [appointments, date, searchTerm, selectedDoctor, isDental, view]);
 
-  // Get service duration in minutes
-  const getServiceDuration = useCallback((serviceName: string) => {
-    // Find the service in the services list from the ServiceContext
-    const service = isDental
-      ? dentalServices.find(s => s.name === serviceName)
-      : meditouchServices.find(s => s.name === serviceName);
+  // Function to get the duration of a service in minutes based on the current clinic
+  const getServiceDuration = (serviceName: string) => {
+    if (!serviceName) return 15; // Default to 15 minutes if no service name provided
 
-    // Return the duration or default to 15 minutes if not found
-    return service?.duration || 15;
-  }, [isDental, dentalServices, meditouchServices]);
+    const serviceList = isDental ? dentalServices : meditouchServices;
+    const service = serviceList.find(s => s.name === serviceName);
+    return service?.duration || 15; // Default to 15 minutes if service not found
+  };
 
-  // Calculate how many 15-minute slots a service occupies
-  const getSlotsOccupied = useCallback((serviceName: string) => {
+  // Function to calculate how many 15-minute slots a service occupies based on the current clinic
+  const getSlotsOccupied = (serviceName: string) => {
     const duration = getServiceDuration(serviceName);
     return Math.ceil(duration / 15);
-  }, [getServiceDuration]);
+  };
+
+  // Function to get the duration of a service in minutes based on the specific clinic type
+  const getDurationForSpecificClinic = (serviceName: string, clinicType: 'dental' | 'meditouch') => {
+    if (!serviceName) return 15; // Default to 15 minutes if no service name provided
+
+    const serviceList = clinicType === 'dental' ? dentalServices : meditouchServices;
+    const service = serviceList.find(s => s.name === serviceName);
+    return service?.duration || 15; // Default to 15 minutes if service not found
+  };
+
+  // Function to calculate how many 15-minute slots a service occupies based on the specific clinic type
+  const getSlotsOccupiedForSpecificClinic = (serviceName: string, clinicType: 'dental' | 'meditouch') => {
+    const duration = getDurationForSpecificClinic(serviceName, clinicType);
+    return Math.ceil(duration / 15);
+  };
+
+  // Function to get the duration for a specific appointment
+  const getDurationForSpecificAppointment = (appointment: Appointment) => {
+    if (appointment.duration_minutes) {
+      return appointment.duration_minutes; // Use the appointment's duration if available
+    }
+    return getDurationForSpecificClinic(appointment.service, appointment.clinic_type);
+  };
+
+  // Function to get slots occupied for a specific appointment
+  const getSlotsForSpecificAppointment = (appointment: Appointment) => {
+    const duration = getDurationForSpecificAppointment(appointment);
+    return Math.ceil(duration / 15);
+  };
 
   // Get all appointments that affect a specific time slot
   const getAppointmentsForTimeSlot = useCallback((timeSlot: string) => {
@@ -670,25 +697,33 @@ const Appointments = () => {
     // Calculate how many slots the new appointment would occupy
     // If serviceToCheck is provided, use it, otherwise use the currently selected service
     const newAppointmentService = serviceToCheck || appointmentService;
-    const newAppointmentSlots = newAppointmentService ? getSlotsOccupied(newAppointmentService) : 1;
-    const newAppointmentEndIndex = timeSlotIndex + newAppointmentSlots - 1;
+    const newAppointmentSlotsOccupied = newAppointmentService ? getSlotsOccupied(newAppointmentService) : 1;
+    const newAppointmentEndIndex = timeSlotIndex + newAppointmentSlotsOccupied - 1;
 
     // Filter appointments to only include those from the other clinic type
-    const otherClinicAppointments = allAppointments.filter(app => {
-      const isAppDental = app.clinic_type === 'dental';
-      return isAppDental !== isDental; // Only include appointments from the other clinic type
-    });
+    const otherClinicType = isDental ? 'meditouch' : 'dental';
+    const otherClinicAppointments = allAppointments.filter(app => app.clinic_type === otherClinicType);
 
     // Log for debugging
-    console.log(`Checking if doctor ${doctorName} is booked at ${timeSlot} in the ${isDental ? 'Meditouch' : 'Dental'} clinic`);
-    console.log(`Found ${otherClinicAppointments.length} appointments in the other clinic type`);
-    console.log(`New appointment would occupy ${newAppointmentSlots} slots, from index ${timeSlotIndex} to ${newAppointmentEndIndex}`);
+    console.log(`Checking if doctor ${doctorName} is booked at ${timeSlot} in the ${otherClinicType} clinic`);
+    console.log(`Found ${otherClinicAppointments.length} appointments in the ${otherClinicType} clinic`);
+    console.log(`New appointment would occupy ${newAppointmentSlotsOccupied} slots, from index ${timeSlotIndex} to ${newAppointmentEndIndex}`);
 
-    // Check if the doctor is booked in any appointment at this time slot or overlapping slots
-    return otherClinicAppointments.some(app => {
+    // Create arrays of all time slot indices that would be occupied by the new appointment
+    const newAppSlots = [];
+    for (let i = 0; i < newAppointmentSlotsOccupied; i++) {
+      newAppSlots.push(timeSlotIndex + i);
+    }
+
+    // Get the actual time slots for better understanding
+    const newAppTimeSlots = newAppSlots.map(index => timeSlots[index]);
+    console.log(`New appointment would occupy these time slots: ${newAppTimeSlots.join(', ')}`);
+
+    // Find overlapping appointments
+    const overlappingAppointments = otherClinicAppointments.filter(app => {
       // Get the doctor/therapist name from the appointment
       const appDoctorName = 'doctor' in app ? app.doctor :
-                           ('therapist' in app && app.therapist) ? app.therapist : '';
+                         ('therapist' in app && app.therapist) ? app.therapist : '';
 
       // If not the same doctor, no conflict
       if (appDoctorName !== doctorName) return false;
@@ -698,47 +733,62 @@ const Appointments = () => {
       if (appTimeSlotIndex === -1) return false;
 
       // Calculate how many slots this appointment occupies
-      const slotsOccupied = getSlotsOccupied(app.service);
+      // Use duration_minutes if available, otherwise look up service duration
+      const slotsOccupied = app.duration_minutes
+        ? Math.ceil(app.duration_minutes / 15)
+        : getSlotsOccupiedForSpecificClinic(app.service, app.clinic_type); // Use service lookup as fallback
       const appointmentEndIndex = appTimeSlotIndex + slotsOccupied - 1;
 
       // Log for debugging
-      console.log(`Found appointment for doctor ${appDoctorName} at ${app.time} (slots: ${slotsOccupied}, ends at index: ${appointmentEndIndex})`);
-      console.log(`Checking if it overlaps with new appointment from index ${timeSlotIndex} to ${newAppointmentEndIndex}`);
+      console.log(`Found appointment for doctor ${appDoctorName} at ${app.time} in ${app.clinic_type} clinic`);
+      console.log(`Service: ${app.service}, Duration: ${app.duration_minutes || 15} minutes`);
+      console.log(`Slots occupied: ${slotsOccupied}, ends at index: ${appointmentEndIndex}`);
 
-      // Check for overlap between the two appointments
-      // Two appointments overlap if:
-      // 1. The existing appointment starts during the new appointment time range
-      // 2. The new appointment starts during the existing appointment time range
-      // 3. The existing appointment completely contains the new appointment
-      // 4. The new appointment completely contains the existing appointment
-      const overlaps = (
-        // Case 1: Existing appointment starts during the new appointment
-        (appTimeSlotIndex >= timeSlotIndex && appTimeSlotIndex <= newAppointmentEndIndex) ||
-        // Case 2: New appointment starts during the existing appointment
-        (timeSlotIndex >= appTimeSlotIndex && timeSlotIndex <= appointmentEndIndex) ||
-        // Case 3: Existing appointment completely contains the new appointment
-        (appTimeSlotIndex <= timeSlotIndex && appointmentEndIndex >= newAppointmentEndIndex) ||
-        // Case 4: New appointment completely contains the existing appointment
-        (timeSlotIndex <= appTimeSlotIndex && newAppointmentEndIndex >= appointmentEndIndex)
-      );
+      // Create arrays of all time slot indices occupied by this appointment
+      const existingAppSlots = [];
+      for (let i = 0; i < slotsOccupied; i++) {
+        existingAppSlots.push(appTimeSlotIndex + i);
+      }
+
+      // Get the actual time slots for better understanding
+      const existingAppTimeSlots = existingAppSlots.map(index => timeSlots[index]);
+      console.log(`Existing appointment occupies these time slots: ${existingAppTimeSlots.join(', ')}`);
+
+      // Check if any slot in the new appointment is also in the existing appointment
+      const overlaps = newAppSlots.some(slot => existingAppSlots.includes(slot));
+      console.log(`Overlap detected: ${overlaps}`);
 
       if (overlaps) {
-        console.log(`OVERLAP DETECTED: Doctor ${doctorName} is already booked at ${app.time} in the ${app.clinic_type} clinic`);
-        console.log(`Existing appointment: Starts at index ${appTimeSlotIndex}, ends at index ${appointmentEndIndex}`);
-        console.log(`New appointment: Starts at index ${timeSlotIndex}, ends at index ${newAppointmentEndIndex}`);
-        console.log(`Overlap reason: ${
-          (appTimeSlotIndex >= timeSlotIndex && appTimeSlotIndex <= newAppointmentEndIndex) ?
-            "Existing appointment starts during new appointment" :
-          (timeSlotIndex >= appTimeSlotIndex && timeSlotIndex <= appointmentEndIndex) ?
-            "New appointment starts during existing appointment" :
-          (appTimeSlotIndex <= timeSlotIndex && appointmentEndIndex >= newAppointmentEndIndex) ?
-            "Existing appointment completely contains new appointment" :
-            "New appointment completely contains existing appointment"
-        }`);
+        // Calculate the end time of the existing appointment for better logging
+        const endTimeSlot = timeSlots[appointmentEndIndex] || 'end of session';
+        console.log(`OVERLAP DETECTED: Doctor ${doctorName} is already booked from ${app.time} to ${endTimeSlot} in the ${app.clinic_type} clinic`);
+
+        // Calculate the end time of the new appointment for better logging
+        const newEndTimeSlot = timeSlots[newAppointmentEndIndex] || 'end of session';
+        console.log(`New appointment would be from ${timeSlot} to ${newEndTimeSlot}`);
       }
 
       return overlaps;
     });
+
+    // If we found any overlapping appointments, show a warning and return true
+    if (overlappingAppointments.length > 0) {
+      // Get the first overlapping appointment for the warning message
+      const overlappingApp = overlappingAppointments[0];
+
+      // Calculate the end time of the overlapping appointment
+      const appTimeSlotIndex = timeSlots.indexOf(overlappingApp.time);
+      // Always use service lookup to ensure correct duration
+      const slotsOccupied = getSlotsOccupiedForSpecificClinic(overlappingApp.service, overlappingApp.clinic_type);
+      const endSlotIndex = appTimeSlotIndex + slotsOccupied - 1;
+      const endTimeSlot = timeSlots[endSlotIndex] || 'end of session';
+
+      // Show the warning message
+      handleDoctorDoubleBookingWarning(doctorName, timeSlot);
+      return true;
+    }
+
+    return false;
   };
 
   const getAvailableTimeSlots = () => {
@@ -1166,31 +1216,60 @@ const Appointments = () => {
     // Get the time slot index
     const timeSlotIndex = timeSlots.indexOf(timeSlot);
 
-    // Find the overlapping appointment
-    const overlappingAppointment = doctorAppointments.find(app => {
-      const appTimeSlotIndex = timeSlots.indexOf(app.time);
-      const slotsOccupied = getSlotsOccupied(app.service);
-      const appointmentEndIndex = appTimeSlotIndex + slotsOccupied - 1;
+    // Calculate how many slots the new appointment would occupy
+    const newAppointmentSlotsOccupied = appointmentService ? getSlotsOccupied(appointmentService) : 1;
+    const newAppointmentEndIndex = timeSlotIndex + newAppointmentSlotsOccupied - 1;
 
-      // Check for overlap
-      return (
-        (appTimeSlotIndex <= timeSlotIndex && appointmentEndIndex >= timeSlotIndex) ||
-        (timeSlotIndex <= appTimeSlotIndex && timeSlotIndex + getSlotsOccupied(appointmentService || '') - 1 >= appTimeSlotIndex)
-      );
-    });
-
-    // Create a more specific warning message
-    let warningMsg = `Doctor ${doctorName} is already booked in the ${isDental ? 'Meditouch' : 'Dental'} clinic `;
-
-    if (overlappingAppointment) {
-      warningMsg += `for ${overlappingAppointment.service} from ${overlappingAppointment.time} to ${
-        timeSlots[timeSlots.indexOf(overlappingAppointment.time) + getSlotsOccupied(overlappingAppointment.service) - 1] || 'end of session'
-      }. `;
-    } else {
-      warningMsg += `during this time. `;
+    // Create arrays of all time slot indices that would be occupied by the new appointment
+    const newAppointmentSlots = [];
+    for (let i = 0; i < newAppointmentSlotsOccupied; i++) {
+      newAppointmentSlots.push(timeSlotIndex + i);
     }
 
-    warningMsg += `You can still proceed with booking, but be aware that the doctor will have appointments in both clinics at overlapping times.`;
+    // Log the time slots for debugging
+    console.log(`Checking for doctor ${doctorName} at time slot ${timeSlot} (index ${timeSlotIndex})`);
+    console.log(`New appointment would occupy slots:`, newAppointmentSlots.map(idx => timeSlots[idx]));
+
+    // Find all overlapping appointments using the slot-based approach
+    const overlappingAppointments = doctorAppointments.filter(app => {
+      const appTimeSlotIndex = timeSlots.indexOf(app.time);
+
+      // Calculate how many slots this appointment occupies
+      // Use duration_minutes if available, otherwise look up service duration
+      const slotsOccupied = app.duration_minutes
+        ? Math.ceil(app.duration_minutes / 15)
+        : getSlotsOccupiedForSpecificClinic(app.service, app.clinic_type); // Use service lookup as fallback
+
+      // Create arrays of all time slot indices occupied by this appointment
+      const existingAppSlots = [];
+      for (let i = 0; i < slotsOccupied; i++) {
+        existingAppSlots.push(appTimeSlotIndex + i);
+      }
+
+      // Log the existing appointment slots for debugging
+      console.log(`Existing appointment at ${app.time} (${app.service}) occupies slots:`,
+        existingAppSlots.map(idx => timeSlots[idx]));
+      console.log(`Service: ${app.service}, Duration: ${app.duration_minutes || 15} minutes`);
+
+      // Check if any slot in the new appointment is also in the existing appointment
+      const hasOverlap = newAppointmentSlots.some(slot => existingAppSlots.includes(slot));
+      if (hasOverlap) {
+        console.log(`OVERLAP DETECTED with appointment at ${app.time}`);
+      }
+      return hasOverlap;
+    });
+
+    // If no overlapping appointments found, return
+    if (overlappingAppointments.length === 0) {
+      console.log(`No overlapping appointments found for doctor ${doctorName} at time ${timeSlot}`);
+      return;
+    }
+
+    // Get the first overlapping appointment for the warning message
+    const overlappingAppointment = overlappingAppointments[0];
+
+    // Create a simple warning message without time details
+    const warningMsg = `Doctor ${doctorName} is already booked in the ${isDental ? 'Meditouch' : 'Dental'} clinic for ${overlappingAppointment.service}. You can still proceed with booking, but be aware that the doctor will have appointments in both clinics at overlapping times.`;
 
     setWarningMessage(warningMsg);
     setIsWarningDialogOpen(true);
@@ -1601,6 +1680,9 @@ const Appointments = () => {
       return; // Wait for user confirmation before proceeding
     }
 
+    // Get the service duration
+    const serviceDuration = getSlotsOccupied(appointmentService) * 15;
+
     // Store the pending appointment data and open confirmation dialog
     setPendingAppointment({
       patient_name: appointmentPatient,
@@ -1608,7 +1690,8 @@ const Appointments = () => {
       time: appointmentTime,
       date: appointmentDate,
       doctor: isDental ? appointmentDoctor : undefined,
-      notes: appointmentNotes
+      notes: appointmentNotes,
+      duration_minutes: serviceDuration // Add the duration in minutes
     });
 
     // Close the new appointment form and open the confirmation dialog
@@ -1618,6 +1701,7 @@ const Appointments = () => {
 
   // Function to actually create the appointment after confirmation
   const confirmCreateAppointment = async () => {
+    // ...
     if (!pendingAppointment || !pendingAppointment.date) return;
 
     // Double-check to prevent creating appointments with past dates
@@ -1709,7 +1793,8 @@ const Appointments = () => {
           clinic_type: 'dental' as const,
           // If this appointment is for a planned treatment, link it to the charting entry
           charting_entry_id: pendingChartingEntryId,
-          notes: pendingAppointment.notes || ''
+          notes: pendingAppointment.notes || '',
+          duration_minutes: pendingAppointment.duration_minutes // Include the calculated duration
         };
 
         // Log the appointment we're creating
@@ -1732,7 +1817,8 @@ const Appointments = () => {
           payment_status: 'unpaid' as const,
           clinic_type: 'meditouch' as const,
           therapist: appointmentDoctor || pendingAppointment.doctor || '', // Use doctor field for therapist
-          notes: pendingAppointment.notes || ''
+          notes: pendingAppointment.notes || '',
+          duration_minutes: pendingAppointment.duration_minutes // Include the calculated duration
         };
         console.log('Creating meditouch appointment:', JSON.stringify(newAppointment, null, 2));
         await addAppointment(newAppointment);

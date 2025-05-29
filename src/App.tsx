@@ -56,9 +56,9 @@ const App = () => (
             <ClinicProvider>
               <ClinicInfoProvider>
                 <DoctorProvider>
-                  <PatientProvider>
-                    <AppointmentProvider>
-                      <ServiceProvider>
+                  <ServiceProvider>
+                    <PatientProvider>
+                      <AppointmentProvider>
                         <ServiceFollowUpProvider>
                           <ServiceFollowUpRuleProvider>
                             <FollowUpProvider>
@@ -154,9 +154,9 @@ const App = () => (
                             </FollowUpProvider>
                           </ServiceFollowUpRuleProvider>
                         </ServiceFollowUpProvider>
-                      </ServiceProvider>
-                    </AppointmentProvider>
-                  </PatientProvider>
+                      </AppointmentProvider>
+                    </PatientProvider>
+                  </ServiceProvider>
                 </DoctorProvider>
               </ClinicInfoProvider>
             </ClinicProvider>

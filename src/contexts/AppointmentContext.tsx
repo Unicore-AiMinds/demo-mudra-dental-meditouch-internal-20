@@ -3,6 +3,8 @@ import { useSupabase } from './SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
+import { useClinic } from './ClinicContext';
+import { useServices } from './ServiceContext';
 import { handleDatabaseError } from '@/utils/error-handler';
 
 // Define appointment types
@@ -28,6 +30,7 @@ export interface Appointment {
   updated_at?: string;
   doctor_id?: string;
   charting_entry_id?: string;
+  duration_minutes?: number;
 }
 
 export type DentalAppointment = Appointment & {
@@ -60,12 +63,14 @@ interface AppointmentContextType {
 const AppointmentContext = createContext<AppointmentContextType | undefined>(undefined);
 
 // Provider component
-export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [dentalAppointments, setDentalAppointments] = useState<DentalAppointment[]>([]);
-  const [meditouchAppointments, setMeditouchAppointments] = useState<MeditouchAppointment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [dentalAppointments, setDentalAppointments] = useState<Appointment[]>([]);
+  const [meditouchAppointments, setMeditouchAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { isDental } = useClinic();
+  const { getServiceByName } = useServices();
 
   // Initialize appointments from Supabase
   useEffect(() => {
@@ -182,8 +187,7 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       // Generate a unique appointment code
       const isDental = appointment.clinic_type === 'dental';
-      const prefix = isDental ? 'd' : 'm';
-      const appointmentCode = `${prefix}${uuidv4().substring(0, 8)}`;
+      const appointmentCode = `${isDental ? 'd' : 'm'}${uuidv4().substring(0, 8)}`;
 
       // Generate a UUID for the appointment
       const id = uuidv4();
@@ -192,12 +196,47 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Extract patient_name since it's not in the database schema
       const { patient_name, ...appointmentData } = appointment;
 
+      // Calculate duration in minutes based on service if not provided
+      console.log('Checking service duration for:', appointment);
+      if (!appointment.duration_minutes) {
+        if (appointment.service && appointment.clinic_type) {
+          try {
+            console.log(`Looking up service: "${appointment.service}" for clinic: ${appointment.clinic_type}`);
+
+            // Get the actual service from the services context
+            const serviceData = getServiceByName(appointment.service, appointment.clinic_type);
+
+            if (serviceData && serviceData.duration) {
+              appointment.duration_minutes = serviceData.duration;
+              console.log(`Found service duration: ${serviceData.duration} minutes for service: ${appointment.service}`);
+            } else {
+              // Default to 30 minutes if service not found
+              appointment.duration_minutes = 30;
+              console.log(`Service not found in database, defaulting to 30 minutes for service: ${appointment.service}`);
+            }
+          } catch (error) {
+            console.error('Error looking up service duration:', error);
+            // Default to 30 minutes if there's an error
+            appointment.duration_minutes = 30;
+            console.log('Defaulted to 30 minutes due to error');
+          }
+        } else {
+          // Default to 30 minutes if no service is specified
+          appointment.duration_minutes = 30;
+          console.log('No service or clinic_type specified, defaulted to 30 minutes');
+        }
+      } else {
+        console.log(`Using provided duration_minutes: ${appointment.duration_minutes}`);
+      }
+
       const newAppointment = {
+        ...appointmentData,
         id,
         appointment_code: appointmentCode,
-        ...appointmentData,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        duration_minutes: appointment.duration_minutes,
+        status: 'confirmed' as const
       };
 
       // Note: patient_name will be added back for UI display after Supabase insert
@@ -209,12 +248,20 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
         console.log(`Adding ${isDental ? 'dental' : 'meditouch'} appointment to Supabase table 'appointments'`);
 
         // Insert into Supabase - send only the data that matches the database schema
-        const createdAppointment = await supabase.from<Appointment>('appointments').insert(newAppointment);
+        try {
+          const result = await supabase.from('appointments').insert(newAppointment);
 
-        console.log('Supabase response for appointment:', JSON.stringify(createdAppointment, null, 2));
+          // Check if the insert was successful
+          if (result.error) {
+            console.error('Error inserting appointment:', result.error);
+            throw new Error(`Failed to create appointment: ${result.error.message}`);
+          }
 
-        if (!createdAppointment) {
-          console.error('Supabase returned null or undefined response');
+          console.log('Appointment created successfully');
+          const createdAppointment = result.data ? result.data[0] : newAppointment;
+          console.log('Created appointment:', createdAppointment);
+        } catch (insertError) {
+          console.error('Exception during appointment creation:', insertError);
           throw new Error('Failed to create appointment in database');
         }
 
@@ -302,7 +349,11 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.log('Updating appointment in Supabase:', id, updatesWithTimestamp);
 
       // Update in Supabase first
-      const updatedDbAppointment = await supabase.from<Appointment>('appointments').update(id, updatesWithTimestamp);
+      const { data: updatedDbAppointment, error } = await supabase
+        .from<Appointment>('appointments')
+        .update(id, updatesWithTimestamp);
+
+      if (error) throw error;
 
       console.log('Supabase response for appointment update:', updatedDbAppointment);
 
@@ -351,7 +402,11 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.log('Deleting appointment from Supabase:', id);
 
       // Delete from Supabase first
-      await supabase.from<Appointment>('appointments').delete(id);
+      const { error } = await supabase
+        .from<Appointment>('appointments')
+        .delete(id);
+
+      if (error) throw error;
 
       console.log('Appointment deleted from Supabase');
 
@@ -386,7 +441,7 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       const dateString = format(date, 'yyyy-MM-dd');
 
-      // Fetch appointments for the date and clinic type
+      // Fetch appointments for the date and clinic type using custom Supabase API
       const appointments = await supabase.from<Appointment>('appointments').getAll({
         filters: {
           date: dateString,
@@ -399,15 +454,15 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
       const patientIds = appointments.map(app => app.patient_id).filter(Boolean);
 
       if (patientIds.length > 0) {
-        // Fetch patients for these IDs
-        const patients = await supabase.from<{ id: string; name: string }>('patients').getAll({
-          filters: { id: { $in: patientIds } }
+        // Fetch all patients and filter for the ones we need
+        const allPatients = await supabase.from<{ id: string; name: string }>('patients').getAll({
+          select: 'id, name'
         });
 
         // Create a map of patient IDs to names
         const patientNameMap: Record<string, string> = {};
-        patients.forEach(patient => {
-          if (patient.id && patient.name) {
+        allPatients.forEach(patient => {
+          if (patient.id && patient.name && patientIds.includes(patient.id)) {
             patientNameMap[patient.id] = patient.name;
           }
         });
@@ -441,34 +496,34 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
   const getPatientAppointments = async (patientId: string, clinic: 'dental' | 'meditouch' | 'both'): Promise<Appointment[]> => {
     try {
       // Prepare filters based on clinic type
-      let clinicFilter = {};
+      let filters: Record<string, any> = { patient_id: patientId };
 
       if (clinic === 'dental') {
-        clinicFilter = { clinic_type: 'dental' };
+        filters.clinic_type = 'dental';
       } else if (clinic === 'meditouch') {
-        clinicFilter = { clinic_type: 'meditouch' };
+        filters.clinic_type = 'meditouch';
       }
+      // For 'both', we don't add clinic_type filter
 
-      // Fetch appointments for the patient
+      // Fetch appointments for the patient using custom Supabase API
       const appointments = await supabase.from<Appointment>('appointments').getAll({
-        filters: {
-          patient_id: patientId,
-          ...clinicFilter
-        },
+        filters,
         order: { column: 'date', ascending: true }
       });
 
-      // Fetch the patient name
-      const patient = await supabase.from<{ id: string; name: string }>('patients').getById(patientId);
+      // Fetch the patient name using custom Supabase API
+      const patientData = await supabase.from<{ id: string; name: string }>('patients').getById(patientId, {
+        select: 'name'
+      });
 
-      if (patient && patient.name) {
+      if (patientData && patientData.name) {
         // Add patient name to all appointments
         const appointmentsWithName = appointments.map(app => ({
           ...app,
-          patient_name: patient.name
+          patient_name: patientData.name
         }));
 
-        console.log(`Fetched ${appointments.length} appointments for patient ${patientId} (${patient.name}) with clinic filter ${clinic}`);
+        console.log(`Fetched ${appointments.length} appointments for patient ${patientId} (${patientData.name}) with clinic filter ${clinic}`);
         return appointmentsWithName;
       }
 
@@ -495,33 +550,34 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       console.log(`Fetching upcoming ${clinic} appointments from date ${todayString}`);
 
-      // Fetch upcoming appointments for the specified clinic
+      // Fetch all appointments for the specified clinic
       const appointments = await supabase.from<Appointment>('appointments').getAll({
         filters: {
-          clinic_type: clinic,
-          status: { $nin: ['cancelled', 'completed'] }
+          clinic_type: clinic
         },
         order: { column: 'date', ascending: true }
       });
 
-      // Filter for dates >= today in JavaScript since Supabase filters might not work as expected
+      // Filter for dates >= today and exclude cancelled/completed appointments in JavaScript
       const upcomingAppointments = appointments.filter(app => {
-        return app.date >= todayString;
+        return app.date >= todayString &&
+               app.status !== 'cancelled' &&
+               app.status !== 'completed';
       });
 
       // Fetch patient names for these appointments
       const patientIds = upcomingAppointments.map(app => app.patient_id).filter(Boolean);
 
       if (patientIds.length > 0) {
-        // Fetch patients for these IDs
-        const patients = await supabase.from<{ id: string; name: string }>('patients').getAll({
-          filters: { id: { $in: patientIds } }
+        // Fetch all patients and filter for the ones we need
+        const allPatients = await supabase.from<{ id: string; name: string }>('patients').getAll({
+          select: 'id, name'
         });
 
         // Create a map of patient IDs to names
         const patientNameMap: Record<string, string> = {};
-        patients.forEach(patient => {
-          if (patient.id && patient.name) {
+        allPatients.forEach(patient => {
+          if (patient.id && patient.name && patientIds.includes(patient.id)) {
             patientNameMap[patient.id] = patient.name;
           }
         });
@@ -582,10 +638,18 @@ export const AppointmentProvider: React.FC<{ children: ReactNode }> = ({ childre
           // Also update the pending_treatments table if it exists
           try {
             console.log('Updating pending_treatments table');
-            await supabase.from('pending_treatments')
-              .update({ status: 'completed' })
-              .eq('charting_entry_id', appointment.charting_entry_id);
-            console.log('Updated pending_treatments table');
+            // Find the pending treatment record first
+            const pendingTreatments = await supabase.from('pending_treatments').getAll({
+              filters: { charting_entry_id: appointment.charting_entry_id }
+            });
+
+            if (pendingTreatments.length > 0) {
+              // Update the first matching record
+              await supabase.from('pending_treatments').update(pendingTreatments[0].id, { status: 'completed' });
+              console.log('Updated pending_treatments table');
+            } else {
+              console.log('No pending treatment found for charting entry ID:', appointment.charting_entry_id);
+            }
           } catch (pendingError) {
             console.error('Error updating pending_treatments:', pendingError);
             // Continue even if this fails
