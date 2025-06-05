@@ -148,13 +148,13 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
       } catch (error) {
         console.error('Error fetching patients:', error);
         // Use the global error handler
-        handleDatabaseError({
-          error,
-          toast,
-          errorKey: 'patients_fetch_error',
-          customMessage: 'Patient data will be available after setup is complete.',
-          showToast: true
-        });
+        // handleDatabaseError({
+        //   error,
+        //   toast,
+        //   errorKey: 'patients_fetch_error',
+        //   customMessage: 'Patient data will be available after setup is complete.',
+        //   showToast: true
+        // });
       } finally {
         setIsLoading(false);
       }

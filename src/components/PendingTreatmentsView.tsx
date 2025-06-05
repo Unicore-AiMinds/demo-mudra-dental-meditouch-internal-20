@@ -104,21 +104,18 @@ const PendingTreatmentsView: React.FC = () => {
       setAllPlannedEntries([]);
 
       // Use the global error handler
-      const wasHandled = handleDatabaseError({
-        error,
-        toast,
-        errorKey: 'pending_treatments_fetch_error',
-        customMessage: 'Dental charting data will be available after setup is complete.',
-        // Don't show toast here since we're displaying the error in the UI
-        showToast: false
-      });
+      // const wasHandled = handleDatabaseError({
+      //   error,
+      //   toast,
+      //   errorKey: 'pending_treatments_fetch_error',
+      //   customMessage: 'Dental charting data will be available after setup is complete.',
+      //   // Don't show toast here since we're displaying the error in the UI
+      //   showToast: false
+      // });
+      console.error('Error fetching pending treatments:', error);
 
-      // Only set error for non-database errors
-      if (!wasHandled) {
-        setLoadError('Failed to load dental charting entries. Please try again.');
-      } else {
-        setLoadError(null);
-      }
+      // Set error for all cases since we commented out the error handler
+      setLoadError('Failed to load dental charting entries. Please try again.');
     }
   };
 
@@ -128,16 +125,16 @@ const PendingTreatmentsView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Set up an interval to refresh the data every 30 seconds
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      console.log('Auto-refreshing pending treatments');
-      fetchPlannedEntries();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(intervalId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // EMERGENCY FIX: Removed 30-second auto-refresh to prevent excessive database requests
+  // Users can use the manual "Refresh List" button instead
+  // useEffect(() => {
+  //   const intervalId = setInterval(() => {
+  //     console.log('Auto-refreshing pending treatments');
+  //     fetchPlannedEntries();
+  //   }, 30000); // 30 seconds
+  //
+  //   return () => clearInterval(intervalId);
+  // }, []);
 
   // Separate entries into pending and snoozed
   const pendingEntries = useMemo(() => {
@@ -473,7 +470,8 @@ const PendingTreatmentsView: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button
+            {/* COMMENTED OUT: Refresh List button as requested by user */}
+            {/* <Button
               variant="outline"
               onClick={() => {
                 toast({
@@ -486,7 +484,7 @@ const PendingTreatmentsView: React.FC = () => {
             >
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh List
-            </Button>
+            </Button> */}
           </div>
 
           {/* Display error message if there was an error loading entries */}

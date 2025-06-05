@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
@@ -83,14 +83,14 @@ const getClinicBadge = (clinic: Patient['clinic'], activeClinic: 'dental' | 'med
 
 // Helper function to check if a tab is valid for a patient based on their clinic
 const isValidTab = (tab: string, clinic: string): boolean => {
-  const allTabs = ['overview', 'appointments', 'vital-signs', 'prescriptions'];
-  const dentalTabs = ['dental-history', 'dental-charting'];
+  const allTabs = ['overview', 'appointments', 'vital-signs', 'prescriptions', 'appointment-history'];
+  const dentalOnlyTabs = ['dental-charting'];
 
   if (allTabs.includes(tab)) {
     return true;
   }
 
-  if (dentalTabs.includes(tab) && (clinic === 'dental' || clinic === 'both')) {
+  if (dentalOnlyTabs.includes(tab) && (clinic === 'dental' || clinic === 'both')) {
     return true;
   }
 
@@ -257,9 +257,11 @@ const PatientDetails = () => {
           {(patient.clinic === 'dental' || patient.clinic === 'both') && (
             <TabsTrigger value="dental-charting">Dental Charting</TabsTrigger>
           )}
-          {(patient.clinic === 'dental' || patient.clinic === 'both') && (
-            <TabsTrigger value="dental-history">Dental History</TabsTrigger>
-          )}
+          <TabsTrigger value="appointment-history">
+            {patient.clinic === 'dental' ? 'Dental History' :
+             patient.clinic === 'meditouch' ? 'Appointment History' :
+             'Appointment History'}
+          </TabsTrigger>
           <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
           <TabsTrigger value="vital-signs">Vital Signs</TabsTrigger>
         </TabsList>
@@ -358,12 +360,13 @@ const PatientDetails = () => {
           </TabsContent>
         )}
 
-        {/* Dental History Tab */}
-        {(patient.clinic === 'dental' || patient.clinic === 'both') && (
-          <TabsContent value="dental-history" className="mt-6">
-            <PatientDentalHistoryWrapper patientId={patient.id} />
-          </TabsContent>
-        )}
+        {/* Appointment History Tab - Available for all patients */}
+        <TabsContent value="appointment-history" className="mt-6">
+          <PatientAppointmentHistoryWrapper
+            patientId={patient.id}
+            patientClinic={patient.clinic}
+          />
+        </TabsContent>
 
         {/* Prescriptions Tab */}
         <TabsContent value="prescriptions" className="mt-6">
@@ -387,8 +390,14 @@ const PatientDetails = () => {
   );
 };
 
-// Wrapper for PatientDentalHistory to avoid importing it directly from Patients.tsx
-const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
+// Wrapper for Patient Appointment History - works for both dental and meditouch
+const PatientAppointmentHistoryWrapper = ({
+  patientId,
+  patientClinic
+}: {
+  patientId: string;
+  patientClinic: 'dental' | 'meditouch' | 'both';
+}) => {
   const { getPatientHistory, updatePaymentStatus } = useDentalHistory();
   const [patientHistory, setPatientHistory] = useState<DentalHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -396,40 +405,103 @@ const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
   const [selectedEntry, setSelectedEntry] = useState<DentalHistoryEntry | null>(null);
   const { toast } = useToast();
 
-  // Fetch patient history
+  // Function to fetch patient history
+  const fetchHistory = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const history = await getPatientHistory(patientId);
+      setPatientHistory(history);
+    } catch (error) {
+      console.error('Error fetching dental history:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load dental history. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [patientId, getPatientHistory, toast]);
+
+  // Fetch patient history on mount
   useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        setIsLoading(true);
-        const history = await getPatientHistory(patientId);
-        setPatientHistory(history);
-      } catch (error) {
-        console.error('Error fetching dental history:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load dental history. Please try again.',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
+    fetchHistory();
+  }, [fetchHistory]);
+
+  // Listen for payment status updates from other parts of the app
+  useEffect(() => {
+    const handlePaymentStatusUpdate = (event: CustomEvent) => {
+      const { appointmentId, patientId: updatedPatientId } = event.detail;
+
+      // If this update is for the current patient, refresh the history
+      if (updatedPatientId === patientId) {
+        console.log(`Payment status updated for appointment ${appointmentId}, refreshing history`);
+        fetchHistory();
       }
     };
 
-    fetchHistory();
-  }, [patientId, getPatientHistory, toast]);
+    // Listen for the custom event
+    document.addEventListener('payment-status-updated', handlePaymentStatusUpdate as EventListener);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('payment-status-updated', handlePaymentStatusUpdate as EventListener);
+    };
+  }, [patientId, fetchHistory]);
 
   const handlePaymentStatusClick = (entry: DentalHistoryEntry) => {
     setSelectedEntry(entry);
     setIsPaymentConfirmOpen(true);
   };
 
-  const confirmPaymentStatusChange = () => {
+  const confirmPaymentStatusChange = async () => {
     if (selectedEntry) {
-      // Toggle the payment status
-      const newStatus = selectedEntry.payment_status === 'paid' ? 'unpaid' : 'paid';
-      updatePaymentStatus(patientId, selectedEntry.appointment_id, newStatus);
-      setIsPaymentConfirmOpen(false);
-      setSelectedEntry(null);
+      try {
+        // Toggle the payment status
+        const newStatus = selectedEntry.payment_status === 'paid' ? 'unpaid' : 'paid';
+        await updatePaymentStatus(patientId, selectedEntry.appointment_id, newStatus);
+
+        // Refresh the patient history to show updated payment status
+        const refreshedHistory = await getPatientHistory(patientId);
+        setPatientHistory(refreshedHistory);
+
+        setIsPaymentConfirmOpen(false);
+        setSelectedEntry(null);
+      } catch (error) {
+        console.error('Error updating payment status:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update payment status. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
+  // Dynamic titles based on patient clinic type
+  const getHistoryTitle = () => {
+    switch (patientClinic) {
+      case 'dental':
+        return 'Dental History';
+      case 'meditouch':
+        return 'Appointment History';
+      case 'both':
+        return 'Appointment History';
+      default:
+        return 'Appointment History';
+    }
+  };
+
+  const getDoctorColumnTitle = () => {
+    switch (patientClinic) {
+      case 'dental':
+        return 'Doctor';
+      case 'meditouch':
+        return 'Therapist';
+      case 'both':
+        return 'Doctor/Therapist';
+      default:
+        return 'Doctor/Therapist';
     }
   };
 
@@ -437,7 +509,7 @@ const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
     <>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle>Dental History</CardTitle>
+          <CardTitle>{getHistoryTitle()}</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -454,7 +526,7 @@ const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
                   <tr className="border-b">
                     <th className="text-left py-2 px-4 font-medium">Date</th>
                     <th className="text-left py-2 px-4 font-medium">Service</th>
-                    <th className="text-left py-2 px-4 font-medium">Doctor</th>
+                    <th className="text-left py-2 px-4 font-medium">{getDoctorColumnTitle()}</th>
                     <th className="text-left py-2 px-4 font-medium">Payment Status</th>
                   </tr>
                 </thead>
@@ -482,7 +554,11 @@ const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
             </div>
           ) : (
             <div className="text-center py-6">
-              <p className="text-muted-foreground">No completed appointment history found.</p>
+              <p className="text-muted-foreground">
+                {patientClinic === 'dental'
+                  ? 'No completed dental appointments found.'
+                  : 'No completed appointments found.'}
+              </p>
             </div>
           )}
         </CardContent>
@@ -507,7 +583,7 @@ const PatientDentalHistoryWrapper = ({ patientId }: { patientId: string }) => {
                   <span className="font-semibold">Date:</span> {new Date(selectedEntry.date).toLocaleDateString()}
                 </p>
                 <p className="text-sm">
-                  <span className="font-semibold">Doctor:</span> {selectedEntry.doctor}
+                  <span className="font-semibold">{getDoctorColumnTitle()}:</span> {selectedEntry.doctor}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   You are about to mark this service as

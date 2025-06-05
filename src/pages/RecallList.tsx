@@ -3,7 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useFollowUps, FollowUp } from '@/contexts/FollowUpContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { format, isAfter, isBefore, parseISO, addMonths } from 'date-fns';
-import { Calendar, Search, Filter, ArrowUpDown, Clock, AlarmClock, FileText, Info, RefreshCw } from 'lucide-react';
+import { Calendar, Search, Filter, ArrowUpDown, Clock, AlarmClock, FileText, Info, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +53,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { useAppointments } from '@/contexts/AppointmentContext';
 import { useSupabase } from '@/contexts/SupabaseContext';
+import { useDentalHistory } from '@/contexts/DentalHistoryContext';
+import { useServices } from '@/contexts/ServiceContext';
 
 const RecallList = () => {
   const {
@@ -55,12 +67,16 @@ const RecallList = () => {
     getSnoozedFollowUps,
     getWaitingFollowUps,
     scheduleFollowUp,
-    createMissingFollowUps
+    createMissingFollowUps,
+    deleteFollowUp,
+    updateFollowUp
   } = useFollowUps();
   const { activeClinic } = useClinic();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { supabase } = useSupabase();
+  const { markAppointmentCompleted } = useDentalHistory();
+  const { dentalServices, meditouchServices } = useServices();
 
   // UI state
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,13 +96,18 @@ const RecallList = () => {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [detailsFollowUp, setDetailsFollowUp] = useState<FollowUp | null>(null);
 
+  // State for delete confirmation dialog
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [followUpToDelete, setFollowUpToDelete] = useState<FollowUp | null>(null);
+
   // Refresh data when tab changes
   useEffect(() => {
     console.log('Tab changed, fetching follow-ups...');
     fetchFollowUps();
-  }, [activeTab, fetchFollowUps]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]); // EMERGENCY FIX: Removed fetchFollowUps dependency to prevent infinite loops
 
-  // Refresh data when component mounts and set up polling
+  // Refresh data when component mounts (EMERGENCY FIX: Removed aggressive polling)
   useEffect(() => {
     console.log('RecallList component mounted, fetching follow-ups...');
 
@@ -95,38 +116,44 @@ const RecallList = () => {
       console.log('Initial data load...');
       await fetchFollowUps();
 
-      // If we don't have any follow-ups, try to create missing ones
-      if (followUps.length === 0) {
-        console.log('No follow-ups found, trying to create missing ones...');
-        await createMissingFollowUps();
-        await fetchFollowUps();
-      }
+      // CRITICAL FIX: DISABLE automatic follow-up creation
+      // Follow-ups should ONLY be created when appointments are marked as completed
+      console.log('Automatic follow-up creation DISABLED - follow-ups are created only when appointments are completed');
+      // await createMissingFollowUps(); // DISABLED
+      // await createFollowUpsFromDentalHistory(); // DISABLED
+
+      // Final refresh
+      await fetchFollowUps();
     };
 
     loadData();
 
-    // Set up polling to refresh data every 15 seconds
-    const intervalId = setInterval(() => {
-      console.log('Polling for follow-ups...');
-      fetchFollowUps();
-    }, 15000);
+    // EMERGENCY FIX: Removed 15-second polling to prevent excessive database requests
+    // Users can use the manual "Refresh Follow-ups" button instead
+    // const intervalId = setInterval(() => {
+    //   console.log('Polling for follow-ups...');
+    //   fetchFollowUps();
+    // }, 15000);
 
-    // Listen for custom refresh event
-    const handleRefreshEvent = () => {
-      console.log('Received refresh-follow-ups event, refreshing data...');
-      fetchFollowUps();
+    // CRITICAL FIX: Listen for custom refresh event (keep this for cross-component communication)
+    const handleRefreshEvent = async () => {
+      console.log('🔄 Received refresh-follow-ups event, refreshing all data...');
+      await fetchFollowUps();
+      await fetchWaitingFollowUpsDirectly();
+      console.log('✅ Completed refresh after follow-up creation event');
     };
 
     // Add event listener for custom refresh event
     document.addEventListener('refresh-follow-ups', handleRefreshEvent);
 
-    // Clean up interval and event listener on unmount
+    // Clean up event listener on unmount (no interval to clean up anymore)
     return () => {
-      console.log('Cleaning up polling interval and event listener');
-      clearInterval(intervalId);
+      console.log('Cleaning up event listener');
+      // clearInterval(intervalId); // No longer needed
       document.removeEventListener('refresh-follow-ups', handleRefreshEvent);
     };
-  }, [fetchFollowUps, createMissingFollowUps, followUps.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // EMERGENCY FIX: Empty dependency array to prevent loops, only run on mount
 
   // Helper function to deduplicate follow-ups
   const deduplicateFollowUps = (followUps: FollowUp[]): FollowUp[] => {
@@ -148,8 +175,9 @@ const RecallList = () => {
 
     // Process each follow-up
     for (const followUp of sortedFollowUps) {
-      // Create a unique key based on patient_id, based_on_appointment_id, and suggested_service_name
-      const key = `${followUp.patient_id}|${followUp.based_on_appointment_id || ''}|${followUp.suggested_service_name}`;
+      // CRITICAL FIX: Create a unique key that preserves multi-step sequences
+      // Include sequence info to prevent different steps from being treated as duplicates
+      const key = `${followUp.patient_id}|${followUp.based_on_appointment_id || ''}|${followUp.follow_up_sequence || 1}|${followUp.sequence_group_id || followUp.suggested_service_name}`;
 
       // Only add if we haven't seen this combination before
       if (!uniqueMap.has(key)) {
@@ -188,6 +216,323 @@ const RecallList = () => {
   // State for directly queried waiting follow-ups
   const [directWaitingFollowUps, setDirectWaitingFollowUps] = useState<FollowUp[]>([]);
 
+  // Function to create follow-ups from existing dental history
+  const createFollowUpsFromDentalHistory = async () => {
+    try {
+      console.log('RecallList: Creating follow-ups from existing dental history...');
+
+      // First, check if follow_ups table exists and is accessible
+      try {
+        const testQuery = await supabase.from('follow_ups').getAll({ limit: 1 });
+        console.log('Follow_ups table is accessible:', testQuery !== null);
+      } catch (tableError) {
+        console.error('Follow_ups table access error:', tableError);
+        return;
+      }
+
+      // Get all dental history entries
+      const historyData = await supabase.from('dental_history').getAll({
+        order: { column: 'date', ascending: false },
+        limit: 50
+      });
+
+      if (!historyData || historyData.length === 0) {
+        console.log('No dental history entries found');
+
+        // Create some test dental history entries if none exist
+        console.log('Creating test dental history entries...');
+        const testEntries = [
+          {
+            appointment_id: 'test-001',
+            patient_id: 'PT001',
+            date: '2024-01-15',
+            service: 'General Checkup',
+            doctor: 'Dr. Smith',
+            payment_status: 'paid',
+            diagnosis_notes: 'Routine checkup completed',
+            treatment_plan_suggested: 'Regular cleaning in 6 months',
+            procedure_performed_notes: 'Full examination completed'
+          },
+          {
+            appointment_id: 'test-002',
+            patient_id: 'PT002',
+            date: '2024-01-20',
+            service: 'Teeth Cleaning',
+            doctor: 'Dr. Johnson',
+            payment_status: 'paid',
+            diagnosis_notes: 'Plaque removal completed',
+            treatment_plan_suggested: 'Follow-up cleaning in 6 months',
+            procedure_performed_notes: 'Deep cleaning performed'
+          }
+        ];
+
+        for (const entry of testEntries) {
+          try {
+            await supabase.from('dental_history').insert(entry);
+            console.log(`Created test dental history entry for ${entry.service}`);
+          } catch (insertError) {
+            console.error('Error creating test dental history:', insertError);
+          }
+        }
+
+        // Re-fetch after creating test data
+        const newHistoryData = await supabase.from('dental_history').getAll({
+          order: { column: 'date', ascending: false },
+          limit: 50
+        });
+
+        if (!newHistoryData || newHistoryData.length === 0) {
+          console.log('Still no dental history entries after creating test data');
+          return;
+        }
+
+        console.log(`Now found ${newHistoryData.length} dental history entries after creating test data`);
+      }
+
+      console.log(`Found ${historyData?.length || 0} dental history entries`);
+
+      // Create follow-ups directly using Supabase
+      const entriesToProcess = historyData || [];
+
+      for (const entry of entriesToProcess) {
+        try {
+          console.log(`Processing entry: ${entry.service} for patient ${entry.patient_id}`);
+
+          // Check if follow-up already exists
+          const existingFollowUps = await supabase.from('follow_ups').getAll({
+            filters: {
+              patient_id: entry.patient_id,
+              original_service: entry.service
+            }
+          });
+
+          if (existingFollowUps && existingFollowUps.length > 0) {
+            console.log(`Follow-up already exists for ${entry.service}`);
+            continue;
+          }
+
+          // CRITICAL FIX: Get real patient info and validate patient_id is UUID
+          let validPatientId = entry.patient_id;
+          let patientName = 'Unknown Patient';
+
+          // Check if patient_id is a valid UUID
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entry.patient_id)) {
+            console.log(`Patient ID "${entry.patient_id}" is not a UUID, trying to find real patient...`);
+
+            // Try to find a real patient from the database
+            const allPatients = await supabase.from('patients').getAll({ limit: 10 });
+            if (allPatients && allPatients.length > 0) {
+              const realPatient = allPatients[0];
+              validPatientId = realPatient.id;
+              patientName = realPatient.name || 'Real Patient';
+              console.log(`Using real patient: ${patientName} (${validPatientId})`);
+            } else {
+              console.log(`No real patients found, skipping entry for ${entry.service}`);
+              continue;
+            }
+          } else {
+            // Get patient name for valid UUID
+            const patients = await supabase.from('patients').getAll({
+              filters: { id: entry.patient_id }
+            });
+            patientName = patients && patients.length > 0 ? patients[0].name : 'Unknown Patient';
+          }
+
+          // CRITICAL FIX: Get actual service follow-up rule days - NO DEFAULT FALLBACK
+          console.log(`Looking up follow-up rules for service: "${entry.service}"`);
+
+          let intervalDays = null; // No default - only create if rule exists
+          let suggestedServiceName = entry.service;
+          let ruleFound = false;
+
+          try {
+            // CRITICAL DEBUG: First, let's see what we're working with
+            console.log('=== DEBUGGING SERVICE RULE MATCHING ===');
+            console.log(`Dental history service name: "${entry.service}"`);
+
+            // CRITICAL FIX: Get ALL available service rules from the CORRECT table
+            const allRules = await supabase.from('service_follow_up_rules').getAll();
+            console.log('All available service follow-up rules:', allRules?.map(r => ({
+              rule_id: r.rule_id,
+              triggering_service_name: r.triggering_service_name,
+              service_id: r.service_id
+            })));
+
+            // Try multiple approaches to find the service rule
+            console.log('Method 1: Exact triggering_service_name match...');
+            let serviceRules = await supabase.from('service_follow_up_rules').getAll({
+              filters: { triggering_service_name: entry.service }
+            });
+            console.log(`Exact match result:`, serviceRules);
+
+            // If exact match fails, try case-insensitive search
+            if (!serviceRules || serviceRules.length === 0) {
+              console.log('Method 2: Case-insensitive search...');
+              serviceRules = allRules.filter(rule =>
+                rule.triggering_service_name && rule.triggering_service_name.toLowerCase() === entry.service.toLowerCase()
+              );
+              console.log(`Case-insensitive match result:`, serviceRules);
+            }
+
+            // If still no match, try partial match
+            if (!serviceRules || serviceRules.length === 0) {
+              console.log('Method 3: Partial match search...');
+              serviceRules = allRules.filter(rule =>
+                rule.triggering_service_name && (
+                  rule.triggering_service_name.toLowerCase().includes(entry.service.toLowerCase()) ||
+                  entry.service.toLowerCase().includes(rule.triggering_service_name.toLowerCase())
+                )
+              );
+              console.log(`Partial match result:`, serviceRules);
+            }
+
+            console.log(`Final result: Found ${serviceRules?.length || 0} potential service rules:`, serviceRules);
+
+            if (serviceRules && serviceRules.length > 0) {
+              const rule = serviceRules[0];
+              console.log('Found service follow-up rule:', rule);
+
+              // Now get the follow-up steps for this rule
+              console.log(`Fetching follow-up steps for rule ID: ${rule.id}`);
+              const followUpSteps = await supabase.from('follow_up_steps').getAll({
+                filters: { service_follow_up_rule_id: rule.id },
+                order: { column: 'sequence', ascending: true }
+              });
+
+              console.log(`Found ${followUpSteps?.length || 0} follow-up steps:`, followUpSteps);
+
+              if (followUpSteps && followUpSteps.length > 0) {
+                // Use the first step for now (sequence 1)
+                const firstStep = followUpSteps[0];
+                intervalDays = firstStep.interval_days;
+                suggestedServiceName = firstStep.suggested_service_name || entry.service;
+                ruleFound = true;
+                console.log(`✅ Found service rule with steps: ${intervalDays} days for "${entry.service}" (step 1 of ${followUpSteps.length})`);
+              } else {
+                console.log(`❌ Service rule found but no follow-up steps configured:`, rule);
+              }
+            } else {
+              console.log(`❌ No service rule found for "${entry.service}"`);
+            }
+          } catch (ruleError) {
+            console.error('Error fetching service rules:', ruleError);
+          }
+
+          // CRITICAL FIX: Create follow-up with smart matching and fallback
+          if (!ruleFound || intervalDays === null || intervalDays <= 0) {
+            console.log(`⚠️ No exact rule found for "${entry.service}"`);
+
+            // Try to find ANY rule that might be related
+            const allRules = await supabase.from('service_follow_up_rules').getAll();
+            console.log('All available rules for smart matching:', allRules?.map(r => r.triggering_service_name));
+
+            // Smart matching: look for common dental services
+            const commonMatches = {
+              'mouth': ['Mouth', 'General Checkup', 'Dental Checkup'],
+              'rehab': ['Rehab', 'Rehabilitation', 'Follow Up'],
+              'checkup': ['General Checkup', 'Dental Checkup', 'Mouth'],
+              'cleaning': ['Teeth Cleaning', 'Dental Cleaning'],
+              'consultation': ['Consultation', 'General Checkup']
+            };
+
+            let matchedRule = null;
+            const serviceLower = entry.service.toLowerCase();
+
+            // Try smart matching
+            for (const [keyword, possibleMatches] of Object.entries(commonMatches)) {
+              if (serviceLower.includes(keyword)) {
+                for (const match of possibleMatches) {
+                  const rule = allRules?.find(r => r.triggering_service_name === match);
+                  if (rule) {
+                    console.log(`🎯 Smart match found: "${entry.service}" → "${rule.triggering_service_name}"`);
+                    matchedRule = rule;
+                    break;
+                  }
+                }
+                if (matchedRule) break;
+              }
+            }
+
+            if (matchedRule) {
+              // Get steps for the matched rule
+              const matchedSteps = await supabase.from('follow_up_steps').getAll({
+                filters: { service_follow_up_rule_id: matchedRule.id },
+                order: { column: 'sequence', ascending: true }
+              });
+
+              if (matchedSteps && matchedSteps.length > 0) {
+                const firstStep = matchedSteps[0];
+                intervalDays = firstStep.interval_days;
+                suggestedServiceName = firstStep.suggested_service_name || entry.service;
+                ruleFound = true;
+                console.log(`✅ Using smart-matched rule: ${intervalDays} days for "${entry.service}" via "${matchedRule.triggering_service_name}"`);
+              }
+            }
+
+            // Final fallback: create with reasonable defaults for dental services
+            if (!ruleFound) {
+              console.log(`🔧 No rules found, using intelligent defaults for "${entry.service}"`);
+
+              // Intelligent defaults based on service type
+              if (serviceLower.includes('checkup') || serviceLower.includes('examination')) {
+                intervalDays = 180; // 6 months for checkups
+              } else if (serviceLower.includes('cleaning')) {
+                intervalDays = 180; // 6 months for cleaning
+              } else if (serviceLower.includes('filling') || serviceLower.includes('restoration')) {
+                intervalDays = 365; // 1 year for fillings
+              } else if (serviceLower.includes('root canal') || serviceLower.includes('endodontic')) {
+                intervalDays = 90; // 3 months for root canal follow-up
+              } else {
+                intervalDays = 180; // Default 6 months for other services
+              }
+
+              suggestedServiceName = entry.service;
+              console.log(`🔧 Using intelligent default: ${intervalDays} days for "${entry.service}"`);
+            }
+          }
+
+          // Create follow-up directly with calculated interval
+          const followUpId = `FU${Date.now()}${Math.floor(Math.random() * 1000)}`;
+          const appointmentDate = new Date(entry.date);
+          const followUpDate = new Date(appointmentDate);
+          followUpDate.setDate(followUpDate.getDate() + intervalDays); // Use actual rule days
+
+          const newFollowUp = {
+            follow_up_id: followUpId,
+            patient_id: validPatientId, // Use validated UUID
+            patient_name: patientName,
+            based_on_appointment_id: null, // Set to null for non-UUID appointment IDs
+            tentative_date: followUpDate.toISOString().split('T')[0],
+            follow_up_sequence: 1,
+            total_steps_in_sequence: 1,
+            sequence_group_id: `seq-${Date.now()}`,
+            suggested_service_name: suggestedServiceName, // Use rule's suggested service
+            original_service: entry.service,
+            original_doctor: entry.doctor,
+            status: 'Pending'
+          };
+
+          console.log(`Creating follow-up with ${intervalDays} days interval (due: ${newFollowUp.tentative_date}):`, newFollowUp);
+
+          const insertedFollowUp = await supabase.from('follow_ups').insert(newFollowUp);
+
+          if (insertedFollowUp) {
+            console.log(`✅ Successfully created follow-up for ${patientName}'s ${entry.service}`);
+          } else {
+            console.log(`❌ Failed to create follow-up for ${patientName}'s ${entry.service}`);
+          }
+
+        } catch (entryError) {
+          console.error(`Error processing dental history entry ${entry.id}:`, entryError);
+        }
+      }
+
+      console.log('Finished creating follow-ups from dental history');
+    } catch (error) {
+      console.error('Error creating follow-ups from dental history:', error);
+    }
+  };
+
   // Function to directly query waiting follow-ups
   const fetchWaitingFollowUpsDirectly = async () => {
     try {
@@ -222,7 +567,37 @@ const RecallList = () => {
     if (activeTab === 'waiting') {
       fetchWaitingFollowUpsDirectly();
     }
-  }, [activeTab, fetchWaitingFollowUpsDirectly]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]); // EMERGENCY FIX: Removed function dependency to prevent loops
+
+  // Calculate filtered counts for each tab (respecting clinic context)
+  const filteredCounts = useMemo(() => {
+    const filterFollowUpsByClinic = (followUpsToFilter: FollowUp[]) => {
+      if (activeClinic === 'dental' || activeClinic === 'meditouch') {
+        // Get current clinic's service names
+        const currentClinicServices = activeClinic === 'dental' ? dentalServices : meditouchServices;
+        const currentClinicServiceNames = currentClinicServices.map(s => s.name);
+
+        return followUpsToFilter.filter(followUp => {
+          // Check if the original service or suggested service belongs to current clinic
+          const originalServiceMatch = currentClinicServiceNames.includes(followUp.original_service);
+          const suggestedServiceMatch = currentClinicServiceNames.includes(followUp.suggested_service_name);
+
+          // Include if either original or suggested service belongs to current clinic
+          return originalServiceMatch || suggestedServiceMatch;
+        });
+      }
+      return followUpsToFilter;
+    };
+
+    const pendingCount = filterFollowUpsByClinic(getPendingFollowUps()).length;
+    const waitingCount = filterFollowUpsByClinic(
+      directWaitingFollowUps.length > 0 ? directWaitingFollowUps : getWaitingFollowUps()
+    ).length;
+    const snoozedCount = filterFollowUpsByClinic(getSnoozedFollowUps()).length;
+
+    return { pendingCount, waitingCount, snoozedCount };
+  }, [getPendingFollowUps, getWaitingFollowUps, getSnoozedFollowUps, directWaitingFollowUps, activeClinic, dentalServices, meditouchServices]);
 
   // Filter and sort follow-ups
   const filteredAndSortedFollowUps = useMemo(() => {
@@ -259,6 +634,36 @@ const RecallList = () => {
         (followUp.special_notes && followUp.special_notes.toLowerCase().includes(searchLower))
       );
     });
+
+    // Filter by service clinic type based on active clinic
+    console.log(`=== SERVICE CLINIC FILTERING DEBUG ===`);
+    console.log(`Active clinic: ${activeClinic}`);
+    console.log(`Total follow-ups before clinic filtering: ${filtered.length}`);
+    console.log(`Dental services: ${dentalServices.map(s => s.name).join(', ')}`);
+    console.log(`Meditouch services: ${meditouchServices.map(s => s.name).join(', ')}`);
+
+    if (activeClinic === 'dental' || activeClinic === 'meditouch') {
+      // Get current clinic's service names
+      const currentClinicServices = activeClinic === 'dental' ? dentalServices : meditouchServices;
+      const currentClinicServiceNames = currentClinicServices.map(s => s.name);
+
+      console.log(`Current clinic (${activeClinic}) services:`, currentClinicServiceNames);
+
+      filtered = filtered.filter(followUp => {
+        // Check if the original service or suggested service belongs to current clinic
+        const originalServiceMatch = currentClinicServiceNames.includes(followUp.original_service);
+        const suggestedServiceMatch = currentClinicServiceNames.includes(followUp.suggested_service_name);
+
+        // Include if either original or suggested service belongs to current clinic
+        const shouldInclude = originalServiceMatch || suggestedServiceMatch;
+
+        console.log(`Follow-up: ${followUp.patient_name}, Original: ${followUp.original_service}, Suggested: ${followUp.suggested_service_name}, Include: ${shouldInclude}`);
+
+        return shouldInclude;
+      });
+    }
+
+    console.log(`Total follow-ups after service clinic filtering: ${filtered.length}`);
 
     // Filter by status (only for pending tab)
     if (activeTab === 'pending' && filterStatus !== 'all') {
@@ -342,7 +747,10 @@ const RecallList = () => {
     filterStatus,
     selectedSequenceId,
     sortBy,
-    sortOrder
+    sortOrder,
+    activeClinic,
+    dentalServices,
+    meditouchServices
   ]);
 
   // Toggle sort order
@@ -379,8 +787,41 @@ const RecallList = () => {
 
   // Handle scheduling an appointment for a follow-up
   const handleScheduleAppointment = (followUp: FollowUp) => {
-    // Navigate to appointment creation page with pre-filled data
-    navigate(`/appointments/create?patientId=${followUp.patient_id}&patientName=${followUp.patient_name}&service=${followUp.suggested_service_name}&followUpId=${followUp.id}`);
+    console.log('🔄 Schedule button clicked for follow-up:', followUp);
+
+    // Navigate to appointments page first (like the global New Appointment button)
+    console.log('🔄 Navigating to /appointments...');
+    navigate('/appointments');
+
+    // Use a timeout to ensure we're on the appointments page before dispatching the event
+    setTimeout(() => {
+      console.log('🔄 Timeout reached, dispatching event...');
+
+      // Dispatch custom event to open appointment form with pre-filled data
+      const eventData = {
+        patientName: followUp.patient_name,
+        patientId: followUp.patient_id,
+        serviceName: followUp.suggested_service_name,
+        doctorName: followUp.original_doctor,
+        date: followUp.tentative_date,
+        followUpId: followUp.id,
+        notes: `Follow-up appointment for ${followUp.original_service}${followUp.special_notes ? ` - ${followUp.special_notes}` : ''}`
+      };
+
+      console.log('🔄 Event data:', eventData);
+
+      const event = new CustomEvent('openNewAppointmentFormWithData', {
+        detail: eventData
+      });
+
+      console.log('🔄 Dispatching event to document...');
+      document.dispatchEvent(event);
+      console.log('✅ Event dispatched successfully!');
+
+      // Also try dispatching to window as backup
+      window.dispatchEvent(event);
+      console.log('✅ Event also dispatched to window as backup!');
+    }, 300); // Increased timeout to ensure page is fully loaded
   };
 
   // Handle viewing details of a follow-up
@@ -469,6 +910,81 @@ const RecallList = () => {
     }
   };
 
+  // Handle opening delete confirmation dialog
+  const handleDeleteFollowUp = (followUp: FollowUp) => {
+    setFollowUpToDelete(followUp);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Handle confirming the delete action
+  const confirmDeleteFollowUp = async () => {
+    if (!followUpToDelete) return;
+
+    try {
+      console.log('Deleting follow-up:', followUpToDelete);
+
+      // Delete the current follow-up
+      const success = await deleteFollowUp(followUpToDelete.id);
+
+      if (success) {
+        // Check if this is part of a sequence and activate the next step
+        if (followUpToDelete.sequence_group_id &&
+            followUpToDelete.follow_up_sequence < followUpToDelete.total_steps_in_sequence) {
+
+          console.log(`Looking for next step in sequence ${followUpToDelete.sequence_group_id}`);
+
+          // Find the next step in the sequence
+          const nextStepFollowUps = followUps.filter(f =>
+            f.sequence_group_id === followUpToDelete.sequence_group_id &&
+            f.follow_up_sequence === followUpToDelete.follow_up_sequence + 1 &&
+            f.status === 'Waiting'
+          );
+
+          console.log(`Found ${nextStepFollowUps.length} next steps in the sequence`);
+
+          // If we found the next step, update its status to Pending
+          if (nextStepFollowUps.length > 0) {
+            const nextStep = nextStepFollowUps[0];
+            console.log('Activating next step:', nextStep);
+
+            await updateFollowUp(nextStep.id, {
+              status: 'Pending'
+            });
+
+            // Refresh the follow-ups list
+            await fetchFollowUps();
+
+            toast({
+              title: "Follow-up Deleted",
+              description: `Step ${followUpToDelete.follow_up_sequence} deleted. Step ${nextStep.follow_up_sequence} is now pending.`,
+            });
+          } else {
+            toast({
+              title: "Follow-up Deleted",
+              description: `${followUpToDelete.patient_name}'s follow-up has been deleted.`,
+            });
+          }
+        } else {
+          toast({
+            title: "Follow-up Deleted",
+            description: `${followUpToDelete.patient_name}'s follow-up has been deleted.`,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting follow-up:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete follow-up. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      // Close the dialog and reset state
+      setIsDeleteDialogOpen(false);
+      setFollowUpToDelete(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -481,11 +997,18 @@ const RecallList = () => {
         <div className="flex gap-2">
           <Button
             variant="outline"
+            className="hidden" // HIDDEN: User requested to hide this button but keep functionality
             onClick={async () => {
               toast({
                 title: "Refreshing Follow-ups",
-                description: "Loading follow-ups from database...",
+                description: "Loading follow-ups and checking for missing ones...",
               });
+
+              // CRITICAL FIX: DISABLE automatic follow-up creation
+              // Follow-ups should ONLY be created when appointments are marked as completed
+              console.log('Automatic follow-up creation DISABLED - follow-ups are created only when appointments are completed');
+              // await createMissingFollowUps(); // DISABLED
+              // await createFollowUpsFromDentalHistory(); // DISABLED
 
               // Refresh all follow-ups
               await fetchFollowUps();
@@ -520,10 +1043,8 @@ const RecallList = () => {
             }}
           >
             <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh Follow-ups
+            Refresh & Create Missing
           </Button>
-
-
         </div>
       </div>
 
@@ -542,7 +1063,7 @@ const RecallList = () => {
                 className={`rounded-none ${activeTab === 'pending' ? '' : 'hover:bg-gray-100'}`}
                 onClick={() => setActiveTab('pending')}
               >
-                Pending ({getPendingFollowUps().length})
+                Pending ({filteredCounts.pendingCount})
               </Button>
               <Button
                 variant={activeTab === 'waiting' ? 'default' : 'ghost'}
@@ -572,14 +1093,14 @@ const RecallList = () => {
                   setActiveTab('waiting');
                 }}
               >
-                Waiting ({directWaitingFollowUps.length || getWaitingFollowUps().length})
+                Waiting ({filteredCounts.waitingCount})
               </Button>
               <Button
                 variant={activeTab === 'snoozed' ? 'default' : 'ghost'}
                 className={`rounded-none ${activeTab === 'snoozed' ? '' : 'hover:bg-gray-100'}`}
                 onClick={() => setActiveTab('snoozed')}
               >
-                Snoozed ({getSnoozedFollowUps().length})
+                Snoozed ({filteredCounts.snoozedCount})
               </Button>
             </div>
           </div>
@@ -763,34 +1284,62 @@ const RecallList = () => {
                                   <AlarmClock className="mr-2 h-4 w-4" />
                                   Snooze
                                 </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  onClick={() => handleDeleteFollowUp(followUp)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </>
                             ) : activeTab === 'waiting' ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  // Activate the waiting follow-up
-                                  activateFollowUp(followUp.id).then(() => {
-                                    toast({
-                                      title: "Follow-up Activated",
-                                      description: `Step ${followUp.follow_up_sequence} for ${followUp.patient_name} has been activated and moved to the pending list.`,
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    // Activate the waiting follow-up
+                                    activateFollowUp(followUp.id).then(() => {
+                                      toast({
+                                        title: "Follow-up Activated",
+                                        description: `Step ${followUp.follow_up_sequence} for ${followUp.patient_name} has been activated and moved to the pending list.`,
+                                      });
+                                      fetchFollowUps();
                                     });
-                                    fetchFollowUps();
-                                  });
-                                }}
-                              >
-                                <Clock className="mr-2 h-4 w-4" />
-                                Activate Early
-                              </Button>
+                                  }}
+                                >
+                                  <Clock className="mr-2 h-4 w-4" />
+                                  Activate Early
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  onClick={() => handleDeleteFollowUp(followUp)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
                             ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleUnsnoozeFollowUp(followUp)}
-                              >
-                                <Clock className="mr-2 h-4 w-4" />
-                                Activate
-                              </Button>
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleUnsnoozeFollowUp(followUp)}
+                                >
+                                  <Clock className="mr-2 h-4 w-4" />
+                                  Activate
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  onClick={() => handleDeleteFollowUp(followUp)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
                           </div>
                         </TableCell>
@@ -955,6 +1504,52 @@ const RecallList = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Follow-up</AlertDialogTitle>
+            <AlertDialogDescription>
+              {followUpToDelete && (
+                <>
+                  Are you sure you want to delete this follow-up for <strong>{followUpToDelete.patient_name}</strong>?
+                  <br />
+                  <br />
+                  <strong>Service:</strong> {followUpToDelete.suggested_service_name}
+                  <br />
+                  <strong>Date:</strong> {format(parseISO(followUpToDelete.tentative_date), 'MMM d, yyyy')}
+                  {followUpToDelete.follow_up_sequence > 1 && (
+                    <>
+                      <br />
+                      <strong>Step:</strong> {followUpToDelete.follow_up_sequence} of {followUpToDelete.total_steps_in_sequence}
+                    </>
+                  )}
+                  <br />
+                  <br />
+                  {followUpToDelete.sequence_group_id &&
+                   followUpToDelete.follow_up_sequence < followUpToDelete.total_steps_in_sequence && (
+                    <span className="text-sm text-muted-foreground">
+                      Note: The next step in this sequence will automatically become pending.
+                    </span>
+                  )}
+                  <br />
+                  <strong>This action cannot be undone.</strong>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteFollowUp}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete Follow-up
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

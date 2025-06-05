@@ -172,13 +172,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       } catch (error) {
         console.error('Error initializing prescriptions:', error);
         // Use the global error handler
-        handleDatabaseError({
-          error,
-          toast,
-          errorKey: 'prescriptions_init_error',
-          customMessage: 'Prescription data will be available after setup is complete.',
-          showToast: true
-        });
+        // handleDatabaseError({
+        //   error,
+        //   toast,
+        //   errorKey: 'prescriptions_init_error',
+        //   customMessage: 'Prescription data will be available after setup is complete.',
+        //   showToast: true
+        // });
       } finally {
         setIsLoading(false);
       }
@@ -372,13 +372,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
     } catch (error) {
       console.error('Error fetching patient prescriptions:', error);
       // Use the global error handler
-      handleDatabaseError({
-        error,
-        toast,
-        errorKey: `prescriptions_fetch_error_${patientId}`,
-        customMessage: 'Prescription data will be available after setup is complete.',
-        showToast: true
-      });
+      // handleDatabaseError({
+      //   error,
+      //   toast,
+      //   errorKey: `prescriptions_fetch_error_${patientId}`,
+      //   customMessage: 'Prescription data will be available after setup is complete.',
+      //   showToast: true
+      // });
 
       // Return existing prescriptions from state or empty array
       return prescriptions[patientId] || [];
@@ -393,13 +393,13 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
     } catch (error) {
       console.error('Error fetching active prescriptions:', error);
       // Use the global error handler
-      handleDatabaseError({
-        error,
-        toast,
-        errorKey: `active_prescriptions_error_${patientId}`,
-        customMessage: 'Prescription data will be available after setup is complete.',
-        showToast: true
-      });
+      // handleDatabaseError({
+      //   error,
+      //   toast,
+      //   errorKey: `active_prescriptions_error_${patientId}`,
+      //   customMessage: 'Prescription data will be available after setup is complete.',
+      //   showToast: true
+      // });
       return [];
     }
   };

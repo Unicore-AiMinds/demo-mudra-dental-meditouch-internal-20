@@ -50,18 +50,19 @@ export const ServiceFollowUpProvider: React.FC<{ children: ReactNode }> = ({ chi
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch follow-ups from Supabase
+  // EMERGENCY FIX: Fetch follow-ups from Supabase
   useEffect(() => {
     const fetchFollowUps = async () => {
       try {
         setIsLoading(true);
 
-        // Fetch follow-ups from Supabase
+        // EMERGENCY FIX: Fetch follow-ups with pagination
         const { data, error } = await supabase
           .from('follow_ups')
           .getAll({
             select: '*',
-            order: { column: 'follow_up_date', ascending: true }
+            order: { column: 'follow_up_date', ascending: true },
+            limit: 50  // EMERGENCY FIX: Add pagination limit
           });
 
         if (error) throw error;
@@ -80,7 +81,8 @@ export const ServiceFollowUpProvider: React.FC<{ children: ReactNode }> = ({ chi
     };
 
     fetchFollowUps();
-  }, [supabase, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // EMERGENCY FIX: Empty dependency array to prevent infinite loops
 
   // Add a new follow-up
   const addFollowUp = async (followUp: Omit<FollowUp, 'id' | 'created_at' | 'updated_at'>): Promise<FollowUp> => {

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useToast } from '@/components/ui/use-toast';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useServices } from '@/contexts/ServiceContext';
+import { useClinic } from '@/contexts/ClinicContext';
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -28,10 +29,16 @@ const ServiceFollowUpRuleContext = createContext<ServiceFollowUpRuleContextType 
 export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   const { supabase } = useSupabase();
-  const { dentalServices } = useServices();
+  const { dentalServices, meditouchServices } = useServices();
+  const { activeClinic } = useClinic();
 
   const [followUpRules, setFollowUpRules] = useState<ServiceFollowUpRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Get current clinic's services
+  const getCurrentClinicServices = () => {
+    return activeClinic === 'dental' ? dentalServices : meditouchServices;
+  };
 
   // Define fetchFollowUpRules outside useEffect so it can be called from other functions
   const fetchFollowUpRules = async () => {
@@ -57,9 +64,20 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
 
       console.log('Fetched rules from Supabase:', rulesData);
 
-      // Fetch steps for each rule
+      // Filter rules by current clinic's services
+      const currentServices = getCurrentClinicServices();
+      const currentServiceNames = currentServices.map(s => s.name);
+      console.log(`Filtering rules for ${activeClinic} clinic. Available services:`, currentServiceNames);
+
+      const filteredRulesData = rulesData?.filter(rule =>
+        currentServiceNames.includes(rule.triggering_service_name)
+      ) || [];
+
+      console.log(`Filtered ${rulesData?.length || 0} rules to ${filteredRulesData.length} rules for ${activeClinic} clinic`);
+
+      // Fetch steps for each filtered rule
       const rules: ServiceFollowUpRule[] = [];
-      for (const rule of rulesData || []) {
+      for (const rule of filteredRulesData) {
         console.log(`Fetching steps for rule ${rule.id} (${rule.triggering_service_name})...`);
 
         // Fetch steps for each rule using REST API
@@ -233,7 +251,7 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // Fetch follow-up rules from Supabase on component mount
+  // EMERGENCY FIX: Fetch follow-up rules from Supabase on component mount
   useEffect(() => {
     const initializeRules = async () => {
       await fetchFollowUpRules();
@@ -247,7 +265,7 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
 
     initializeRules();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, toast, dentalServices]);
+  }, [activeClinic]); // Refetch when clinic changes
 
   // Add a new follow-up rule
   const addFollowUpRule = async (rule: Omit<ServiceFollowUpRule, 'id' | 'rule_id' | 'created_at' | 'updated_at'>): Promise<ServiceFollowUpRule> => {
@@ -257,11 +275,12 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
     try {
       console.log('Adding follow-up rule:', rule);
 
-      // Find service ID from name
-      const service = dentalServices.find(s => s.name === rule.triggering_service_name);
+      // Find service ID from name in current clinic's services
+      const currentServices = getCurrentClinicServices();
+      const service = currentServices.find(s => s.name === rule.triggering_service_name);
       if (!service) {
-        console.error(`Service "${rule.triggering_service_name}" not found in dentalServices:`, dentalServices);
-        throw new Error(`Service "${rule.triggering_service_name}" not found`);
+        console.error(`Service "${rule.triggering_service_name}" not found in ${activeClinic} services:`, currentServices);
+        throw new Error(`Service "${rule.triggering_service_name}" not found in ${activeClinic} services`);
       }
 
       // Create rule ID
@@ -560,12 +579,13 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
       let serviceId = currentRule.service_id;
       if (updates.triggering_service_name && updates.triggering_service_name !== currentRule.triggering_service_name) {
         console.log(`Looking for service with name: ${updates.triggering_service_name}`);
-        const service = dentalServices.find(s => s.name === updates.triggering_service_name);
+        const currentServices = getCurrentClinicServices();
+        const service = currentServices.find(s => s.name === updates.triggering_service_name);
         if (service) {
           serviceId = service.id;
           console.log(`Found service with ID: ${serviceId}`);
         } else {
-          console.warn(`Service with name ${updates.triggering_service_name} not found in dentalServices`);
+          console.warn(`Service with name ${updates.triggering_service_name} not found in ${activeClinic} services`);
         }
       }
 

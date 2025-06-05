@@ -212,6 +212,7 @@ const Settings = () => {
     color: string;
     aadhar_doc?: string;
     pan_doc?: string;
+    clinic_type?: 'dental' | 'meditouch';
   }
 
   interface Service {
@@ -1714,12 +1715,13 @@ const Settings = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="clinic" className="w-full">
+      <Tabs defaultValue="doctors" className="w-full">
         <TabsList className="mb-4">
-          <TabsTrigger value="clinic">Clinic Details</TabsTrigger>
+          {/* COMMENTED OUT: Clinic Details tab as requested by user */}
+          {/* <TabsTrigger value="clinic">Clinic Details</TabsTrigger> */}
           <TabsTrigger value="doctors">Doctors</TabsTrigger>
           <TabsTrigger value="services">Services</TabsTrigger>
-          {activeClinic === 'dental' && <TabsTrigger value="service-followups">Service Follow-ups</TabsTrigger>}
+          <TabsTrigger value="service-followups">Service Follow-ups</TabsTrigger>
           {activeClinic === 'dental' && <TabsTrigger value="labs">Labs</TabsTrigger>}
           {activeClinic === 'dental' && <TabsTrigger value="labwork">Lab Work Types</TabsTrigger>}
           {activeClinic === 'dental' && <TabsTrigger value="stock">Stock</TabsTrigger>}
@@ -1729,7 +1731,8 @@ const Settings = () => {
           <TabsTrigger value="users">User Management</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="clinic" className="space-y-6">
+        {/* COMMENTED OUT: Clinic Details tab content as requested by user */}
+        {/* <TabsContent value="clinic" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -1859,7 +1862,7 @@ const Settings = () => {
               </Button>
             </CardFooter>
           </Card>
-        </TabsContent>
+        </TabsContent> */}
 
         <TabsContent value="doctors" className="space-y-6">
             <Card>
@@ -2152,7 +2155,8 @@ const Settings = () => {
                           specialization: newDoctorSpecialization,
                           email: newDoctorEmail,
                           phone: `${phoneCountryCode} ${newDoctorPhone}`,
-                          color: getRandomDentalColor() // Assign a random dental-themed color
+                          color: getRandomDentalColor(), // Assign a random dental-themed color
+                          clinic_type: activeClinic as 'dental' | 'meditouch' // Set clinic type based on current active clinic
                         };
 
                         // Pass the doctor data and files to the addDoctor function
@@ -2753,21 +2757,21 @@ const Settings = () => {
           </Dialog>
         </TabsContent>
 
-        {activeClinic === 'dental' && (
-          <TabsContent value="service-followups" className="space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center">
-                    <RefreshCw className="mr-2 h-5 w-5" />
-                    Service Follow-ups
-                  </CardTitle>
-                  <CardDescription>
-                    Configure follow-up protocols for dental services
-                  </CardDescription>
-                </div>
+        <TabsContent value="service-followups" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center">
+                  <RefreshCw className="mr-2 h-5 w-5" />
+                  Service Follow-ups
+                </CardTitle>
+                <CardDescription>
+                  Configure follow-up protocols for {activeClinic === 'dental' ? 'dental' : 'meditouch'} services
+                </CardDescription>
+              </div>
                 <div className="flex gap-2">
-                  <Button
+                  {/* COMMENTED OUT: Clean Up Duplicates button as requested by user */}
+                  {/* <Button
                     variant="outline"
                     onClick={() => {
                       cleanupDuplicateRules();
@@ -2778,7 +2782,7 @@ const Settings = () => {
                     }}
                   >
                     <Trash2 className="mr-2 h-4 w-4" /> Clean Up Duplicates
-                  </Button>
+                  </Button> */}
                   <Button onClick={() => setIsAddFollowUpRuleDialogOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" /> Add Follow-up Rule
                   </Button>
@@ -2881,7 +2885,7 @@ const Settings = () => {
                 <DialogHeader>
                   <DialogTitle>Add New Follow-up Rule</DialogTitle>
                   <DialogDescription>
-                    Define a follow-up protocol for a dental service
+                    Define a follow-up protocol for a {activeClinic === 'dental' ? 'dental' : 'meditouch'} service
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -2895,7 +2899,7 @@ const Settings = () => {
                         <SelectValue placeholder="Select a service" />
                       </SelectTrigger>
                       <SelectContent>
-                        {dentalServices.map(service => (
+                        {(activeClinic === 'dental' ? dentalServices : meditouchServices).map(service => (
                           <SelectItem key={service.id} value={service.name}>
                             {service.name}
                           </SelectItem>
@@ -2995,7 +2999,7 @@ const Settings = () => {
                 <DialogHeader>
                   <DialogTitle>Edit Follow-up Rule</DialogTitle>
                   <DialogDescription>
-                    Update follow-up protocol for a dental service
+                    Update follow-up protocol for a {activeClinic === 'dental' ? 'dental' : 'meditouch'} service
                   </DialogDescription>
                 </DialogHeader>
                 {currentFollowUpRule && (
@@ -3010,7 +3014,7 @@ const Settings = () => {
                           <SelectValue placeholder="Select a service" />
                         </SelectTrigger>
                         <SelectContent>
-                          {dentalServices.map(service => (
+                          {(activeClinic === 'dental' ? dentalServices : meditouchServices).map(service => (
                             <SelectItem key={service.id} value={service.name}>
                               {service.name}
                             </SelectItem>
@@ -3152,7 +3156,6 @@ const Settings = () => {
               </DialogContent>
             </Dialog>
           </TabsContent>
-        )}
 
         {activeClinic === 'dental' && (
           <TabsContent value="labs" className="space-y-6">

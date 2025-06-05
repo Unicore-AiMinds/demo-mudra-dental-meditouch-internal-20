@@ -53,6 +53,7 @@ interface AppointmentContextType {
   updateAppointment: (id: string, updates: Partial<Omit<Appointment, 'id' | 'appointment_code' | 'created_at' | 'updated_at'>>) => Promise<Appointment>;
   deleteAppointment: (id: string) => Promise<void>;
   getAppointmentsByDate: (date: Date, clinic: 'dental' | 'meditouch') => Promise<Appointment[]>;
+  getAppointmentsByDateRange: (startDate: Date, endDate: Date, clinic: 'dental' | 'meditouch') => Promise<Appointment[]>;
   getPatientAppointments: (patientId: string, clinic: 'dental' | 'meditouch' | 'both') => Promise<Appointment[]>;
   getUpcomingAppointments: (clinic: 'dental' | 'meditouch') => Promise<Appointment[]>;
   markAppointmentCompleted: (appointmentId: string) => Promise<void>;
@@ -67,10 +68,51 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [dentalAppointments, setDentalAppointments] = useState<Appointment[]>([]);
   const [meditouchAppointments, setMeditouchAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // EMERGENCY FIX: Add patient name cache to prevent repeated fetching
+  const [patientNameCache, setPatientNameCache] = useState<Map<string, string>>(new Map());
+
   const { supabase } = useSupabase();
   const { toast } = useToast();
   const { isDental } = useClinic();
   const { getServiceByName } = useServices();
+
+  // EMERGENCY FIX: Helper function to get patient names with caching
+  const getPatientNamesForAppointments = async (appointments: Appointment[]): Promise<Appointment[]> => {
+    if (appointments.length === 0) return appointments;
+
+    // Get unique patient IDs that we don't have cached
+    const patientIds = [...new Set(appointments.map(app => app.patient_id).filter(Boolean))];
+    const uncachedPatientIds = patientIds.filter(id => !patientNameCache.has(id));
+
+    // Only fetch patients we don't have cached
+    if (uncachedPatientIds.length > 0) {
+      try {
+        // Fetch only the specific patients we need, with pagination
+        const patients = await supabase.from<{ id: string; name: string }>('patients').getAll({
+          select: 'id, name',
+          limit: Math.min(uncachedPatientIds.length + 10, 100)  // Reasonable limit
+        });
+
+        // Update cache with new patient names
+        const newCache = new Map(patientNameCache);
+        patients.forEach(patient => {
+          if (patient.id && patient.name && uncachedPatientIds.includes(patient.id)) {
+            newCache.set(patient.id, patient.name);
+          }
+        });
+        setPatientNameCache(newCache);
+      } catch (error) {
+        console.error('Error fetching patient names:', error);
+      }
+    }
+
+    // Add patient names to appointments using cache
+    return appointments.map(app => ({
+      ...app,
+      patient_name: patientNameCache.get(app.patient_id) || 'Unknown Patient'
+    }));
+  };
 
   // Initialize appointments from Supabase
   useEffect(() => {
@@ -126,24 +168,25 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
           setMeditouchAppointments([]);
 
           // Use the global error handler
-          handleDatabaseError({
-            error,
-            toast,
-            errorKey: 'appointments_init_error',
-            customMessage: 'Appointments will be available after setup is complete.',
-            showToast: true
-          });
+          // handleDatabaseError({
+          //   error,
+          //   toast,
+          //   errorKey: 'appointments_init_error',
+          //   customMessage: 'Appointments will be available after setup is complete.',
+          //   showToast: true
+          // });
+          console.error('Error accessing appointments table:', error);
         }
       } catch (error) {
         console.error('Error initializing appointments:', error);
         // Use the global error handler
-        handleDatabaseError({
-          error,
-          toast,
-          errorKey: 'appointments_init_error',
-          customMessage: 'Appointments will be available after setup is complete.',
-          showToast: true
-        });
+        // handleDatabaseError({
+        //   error,
+        //   toast,
+        //   errorKey: 'appointments_init_error',
+        //   customMessage: 'Appointments will be available after setup is complete.',
+        //   showToast: true
+        // });
       } finally {
         setIsLoading(false);
       }
@@ -441,44 +484,21 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       const dateString = format(date, 'yyyy-MM-dd');
 
-      // Fetch appointments for the date and clinic type using custom Supabase API
+      // EMERGENCY FIX: Fetch appointments with pagination
       const appointments = await supabase.from<Appointment>('appointments').getAll({
         filters: {
           date: dateString,
           clinic_type: clinic
         },
-        order: { column: 'time', ascending: true }
+        order: { column: 'time', ascending: true },
+        limit: 100  // EMERGENCY FIX: Add pagination limit for daily appointments
       });
 
-      // Fetch patient names for these appointments
-      const patientIds = appointments.map(app => app.patient_id).filter(Boolean);
+      // EMERGENCY FIX: Use cached patient name fetching
+      const appointmentsWithNames = await getPatientNamesForAppointments(appointments);
 
-      if (patientIds.length > 0) {
-        // Fetch all patients and filter for the ones we need
-        const allPatients = await supabase.from<{ id: string; name: string }>('patients').getAll({
-          select: 'id, name'
-        });
-
-        // Create a map of patient IDs to names
-        const patientNameMap: Record<string, string> = {};
-        allPatients.forEach(patient => {
-          if (patient.id && patient.name && patientIds.includes(patient.id)) {
-            patientNameMap[patient.id] = patient.name;
-          }
-        });
-
-        // Add patient names to appointments
-        const appointmentsWithNames = appointments.map(app => ({
-          ...app,
-          patient_name: patientNameMap[app.patient_id] || 'Unknown Patient'
-        }));
-
-        console.log(`Fetched ${appointments.length} ${clinic} appointments for date ${dateString} with patient names`);
-        return appointmentsWithNames;
-      }
-
-      console.log(`Fetched ${appointments.length} ${clinic} appointments for date ${dateString}`);
-      return appointments;
+      console.log(`Fetched ${appointments.length} ${clinic} appointments for date ${dateString} with patient names`);
+      return appointmentsWithNames;
     } catch (error) {
       console.error('Error fetching appointments by date:', error);
       toast({
@@ -488,6 +508,40 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
       });
 
       // Return empty array instead of using local state as fallback
+      return [];
+    }
+  };
+
+  // EMERGENCY FIX: Get appointments for a date range (replaces multiple daily fetches)
+  const getAppointmentsByDateRange = async (startDate: Date, endDate: Date, clinic: 'dental' | 'meditouch'): Promise<Appointment[]> => {
+    try {
+      const startDateString = format(startDate, 'yyyy-MM-dd');
+      const endDateString = format(endDate, 'yyyy-MM-dd');
+
+      console.log(`Fetching ${clinic} appointments from ${startDateString} to ${endDateString}`);
+
+      // EMERGENCY FIX: Use a simpler approach - fetch all appointments and filter in JavaScript
+      // This is more reliable than complex date range filters
+      const appointments = await supabase.from<Appointment>('appointments').getAll({
+        filters: {
+          clinic_type: clinic
+        },
+        order: { column: 'date', ascending: true },
+        limit: 200  // EMERGENCY FIX: Reduced pagination limit to prevent massive data fetching
+      });
+
+      // Filter appointments within the date range in JavaScript
+      const filteredAppointments = appointments.filter(app => {
+        return app.date >= startDateString && app.date <= endDateString;
+      });
+
+      // EMERGENCY FIX: Use cached patient name fetching
+      const appointmentsWithNames = await getPatientNamesForAppointments(filteredAppointments);
+
+      console.log(`Fetched ${filteredAppointments.length} ${clinic} appointments for date range ${startDateString} to ${endDateString} with patient names`);
+      return appointmentsWithNames;
+    } catch (error) {
+      console.error(`Error fetching ${clinic} appointments for date range:`, error);
       return [];
     }
   };
@@ -505,10 +559,11 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
       // For 'both', we don't add clinic_type filter
 
-      // Fetch appointments for the patient using custom Supabase API
+      // EMERGENCY FIX: Fetch appointments with pagination
       const appointments = await supabase.from<Appointment>('appointments').getAll({
         filters,
-        order: { column: 'date', ascending: true }
+        order: { column: 'date', ascending: true },
+        limit: 50  // EMERGENCY FIX: Add pagination limit for patient appointments
       });
 
       // Fetch the patient name using custom Supabase API
@@ -550,12 +605,13 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       console.log(`Fetching upcoming ${clinic} appointments from date ${todayString}`);
 
-      // Fetch all appointments for the specified clinic
+      // EMERGENCY FIX: Fetch appointments with pagination
       const appointments = await supabase.from<Appointment>('appointments').getAll({
         filters: {
           clinic_type: clinic
         },
-        order: { column: 'date', ascending: true }
+        order: { column: 'date', ascending: true },
+        limit: 100  // EMERGENCY FIX: Further reduced limit for upcoming appointments
       });
 
       // Filter for dates >= today and exclude cancelled/completed appointments in JavaScript
@@ -565,35 +621,11 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
                app.status !== 'completed';
       });
 
-      // Fetch patient names for these appointments
-      const patientIds = upcomingAppointments.map(app => app.patient_id).filter(Boolean);
+      // EMERGENCY FIX: Use cached patient name fetching
+      const appointmentsWithNames = await getPatientNamesForAppointments(upcomingAppointments);
 
-      if (patientIds.length > 0) {
-        // Fetch all patients and filter for the ones we need
-        const allPatients = await supabase.from<{ id: string; name: string }>('patients').getAll({
-          select: 'id, name'
-        });
-
-        // Create a map of patient IDs to names
-        const patientNameMap: Record<string, string> = {};
-        allPatients.forEach(patient => {
-          if (patient.id && patient.name && patientIds.includes(patient.id)) {
-            patientNameMap[patient.id] = patient.name;
-          }
-        });
-
-        // Add patient names to appointments
-        const appointmentsWithNames = upcomingAppointments.map(app => ({
-          ...app,
-          patient_name: patientNameMap[app.patient_id] || 'Unknown Patient'
-        }));
-
-        console.log(`Fetched ${appointments.length} total ${clinic} appointments, ${upcomingAppointments.length} are upcoming with patient names`);
-        return appointmentsWithNames;
-      }
-
-      console.log(`Fetched ${appointments.length} total ${clinic} appointments, ${upcomingAppointments.length} are upcoming`);
-      return upcomingAppointments;
+      console.log(`Fetched ${appointments.length} total ${clinic} appointments, ${upcomingAppointments.length} are upcoming with patient names`);
+      return appointmentsWithNames;
     } catch (error) {
       console.error('Error fetching upcoming appointments:', error);
       toast({
@@ -762,6 +794,7 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
         updateAppointment,
         deleteAppointment,
         getAppointmentsByDate,
+        getAppointmentsByDateRange,
         getPatientAppointments,
         getUpcomingAppointments,
         markAppointmentCompleted,

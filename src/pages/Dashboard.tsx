@@ -17,14 +17,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import UnresolvedAppointmentsAlert from '@/components/UnresolvedAppointmentsAlert';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 
 const Dashboard = () => {
   const { activeClinic, isDental, isMeditouch } = useClinic();
   const { user } = useAuth();
   const { getOverdueCount, getPendingCount, labJobs, isOverdue } = useLabWork();
-  const { dentalAppointments, meditouchAppointments, getAppointmentsByDate } = useAppointments();
+  const { dentalAppointments, meditouchAppointments, getAppointmentsByDate, getAppointmentsByDateRange } = useAppointments();
   const { patients } = usePatients();
   const navigate = useNavigate();
 
@@ -44,9 +44,9 @@ const Dashboard = () => {
   const [todaySchedule, setTodaySchedule] = useState<any[]>([]);
   const [appointmentView, setAppointmentView] = useState<'today' | 'week' | 'month'>('today');
 
-  // Get today's date
-  const today = new Date();
-  const todayString = format(today, 'yyyy-MM-dd');
+  // EMERGENCY FIX: Memoize today's date to prevent useEffect loops
+  const today = useMemo(() => new Date(), []);
+  const todayString = useMemo(() => format(today, 'yyyy-MM-dd'), [today]);
 
   // Calculate real stats
   const stats = {
@@ -65,7 +65,7 @@ const Dashboard = () => {
   const isAdmin = user?.role === 'admin';
   const isClinicUser = user?.role === 'doctor' || user?.role === 'receptionist';
 
-  // Fetch appointments for today, week, and month
+  // EMERGENCY FIX: Optimized appointment fetching with date ranges instead of daily loops
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
@@ -75,36 +75,28 @@ const Dashboard = () => {
         const monthStart = startOfMonth(today);
         const monthEnd = endOfMonth(today);
 
-        // Get all days in week and month
-        const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-        const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-        // Fetch today's appointments
-        const [dentalToday, meditouchToday] = await Promise.all([
+        // EMERGENCY FIX: Use date range queries instead of fetching each day individually
+        // This reduces 60+ requests to just 6 requests total
+        const [dentalToday, meditouchToday, dentalWeek, meditouchWeek, dentalMonth, meditouchMonth] = await Promise.all([
+          // Today's appointments (2 requests)
           getAppointmentsByDate(today, 'dental'),
-          getAppointmentsByDate(today, 'meditouch')
+          getAppointmentsByDate(today, 'meditouch'),
+
+          // Week appointments using date range (2 requests instead of 14)
+          getAppointmentsByDateRange(weekStart, weekEnd, 'dental'),
+          getAppointmentsByDateRange(weekStart, weekEnd, 'meditouch'),
+
+          // Month appointments using date range (2 requests instead of 60+)
+          getAppointmentsByDateRange(monthStart, monthEnd, 'dental'),
+          getAppointmentsByDateRange(monthStart, monthEnd, 'meditouch')
         ]);
 
-        // Fetch week appointments
-        const weekAppointmentPromises = weekDays.flatMap(day => [
-          getAppointmentsByDate(day, 'dental'),
-          getAppointmentsByDate(day, 'meditouch')
-        ]);
-        const weekAppointmentResults = await Promise.all(weekAppointmentPromises);
-
-        // Fetch month appointments
-        const monthAppointmentPromises = monthDays.flatMap(day => [
-          getAppointmentsByDate(day, 'dental'),
-          getAppointmentsByDate(day, 'meditouch')
-        ]);
-        const monthAppointmentResults = await Promise.all(monthAppointmentPromises);
-
-        // Process today's appointments
+        // Process today's appointments - include all except cancelled
         const activeDentalToday = dentalToday.filter(apt =>
-          apt.status !== 'cancelled' && apt.status !== 'completed'
+          apt.status !== 'cancelled'
         );
         const activeMeditouchToday = meditouchToday.filter(apt =>
-          apt.status !== 'cancelled' && apt.status !== 'completed'
+          apt.status !== 'cancelled'
         );
 
         setTodayAppointments({
@@ -112,15 +104,12 @@ const Dashboard = () => {
           meditouch: activeMeditouchToday.length
         });
 
-        // Process week appointments
-        const weekDentalAppts = weekAppointmentResults.filter((_, index) => index % 2 === 0).flat();
-        const weekMeditouchAppts = weekAppointmentResults.filter((_, index) => index % 2 === 1).flat();
-
-        const activeWeekDental = weekDentalAppts.filter(apt =>
-          apt.status !== 'cancelled' && apt.status !== 'completed'
+        // EMERGENCY FIX: Process week appointments from date range results - include all except cancelled
+        const activeWeekDental = dentalWeek.filter(apt =>
+          apt.status !== 'cancelled'
         );
-        const activeWeekMeditouch = weekMeditouchAppts.filter(apt =>
-          apt.status !== 'cancelled' && apt.status !== 'completed'
+        const activeWeekMeditouch = meditouchWeek.filter(apt =>
+          apt.status !== 'cancelled'
         );
 
         setWeekAppointments({
@@ -128,15 +117,12 @@ const Dashboard = () => {
           meditouch: activeWeekMeditouch.length
         });
 
-        // Process month appointments
-        const monthDentalAppts = monthAppointmentResults.filter((_, index) => index % 2 === 0).flat();
-        const monthMeditouchAppts = monthAppointmentResults.filter((_, index) => index % 2 === 1).flat();
-
-        const activeMonthDental = monthDentalAppts.filter(apt =>
-          apt.status !== 'cancelled' && apt.status !== 'completed'
+        // EMERGENCY FIX: Process month appointments from date range results - include all except cancelled
+        const activeMonthDental = dentalMonth.filter(apt =>
+          apt.status !== 'cancelled'
         );
-        const activeMonthMeditouch = monthMeditouchAppts.filter(apt =>
-          apt.status !== 'cancelled' && apt.status !== 'completed'
+        const activeMonthMeditouch = meditouchMonth.filter(apt =>
+          apt.status !== 'cancelled'
         );
 
         setMonthAppointments({
@@ -144,11 +130,18 @@ const Dashboard = () => {
           meditouch: activeMonthMeditouch.length
         });
 
-        // Set today's schedule for the current clinic and resolve patient names
-        const currentClinicAppointments = isDental ? activeDentalToday : activeMeditouchToday;
+        // Set today's schedule for the current clinic - only show pending/confirmed appointments (not completed)
+        const pendingDentalToday = dentalToday.filter(apt =>
+          apt.status !== 'cancelled' && apt.status !== 'completed'
+        );
+        const pendingMeditouchToday = meditouchToday.filter(apt =>
+          apt.status !== 'cancelled' && apt.status !== 'completed'
+        );
+
+        const currentClinicPendingAppointments = isDental ? pendingDentalToday : pendingMeditouchToday;
 
         // Map patient names to appointments
-        const appointmentsWithPatientNames = currentClinicAppointments.map(appointment => {
+        const appointmentsWithPatientNames = currentClinicPendingAppointments.map(appointment => {
           const patient = patients.find(p => p.id === appointment.patient_id);
           return {
             ...appointment,
@@ -168,7 +161,8 @@ const Dashboard = () => {
     };
 
     fetchAppointments();
-  }, [today, todayString, getAppointmentsByDate, isDental, patients]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today, todayString, isDental]); // EMERGENCY FIX: Removed function dependencies to prevent loops
 
   return (
     <div className="space-y-6">
@@ -579,10 +573,15 @@ const Dashboard = () => {
                       })
                       .slice(0, 5)
                       .map((patient) => {
-                        // Calculate days since registration
+                        // Calculate days since registration - use date-only comparison to avoid timezone issues
                         const createdDate = new Date(patient.created_at || '');
                         const today = new Date();
-                        const diffTime = today.getTime() - createdDate.getTime();
+
+                        // Reset time to midnight for accurate date comparison
+                        const createdDateOnly = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+                        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+                        const diffTime = todayOnly.getTime() - createdDateOnly.getTime();
                         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
                         let timeText = '';

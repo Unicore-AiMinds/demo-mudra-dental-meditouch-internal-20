@@ -1296,13 +1296,19 @@ const Appointments = () => {
       console.log('Patient ID:', patientId);
 
       // Add to dental history and generate follow-up if needed
+      // For Meditouch appointments, use therapist field instead of doctor field
+      const doctorOrTherapist = isDental
+        ? (appointment as DentalAppointment).doctor || 'Unknown Doctor'
+        : (appointment as MeditouchAppointment).therapist || 'Unknown Therapist';
+
       await markAppointmentCompletedInHistory(
         appointment.id || appointment.appointment_id,
         patientId,
         appointment.patient_name,
         appointment.service,
-        isDental ? (appointment as DentalAppointment).doctor || 'Unknown Doctor' : 'Unknown Doctor',
-        appointment.date || format(new Date(), 'yyyy-MM-dd')
+        doctorOrTherapist,
+        appointment.date || format(new Date(), 'yyyy-MM-dd'),
+        isDental ? 'dental' : 'meditouch' // Pass the clinic type
       );
       console.log('Appointment added to dental history');
 
@@ -1516,6 +1522,27 @@ const Appointments = () => {
       // Update the appointment payment status in Supabase
       await updateAppointment(appointmentId, { payment_status: status });
 
+      // Also update the payment status in dental history if this appointment has a corresponding history entry
+      try {
+        // First, find the dental history entry for this appointment
+        const historyEntries = await supabase.from<{id: string, appointment_id: string, payment_status: string}>('dental_history').getAll({
+          filters: { appointment_id: appointmentId }
+        });
+
+        if (historyEntries && historyEntries.length > 0) {
+          // Update each matching history entry (should typically be just one)
+          for (const entry of historyEntries) {
+            await supabase.from<{id: string, payment_status: string}>('dental_history').update(entry.id, { payment_status: status });
+            console.log(`Updated payment status in dental history for appointment ${appointmentId}, entry ${entry.id}`);
+          }
+        } else {
+          console.log(`No dental history entry found for appointment ${appointmentId}`);
+        }
+      } catch (historyUpdateError) {
+        console.warn('Error updating dental history payment status:', historyUpdateError);
+        // Don't fail the whole operation if dental history update fails
+      }
+
       // If the completed appointment is currently displayed, update it
       if (completedAppointment && (completedAppointment.id === appointmentId || completedAppointment.appointment_id === appointmentId)) {
         setCompletedAppointment({
@@ -1523,6 +1550,16 @@ const Appointments = () => {
           paymentStatus: status
         });
       }
+
+      // Dispatch custom event to notify other components about the payment status update
+      const paymentUpdateEvent = new CustomEvent('payment-status-updated', {
+        detail: {
+          appointmentId,
+          patientId: completedAppointment?.patientId,
+          status
+        }
+      });
+      document.dispatchEvent(paymentUpdateEvent);
 
       toast({
         title: `Payment Status: ${status === 'paid' ? 'Paid' : 'Unpaid'}`,
@@ -2041,7 +2078,11 @@ const Appointments = () => {
 
   // Listen for the custom event to open the new appointment form with pre-filled data
   useEffect(() => {
+    console.log('🎯 Setting up event listener for openNewAppointmentFormWithData');
+
     const handleOpenNewAppointmentFormWithData = (event: Event) => {
+      console.log('🎯 Event received!', event);
+
       const customEvent = event as CustomEvent<{
         patientName: string;
         patientId: string;
@@ -2057,7 +2098,7 @@ const Appointments = () => {
       // Get the data from the event
       const { patientName, patientId, serviceName, doctorName, date, followUpId, chartingEntryId, teeth, notes } = customEvent.detail;
 
-      console.log('Received openNewAppointmentFormWithData event with data:', customEvent.detail);
+      console.log('🎯 Received openNewAppointmentFormWithData event with data:', customEvent.detail);
 
       // Reset form first
       resetAppointmentForm();
@@ -2211,7 +2252,8 @@ const Appointments = () => {
         </div>
       </div>
 
-      {/* Alert for unresolved past appointments is now shown globally in AppLayout */}
+      {/* Alert for unresolved past appointments - only shown on appointments page */}
+      <UnresolvedAppointmentsAlert />
 
       <div className="flex flex-col gap-4">
         <div className="w-full">

@@ -58,10 +58,8 @@ const NewAppointment = () => {
     ? dentalServices.map(service => service.name)
     : meditouchServices.map(service => service.name);
 
-  // Filter doctors based on clinic type
-  const availableDoctors = isDental
-    ? doctorsList.filter(d => d.clinic === 'dental' || d.clinic === 'both')
-    : [];
+  // Use doctors from DoctorContext (already filtered by clinic type)
+  const availableDoctors = doctors;
 
   // Effect to initialize patients list
   useEffect(() => {

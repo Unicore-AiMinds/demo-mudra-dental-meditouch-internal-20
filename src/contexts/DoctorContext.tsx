@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getRandomDentalColor } from '@/utils/doctorColors';
-import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/components/ui/use-toast';
+import { useClinic } from '@/contexts/ClinicContext';
 import { uploadFile, deleteFile, checkStorageAccess } from '@/lib/supabase-storage';
 import { createClient } from '@supabase/supabase-js';
 
@@ -20,11 +20,13 @@ export interface Doctor {
   aadhar_doc?: string;
   pan_doc?: string;
   color: string;
+  clinic_type?: 'dental' | 'meditouch';
 }
 
 // Define the context type
 interface DoctorContextType {
-  doctors: Doctor[];
+  doctors: Doctor[]; // Filtered doctors based on current clinic
+  allDoctors: Doctor[]; // All doctors regardless of clinic
   isLoading: boolean;
   refreshDoctors: () => Promise<void>;
   addDoctor: (doctor: Omit<Doctor, 'id'>, aadharFile?: File, panFile?: File) => Promise<Doctor>;
@@ -64,9 +66,20 @@ const defaultDoctors = [
 
 // Provider component
 export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [allDoctors, setAllDoctors] = useState<Doctor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { activeClinic } = useClinic();
+
+  // Filter doctors based on current clinic
+  const doctors = React.useMemo(() => {
+    if (activeClinic === 'dental' || activeClinic === 'meditouch') {
+      return allDoctors.filter(doctor =>
+        doctor.clinic_type === activeClinic || doctor.clinic_type === undefined // Include legacy doctors without clinic_type
+      );
+    }
+    return allDoctors; // Show all doctors if no specific clinic is selected
+  }, [allDoctors, activeClinic]);
 
   // Function to refresh doctors from Supabase
   const refreshDoctors = async (): Promise<void> => {
@@ -96,10 +109,10 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // No automatic creation of default doctors
         if (!fetchedDoctors || fetchedDoctors.length === 0) {
           console.log('No doctors found in database.');
-          setDoctors([]);
+          setAllDoctors([]);
         } else {
           console.log('Setting doctors state with fetched doctors:', fetchedDoctors);
-          setDoctors(fetchedDoctors);
+          setAllDoctors(fetchedDoctors);
         }
       } catch (error) {
         console.error('Error fetching doctors:', error);
@@ -134,10 +147,11 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
       }
 
-      // Generate a random color if not provided
+      // Generate a random color if not provided and add clinic type
       const doctorWithColor = {
         ...doctor,
-        color: doctor.color || getRandomDentalColor()
+        color: doctor.color || getRandomDentalColor(),
+        clinic_type: doctor.clinic_type || activeClinic // Use current active clinic if not specified
       };
 
       console.log('Adding new doctor with data:', doctorWithColor);
@@ -248,7 +262,7 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           console.log('Refreshed doctor data:', refreshedDoctor);
 
           // Update local state with the refreshed data
-          setDoctors(prev => [...prev, refreshedDoctor]);
+          setAllDoctors(prev => [...prev, refreshedDoctor]);
 
           toast({
             title: 'Success',
@@ -262,7 +276,7 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       // If refresh failed, use the data we have
-      setDoctors(prev => [...prev, newDoctor]);
+      setAllDoctors(prev => [...prev, newDoctor]);
 
       toast({
         title: 'Success',
@@ -355,7 +369,7 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.log('Doctor updated successfully:', updatedDoctor);
 
       // Update local state
-      setDoctors(prev => prev.map(d => d.id === id ? updatedDoctor : d));
+      setAllDoctors(prev => prev.map(d => d.id === id ? updatedDoctor : d));
 
       toast({
         title: 'Success',
@@ -383,7 +397,7 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const deleteDoctor = async (id: string): Promise<void> => {
     try {
       // Get the doctor to check for documents
-      const doctorToDelete = doctors.find(d => d.id === id);
+      const doctorToDelete = allDoctors.find(d => d.id === id);
 
       // Check if storage is accessible
       const isStorageAccessible = await checkStorageAccess();
@@ -442,7 +456,7 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.log('Doctor deleted from database successfully');
 
       // Update local state
-      setDoctors(prev => prev.filter(d => d.id !== id));
+      setAllDoctors(prev => prev.filter(d => d.id !== id));
 
       toast({
         title: 'Success',
@@ -481,7 +495,7 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.log('Color update response:', updatedDoctorData);
 
       // Update local state
-      setDoctors(prevDoctors =>
+      setAllDoctors(prevDoctors =>
         prevDoctors.map(doctor =>
           doctor.id === doctorId
             ? { ...doctor, color: newColor }
@@ -515,6 +529,7 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   return (
     <DoctorContext.Provider value={{
       doctors,
+      allDoctors,
       isLoading,
       refreshDoctors,
       addDoctor,

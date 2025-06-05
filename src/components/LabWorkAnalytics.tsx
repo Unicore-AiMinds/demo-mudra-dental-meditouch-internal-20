@@ -2,65 +2,49 @@ import React from 'react';
 import { useLabWork } from '@/contexts/LabWorkContext';
 
 const LabWorkAnalytics: React.FC = () => {
-  const { labJobs } = useLabWork();
+  const { labJobs, isOverdue } = useLabWork();
 
-  // Filter active lab jobs (not completed) - same as dashboard display
-  const activeJobs = labJobs.filter(job => job.status !== 'completed');
-
-  // Priority-based status functions (same logic as lab work display)
-  const getLabJobPriority = (job: any) => {
-    const today = new Date();
-    const dueDate = new Date(job.expectedDelivery);
-    const isOverdue = dueDate < today && job.status !== 'ready';
-    const isReady = job.status === 'ready';
-
-    if (isReady) return { priority: 1000, type: 'ready' };
-    if (isOverdue) return { priority: 900, type: 'overdue' };
-    return { priority: 500, type: 'inprogress' };
-  };
-
-  // Process top 5 lab jobs exactly like lab work dashboard display
-  const processTopLabJobs = () => {
-    const jobsWithPriority = activeJobs.map(job => ({
-      ...job,
-      priorityInfo: getLabJobPriority(job)
-    }));
-
-    // Sort by priority (highest first) and take top 5 (same as dashboard display)
-    return jobsWithPriority
-      .sort((a, b) => b.priorityInfo.priority - a.priorityInfo.priority)
-      .slice(0, 5);
-  };
-
-  // Create analytical message based on top 5 displayed items
+  // Get the analytical message for the lab work card
   const getAnalyticalMessage = () => {
-    const topJobs = processTopLabJobs();
-
-    if (topJobs.length === 0) {
+    // Filter active jobs (not completed)
+    const activeJobs = labJobs.filter(job => job.status !== 'completed');
+    
+    if (activeJobs.length === 0) {
       return "All lab work completed";
     }
 
-    // Count by status in top 5 jobs
-    const statusCounts = topJobs.reduce((acc: any, job) => {
-      const status = job.priorityInfo.type;
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {});
+    // Count ready jobs
+    const readyJobs = activeJobs.filter(job => job.status === 'ready');
+    const readyCount = readyJobs.length;
+    
+    // Count overdue jobs using the context's isOverdue function
+    const overdueJobs = activeJobs.filter(job => isOverdue(job));
+    const overdueCount = overdueJobs.length;
+    
+    // Count in-progress jobs (not ready and not overdue)
+    const inProgressJobs = activeJobs.filter(
+      job => job.status !== 'ready' && !isOverdue(job)
+    );
+    const inProgressCount = inProgressJobs.length;
 
+    // Build the message parts
     const parts = [];
-
+    
     // Priority order for display
-    if (statusCounts.ready > 0) {
-      parts.push(`${statusCounts.ready} ready for pickup`);
+    if (readyCount > 0) {
+      parts.push(`${readyCount} ready for pickup`);
     }
-    if (statusCounts.overdue > 0) {
-      parts.push(`${statusCounts.overdue} overdue`);
+    
+    if (overdueCount > 0) {
+      parts.push(`${overdueCount} overdue`);
     }
-    if (statusCounts.inprogress > 0 && parts.length === 0) {
-      parts.push(`${statusCounts.inprogress} in progress`);
+    
+    if (inProgressCount > 0 && parts.length === 0) {
+      parts.push(`${inProgressCount} in progress`);
     }
 
-    return parts.slice(0, 2).join(', '); // Show max 2 categories
+    // Return at most 2 parts
+    return parts.slice(0, 2).join(', ');
   };
 
   return <>{getAnalyticalMessage()}</>;

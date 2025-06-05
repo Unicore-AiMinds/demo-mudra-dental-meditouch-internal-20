@@ -38,13 +38,14 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
         }
       } catch (error) {
         // Use the global error handler
-        handleDatabaseError({
-          error,
-          toast,
-          errorKey: 'vital_signs_init_error',
-          customMessage: 'Vital signs data will be available after setup is complete.',
-          showToast: true
-        });
+        // handleDatabaseError({
+        //   error,
+        //   toast,
+        //   errorKey: 'vital_signs_init_error',
+        //   customMessage: 'Vital signs data will be available after setup is complete.',
+        //   showToast: true
+        // });
+        console.error('Error initializing vital signs:', error);
       } finally {
         setIsLoading(false);
       }

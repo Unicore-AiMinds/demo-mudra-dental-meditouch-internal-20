@@ -11,6 +11,7 @@ export interface DentalHistoryEntry {
   diagnosis_notes?: string;
   treatment_plan_suggested?: string;
   procedure_performed_notes?: string;
+  clinic_type?: 'dental' | 'meditouch';
   created_at?: string;
   updated_at?: string;
 }
@@ -28,7 +29,7 @@ export interface TentativeFollowUp {
   suggested_service_name: string;
   original_service: string;
   original_doctor: string;
-  status: 'Pending' | 'Scheduled' | 'Completed' | 'Cancelled' | 'Snoozed';
+  status: 'Pending' | 'Scheduled' | 'Completed' | 'Cancelled' | 'Snoozed' | 'Waiting';
   // Reference to the dental charting entry that generated this follow-up
   based_on_charting_entry_id?: string;
   // Reference to the appointment scheduled for this follow-up

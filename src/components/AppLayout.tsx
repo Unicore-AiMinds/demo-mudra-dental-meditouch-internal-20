@@ -6,7 +6,6 @@ import AppHeader from './AppHeader';
 import AppSidebar from './AppSidebar';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import UnresolvedAppointmentsAlert from './UnresolvedAppointmentsAlert';
 
 const AppLayout = () => {
   const { activeClinic } = useClinic();
@@ -32,8 +31,6 @@ const AppLayout = () => {
           <AppHeader />
           <main className="flex-1 bg-gray-50 overflow-auto">
             <div className="container mx-auto p-2 sm:p-4 md:p-6">
-              {/* Show unresolved appointments alert filtered by active clinic type */}
-              <UnresolvedAppointmentsAlert />
               <Outlet />
             </div>
           </main>

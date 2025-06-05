@@ -58,13 +58,14 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
       } catch (error) {
         // Use the global error handler
-        handleDatabaseError({
-          error,
-          toast,
-          errorKey: 'dental_charting_init_error',
-          customMessage: 'Dental charting data will be available after setup is complete.',
-          showToast: true
-        });
+        // handleDatabaseError({
+        //   error,
+        //   toast,
+        //   errorKey: 'dental_charting_init_error',
+        //   customMessage: 'Dental charting data will be available after setup is complete.',
+        //   showToast: true
+        // });
+        console.error('Error initializing dental charting:', error);
       } finally {
         setIsLoading(false);
       }
@@ -197,13 +198,14 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
       return entries;
     } catch (error) {
       // Use the global error handler
-      handleDatabaseError({
-        error,
-        toast,
-        errorKey: `dental_charting_patient_error_${patientId}`,
-        customMessage: 'Dental charting data will be available after setup is complete.',
-        showToast: true
-      });
+      // handleDatabaseError({
+      //   error,
+      //   toast,
+      //   errorKey: `dental_charting_patient_error_${patientId}`,
+      //   customMessage: 'Dental charting data will be available after setup is complete.',
+      //   showToast: true
+      // });
+      console.error('Error fetching patient charting history:', error);
       return patientChartingHistory.filter(entry => entry.patient_id === patientId);
     }
   };
@@ -221,13 +223,14 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
       return entries.filter(entry => !entry.scheduled_appointment_id);
     } catch (error) {
       // Use the global error handler
-      handleDatabaseError({
-        error,
-        toast,
-        errorKey: 'dental_charting_planned_error',
-        customMessage: 'Dental charting data will be available after setup is complete.',
-        showToast: true
-      });
+      // handleDatabaseError({
+      //   error,
+      //   toast,
+      //   errorKey: 'dental_charting_planned_error',
+      //   customMessage: 'Dental charting data will be available after setup is complete.',
+      //   showToast: true
+      // });
+      console.error('Error fetching planned charting entries:', error);
 
       // Return empty array instead of throwing an error for empty data
       return patientChartingHistory.filter(entry =>
