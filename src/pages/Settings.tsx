@@ -212,7 +212,7 @@ const Settings = () => {
     color: string;
     aadhar_doc?: string;
     pan_doc?: string;
-    clinic_type?: 'dental' | 'meditouch';
+    clinic_type?: 'dental' | 'meditouch' | 'both';
   }
 
   interface Service {
@@ -232,6 +232,8 @@ const Settings = () => {
   const [newDoctorPhone, setNewDoctorPhone] = useState('');
   const [phoneCountryCode, setPhoneCountryCode] = useState('+91');
   const [editPhoneCountryCode, setEditPhoneCountryCode] = useState('+91');
+  const [newDoctorClinic, setNewDoctorClinic] = useState<'dental' | 'meditouch' | 'both'>('dental');
+  const [editDoctorClinic, setEditDoctorClinic] = useState<'dental' | 'meditouch' | 'both'>('dental');
   // Using DoctorContext instead of local state
   const { doctors: dentalDoctors, addDoctor, updateDoctor, deleteDoctor, updateDoctorColor, isLoading: doctorsLoading } = useDoctors();
 
@@ -421,6 +423,8 @@ const Settings = () => {
         setEditPhoneCountryCode(countryCode);
       }
     }
+    // Set clinic type for editing
+    setEditDoctorClinic(doctor.clinic_type || 'dental');
     setIsEditDoctorDialogOpen(true);
   };
 
@@ -472,7 +476,8 @@ const Settings = () => {
             name: updatedName.value,
             specialization: updatedSpecialization.value,
             email: updatedEmail.value,
-            phone: `${editPhoneCountryCode} ${updatedPhone.value}`
+            phone: `${editPhoneCountryCode} ${updatedPhone.value}`,
+            clinic_type: editDoctorClinic
           },
           editAadharFile || undefined,
           editPanFile || undefined
@@ -2076,6 +2081,24 @@ const Settings = () => {
                         />
                       </div>
                     </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="doctorClinic" className="flex items-center">
+                        Clinic <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Select
+                        value={newDoctorClinic}
+                        onValueChange={(value: 'dental' | 'meditouch' | 'both') => setNewDoctorClinic(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select clinic" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="dental">Dental Matrix</SelectItem>
+                          <SelectItem value="meditouch">Meditouch</SelectItem>
+                          <SelectItem value="both">Both Clinics</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="space-y-2 mt-1">
@@ -2156,7 +2179,7 @@ const Settings = () => {
                           email: newDoctorEmail,
                           phone: `${phoneCountryCode} ${newDoctorPhone}`,
                           color: getRandomDentalColor(), // Assign a random dental-themed color
-                          clinic_type: activeClinic as 'dental' | 'meditouch' // Set clinic type based on current active clinic
+                          clinic_type: newDoctorClinic // Set clinic type based on user selection
                         };
 
                         // Pass the doctor data and files to the addDoctor function
@@ -2167,6 +2190,7 @@ const Settings = () => {
                         setNewDoctorSpecialization('');
                         setNewDoctorEmail('');
                         setNewDoctorPhone('');
+                        setNewDoctorClinic('dental');
                         setAadharFile(null);
                         setPanFile(null);
 
@@ -2263,6 +2287,24 @@ const Settings = () => {
                           title="Please enter a valid email address"
                           defaultValue={currentDoctor.email}
                         />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="editDoctorClinic" className="flex items-center">
+                          Clinic <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <Select
+                          value={editDoctorClinic}
+                          onValueChange={(value: 'dental' | 'meditouch' | 'both') => setEditDoctorClinic(value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select clinic" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="dental">Dental Matrix</SelectItem>
+                            <SelectItem value="meditouch">Meditouch</SelectItem>
+                            <SelectItem value="both">Both Clinics</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                     </div>

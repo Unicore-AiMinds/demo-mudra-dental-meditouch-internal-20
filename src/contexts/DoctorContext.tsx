@@ -20,7 +20,7 @@ export interface Doctor {
   aadhar_doc?: string;
   pan_doc?: string;
   color: string;
-  clinic_type?: 'dental' | 'meditouch';
+  clinic_type?: 'dental' | 'meditouch' | 'both';
 }
 
 // Define the context type
@@ -75,7 +75,9 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const doctors = React.useMemo(() => {
     if (activeClinic === 'dental' || activeClinic === 'meditouch') {
       return allDoctors.filter(doctor =>
-        doctor.clinic_type === activeClinic || doctor.clinic_type === undefined // Include legacy doctors without clinic_type
+        doctor.clinic_type === activeClinic ||
+        doctor.clinic_type === 'both' ||
+        doctor.clinic_type === undefined // Include legacy doctors without clinic_type
       );
     }
     return allDoctors; // Show all doctors if no specific clinic is selected
