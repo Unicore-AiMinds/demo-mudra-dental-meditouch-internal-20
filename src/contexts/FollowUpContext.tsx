@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSupabase } from '@/contexts/SupabaseContext';
+import { useClinic } from '@/contexts/ClinicContext';
+import { useServices } from '@/contexts/ServiceContext';
 import { v4 as uuidv4 } from 'uuid';
 import { format, addDays } from 'date-fns';
 
@@ -9,7 +11,7 @@ export interface FollowUp {
   id: string;
   follow_up_id: string;
   patient_id: string;
-  patient_name: string;
+  patient_name: string
   based_on_appointment_id?: string;
   tentative_date: string; // YYYY-MM-DD format
   follow_up_sequence: number;
@@ -87,12 +89,15 @@ const deduplicateFollowUps = (followUps: FollowUp[]): FollowUp[] => {
 
   // Process each follow-up
   for (const followUp of sortedFollowUps) {
-    // Create a unique key based on patient_id, based_on_appointment_id, and suggested_service_name
-    const key = `${followUp.patient_id}|${followUp.based_on_appointment_id || ''}|${followUp.suggested_service_name}`;
+    // CRITICAL FIX: Use follow_up_id as the primary unique key to prevent over-deduplication
+    // Each follow-up should have a unique follow_up_id, so use that as the main identifier
+    const key = followUp.follow_up_id || followUp.id || `${followUp.patient_id}|${followUp.tentative_date}|${followUp.suggested_service_name}|${Date.now()}`;
 
-    // Only add if we haven't seen this combination before
+    // Only add if we haven't seen this follow_up_id before
     if (!uniqueMap.has(key)) {
       uniqueMap.set(key, followUp);
+    } else {
+      console.log(`Skipping duplicate follow-up with key: ${key}`);
     }
   }
 
@@ -128,9 +133,16 @@ const deduplicateFollowUps = (followUps: FollowUp[]): FollowUp[] => {
 export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   const { supabase } = useSupabase();
+  const { activeClinic } = useClinic();
+  const { dentalServices, meditouchServices } = useServices();
 
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Get current clinic's services
+  const getCurrentClinicServices = () => {
+    return activeClinic === 'dental' ? dentalServices : meditouchServices;
+  };
 
   // Fetch follow-ups from Supabase
   const fetchFollowUps = async () => {
@@ -141,9 +153,10 @@ export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }
       // Try a direct query to the follow_ups table using the custom client
       try {
         console.log('Querying follow_ups table directly...');
-        // Use the custom Supabase client implementation with getAll
+        // CRITICAL FIX: Fetch ALL follow-ups to ensure multi-step sequences are visible
         const directData = await supabase.from<FollowUp>('follow_ups').getAll({
-          order: { column: 'tentative_date', ascending: true }
+          order: { column: 'tentative_date', ascending: true },
+          limit: 200  // Increased limit to show more follow-ups including waiting steps
         });
 
         if (directData && directData.length > 0) {
@@ -179,11 +192,68 @@ export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }
         });
       }
 
-      // Fall back to using the custom Supabase client implementation
+      // CRITICAL FIX: Fall back to using the custom Supabase client implementation
       console.log('Falling back to custom Supabase client...');
-      const data = await supabase.from<FollowUp>('follow_ups').getAll({
-        order: { column: 'tentative_date', ascending: true }
+
+      // First, get all follow-ups
+      const allFollowUps = await supabase.from<FollowUp>('follow_ups').getAll({
+        order: { column: 'tentative_date', ascending: true },
+        limit: 200  // Increased limit to show more follow-ups including waiting steps
       });
+
+      console.log(`Fetched ${allFollowUps?.length || 0} total follow-ups before clinic filtering`);
+
+      // Filter follow-ups by clinic type using SERVICE-BASED filtering
+      let data: FollowUp[] = [];
+      if (allFollowUps && allFollowUps.length > 0) {
+        // Get current clinic's services
+        const currentServices = getCurrentClinicServices();
+        const currentServiceNames = currentServices.map(s => s.name);
+
+        console.log(`=== FOLLOW-UP FILTERING DEBUG ===`);
+        console.log(`Active clinic: ${activeClinic}`);
+        console.log(`Dental services:`, dentalServices.map(s => s.name));
+        console.log(`Meditouch services:`, meditouchServices.map(s => s.name));
+        console.log(`Current clinic services:`, currentServiceNames);
+        console.log(`Total follow-ups to filter:`, allFollowUps.length);
+
+        // Check if services are loaded
+        if (currentServiceNames.length === 0) {
+          console.log(`⚠️ No services loaded for ${activeClinic} clinic yet. Returning empty list to prevent cross-clinic contamination.`);
+          data = [];
+        } else {
+
+        // Log all follow-up services for debugging
+        console.log(`Follow-up services found:`);
+        allFollowUps.forEach((f, index) => {
+          console.log(`  ${index + 1}. ${f.patient_name}: suggested="${f.suggested_service_name}", original="${f.original_service}"`);
+        });
+
+        // Filter follow-ups by service names
+        data = allFollowUps.filter(followUp => {
+          // Check both suggested_service_name and original_service
+          const suggestedService = followUp.suggested_service_name;
+          const originalService = followUp.original_service;
+
+          const suggestedServiceMatches = suggestedService && currentServiceNames.includes(suggestedService);
+          const originalServiceMatches = originalService && currentServiceNames.includes(originalService);
+
+          const shouldInclude = suggestedServiceMatches || originalServiceMatches;
+
+          if (shouldInclude) {
+            console.log(`✅ Including follow-up for ${followUp.patient_name} - Service: ${suggestedService || originalService} (matches ${activeClinic} services)`);
+          } else {
+            console.log(`❌ Excluding follow-up for ${followUp.patient_name} - Service: ${suggestedService || originalService} (not in ${activeClinic} services)`);
+          }
+
+          return shouldInclude;
+        });
+
+        console.log(`Filtered ${allFollowUps.length} follow-ups to ${data.length} for ${activeClinic} clinic based on services`);
+        }
+      } else {
+        data = [];
+      }
 
       console.log(`Fetched ${data?.length || 0} follow-ups`);
 
@@ -216,26 +286,25 @@ export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }
       setFollowUps(uniqueFollowUps);
     } catch (error) {
       console.error('Error fetching follow-ups:', error);
-      // Commenting out error toast
-      // toast({
-      //   title: 'Error',
-      //   description: 'Failed to load follow-ups. Please try again.',
-      //   variant: 'destructive',
-      // });
+      toast({
+        title: 'Error',
+        description: 'Failed to load follow-ups. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Function to create follow-ups for dental checkups that might be missing them
+  // Function to create follow-ups for all services that might be missing them
   const createMissingFollowUps = async () => {
     try {
-      console.log('Checking for missing follow-ups for dental checkups...');
+      console.log('FollowUpContext: Checking for missing follow-ups for all services with follow-up rules...');
 
-      // Get recent dental history entries using the custom Supabase client
+      // CRITICAL FIX: Get ALL recent dental history entries, including very recent ones
       const historyData = await supabase.from('dental_history').getAll({
         order: { column: 'date', ascending: false },
-        limit: 20
+        limit: 200 // Increased limit to catch more services including new ones
       });
 
       if (!historyData) {
@@ -248,10 +317,23 @@ export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }
         return;
       }
 
-      console.log(`Found ${historyData.length} dental history entries`);
+      console.log(`=== FOLLOWUP CONTEXT: Found ${historyData.length} dental history entries ===`);
+      console.log('Dental history entries:', historyData.map(h => ({
+        patient_id: h.patient_id,
+        service: h.service,
+        date: h.date,
+        doctor: h.doctor,
+        appointment_id: h.appointment_id || 'NO_APPOINTMENT_ID'
+      })));
 
-      // Filter for dental checkups
-      const checkups = historyData.filter(entry => {
+      // Get all service follow-up rules to check which services need follow-ups
+      const serviceRules = await supabase.from('service_follow_up_rules').getAll();
+      const servicesWithRules = new Set(serviceRules?.map(rule => rule.triggering_service_name) || []);
+
+      console.log('Services with follow-up rules:', Array.from(servicesWithRules));
+
+      // Filter for ALL services that have follow-up rules OR are dental checkups
+      const servicesNeedingFollowUps = historyData.filter(entry => {
         // Make sure entry is an object with the required properties
         if (typeof entry !== 'object' || entry === null) return false;
 
@@ -259,51 +341,90 @@ export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }
         const historyEntry = entry as DentalHistoryEntry;
 
         // Check if it has a service property that's a string
-        return typeof historyEntry.service === 'string' &&
-               historyEntry.service.toLowerCase().includes('dental') &&
-               historyEntry.service.toLowerCase().includes('check');
+        if (typeof historyEntry.service !== 'string') return false;
+
+        const service = historyEntry.service;
+
+        // Check if this service has a follow-up rule OR is a common dental service
+        const hasRule = servicesWithRules.has(service);
+        const serviceLower = service.toLowerCase();
+        const isDentalCheckup = serviceLower.includes('dental') && serviceLower.includes('check');
+        const isCommonService = serviceLower.includes('cleaning') ||
+                               serviceLower.includes('checkup') ||
+                               serviceLower.includes('examination') ||
+                               serviceLower.includes('root canal') ||
+                               serviceLower.includes('filling') ||
+                               serviceLower.includes('crown') ||
+                               serviceLower.includes('extraction') ||
+                               serviceLower.includes('mouth') ||
+                               serviceLower.includes('rehab');
+
+        if (hasRule || isDentalCheckup || isCommonService) {
+          console.log(`✅ Service "${service}" needs follow-up (hasRule: ${hasRule}, isDentalCheckup: ${isDentalCheckup}, isCommonService: ${isCommonService})`);
+          return true;
+        } else {
+          console.log(`❌ Service "${service}" does NOT need follow-up`);
+        }
+        return false;
       }) as DentalHistoryEntry[];
 
-      if (checkups.length === 0) {
-        console.log('No dental checkups found in history');
+      if (servicesNeedingFollowUps.length === 0) {
+        console.log('No services needing follow-ups found in history');
         return;
       }
 
-      console.log(`Found ${checkups.length} dental checkups`);
+      console.log(`Found ${servicesNeedingFollowUps.length} services needing follow-ups`);
 
-      // Get existing follow-ups - create a set of patient_id + appointment_id combinations
+      // CRITICAL FIX: Get existing follow-ups - include sequence info to allow multi-step sequences
       const existingFollowUpKeys = new Set<string>();
 
       followUps.forEach(f => {
         if (f.patient_id && f.based_on_appointment_id) {
-          existingFollowUpKeys.add(`${f.patient_id}|${f.based_on_appointment_id}`);
+          // Include sequence info to allow multiple steps for same appointment
+          existingFollowUpKeys.add(`${f.patient_id}|${f.based_on_appointment_id}|${f.follow_up_sequence || 1}|${f.sequence_group_id || ''}`);
         }
       });
 
       console.log(`Found ${existingFollowUpKeys.size} unique existing follow-up combinations`);
 
-      // Filter for checkups that don't have follow-ups
-      const checkupsWithoutFollowUps = checkups.filter(checkup => {
-        const key = `${checkup.patient_id}|${checkup.appointment_id}`;
-        return !existingFollowUpKeys.has(key);
+      // CRITICAL FIX: Filter for dental history entries that don't have follow-ups
+      // Create a unique key for each dental history entry to ensure 1:1 mapping
+      const servicesWithoutFollowUps = servicesNeedingFollowUps.filter(service => {
+        // Check if a follow-up exists for this EXACT dental history entry
+        // Use the combination of patient_id + appointment_id + original_service + original_doctor
+        // This ensures each unique dental history entry gets exactly one follow-up
+        const hasFollowUpForThisEntry = followUps.some(f =>
+          f.patient_id === service.patient_id &&
+          f.based_on_appointment_id === service.appointment_id &&
+          f.original_service === service.service &&
+          f.original_doctor === service.doctor
+        );
+
+        if (hasFollowUpForThisEntry) {
+          console.log(`✅ Follow-up already exists for dental history entry: ${service.service} (${service.date}) for patient ${service.patient_id}`);
+        } else {
+          console.log(`❌ No follow-up found for dental history entry: ${service.service} (${service.date}) for patient ${service.patient_id} - will create`);
+        }
+
+        return !hasFollowUpForThisEntry;
       });
 
-      if (checkupsWithoutFollowUps.length === 0) {
-        console.log('All dental checkups already have follow-ups');
+      if (servicesWithoutFollowUps.length === 0) {
+        console.log('All services already have follow-ups');
         return;
       }
 
-      console.log(`Found ${checkupsWithoutFollowUps.length} dental checkups without follow-ups`);
+      console.log(`Found ${servicesWithoutFollowUps.length} services without follow-ups`);
 
-      // Create follow-ups for these checkups
-      for (const checkup of checkupsWithoutFollowUps) {
+      // Create follow-ups for these services
+      for (const serviceEntry of servicesWithoutFollowUps) {
         // Get patient name using the custom Supabase client
         const patients = await supabase.from('patients').getAll({
-          filters: { id: checkup.patient_id }
+          filters: { id: serviceEntry.patient_id }
         });
 
         if (!patients || patients.length === 0) {
-          console.log(`Could not find patient with ID ${checkup.patient_id}`);
+          console.log(`Could not find patient with ID ${serviceEntry.patient_id}`);
           continue;
         }
 
@@ -311,37 +432,46 @@ export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }
 
         // Try to find a service follow-up rule for this service
         try {
-          // Fetch service follow-up rules
-          const { data: rulesData } = await supabase
-            .from('service_follow_up_rules')
-            .select('*')
-            .eq('triggering_service_name', checkup.service);
+          console.log(`=== FOLLOWUP CONTEXT: Looking up rules for service: "${serviceEntry.service}" ===`);
+
+          // CRITICAL FIX: Use custom Supabase client like RecallList does
+          const rulesData = await supabase.from('service_follow_up_rules').getAll({
+            filters: { triggering_service_name: serviceEntry.service }
+          });
+
+          console.log(`Found ${rulesData?.length || 0} service follow-up rules for "${serviceEntry.service}":`, rulesData);
 
           // Generate a unique sequence group ID for this set of follow-ups
           const sequenceGroupId = `seq-${Math.random().toString(36).substring(2, 10)}`;
 
           if (rulesData && rulesData.length > 0) {
-            console.log(`Found service follow-up rule for ${checkup.service}`);
+            console.log(`✅ Found service follow-up rule for ${serviceEntry.service}`);
             const rule = rulesData[0];
 
-            // Fetch steps for this rule
-            const { data: stepsData } = await supabase
-              .from('follow_up_steps')
-              .select('*')
-              .eq('service_follow_up_rule_id', rule.id)
-              .order('sequence', { ascending: true });
+            // Fetch steps for this rule using custom Supabase client
+            console.log(`Fetching follow-up steps for rule ID: ${rule.id}`);
+            const stepsData = await supabase.from('follow_up_steps').getAll({
+              filters: { service_follow_up_rule_id: rule.id },
+              order: { column: 'sequence', ascending: true }
+            });
+
+            console.log(`Found ${stepsData?.length || 0} follow-up steps:`, stepsData);
 
             if (stepsData && stepsData.length > 0) {
-              console.log(`Found ${stepsData.length} steps for this rule`);
+              console.log(`✅ Found ${stepsData.length} steps for this rule`);
+
+              // CRITICAL FIX: Calculate each step based on previous step's date, not original service date
+              let previousStepDate = new Date(serviceEntry.date); // Start with original service date
 
               // Create follow-ups for each step
               for (let i = 0; i < stepsData.length; i++) {
                 const step = stepsData[i];
 
-                // Calculate follow-up date based on interval days
-                const checkupDate = new Date(checkup.date);
-                const followUpDate = new Date(checkupDate);
+                // Calculate follow-up date based on previous step's date + interval days
+                const followUpDate = new Date(previousStepDate);
                 followUpDate.setDate(followUpDate.getDate() + step.interval_days);
+
+                console.log(`FollowUpContext Step ${step.sequence}: Previous date: ${previousStepDate.toISOString().split('T')[0]}, Interval: ${step.interval_days} days, New date: ${followUpDate.toISOString().split('T')[0]}`);
 
                 // Generate a unique follow-up ID
                 const followUpId = `FU${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`;
@@ -349,22 +479,22 @@ export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }
                 // Create the follow-up
                 const newFollowUp = {
                   follow_up_id: followUpId,
-                  patient_id: checkup.patient_id,
+                  patient_id: serviceEntry.patient_id,
                   patient_name: patientName,
-                  based_on_appointment_id: checkup.appointment_id,
+                  based_on_appointment_id: serviceEntry.appointment_id,
                   tentative_date: followUpDate.toISOString().split('T')[0],
                   follow_up_sequence: step.sequence,
                   total_steps_in_sequence: stepsData.length,
                   sequence_group_id: sequenceGroupId,
-                  suggested_service_name: step.suggested_service_name || checkup.service,
-                  original_service: checkup.service,
-                  original_doctor: checkup.doctor,
+                  suggested_service_name: step.suggested_service_name || serviceEntry.service,
+                  original_service: serviceEntry.service,
+                  original_doctor: serviceEntry.doctor,
                   // First step is Pending, others are Waiting
                   status: i === 0 ? 'Pending' as const : 'Waiting' as const,
                   special_notes: step.notes || ''
                 };
 
-                console.log(`Creating follow-up step ${step.sequence}/${stepsData.length} for ${patientName}'s ${checkup.service}:`, newFollowUp);
+                console.log(`Creating follow-up step ${step.sequence}/${stepsData.length} for ${patientName}'s ${serviceEntry.service}:`, newFollowUp);
 
                 // Insert into database using the custom Supabase client
                 try {
@@ -373,6 +503,10 @@ export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }
                 } catch (insertError) {
                   console.error(`Error inserting follow-up step ${step.sequence}:`, insertError);
                 }
+
+                // CRITICAL FIX: Update previousStepDate for next iteration
+                previousStepDate = followUpDate;
+                console.log(`FollowUpContext: Updated previousStepDate to: ${previousStepDate.toISOString().split('T')[0]} for next step`);
               }
 
               // Skip the default follow-up creation since we created steps
@@ -380,79 +514,13 @@ export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }
             }
           }
 
-          // If no rule was found or no steps were found, create a default follow-up
-          console.log(`No service follow-up rule found for ${checkup.service}, creating default follow-up`);
-
-          // Calculate follow-up date (6 months from checkup date)
-          const checkupDate = new Date(checkup.date);
-          const followUpDate = new Date(checkupDate);
-          followUpDate.setMonth(followUpDate.getMonth() + 6);
-
-          // Generate a unique follow-up ID
-          const followUpId = `FU${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`;
-
-          // Create the follow-up
-          const newFollowUp = {
-            follow_up_id: followUpId,
-            patient_id: checkup.patient_id,
-            patient_name: patientName,
-            based_on_appointment_id: checkup.appointment_id,
-            tentative_date: followUpDate.toISOString().split('T')[0],
-            follow_up_sequence: 1,
-            total_steps_in_sequence: 1,
-            sequence_group_id: sequenceGroupId,
-            suggested_service_name: 'Dental Checkup',
-            original_service: checkup.service,
-            original_doctor: checkup.doctor,
-            status: 'Pending' as const
-          };
-
-          console.log(`Creating default follow-up for ${patientName}'s dental checkup:`, newFollowUp);
-
-          // Insert into database using the custom Supabase client
-          try {
-            const insertedFollowUp = await supabase.from<FollowUp>('follow_ups').insert(newFollowUp);
-            console.log('Successfully created default follow-up:', insertedFollowUp);
-          } catch (insertError) {
-            console.error('Error inserting default follow-up:', insertError);
-          }
+          // If no rule was found or no steps were found, do NOT create a default follow-up
+          console.log(`🚫 No service follow-up rule found for ${serviceEntry.service} - no follow-up will be created`);
+          console.log(`✅ This is correct behavior - only services with configured follow-up rules should generate follow-ups`);
         } catch (ruleError) {
           console.error('Error fetching service follow-up rules:', ruleError);
-
-          // Fallback to creating a default follow-up
-          // Calculate follow-up date (6 months from checkup date)
-          const checkupDate = new Date(checkup.date);
-          const followUpDate = new Date(checkupDate);
-          followUpDate.setMonth(followUpDate.getMonth() + 6);
-
-          // Generate a unique follow-up ID
-          const followUpId = `FU${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`;
-
-          // Create the follow-up
-          const newFollowUp = {
-            follow_up_id: followUpId,
-            patient_id: checkup.patient_id,
-            patient_name: patientName,
-            based_on_appointment_id: checkup.appointment_id,
-            tentative_date: followUpDate.toISOString().split('T')[0],
-            follow_up_sequence: 1,
-            total_steps_in_sequence: 1,
-            sequence_group_id: `seq-${Math.random().toString(36).substring(2, 10)}`,
-            suggested_service_name: 'Dental Checkup',
-            original_service: checkup.service,
-            original_doctor: checkup.doctor,
-            status: 'Pending' as const
-          };
-
-          console.log(`Creating fallback follow-up for ${patientName}'s dental checkup:`, newFollowUp);
-
-          // Insert into database using the custom Supabase client
-          try {
-            const insertedFollowUp = await supabase.from<FollowUp>('follow_ups').insert(newFollowUp);
-            console.log('Successfully created fallback follow-up:', insertedFollowUp);
-          } catch (insertError) {
-            console.error('Error inserting fallback follow-up:', insertError);
-          }
+          console.log(`🚫 Error occurred while checking rules for ${serviceEntry.service} - no follow-up will be created`);
+          console.log(`✅ This is correct behavior - only services with configured follow-up rules should generate follow-ups`);
         }
       }
 
@@ -469,13 +537,16 @@ export const FollowUpProvider: React.FC<{ children: ReactNode }> = ({ children }
     const initialize = async () => {
       await fetchFollowUps();
 
-      // No longer automatically creating follow-ups
-      // All follow-ups will be created manually when appointments are completed
+      // CRITICAL FIX: DISABLE automatic follow-up creation
+      // Follow-ups should ONLY be created when appointments are marked as completed
+      // in DentalHistoryContext.tsx, not automatically here
+      console.log('FollowUpContext: Automatic follow-up creation DISABLED - follow-ups are created only when appointments are completed');
+      // await createMissingFollowUps(); // DISABLED
     };
 
     initialize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeClinic, dentalServices.length, meditouchServices.length]); // Refetch when clinic or services change
 
   // Add a new follow-up
   const addFollowUp = async (followUp: Omit<FollowUp, 'id' | 'follow_up_id' | 'created_at' | 'updated_at'>): Promise<FollowUp> => {
