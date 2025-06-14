@@ -33,7 +33,7 @@ interface AuditLogContextType {
   auditLogs: AuditLog[];
   isLoading: boolean;
   fetchAuditLogs: () => Promise<void>;
-  logAction: (action: Omit<AuditLog, 'id' | 'timestamp' | 'user_id' | 'user_name' | 'user_role' | 'created_at' | 'ip_address' | 'user_agent' | 'clinic_type'>) => Promise<void>;
+  logAction: (action: Omit<AuditLog, 'id' | 'timestamp' | 'user_id' | 'user_name' | 'user_role' | 'created_at' | 'ip_address' | 'user_agent'>) => Promise<void>;
   getFilteredLogs: (filters: {
     category?: string;
     user?: string;
@@ -106,7 +106,7 @@ export const AuditLogProvider: React.FC<{ children: ReactNode }> = ({ children }
   }, [toast, activeClinic]);
 
   // Function to log an action
-  const logAction = useCallback(async (action: Omit<AuditLog, 'id' | 'timestamp' | 'user_id' | 'user_name' | 'user_role' | 'created_at' | 'ip_address' | 'user_agent' | 'clinic_type'>): Promise<void> => {
+  const logAction = useCallback(async (action: Omit<AuditLog, 'id' | 'timestamp' | 'user_id' | 'user_name' | 'user_role' | 'created_at' | 'ip_address' | 'user_agent'>): Promise<void> => {
     try {
       console.log('=== AUDIT LOG DEBUG ===');
       console.log('User context:', user);
@@ -158,10 +158,11 @@ export const AuditLogProvider: React.FC<{ children: ReactNode }> = ({ children }
         throw new Error(`Invalid action_category: ${action.action_category}`);
       }
 
-      // Validate clinic_type constraint
-      const validClinicType = activeClinic && ['dental', 'meditouch'].includes(activeClinic)
-        ? activeClinic as 'dental' | 'meditouch'
-        : null;
+      // Use provided clinic_type or fall back to activeClinic
+      const validClinicType = action.clinic_type ||
+        (activeClinic && ['dental', 'meditouch'].includes(activeClinic)
+          ? activeClinic as 'dental' | 'meditouch'
+          : null);
 
       // Prepare the audit log entry with proper data types
       const auditLogEntry = {

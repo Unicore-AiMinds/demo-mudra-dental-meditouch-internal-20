@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { ChartingEntry, defaultChartingEntries } from '@/types/dental-charting';
+import { Patient } from '@/contexts/PatientContext';
 import { useToast } from '@/hooks/use-toast';
 import { useDentalHistory } from './DentalHistoryContext';
 import { useSupabase } from './SupabaseContext';
 import { handleDatabaseError } from '@/utils/error-handler';
+import { useAuditLog } from './AuditLogContext';
 
 // Define Supabase constants
 const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
@@ -15,8 +17,11 @@ interface DentalChartingContextType {
   getPlannedChartingEntries: () => Promise<ChartingEntry[]>;
   getPatientName: (patientId: string) => Promise<string>;
   updateChartingEntryStatus: (entryId: string, status: 'Scheduled' | 'Completed') => Promise<void>;
+  updateChartingEntry: (entryId: string, updates: Partial<ChartingEntry>) => Promise<void>;
+  deleteChartingEntry: (entryId: string) => Promise<void>;
   linkChartingEntryToAppointment: (entryId: string, appointmentId: string) => Promise<void>;
   snoozeChartingEntry: (entryId: string, snoozeUntilDate: string, notes?: string) => Promise<void>;
+  unsnoozeChartingEntry: (entryId: string) => Promise<void>;
   addChartingEntry: (entry: Omit<ChartingEntry, 'id' | 'entry_id' | 'created_at' | 'updated_at'>) => Promise<ChartingEntry>;
   isLoading: boolean;
 }
@@ -29,6 +34,63 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
   const { toast } = useToast();
   const { getPatientName: getPatientNameFromHistory } = useDentalHistory();
   const { supabase } = useSupabase();
+  const { logAction } = useAuditLog();
+
+  // Helper function to log audit actions for both clinics if patient is registered for both
+  const logDentalChartingAudit = async (
+    patientId: string,
+    auditData: {
+      action_type: string;
+      target_entity: string;
+      target_id: string;
+      details: string;
+    }
+  ) => {
+    try {
+      // Get patient clinic type to determine audit log visibility
+      const patients = await supabase.from<Patient>('patients').getAll({
+        filters: { id: patientId }
+      });
+
+      if (patients.length > 0) {
+        const patient = patients[0];
+
+        // If patient is registered for both clinics, create audit entries for both
+        if (patient.clinic === 'both') {
+          // Create audit log entry for dental clinic
+          await logAction({
+            action_category: 'dental_charting',
+            ...auditData,
+            clinic_type: 'dental'
+          });
+
+          // Create audit log entry for meditouch clinic
+          await logAction({
+            action_category: 'dental_charting',
+            ...auditData,
+            clinic_type: 'meditouch'
+          });
+        } else {
+          // Create single audit log entry for patients registered to one clinic
+          const clinicType = patient.clinic === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({
+            action_category: 'dental_charting',
+            ...auditData,
+            clinic_type: clinicType
+          });
+        }
+      } else {
+        // Fallback if patient not found - default to dental
+        await logAction({
+          action_category: 'dental_charting',
+          ...auditData,
+          clinic_type: 'dental'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to log dental charting audit:', error);
+    }
+  };
 
   // Initialize dental charting entries from Supabase
   useEffect(() => {
@@ -167,6 +229,27 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
       // Update local state
       setPatientChartingHistory(prev => [createdEntry, ...prev]);
 
+      // Log the audit action with detailed information
+      try {
+        // Get patient name for audit logging
+        let patientName = 'Unknown Patient';
+        try {
+          patientName = await getPatientName(entry.patient_id);
+        } catch (nameError) {
+          console.error('Failed to get patient name for audit:', nameError);
+        }
+
+        // Use helper function to handle dual clinic audit logging
+        await logDentalChartingAudit(entry.patient_id, {
+          action_type: 'Create Dental Chart Entry',
+          target_entity: 'Dental Charting',
+          target_id: createdEntry.id,
+          details: `Created ${entry.status?.toLowerCase() || 'dental'} chart entry for ${patientName} - Tooth ${Array.isArray(entry.tooth_numbers) ? entry.tooth_numbers.join(', ') : entry.tooth_numbers || 'Unknown'}${Array.isArray(entry.surfaces) && entry.surfaces.length > 0 ? ` (Surfaces: ${entry.surfaces.join(', ')})` : ''}${entry.status === 'Existing' ? (entry.finding ? ` - Finding: ${entry.finding}` : '') : (entry.service ? ` - Service: ${entry.service}` : '')}`
+        });
+      } catch (auditError) {
+        console.error('Failed to log dental charting creation audit:', auditError);
+      }
+
       toast({
         title: 'Success',
         description: 'Dental charting entry added successfully.',
@@ -242,7 +325,9 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
   // Get patient name - fallback to using the dental history context
   const getPatientName = async (patientId: string): Promise<string> => {
     try {
+      console.log('Getting patient name for ID:', patientId);
       const name = await getPatientNameFromHistory(patientId);
+      console.log('Retrieved patient name:', name);
       return name || "Unknown Patient";
     } catch (error) {
       console.error('Error fetching patient name:', error);
@@ -343,6 +428,30 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
           const entryAfterUpdate = await checkAfterResponse.json();
           console.log('Entry after update:', entryAfterUpdate);
 
+          // Log audit action for status change
+          try {
+            let patientName = 'Unknown Patient';
+            try {
+              patientName = await getPatientName(dbEntry.patient_id);
+            } catch (nameError) {
+              console.error('Failed to get patient name for audit:', nameError);
+            }
+
+            const teeth = Array.isArray(dbEntry.tooth_numbers) ? dbEntry.tooth_numbers.join(', ') : 'Unknown';
+            const treatmentInfo = dbEntry.status === 'Existing'
+              ? (dbEntry.finding ? ` - Finding: ${dbEntry.finding}` : '')
+              : (dbEntry.service ? ` - Service: ${dbEntry.service}` : '');
+
+            await logDentalChartingAudit(dbEntry.patient_id, {
+              action_type: 'Update Dental Chart Status',
+              target_entity: 'Dental Charting',
+              target_id: dbEntry.id,
+              details: `Changed status for ${patientName} - Tooth ${teeth}${treatmentInfo}: "${entryBeforeUpdate[0]?.status || 'Unknown'}" → "${status}"`
+            });
+          } catch (auditError) {
+            console.error('Failed to log dental charting status change audit:', auditError);
+          }
+
           console.log('Successfully updated charting entry in Supabase');
         } catch (error) {
           console.error('Error during REST API update:', error);
@@ -405,6 +514,30 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
 
           const entryAfterUpdate = await checkAfterResponse.json();
           console.log('Entry after update:', entryAfterUpdate);
+
+          // Log audit action for status change
+          try {
+            let patientName = 'Unknown Patient';
+            try {
+              patientName = await getPatientName(entry.patient_id);
+            } catch (nameError) {
+              console.error('Failed to get patient name for audit:', nameError);
+            }
+
+            const teeth = Array.isArray(entry.tooth_numbers) ? entry.tooth_numbers.join(', ') : 'Unknown';
+            const treatmentInfo = entry.status === 'Existing'
+              ? (entry.finding ? ` - Finding: ${entry.finding}` : '')
+              : (entry.service ? ` - Service: ${entry.service}` : '');
+
+            await logDentalChartingAudit(entry.patient_id, {
+              action_type: 'Update Dental Chart Status',
+              target_entity: 'Dental Charting',
+              target_id: entry.id,
+              details: `Changed status for ${patientName} - Tooth ${teeth}${treatmentInfo}: "${entryBeforeUpdate[0]?.status || 'Unknown'}" → "${status}"`
+            });
+          } catch (auditError) {
+            console.error('Failed to log dental charting status change audit:', auditError);
+          }
 
           console.log('Successfully updated charting entry in Supabase');
         } catch (error) {
@@ -531,6 +664,199 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
     }
   };
 
+  // Update a charting entry with detailed field-level audit logging
+  const updateChartingEntry = async (entryId: string, updates: Partial<ChartingEntry>): Promise<void> => {
+    try {
+      // Find the entry to update in local state first
+      let entry = patientChartingHistory.find(e => e.entry_id === entryId);
+
+      // If not found in local state, fetch from database
+      if (!entry) {
+        console.log(`Entry ${entryId} not found in local state, fetching from database...`);
+        const entries = await supabase.from<ChartingEntry>('dental_charting').getAll({
+          filters: { entry_id: entryId }
+        });
+
+        if (entries.length === 0) {
+          throw new Error('Charting entry not found in database');
+        }
+
+        entry = entries[0];
+        console.log('Found entry in database:', entry);
+      }
+
+      // Get the current state before update for audit logging
+      const beforeState = { ...entry };
+
+      // Prepare the update data
+      const updateData = {
+        ...updates,
+        updated_at: new Date().toISOString()
+      };
+
+      // Remove fields that shouldn't be updated
+      delete updateData.id;
+      delete updateData.entry_id;
+      delete updateData.created_at;
+
+      // Update in Supabase
+      await supabase.from<ChartingEntry>('dental_charting').update(entry.id, updateData);
+
+      // Get the updated entry for audit logging
+      const updatedEntries = await supabase.from<ChartingEntry>('dental_charting').getAll({
+        filters: { entry_id: entryId }
+      });
+      const afterState = updatedEntries[0];
+
+      // Update local state
+      setPatientChartingHistory(prev =>
+        prev.map(e =>
+          e.entry_id === entryId
+            ? { ...e, ...updateData }
+            : e
+        )
+      );
+
+      // Log detailed audit action with field-level changes
+      try {
+        let patientName = 'Unknown Patient';
+        try {
+          patientName = await getPatientName(entry.patient_id);
+        } catch (nameError) {
+          console.error('Failed to get patient name for audit:', nameError);
+        }
+
+        // Build detailed change description
+        const changedFields: string[] = [];
+
+        // Check for tooth number changes
+        if (JSON.stringify(beforeState.tooth_numbers) !== JSON.stringify(afterState.tooth_numbers)) {
+          const beforeTeeth = Array.isArray(beforeState.tooth_numbers) ? beforeState.tooth_numbers.join(', ') : beforeState.tooth_numbers || 'None';
+          const afterTeeth = Array.isArray(afterState.tooth_numbers) ? afterState.tooth_numbers.join(', ') : afterState.tooth_numbers || 'None';
+          changedFields.push(`Tooth Numbers: "${beforeTeeth}" → "${afterTeeth}"`);
+        }
+
+        // Check for surface changes
+        if (JSON.stringify(beforeState.surfaces) !== JSON.stringify(afterState.surfaces)) {
+          const beforeSurfaces = Array.isArray(beforeState.surfaces) && beforeState.surfaces.length > 0 ? beforeState.surfaces.join(', ') : 'None';
+          const afterSurfaces = Array.isArray(afterState.surfaces) && afterState.surfaces.length > 0 ? afterState.surfaces.join(', ') : 'None';
+          changedFields.push(`Surfaces: "${beforeSurfaces}" → "${afterSurfaces}"`);
+        }
+
+        // Check for finding changes
+        if (beforeState.finding !== afterState.finding) {
+          changedFields.push(`Finding: "${beforeState.finding || 'None'}" → "${afterState.finding || 'None'}"`);
+        }
+
+        // Check for service changes
+        if (beforeState.service !== afterState.service) {
+          changedFields.push(`Service: "${beforeState.service || 'None'}" → "${afterState.service || 'None'}"`);
+        }
+
+        // Check for status changes
+        if (beforeState.status !== afterState.status) {
+          changedFields.push(`Status: "${beforeState.status || 'None'}" → "${afterState.status || 'None'}"`);
+        }
+
+        // Check for notes changes
+        if (beforeState.notes !== afterState.notes) {
+          const beforeNotes = beforeState.notes ? (beforeState.notes.length > 50 ? beforeState.notes.substring(0, 50) + '...' : beforeState.notes) : 'None';
+          const afterNotes = afterState.notes ? (afterState.notes.length > 50 ? afterState.notes.substring(0, 50) + '...' : afterState.notes) : 'None';
+          changedFields.push(`Notes: "${beforeNotes}" → "${afterNotes}"`);
+        }
+
+        const toothNumbers = Array.isArray(afterState.tooth_numbers) ? afterState.tooth_numbers.join(', ') : afterState.tooth_numbers || 'Unknown';
+        const baseDetails = `Updated dental chart entry for ${patientName} - Tooth ${toothNumbers}`;
+        const detailsText = changedFields.length > 0
+          ? `${baseDetails}: ${changedFields.join(', ')}`
+          : `${baseDetails} - No specific field changes detected`;
+
+        await logDentalChartingAudit(entry.patient_id, {
+          action_type: 'Update Dental Chart Entry',
+          target_entity: 'Dental Charting',
+          target_id: entry.id,
+          details: detailsText
+        });
+      } catch (auditError) {
+        console.error('Failed to log dental charting update audit:', auditError);
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Dental charting entry updated successfully.',
+      });
+    } catch (error) {
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `dental_charting_update_error_${entryId}`,
+        customMessage: 'Failed to update charting entry. Please try again.',
+        showToast: true
+      });
+      throw error;
+    }
+  };
+
+  // Delete a charting entry with audit logging
+  const deleteChartingEntry = async (entryId: string): Promise<void> => {
+    try {
+      // Find the entry to delete
+      const entry = patientChartingHistory.find(e => e.entry_id === entryId);
+
+      if (!entry) {
+        throw new Error('Charting entry not found');
+      }
+
+      // Delete from Supabase
+      await supabase.from<ChartingEntry>('dental_charting').delete(entry.id);
+
+      // Update local state
+      setPatientChartingHistory(prev =>
+        prev.filter(e => e.entry_id !== entryId)
+      );
+
+      // Log audit action for deletion
+      try {
+        let patientName = 'Unknown Patient';
+        try {
+          patientName = await getPatientName(entry.patient_id);
+        } catch (nameError) {
+          console.error('Failed to get patient name for audit:', nameError);
+        }
+
+        const teeth = Array.isArray(entry.tooth_numbers) ? entry.tooth_numbers.join(', ') : 'Unknown';
+        const treatmentInfo = entry.status === 'Existing'
+          ? (entry.finding ? ` - Finding: ${entry.finding}` : '')
+          : (entry.service ? ` - Service: ${entry.service}` : '');
+
+        await logDentalChartingAudit(entry.patient_id, {
+          action_type: 'Delete Dental Chart Entry',
+          target_entity: 'Dental Charting',
+          target_id: entry.id,
+          details: `Deleted ${entry.status?.toLowerCase() || 'dental'} chart entry for ${patientName} - Tooth ${teeth}${treatmentInfo}`
+        });
+      } catch (auditError) {
+        console.error('Failed to log dental charting deletion audit:', auditError);
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Dental charting entry deleted successfully.',
+      });
+    } catch (error) {
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `dental_charting_delete_error_${entryId}`,
+        customMessage: 'Failed to delete charting entry. Please try again.',
+        showToast: true
+      });
+      throw error;
+    }
+  };
+
   // Link a charting entry to an appointment
   const linkChartingEntryToAppointment = async (entryId: string, appointmentId: string): Promise<void> => {
     try {
@@ -554,6 +880,28 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
             : e
         )
       );
+
+      // Log audit action for linking to appointment
+      try {
+        let patientName = 'Unknown Patient';
+        try {
+          patientName = await getPatientName(entry.patient_id);
+        } catch (nameError) {
+          console.error('Failed to get patient name for audit:', nameError);
+        }
+
+        const teeth = Array.isArray(entry.tooth_numbers) ? entry.tooth_numbers.join(', ') : 'Unknown';
+        const serviceInfo = entry.service ? ` - Service: ${entry.service}` : '';
+
+        await logDentalChartingAudit(entry.patient_id, {
+          action_type: 'Link Chart to Appointment',
+          target_entity: 'Dental Charting',
+          target_id: entry.id,
+          details: `Linked dental chart entry for ${patientName} - Tooth ${teeth}${serviceInfo} to appointment ${appointmentId}`
+        });
+      } catch (auditError) {
+        console.error('Failed to log dental charting link to appointment audit:', auditError);
+      }
 
       toast({
         title: 'Success',
@@ -607,6 +955,29 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
         })
       );
 
+      // Log audit action for snoozing entry
+      try {
+        let patientName = 'Unknown Patient';
+        try {
+          patientName = await getPatientName(entry.patient_id);
+        } catch (nameError) {
+          console.error('Failed to get patient name for audit:', nameError);
+        }
+
+        const teeth = Array.isArray(entry.tooth_numbers) ? entry.tooth_numbers.join(', ') : 'Unknown';
+        const serviceInfo = entry.service ? ` - Service: ${entry.service}` : '';
+        const notesInfo = notes ? ` with notes: "${notes}"` : '';
+
+        await logDentalChartingAudit(entry.patient_id, {
+          action_type: 'Snooze Dental Chart Entry',
+          target_entity: 'Dental Charting',
+          target_id: entry.id,
+          details: `Snoozed dental chart entry for ${patientName} - Tooth ${teeth}${serviceInfo} until ${snoozeUntilDate}${notesInfo}`
+        });
+      } catch (auditError) {
+        console.error('Failed to log dental charting snooze audit:', auditError);
+      }
+
       toast({
         title: 'Success',
         description: `Treatment snoozed until ${snoozeUntilDate}.`,
@@ -624,6 +995,93 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
     }
   };
 
+  // Unsnooze a charting entry (remove snooze date)
+  const unsnoozeChartingEntry = async (entryId: string): Promise<void> => {
+    try {
+      console.log(`Unsnoozing charting entry: ${entryId}`);
+
+      // First, get the entry from database to ensure we have the correct ID
+      const entries = await supabase.from<ChartingEntry>('dental_charting').getAll({
+        filters: { entry_id: entryId }
+      });
+
+      if (entries.length === 0) {
+        throw new Error('Charting entry not found');
+      }
+
+      const entry = entries[0];
+      console.log('Found entry to unsnooze:', entry);
+
+      // Update in Supabase using direct fetch to ensure it works
+      const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/dental_charting?id=eq.${entry.id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          snoozed_until: null,
+          updated_at: new Date().toISOString()
+        })
+      });
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error('Update response error:', errorText);
+        throw new Error(`Failed to update entry: ${updateResponse.status} ${updateResponse.statusText}`);
+      }
+
+      const updatedData = await updateResponse.json();
+      console.log('Successfully unnoozed entry:', updatedData);
+
+      // Update local state if the entry exists there
+      setPatientChartingHistory(prev =>
+        prev.map(e =>
+          e.entry_id === entryId
+            ? { ...e, snoozed_until: null }
+            : e
+        )
+      );
+
+      // Log audit action for unsnoozing entry
+      try {
+        let patientName = 'Unknown Patient';
+        try {
+          patientName = await getPatientName(entry.patient_id);
+        } catch (nameError) {
+          console.error('Failed to get patient name for audit:', nameError);
+        }
+
+        const teeth = Array.isArray(entry.tooth_numbers) ? entry.tooth_numbers.join(', ') : 'Unknown';
+        const serviceInfo = entry.service ? ` - Service: ${entry.service}` : '';
+
+        await logDentalChartingAudit(entry.patient_id, {
+          action_type: 'Activate Dental Chart Entry',
+          target_entity: 'Dental Charting',
+          target_id: entry.id,
+          details: `Activated dental chart entry for ${patientName} - Tooth ${teeth}${serviceInfo} (removed snooze)`
+        });
+      } catch (auditError) {
+        console.error('Failed to log dental charting unsnooze audit:', auditError);
+      }
+
+      console.log('Unsnooze operation completed successfully');
+    } catch (error) {
+      console.error('Error unsnoozing charting entry:', error);
+      // Use the global error handler
+      handleDatabaseError({
+        error,
+        toast,
+        errorKey: `dental_charting_unsnooze_error_${entryId}`,
+        customMessage: 'Failed to activate treatment. Please try again.',
+        showToast: true
+      });
+      throw error;
+    }
+  };
+
   return (
     <DentalChartingContext.Provider
       value={{
@@ -632,8 +1090,11 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
         getPlannedChartingEntries,
         getPatientName,
         updateChartingEntryStatus,
+        updateChartingEntry,
+        deleteChartingEntry,
         linkChartingEntryToAppointment,
         snoozeChartingEntry,
+        unsnoozeChartingEntry,
         addChartingEntry,
         isLoading
       }}

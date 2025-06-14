@@ -435,28 +435,106 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       // Log the audit action with appropriate type and detailed information
       try {
-        let updateType: 'status' | 'details' | 'cancel' | undefined;
+        // Check if this is specifically a payment status change
+        const updateKeys = Object.keys(updates);
+        const isPaymentStatusChange = updates.payment_status !== undefined &&
+                                    updateKeys.length <= 2 && // Only payment_status and possibly updated_at
+                                    updateKeys.every(key => key === 'payment_status' || key === 'updated_at');
 
-        // Determine the type of update
-        if (updates.status === 'cancelled') {
-          updateType = 'cancel';
-        } else if (updates.status && updates.status !== existingAppointment.status) {
-          updateType = 'status';
+        console.log('Update detection:', {
+          updates,
+          updateKeys,
+          isPaymentStatusChange,
+          hasPaymentStatus: updates.payment_status !== undefined
+        });
+
+        if (isPaymentStatusChange) {
+          console.log('🎯 PAYMENT STATUS CHANGE DETECTED - Using specific payment status audit logging');
+          // Use specific payment status audit logging
+          const oldStatus = existingAppointment.payment_status || 'unpaid';
+          const newStatus = updates.payment_status;
+
+          console.log('Payment status change details:', {
+            appointmentId: id,
+            oldStatus,
+            newStatus,
+            patientName: updatedLocalAppointment.patient_name
+          });
+
+          // Get patient clinic type to determine audit log visibility
+          let patientClinicType: 'dental' | 'meditouch' | 'both' | null = null;
+
+          try {
+            const patients = await supabase.from<{id: string, clinic: 'dental' | 'meditouch' | 'both'}>('patients').getAll({
+              filters: { id: existingAppointment.patient_id }
+            });
+
+            if (patients.length > 0) {
+              patientClinicType = patients[0].clinic;
+            }
+          } catch (patientError) {
+            console.error('Failed to get patient clinic type for audit:', patientError);
+          }
+
+          // Create audit log entry
+          const auditEntry = AuditLogTemplates.appointment.updatePaymentStatus(
+            id,
+            updatedLocalAppointment.patient_name || 'Unknown Patient',
+            updatedLocalAppointment.service,
+            updatedLocalAppointment.date,
+            updatedLocalAppointment.time,
+            oldStatus,
+            newStatus,
+            updatedLocalAppointment.doctor || updatedLocalAppointment.therapist
+          );
+
+          // If patient is registered for both clinics, create audit entries for both
+          if (patientClinicType === 'both') {
+            // Create audit log entry for dental clinic
+            await logAction({
+              ...auditEntry,
+              clinic_type: 'dental'
+            });
+
+            // Create audit log entry for meditouch clinic
+            await logAction({
+              ...auditEntry,
+              clinic_type: 'meditouch'
+            });
+          } else {
+            // Create single audit log entry for patients registered to one clinic
+            const clinicType = patientClinicType === 'meditouch' ? 'meditouch' : 'dental';
+            await logAction({
+              ...auditEntry,
+              clinic_type: clinicType
+            });
+          }
         } else {
-          updateType = 'details';
-        }
+          console.log('❌ NOT DETECTED as payment status change - Using generic audit logging');
+          // Use the existing detailed audit logging for other updates
+          let updateType: 'status' | 'details' | 'cancel' | undefined;
 
-        // Create detailed audit log with appointment information
-        await logAction(AuditLogTemplates.appointment.updateDetailed(
-          id,
-          updatedLocalAppointment.patient_name || 'Unknown Patient',
-          updatedLocalAppointment.service,
-          updatedLocalAppointment.date,
-          updatedLocalAppointment.time,
-          updatedLocalAppointment.doctor || updatedLocalAppointment.therapist,
-          { before: existingAppointment, after: updatedLocalAppointment },
-          updateType
-        ));
+          // Determine the type of update
+          if (updates.status === 'cancelled') {
+            updateType = 'cancel';
+          } else if (updates.status && updates.status !== existingAppointment.status) {
+            updateType = 'status';
+          } else {
+            updateType = 'details';
+          }
+
+          // Create detailed audit log with appointment information
+          await logAction(AuditLogTemplates.appointment.updateDetailed(
+            id,
+            updatedLocalAppointment.patient_name || 'Unknown Patient',
+            updatedLocalAppointment.service,
+            updatedLocalAppointment.date,
+            updatedLocalAppointment.time,
+            updatedLocalAppointment.doctor || updatedLocalAppointment.therapist,
+            { before: existingAppointment, after: updatedLocalAppointment },
+            updateType
+          ));
+        }
       } catch (auditError) {
         console.error('Failed to log appointment update audit:', auditError);
       }

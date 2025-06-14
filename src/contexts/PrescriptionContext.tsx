@@ -4,6 +4,9 @@ import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/components/ui/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { handleDatabaseError } from '@/utils/error-handler';
+import { AuditLogTemplates } from '@/utils/auditLogger';
+import { usePatients } from '@/contexts/PatientContext';
+import { useAuditLog } from '@/contexts/AuditLogContext';
 
 // Supabase configuration - same as in supabase.ts
 // Verify this matches your actual Supabase project
@@ -41,6 +44,19 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { getPatientById } = usePatients();
+  const { logAction } = useAuditLog();
+
+  // Helper function to get patient name for audit logging
+  const getPatientNameForAudit = async (patientId: string): Promise<string> => {
+    try {
+      const patient = await getPatientById(patientId);
+      return patient?.name || `Patient ${patientId}`;
+    } catch (error) {
+      console.error('Error fetching patient name for audit:', error);
+      return `Patient ${patientId}`;
+    }
+  };
 
   // Initialize prescriptions and medications from Supabase
   useEffect(() => {
@@ -472,6 +488,32 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       updatedPrescriptions[patientId] = [prescriptionWithEmptyMedications, ...updatedPrescriptions[patientId]];
       setPrescriptions(updatedPrescriptions);
 
+      // Log audit action for prescription creation
+      try {
+        const patientName = await getPatientNameForAudit(patientId);
+        const patient = await getPatientById(patientId);
+        const auditEntry = AuditLogTemplates.prescription.create(
+          createdPrescription.id,
+          patientName,
+          prescription.diagnosis || 'No diagnosis specified',
+          prescription.prescribed_by || 'Unknown',
+          0 // No medications added yet
+        );
+
+        // Set clinic type based on patient's clinic registration
+        if (patient?.clinic === 'both') {
+          // Create audit log entries for both clinics
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+          await logAction({ ...auditEntry, clinic_type: 'meditouch' });
+        } else {
+          // Create single audit log entry
+          const clinicType = patient?.clinic === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({ ...auditEntry, clinic_type: clinicType });
+        }
+      } catch (auditError) {
+        console.error('Failed to log prescription creation audit:', auditError);
+      }
+
       toast({
         title: 'Success',
         description: 'Prescription added successfully.',
@@ -559,6 +601,34 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
 
         return newPrescriptions;
       });
+
+      // Log audit action for prescription update
+      try {
+        const patientName = await getPatientNameForAudit(patientId);
+        const patient = await getPatientById(patientId);
+        const afterPrescription = { ...prescriptionToUpdate, ...updates };
+        const auditEntry = AuditLogTemplates.prescription.update(
+          prescriptionToUpdate.id,
+          patientName,
+          {
+            before: prescriptionToUpdate,
+            after: afterPrescription
+          }
+        );
+
+        // Set clinic type based on patient's clinic registration
+        if (patient?.clinic === 'both') {
+          // Create audit log entries for both clinics
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+          await logAction({ ...auditEntry, clinic_type: 'meditouch' });
+        } else {
+          // Create single audit log entry
+          const clinicType = patient?.clinic === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({ ...auditEntry, clinic_type: clinicType });
+        }
+      } catch (auditError) {
+        console.error('Failed to log prescription update audit:', auditError);
+      }
 
       toast({
         title: 'Success',
@@ -1172,6 +1242,41 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         return newPrescriptions;
       });
 
+      // Log audit action for medication addition
+      try {
+        // Find the patient ID from the prescription
+        let patientIdForAudit = '';
+        for (const pid in prescriptions) {
+          const found = prescriptions[pid].find(p => p.id === prescriptionUuid);
+          if (found) {
+            patientIdForAudit = pid;
+            break;
+          }
+        }
+        const patientName = await getPatientNameForAudit(patientIdForAudit);
+        const patient = await getPatientById(patientIdForAudit);
+        const auditEntry = AuditLogTemplates.prescription.addMedication(
+          prescriptionUuid,
+          patientName,
+          medication.name,
+          medication.dosage || '',
+          medication.duration || ''
+        );
+
+        // Set clinic type based on patient's clinic registration
+        if (patient?.clinic === 'both') {
+          // Create audit log entries for both clinics
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+          await logAction({ ...auditEntry, clinic_type: 'meditouch' });
+        } else {
+          // Create single audit log entry
+          const clinicType = patient?.clinic === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({ ...auditEntry, clinic_type: clinicType });
+        }
+      } catch (auditError) {
+        console.error('Failed to log medication addition audit:', auditError);
+      }
+
       // Toast notification is now optional and controlled by the caller
       if (showToast) {
         toast({
@@ -1403,6 +1508,40 @@ export const PrescriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
 
         return newPrescriptions;
       });
+
+      // Log audit action for medication removal
+      try {
+        // Find the patient ID from the prescription
+        let patientIdForAudit = '';
+        for (const pid in prescriptions) {
+          const found = prescriptions[pid].find(p => p.id === prescriptionUuid);
+          if (found) {
+            patientIdForAudit = pid;
+            break;
+          }
+        }
+        const patientName = await getPatientNameForAudit(patientIdForAudit);
+        const patient = await getPatientById(patientIdForAudit);
+        const auditEntry = AuditLogTemplates.prescription.removeMedication(
+          prescriptionUuid,
+          patientName,
+          medicationToDelete?.name || 'Unknown medication',
+          medicationToDelete?.dosage || ''
+        );
+
+        // Set clinic type based on patient's clinic registration
+        if (patient?.clinic === 'both') {
+          // Create audit log entries for both clinics
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+          await logAction({ ...auditEntry, clinic_type: 'meditouch' });
+        } else {
+          // Create single audit log entry
+          const clinicType = patient?.clinic === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({ ...auditEntry, clinic_type: clinicType });
+        }
+      } catch (auditError) {
+        console.error('Failed to log medication removal audit:', auditError);
+      }
 
       // Toast notification is now optional and controlled by the caller
       if (showToast !== false) {

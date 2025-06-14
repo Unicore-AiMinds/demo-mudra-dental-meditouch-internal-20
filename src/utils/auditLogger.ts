@@ -166,6 +166,17 @@ export const AuditLogTemplates = {
       `Completed appointment for ${patientName} - Service: ${service}, Date: ${date}, Time: ${time}`,
       appointmentId
     ),
+    updatePaymentStatus: (appointmentId: string, patientName: string, service: string, date: string, time: string, oldStatus: 'paid' | 'unpaid', newStatus: 'paid' | 'unpaid', doctor?: string) => createAuditLogEntry(
+      'appointment',
+      'Update Payment Status',
+      'Appointment',
+      `Updated payment status for ${patientName} - Service: ${service}, Date: ${date}, Time: ${time}${doctor ? `, Doctor: ${doctor}` : ''}: "${oldStatus}" → "${newStatus}"`,
+      appointmentId,
+      {
+        before: { payment_status: oldStatus },
+        after: { payment_status: newStatus }
+      }
+    ),
   },
 
   // Patients
@@ -404,20 +415,69 @@ export const AuditLogTemplates = {
 
   // Prescriptions
   prescription: {
-    create: (prescriptionId: string, patientName: string) => createAuditLogEntry(
+    create: (prescriptionId: string, patientName: string, diagnosis: string, prescribedBy: string, medicationCount: number) => createAuditLogEntry(
       'prescription',
       'Create Prescription',
       'Prescription',
-      `Created prescription for ${patientName}`,
+      `Created prescription for ${patientName} - Diagnosis: ${diagnosis}, Prescribed by: ${prescribedBy}, Medications: ${medicationCount}`,
       prescriptionId
     ),
-    update: (prescriptionId: string, patientName: string, changes: any) => createAuditLogEntry(
+    update: (prescriptionId: string, patientName: string, changes: any) => {
+      const changedFields: string[] = [];
+
+      if (changes.before && changes.after) {
+        if (changes.before.diagnosis !== changes.after.diagnosis) {
+          changedFields.push(`Diagnosis: "${changes.before.diagnosis}" → "${changes.after.diagnosis}"`);
+        }
+        if (changes.before.prescribed_by !== changes.after.prescribed_by) {
+          changedFields.push(`Prescribed By: "${changes.before.prescribed_by}" → "${changes.after.prescribed_by}"`);
+        }
+        if (changes.before.doctor_reg_no !== changes.after.doctor_reg_no) {
+          changedFields.push(`Doctor Reg No: "${changes.before.doctor_reg_no || '(empty)'}" → "${changes.after.doctor_reg_no || '(empty)'}"`);
+        }
+        if (changes.before.status !== changes.after.status) {
+          changedFields.push(`Status: "${changes.before.status}" → "${changes.after.status}"`);
+        }
+        if (changes.before.notes !== changes.after.notes) {
+          const beforeNotes = changes.before.notes || '(empty)';
+          const afterNotes = changes.after.notes || '(empty)';
+          changedFields.push(`Notes: "${beforeNotes}" → "${afterNotes}"`);
+        }
+      }
+
+      const detailsText = changedFields.length > 0
+        ? `Updated prescription for ${patientName}: ${changedFields.join(', ')}`
+        : `Updated prescription for ${patientName}`;
+
+      return createAuditLogEntry(
+        'prescription',
+        'Update Prescription',
+        'Prescription',
+        detailsText,
+        prescriptionId,
+        changes
+      );
+    },
+    delete: (prescriptionId: string, patientName: string, diagnosis: string, prescribedBy: string) => createAuditLogEntry(
       'prescription',
-      'Update Prescription',
+      'Delete Prescription',
       'Prescription',
-      `Updated prescription for ${patientName}`,
-      prescriptionId,
-      changes
+      `Deleted prescription for ${patientName} - Diagnosis: ${diagnosis}, Prescribed by: ${prescribedBy}`,
+      prescriptionId
+    ),
+    addMedication: (prescriptionId: string, patientName: string, medicationName: string, dosage: string, duration: string) => createAuditLogEntry(
+      'prescription',
+      'Add Medication',
+      'Prescription',
+      `Added medication to prescription for ${patientName}: ${medicationName} (${dosage}) for ${duration}`,
+      prescriptionId
+    ),
+    removeMedication: (prescriptionId: string, patientName: string, medicationName: string, dosage: string) => createAuditLogEntry(
+      'prescription',
+      'Remove Medication',
+      'Prescription',
+      `Removed medication from prescription for ${patientName}: ${medicationName} (${dosage})`,
+      prescriptionId
     ),
   },
 
@@ -440,41 +500,275 @@ export const AuditLogTemplates = {
     ),
   },
 
+  // Medicines
+  medicine: {
+    create: (medicineId: string, name: string, dosage: string, description?: string) => createAuditLogEntry(
+      'settings',
+      'Create Medicine',
+      'Prescription',
+      `Created medicine: ${name} (${dosage})${description ? ` - ${description}` : ''}`,
+      medicineId
+    ),
+    update: (medicineId: string, name: string, changes: any) => {
+      const changedFields: string[] = [];
+
+      if (changes.before && changes.after) {
+        if (changes.before.name !== changes.after.name) {
+          changedFields.push(`Name: "${changes.before.name}" → "${changes.after.name}"`);
+        }
+        if (changes.before.dosage !== changes.after.dosage) {
+          changedFields.push(`Dosage: "${changes.before.dosage}" → "${changes.after.dosage}"`);
+        }
+        if (changes.before.description !== changes.after.description) {
+          const beforeDesc = changes.before.description || '(empty)';
+          const afterDesc = changes.after.description || '(empty)';
+          changedFields.push(`Description: "${beforeDesc}" → "${afterDesc}"`);
+        }
+      }
+
+      const detailsText = changedFields.length > 0
+        ? `Updated medicine ${name}: ${changedFields.join(', ')}`
+        : `Updated medicine: ${name}`;
+
+      return createAuditLogEntry(
+        'settings',
+        'Update Medicine',
+        'Prescription',
+        detailsText,
+        medicineId,
+        changes
+      );
+    },
+    delete: (medicineId: string, name: string, dosage: string, description?: string) => createAuditLogEntry(
+      'settings',
+      'Delete Medicine',
+      'Prescription',
+      `Deleted medicine: ${name} (${dosage})${description ? ` - ${description}` : ''}`,
+      medicineId
+    ),
+  },
+
   // Dental Charting
   dental_charting: {
-    create: (chartId: string, patientName: string, toothNumber: string) => createAuditLogEntry(
-      'dental_charting',
-      'Create Dental Chart',
-      'Dental Chart',
-      `Added dental chart entry for ${patientName} - Tooth ${toothNumber}`,
-      chartId
-    ),
-    update: (chartId: string, patientName: string, toothNumber: string, changes: any) => createAuditLogEntry(
-      'dental_charting',
-      'Update Dental Chart',
-      'Dental Chart',
-      `Updated dental chart for ${patientName} - Tooth ${toothNumber}`,
-      chartId,
-      changes
-    ),
+    create: (chartId: string, patientName: string, entryData: any) => {
+      const toothNumbers = Array.isArray(entryData.tooth_numbers) ? entryData.tooth_numbers.join(', ') : entryData.tooth_numbers || 'Unknown';
+      const surfaces = Array.isArray(entryData.surfaces) && entryData.surfaces.length > 0 ? ` (Surfaces: ${entryData.surfaces.join(', ')})` : '';
+      const treatmentInfo = entryData.status === 'Existing'
+        ? (entryData.finding ? ` - Finding: ${entryData.finding}` : '')
+        : (entryData.service ? ` - Service: ${entryData.service}` : '');
+
+      return createAuditLogEntry(
+        'dental_charting',
+        'Create Dental Chart Entry',
+        'Dental Chart Entry',
+        `Created ${entryData.status?.toLowerCase() || 'dental'} chart entry for ${patientName} - Tooth ${toothNumbers}${surfaces}${treatmentInfo}`,
+        chartId
+      );
+    },
+
+    update: (chartId: string, patientName: string, changes: any) => {
+      const before = changes.before;
+      const after = changes.after;
+
+      // Build detailed change description
+      const changedFields: string[] = [];
+
+      // Check for patient changes
+      if (before.patient_id !== after.patient_id) {
+        changedFields.push(`Patient: "${before.patient_name || 'Unknown'}" → "${after.patient_name || 'Unknown'}"`);
+      }
+
+      // Check for tooth number changes
+      if (JSON.stringify(before.tooth_numbers) !== JSON.stringify(after.tooth_numbers)) {
+        const beforeTeeth = Array.isArray(before.tooth_numbers) ? before.tooth_numbers.join(', ') : before.tooth_numbers || 'None';
+        const afterTeeth = Array.isArray(after.tooth_numbers) ? after.tooth_numbers.join(', ') : after.tooth_numbers || 'None';
+        changedFields.push(`Tooth Numbers: "${beforeTeeth}" → "${afterTeeth}"`);
+      }
+
+      // Check for surface changes
+      if (JSON.stringify(before.surfaces) !== JSON.stringify(after.surfaces)) {
+        const beforeSurfaces = Array.isArray(before.surfaces) && before.surfaces.length > 0 ? before.surfaces.join(', ') : 'None';
+        const afterSurfaces = Array.isArray(after.surfaces) && after.surfaces.length > 0 ? after.surfaces.join(', ') : 'None';
+        changedFields.push(`Surfaces: "${beforeSurfaces}" → "${afterSurfaces}"`);
+      }
+
+      // Check for finding changes
+      if (before.finding !== after.finding) {
+        changedFields.push(`Finding: "${before.finding || 'None'}" → "${after.finding || 'None'}"`);
+      }
+
+      // Check for service changes
+      if (before.service !== after.service) {
+        changedFields.push(`Service: "${before.service || 'None'}" → "${after.service || 'None'}"`);
+      }
+
+      // Check for status changes
+      if (before.status !== after.status) {
+        changedFields.push(`Status: "${before.status || 'None'}" → "${after.status || 'None'}"`);
+      }
+
+      // Check for notes changes
+      if (before.notes !== after.notes) {
+        const beforeNotes = before.notes ? (before.notes.length > 50 ? before.notes.substring(0, 50) + '...' : before.notes) : 'None';
+        const afterNotes = after.notes ? (after.notes.length > 50 ? after.notes.substring(0, 50) + '...' : after.notes) : 'None';
+        changedFields.push(`Notes: "${beforeNotes}" → "${afterNotes}"`);
+      }
+
+      // Check for doctor changes
+      if (before.doctor !== after.doctor) {
+        changedFields.push(`Doctor: "${before.doctor || 'None'}" → "${after.doctor || 'None'}"`);
+      }
+
+      // Check for date recorded changes
+      if (before.date_recorded !== after.date_recorded) {
+        changedFields.push(`Date Recorded: "${before.date_recorded || 'None'}" → "${after.date_recorded || 'None'}"`);
+      }
+
+      // Check for appointment link changes
+      if (before.scheduled_appointment_id !== after.scheduled_appointment_id) {
+        changedFields.push(`Appointment Link: "${before.scheduled_appointment_id || 'None'}" → "${after.scheduled_appointment_id || 'None'}"`);
+      }
+
+      // Check for snooze changes
+      if (before.snoozed_until !== after.snoozed_until) {
+        changedFields.push(`Snoozed Until: "${before.snoozed_until || 'None'}" → "${after.snoozed_until || 'None'}"`);
+      }
+
+      // Check for follow-up changes
+      if (JSON.stringify(before.follow_up_ids) !== JSON.stringify(after.follow_up_ids)) {
+        const beforeFollowUps = Array.isArray(before.follow_up_ids) && before.follow_up_ids.length > 0 ? before.follow_up_ids.join(', ') : 'None';
+        const afterFollowUps = Array.isArray(after.follow_up_ids) && after.follow_up_ids.length > 0 ? after.follow_up_ids.join(', ') : 'None';
+        changedFields.push(`Follow-up IDs: "${beforeFollowUps}" → "${afterFollowUps}"`);
+      }
+
+      // Build final details text
+      const toothNumbers = Array.isArray(after.tooth_numbers) ? after.tooth_numbers.join(', ') : after.tooth_numbers || 'Unknown';
+      const baseDetails = `Updated dental chart entry for ${patientName} - Tooth ${toothNumbers}`;
+      const detailsText = changedFields.length > 0
+        ? `${baseDetails}: ${changedFields.join(', ')}`
+        : `${baseDetails} - No specific field changes detected`;
+
+      return createAuditLogEntry(
+        'dental_charting',
+        'Update Dental Chart Entry',
+        'Dental Chart Entry',
+        detailsText,
+        chartId,
+        changes
+      );
+    },
+
+    statusChange: (chartId: string, patientName: string, toothNumbers: string[], oldStatus: string, newStatus: string, service?: string, finding?: string) => {
+      const teeth = Array.isArray(toothNumbers) ? toothNumbers.join(', ') : 'Unknown';
+      const treatmentInfo = newStatus === 'Existing'
+        ? (finding ? ` - Finding: ${finding}` : '')
+        : (service ? ` - Service: ${service}` : '');
+
+      return createAuditLogEntry(
+        'dental_charting',
+        'Update Dental Chart Status',
+        'Dental Chart Entry',
+        `Changed status for ${patientName} - Tooth ${teeth}${treatmentInfo}: "${oldStatus}" → "${newStatus}"`,
+        chartId
+      );
+    },
+
+    linkToAppointment: (chartId: string, patientName: string, toothNumbers: string[], appointmentId: string, service?: string) => {
+      const teeth = Array.isArray(toothNumbers) ? toothNumbers.join(', ') : 'Unknown';
+      const serviceInfo = service ? ` - Service: ${service}` : '';
+
+      return createAuditLogEntry(
+        'dental_charting',
+        'Link Chart to Appointment',
+        'Dental Chart Entry',
+        `Linked dental chart entry for ${patientName} - Tooth ${teeth}${serviceInfo} to appointment ${appointmentId}`,
+        chartId
+      );
+    },
+
+    snooze: (chartId: string, patientName: string, toothNumbers: string[], snoozeDate: string, notes?: string, service?: string) => {
+      const teeth = Array.isArray(toothNumbers) ? toothNumbers.join(', ') : 'Unknown';
+      const serviceInfo = service ? ` - Service: ${service}` : '';
+      const notesInfo = notes ? ` with notes: "${notes}"` : '';
+
+      return createAuditLogEntry(
+        'dental_charting',
+        'Snooze Dental Chart Entry',
+        'Dental Chart Entry',
+        `Snoozed dental chart entry for ${patientName} - Tooth ${teeth}${serviceInfo} until ${snoozeDate}${notesInfo}`,
+        chartId
+      );
+    },
+
+    delete: (chartId: string, patientName: string, toothNumbers: string[], status?: string, service?: string, finding?: string) => {
+      const teeth = Array.isArray(toothNumbers) ? toothNumbers.join(', ') : 'Unknown';
+      const treatmentInfo = status === 'Existing'
+        ? (finding ? ` - Finding: ${finding}` : '')
+        : (service ? ` - Service: ${service}` : '');
+
+      return createAuditLogEntry(
+        'dental_charting',
+        'Delete Dental Chart Entry',
+        'Dental Chart Entry',
+        `Deleted ${status?.toLowerCase() || 'dental'} chart entry for ${patientName} - Tooth ${teeth}${treatmentInfo}`,
+        chartId
+      );
+    },
   },
 
   // Vital Signs
   vital_signs: {
-    create: (vitalId: string, patientName: string) => createAuditLogEntry(
+    create: (vitalId: string, patientName: string, weight: string, bloodPressure: string, pulse: string, temperature: string, respiratoryRate: string, notes?: string) => createAuditLogEntry(
       'vital_signs',
       'Record Vital Signs',
       'Vital Signs',
-      `Recorded vital signs for ${patientName}`,
+      `Recorded vital signs for ${patientName} - Weight: ${weight}kg, Blood Pressure: ${bloodPressure}mmHg, Pulse: ${pulse}bpm, Temperature: ${temperature}°C, Respiratory Rate: ${respiratoryRate}/min${notes ? `, Notes: ${notes}` : ''}`,
       vitalId
     ),
-    update: (vitalId: string, patientName: string, changes: any) => createAuditLogEntry(
+
+    update: (vitalId: string, patientName: string, changes: { before: any, after: any }) => {
+      const fieldChanges: string[] = [];
+
+      // Compare each field and build detailed change description
+      if (changes.before.weight !== changes.after.weight) {
+        fieldChanges.push(`Weight: "${changes.before.weight}kg" → "${changes.after.weight}kg"`);
+      }
+      if (changes.before.blood_pressure !== changes.after.blood_pressure) {
+        fieldChanges.push(`Blood Pressure: "${changes.before.blood_pressure}mmHg" → "${changes.after.blood_pressure}mmHg"`);
+      }
+      if (changes.before.pulse !== changes.after.pulse) {
+        fieldChanges.push(`Pulse: "${changes.before.pulse}bpm" → "${changes.after.pulse}bpm"`);
+      }
+      if (changes.before.temperature !== changes.after.temperature) {
+        fieldChanges.push(`Temperature: "${changes.before.temperature}°C" → "${changes.after.temperature}°C"`);
+      }
+      if (changes.before.respiratory_rate !== changes.after.respiratory_rate) {
+        fieldChanges.push(`Respiratory Rate: "${changes.before.respiratory_rate}/min" → "${changes.after.respiratory_rate}/min"`);
+      }
+      if ((changes.before.notes || '') !== (changes.after.notes || '')) {
+        const beforeNotes = changes.before.notes || 'No notes';
+        const afterNotes = changes.after.notes || 'No notes';
+        fieldChanges.push(`Notes: "${beforeNotes}" → "${afterNotes}"`);
+      }
+
+      const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';
+
+      return createAuditLogEntry(
+        'vital_signs',
+        'Update Vital Signs',
+        'Vital Signs',
+        `Updated vital signs for ${patientName}: ${changesText}`,
+        vitalId,
+        changes
+      );
+    },
+
+    delete: (vitalId: string, patientName: string, weight: string, bloodPressure: string, pulse: string, temperature: string, respiratoryRate: string, recordDate: string) => createAuditLogEntry(
       'vital_signs',
-      'Update Vital Signs',
+      'Delete Vital Signs',
       'Vital Signs',
-      `Updated vital signs for ${patientName}`,
-      vitalId,
-      changes
+      `Deleted vital signs record for ${patientName} (recorded on ${recordDate}) - Weight: ${weight}kg, Blood Pressure: ${bloodPressure}mmHg, Pulse: ${pulse}bpm, Temperature: ${temperature}°C, Respiratory Rate: ${respiratoryRate}/min`,
+      vitalId
     ),
   },
 

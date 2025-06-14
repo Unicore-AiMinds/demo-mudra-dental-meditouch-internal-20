@@ -549,6 +549,64 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
     }
   };
 
+  // Helper function to get medication changes (additions, removals, updates)
+  const getMedicationChanges = (existingMedications: Medication[], newMedications: Omit<Medication, 'id' | 'medication_id' | 'prescription_id' | 'created_at' | 'updated_at'>[]) => {
+    const changes = {
+      toAdd: [] as typeof newMedications,
+      toRemove: [] as Medication[],
+      toUpdate: [] as { existing: Medication, updated: typeof newMedications[0] }[]
+    };
+
+    // Create a map of existing medications by a unique key (name + dosage)
+    const existingMap = new Map<string, Medication>();
+    existingMedications.forEach(med => {
+      const key = `${(med.name || '').trim().toLowerCase()}_${(med.dosage || '').trim().toLowerCase()}`;
+      existingMap.set(key, med);
+    });
+
+    // Create a map of new medications by the same key
+    const newMap = new Map<string, typeof newMedications[0]>();
+    newMedications.forEach(med => {
+      const key = `${(med.name || '').trim().toLowerCase()}_${(med.dosage || '').trim().toLowerCase()}`;
+      newMap.set(key, med);
+    });
+
+    // Find medications to add (in new but not in existing)
+    newMap.forEach((newMed, key) => {
+      if (!existingMap.has(key)) {
+        changes.toAdd.push(newMed);
+      }
+    });
+
+    // Find medications to remove (in existing but not in new)
+    existingMap.forEach((existingMed, key) => {
+      if (!newMap.has(key)) {
+        changes.toRemove.push(existingMed);
+      }
+    });
+
+    // Find medications to update (same name+dosage but other fields changed)
+    existingMap.forEach((existingMed, key) => {
+      const newMed = newMap.get(key);
+      if (newMed) {
+        // Check if any other fields have changed
+        if (
+          (existingMed.duration || '').trim() !== (newMed.duration || '').trim() ||
+          (existingMed.food_instructions || '').trim() !== (newMed.food_instructions || '').trim() ||
+          (existingMed.instructions || '').trim() !== (newMed.instructions || '').trim() ||
+          (existingMed.dispense_quantity || '').trim() !== (newMed.dispense_quantity || '').trim() ||
+          existingMed.timing?.morning !== newMed.timing?.morning ||
+          existingMed.timing?.afternoon !== newMed.timing?.afternoon ||
+          existingMed.timing?.night !== newMed.timing?.night
+        ) {
+          changes.toUpdate.push({ existing: existingMed, updated: newMed });
+        }
+      }
+    });
+
+    return changes;
+  };
+
   // Handle updating an existing prescription using the new approach
   const handleUpdatePrescription = async () => {
     try {
@@ -601,45 +659,35 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
         const currentPrescription = currentPrescriptions.find(p => p.id === isEditing);
 
         if (currentPrescription) {
-          // 3️⃣ Delete all existing medications
-          console.log("Removing existing medications");
-          if (currentPrescription.medications && currentPrescription.medications.length > 0) {
-            console.log(`Found ${currentPrescription.medications.length} existing medications to remove`);
+          // 3️⃣ Get granular medication changes
+          const medicationChanges = getMedicationChanges(currentPrescription.medications || [], newMedications);
 
-            // Log all medications for debugging
-            currentPrescription.medications.forEach((med, index) => {
-              console.log(`Medication ${index + 1}:`, {
-                id: med.id,
-                medication_id: med.medication_id,
-                name: med.name,
-                dosage: med.dosage
-              });
+          const hasChanges = medicationChanges.toAdd.length > 0 ||
+                           medicationChanges.toRemove.length > 0 ||
+                           medicationChanges.toUpdate.length > 0;
+
+          if (hasChanges) {
+            console.log("Medications have changed, applying granular updates...");
+            console.log("Changes:", {
+              toAdd: medicationChanges.toAdd.length,
+              toRemove: medicationChanges.toRemove.length,
+              toUpdate: medicationChanges.toUpdate.length
             });
 
-            // Delete each medication one by one
-            for (const med of currentPrescription.medications) {
+            // Remove medications that are no longer needed
+            for (const med of medicationChanges.toRemove) {
               if (med.id) {
                 console.log(`Removing medication: ${med.id} - ${med.name}`);
                 try {
-                  const result = await removeMedicationFromPrescription(prescriptionIdToUse, med.id, false);
-                  console.log(`Removal result for medication ${med.id}:`, result);
+                  await removeMedicationFromPrescription(prescriptionIdToUse, med.id, false);
                 } catch (error) {
                   console.error(`Error removing medication ${med.id}:`, error);
-                  // Continue with other medications even if one fails
                 }
-              } else {
-                console.warn(`Medication has no ID:`, med);
               }
             }
-          } else {
-            console.log("No existing medications to remove");
-          }
 
-          // 4️⃣ Add all new medications
-          console.log("Adding new medications");
-          try {
-            for (const medication of newMedications) {
-              // Sanitize all string fields to avoid whitespace issues
+            // Add new medications
+            for (const medication of medicationChanges.toAdd) {
               const sanitizedMedication = {
                 name: medication.name.trim(),
                 dosage: (medication.dosage || '').trim(),
@@ -650,22 +698,42 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 dispense_quantity: (medication.dispense_quantity || '').trim()
               };
 
-              console.log("Adding medication:", sanitizedMedication);
-
-              // Use the context method to add the medication directly to the database
-              // Pass false for showToast to prevent multiple notifications
-              const result = await addMedicationToPrescription(prescriptionIdToUse, sanitizedMedication, false);
-
-              console.log("Successfully added medication:", result);
+              console.log("Adding new medication:", sanitizedMedication);
+              try {
+                await addMedicationToPrescription(prescriptionIdToUse, sanitizedMedication, false);
+              } catch (error) {
+                console.error("Error adding medication:", error);
+                throw error;
+              }
             }
-          } catch (err) {
-            console.error("Error adding medication:", err);
-            toast({
-              title: "Error Adding Medication",
-              description: err.message || "Failed to add medication. Please check if the medicine exists in the system.",
-              variant: "destructive",
-            });
-            throw err; // Re-throw to stop the process
+
+            // Update existing medications (remove and re-add with new details)
+            for (const change of medicationChanges.toUpdate) {
+              if (change.existing.id) {
+                console.log(`Updating medication: ${change.existing.id} - ${change.existing.name}`);
+                try {
+                  // Remove the old version
+                  await removeMedicationFromPrescription(prescriptionIdToUse, change.existing.id, false);
+
+                  // Add the updated version
+                  const sanitizedMedication = {
+                    name: change.updated.name.trim(),
+                    dosage: (change.updated.dosage || '').trim(),
+                    duration: (change.updated.duration || '').trim(),
+                    timing: change.updated.timing,
+                    food_instructions: (change.updated.food_instructions || '').trim(),
+                    instructions: (change.updated.instructions || '').trim(),
+                    dispense_quantity: (change.updated.dispense_quantity || '').trim()
+                  };
+
+                  await addMedicationToPrescription(prescriptionIdToUse, sanitizedMedication, false);
+                } catch (error) {
+                  console.error(`Error updating medication ${change.existing.id}:`, error);
+                }
+              }
+            }
+          } else {
+            console.log("Medications have not changed, skipping medication update");
           }
 
           // 5️⃣ Refresh prescriptions from the database

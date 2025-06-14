@@ -1519,6 +1519,10 @@ const Appointments = () => {
   // Handle payment status change
   const handlePaymentStatusChange = async (appointmentId: string, status: 'paid' | 'unpaid') => {
     try {
+      // Get the current appointment details for audit logging
+      const currentAppointment = appointments.find(apt => apt.id === appointmentId || apt.appointment_id === appointmentId);
+      const oldStatus = currentAppointment?.payment_status || 'unpaid';
+
       // Update the appointment payment status in Supabase
       await updateAppointment(appointmentId, { payment_status: status });
 
@@ -1550,6 +1554,8 @@ const Appointments = () => {
           paymentStatus: status
         });
       }
+
+      // Note: Audit logging is now handled automatically in the updateAppointment function
 
       // Dispatch custom event to notify other components about the payment status update
       const paymentUpdateEvent = new CustomEvent('payment-status-updated', {

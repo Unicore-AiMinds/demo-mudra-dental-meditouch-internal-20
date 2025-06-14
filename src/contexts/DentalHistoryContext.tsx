@@ -11,6 +11,8 @@ import { addDays, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useClinic } from '@/contexts/ClinicContext';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 import { v4 as uuidv4 } from 'uuid';
 
 interface DentalHistoryContextType {
@@ -54,6 +56,7 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
   const { supabase } = useSupabase();
   const { toast } = useToast();
   const { activeClinic } = useClinic();
+  const { logAction } = useAuditLog();
 
   // Initialize data from Supabase
   useEffect(() => {
@@ -703,8 +706,11 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
         throw new Error('Dental history entry not found');
       }
 
+      const entry = entries[0];
+      const oldStatus = entry.payment_status || 'unpaid';
+
       // Update in Supabase
-      await supabase.from<DentalHistoryEntry>('dental_history').update(entries[0].id, { payment_status: status });
+      await supabase.from<DentalHistoryEntry>('dental_history').update(entry.id, { payment_status: status });
 
       // Update local state
       setDentalHistory(prev => {
@@ -720,6 +726,66 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
           [patientId]: updatedHistory
         };
       });
+
+      // Log audit action for payment status change
+      try {
+        // Get patient name and clinic info for audit logging
+        let patientName = 'Unknown Patient';
+        let patientClinicType: 'dental' | 'meditouch' | null = null;
+
+        try {
+          const name = await getPatientName(patientId);
+          patientName = name || 'Unknown Patient';
+
+          // Get patient clinic type to determine audit log visibility
+          const patients = await supabase.from<{id: string, clinic: 'dental' | 'meditouch' | 'both'}>('patients').getAll({
+            filters: { id: patientId }
+          });
+
+          if (patients.length > 0) {
+            const patient = patients[0];
+            patientClinicType = patient.clinic;
+          }
+        } catch (nameError) {
+          console.error('Failed to get patient info for audit:', nameError);
+        }
+
+        // Create audit log entry based on patient clinic type
+        const auditEntry = AuditLogTemplates.appointment.updatePaymentStatus(
+          appointmentId,
+          patientName,
+          entry.service,
+          entry.date,
+          '', // time not available in dental history
+          oldStatus,
+          status,
+          entry.doctor
+        );
+
+        // If patient is registered for both clinics, create audit entries for both
+        if (patientClinicType === 'both') {
+          // Create audit log entry for dental clinic
+          await logAction({
+            ...auditEntry,
+            clinic_type: 'dental'
+          });
+
+          // Create audit log entry for meditouch clinic
+          await logAction({
+            ...auditEntry,
+            clinic_type: 'meditouch'
+          });
+        } else {
+          // Create single audit log entry for patients registered to one clinic
+          const clinicType = patientClinicType === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({
+            ...auditEntry,
+            clinic_type: clinicType
+          });
+        }
+      } catch (auditError) {
+        console.error('Failed to log payment status change audit:', auditError);
+      }
 
       toast({
         title: "Payment Status Updated",

@@ -74,7 +74,7 @@ const PatientName: React.FC<{ patientId: string }> = ({ patientId }) => {
 // No props needed for this component
 const PendingTreatmentsView: React.FC = () => {
   const { toast } = useToast();
-  const { getPlannedChartingEntries, getPatientName, snoozeChartingEntry } = useDentalCharting();
+  const { getPlannedChartingEntries, getPatientName, snoozeChartingEntry, unsnoozeChartingEntry } = useDentalCharting();
   const { supabase } = useSupabase();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -401,8 +401,11 @@ const PendingTreatmentsView: React.FC = () => {
     const patientId = entry.patient_id || '';
 
     try {
-      // Remove the snooze date
-      await snoozeChartingEntry(entryId, '', '');
+      // Use the dedicated unsnooze function
+      await unsnoozeChartingEntry(entryId);
+
+      // Refresh the data
+      await fetchPlannedEntries();
 
       // Get patient name
       let patientName = 'Unknown';

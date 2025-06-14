@@ -4,6 +4,9 @@ import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { handleDatabaseError } from '@/utils/error-handler';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
+import { format } from 'date-fns';
 
 interface VitalSignsContextType {
   getPatientVitalSigns: (patientId: string) => Promise<VitalSign[]>;
@@ -20,6 +23,24 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
+
+  // Helper function to get patient info for audit logging
+  const getPatientInfoForAudit = async (patientId: string): Promise<{ name: string, clinic: 'dental' | 'meditouch' | 'both' }> => {
+    try {
+      const patient = await supabase.from('patients').getById(patientId);
+      if (patient) {
+        return {
+          name: patient.name || 'Unknown Patient',
+          clinic: patient.clinic || 'dental'
+        };
+      }
+      return { name: 'Unknown Patient', clinic: 'dental' };
+    } catch (error) {
+      console.error('Error fetching patient info for audit:', error);
+      return { name: 'Unknown Patient', clinic: 'dental' };
+    }
+  };
 
   // Initialize default vital signs if none exist
   useEffect(() => {
@@ -97,6 +118,34 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
       // Add to Supabase
       const createdVitalSign = await supabase.from<VitalSign>('vital_signs').insert(newVitalSign);
 
+      // Log audit action for vital signs creation
+      try {
+        const patientInfo = await getPatientInfoForAudit(patientId);
+        const auditEntry = AuditLogTemplates.vital_signs.create(
+          createdVitalSign.id,
+          patientInfo.name,
+          vitalSign.weight,
+          vitalSign.blood_pressure,
+          vitalSign.pulse,
+          vitalSign.temperature,
+          vitalSign.respiratory_rate,
+          vitalSign.notes
+        );
+
+        // Set clinic type based on patient's clinic registration
+        if (patientInfo.clinic === 'both') {
+          // Create audit log entries for both clinics
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+          await logAction({ ...auditEntry, clinic_type: 'meditouch' });
+        } else {
+          // Create single audit log entry
+          const clinicType = patientInfo.clinic === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({ ...auditEntry, clinic_type: clinicType });
+        }
+      } catch (auditError) {
+        console.error('Failed to log vital signs creation audit:', auditError);
+      }
+
       toast({
         title: 'Success',
         description: 'Vital signs recorded successfully.',
@@ -124,8 +173,40 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
     updates: Partial<Omit<VitalSign, 'id' | 'vital_sign_id' | 'patient_id' | 'date' | 'created_at' | 'updated_at'>>
   ): Promise<VitalSign | null> => {
     try {
+      // Get the current vital sign record for audit logging
+      const currentVitalSign = await supabase.from<VitalSign>('vital_signs').getById(vitalSignId);
+      if (!currentVitalSign) {
+        throw new Error('Vital sign record not found');
+      }
+
       // Update in Supabase
       const updatedVitalSign = await supabase.from<VitalSign>('vital_signs').update(vitalSignId, updates);
+
+      // Log audit action for vital signs update
+      try {
+        const patientInfo = await getPatientInfoForAudit(currentVitalSign.patient_id);
+        const auditEntry = AuditLogTemplates.vital_signs.update(
+          vitalSignId,
+          patientInfo.name,
+          {
+            before: currentVitalSign,
+            after: { ...currentVitalSign, ...updates }
+          }
+        );
+
+        // Set clinic type based on patient's clinic registration
+        if (patientInfo.clinic === 'both') {
+          // Create audit log entries for both clinics
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+          await logAction({ ...auditEntry, clinic_type: 'meditouch' });
+        } else {
+          // Create single audit log entry
+          const clinicType = patientInfo.clinic === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({ ...auditEntry, clinic_type: clinicType });
+        }
+      } catch (auditError) {
+        console.error('Failed to log vital signs update audit:', auditError);
+      }
 
       toast({
         title: 'Success',
@@ -149,8 +230,43 @@ export const VitalSignsProvider: React.FC<{ children: ReactNode }> = ({ children
   // Delete a vital sign record
   const deleteVitalSign = async (vitalSignId: string): Promise<boolean> => {
     try {
+      // Get the vital sign record before deletion for audit logging
+      const vitalSignToDelete = await supabase.from<VitalSign>('vital_signs').getById(vitalSignId);
+      if (!vitalSignToDelete) {
+        throw new Error('Vital sign record not found');
+      }
+
       // Delete from Supabase
       await supabase.from<VitalSign>('vital_signs').delete(vitalSignId);
+
+      // Log audit action for vital signs deletion
+      try {
+        const patientInfo = await getPatientInfoForAudit(vitalSignToDelete.patient_id);
+        const recordDate = format(new Date(vitalSignToDelete.date), 'dd/MM/yyyy');
+        const auditEntry = AuditLogTemplates.vital_signs.delete(
+          vitalSignId,
+          patientInfo.name,
+          vitalSignToDelete.weight,
+          vitalSignToDelete.blood_pressure,
+          vitalSignToDelete.pulse,
+          vitalSignToDelete.temperature,
+          vitalSignToDelete.respiratory_rate,
+          recordDate
+        );
+
+        // Set clinic type based on patient's clinic registration
+        if (patientInfo.clinic === 'both') {
+          // Create audit log entries for both clinics
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+          await logAction({ ...auditEntry, clinic_type: 'meditouch' });
+        } else {
+          // Create single audit log entry
+          const clinicType = patientInfo.clinic === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({ ...auditEntry, clinic_type: clinicType });
+        }
+      } catch (auditError) {
+        console.error('Failed to log vital signs deletion audit:', auditError);
+      }
 
       toast({
         title: 'Success',

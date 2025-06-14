@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Medicine, defaultMedicines } from '@/types/medicines';
 import { useSupabase } from '@/contexts/SupabaseContext';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 import { useToast } from '@/hooks/use-toast';
 
 // Define the context type
@@ -20,6 +22,7 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
+  const { logAction } = useAuditLog();
   const { toast } = useToast();
 
   // Fetch medicines from Supabase
@@ -99,6 +102,18 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Update local state with all medicines
       setMedicines(refreshedMedicines);
 
+      // Log audit action for medicine creation
+      try {
+        await logAction(AuditLogTemplates.medicine.create(
+          newMedicine.id,
+          medicine.name,
+          medicine.dosage,
+          medicine.description
+        ));
+      } catch (auditError) {
+        console.error('Failed to log medicine creation audit:', auditError);
+      }
+
       toast({
         title: 'Success',
         description: `${medicine.name} (${medicine.dosage}) added successfully.`,
@@ -121,6 +136,12 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       console.log('Updating medicine in database:', id, updates);
 
+      // Get the existing medicine data for audit logging
+      const existingMedicine = medicines.find(m => m.id === id);
+      if (!existingMedicine) {
+        throw new Error('Medicine not found');
+      }
+
       // Update medicine in Supabase
       const updatedMedicine = await supabase.from<Medicine>('medicines').update(id, updates);
 
@@ -137,6 +158,21 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // Update local state with all medicines
       setMedicines(refreshedMedicines);
+
+      // Log audit action for medicine update
+      try {
+        const afterMedicine = { ...existingMedicine, ...updates };
+        await logAction(AuditLogTemplates.medicine.update(
+          id,
+          afterMedicine.name || existingMedicine.name,
+          {
+            before: existingMedicine,
+            after: afterMedicine
+          }
+        ));
+      } catch (auditError) {
+        console.error('Failed to log medicine update audit:', auditError);
+      }
 
       toast({
         title: 'Success',
@@ -160,6 +196,12 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       console.log('Deleting medicine from database:', id);
 
+      // Get the existing medicine data for audit logging
+      const existingMedicine = medicines.find(m => m.id === id);
+      if (!existingMedicine) {
+        throw new Error('Medicine not found');
+      }
+
       // Delete medicine from Supabase
       await supabase.from<Medicine>('medicines').delete(id);
 
@@ -176,6 +218,18 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // Update local state with all medicines
       setMedicines(refreshedMedicines);
+
+      // Log audit action for medicine deletion
+      try {
+        await logAction(AuditLogTemplates.medicine.delete(
+          id,
+          existingMedicine.name,
+          existingMedicine.dosage,
+          existingMedicine.description
+        ));
+      } catch (auditError) {
+        console.error('Failed to log medicine deletion audit:', auditError);
+      }
 
       toast({
         title: 'Success',
