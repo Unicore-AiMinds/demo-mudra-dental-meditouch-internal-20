@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSupabase } from '@/contexts/SupabaseContext';
+import { useAuditLog } from './AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 
 // Define the service interface
 export interface Service {
@@ -55,6 +57,7 @@ const ServiceContext = createContext<ServiceContextType | undefined>(undefined);
 export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   const { supabase } = useSupabase();
+  const { logAction } = useAuditLog();
 
   const [dentalServices, setDentalServices] = useState<Service[]>([]);
   const [meditouchServices, setMeditouchServices] = useState<Service[]>([]);
@@ -159,6 +162,20 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
         description: `${service.name} has been added to ${service.clinic_type} services.`,
       });
 
+      // Log the audit action with detailed information
+      try {
+        await logAction(AuditLogTemplates.service.create(
+          newService.id,
+          service.name,
+          service.duration,
+          service.price,
+          service.description,
+          service.clinic_type
+        ));
+      } catch (auditError) {
+        console.error('Failed to log service creation audit:', auditError);
+      }
+
       // Refresh services to ensure we have the latest data
       setTimeout(() => {
         refreshServices();
@@ -221,6 +238,17 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
         description: 'Service has been updated.',
       });
 
+      // Log the audit action with detailed field changes
+      try {
+        await logAction(AuditLogTemplates.service.update(
+          id,
+          updatedService.name,
+          { before: currentService, after: updatedService }
+        ));
+      } catch (auditError) {
+        console.error('Failed to log service update audit:', auditError);
+      }
+
       // Refresh services to ensure we have the latest data
       setTimeout(() => {
         refreshServices();
@@ -267,6 +295,19 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: 'Success',
         description: 'Service has been deleted.',
       });
+
+      // Log the audit action with detailed information
+      try {
+        await logAction(AuditLogTemplates.service.delete(
+          id,
+          currentService.name,
+          currentService.duration,
+          currentService.price,
+          currentService.clinic_type
+        ));
+      } catch (auditError) {
+        console.error('Failed to log service deletion audit:', auditError);
+      }
 
       // Refresh services to ensure we have the latest data
       setTimeout(() => {

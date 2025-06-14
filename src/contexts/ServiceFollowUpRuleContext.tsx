@@ -3,6 +3,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useServices } from '@/contexts/ServiceContext';
 import { useClinic } from '@/contexts/ClinicContext';
+import { useAuditLog } from './AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -31,6 +33,7 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
   const { supabase } = useSupabase();
   const { dentalServices, meditouchServices } = useServices();
   const { activeClinic } = useClinic();
+  const { logAction } = useAuditLog();
 
   const [followUpRules, setFollowUpRules] = useState<ServiceFollowUpRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -523,6 +526,17 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
         description: `Follow-up rule for ${rule.triggering_service_name} has been added.`,
       });
 
+      // Log the audit action with detailed information
+      try {
+        await logAction(AuditLogTemplates.serviceFollowUpRule.create(
+          newRule.id,
+          rule.triggering_service_name,
+          rule.followUps
+        ));
+      } catch (auditError) {
+        console.error('Failed to log follow-up rule creation audit:', auditError);
+      }
+
       // Fetch all rules to ensure UI is in sync with database
       await fetchFollowUpRules();
 
@@ -739,7 +753,19 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
 
           if (stepData) {
             console.log('Step inserted successfully:', stepData);
-            updatedSteps.push(stepData);
+
+            // Ensure the step data has all required fields
+            const completeStepData = {
+              ...stepData,
+              service_follow_up_rule_id: stepData.service_follow_up_rule_id || stepInsertData.service_follow_up_rule_id,
+              sequence: stepData.sequence || stepInsertData.sequence,
+              interval_days: stepData.interval_days || stepInsertData.interval_days,
+              suggested_service_name: stepData.suggested_service_name || stepInsertData.suggested_service_name,
+              notes: stepData.notes || stepInsertData.notes || ''
+            };
+
+            console.log('Complete step data:', completeStepData);
+            updatedSteps.push(completeStepData);
           } else {
             console.warn('No data returned from step insert');
           }
@@ -783,6 +809,25 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
         return updatedRules;
       });
 
+      // Log the audit action with detailed field changes BEFORE refreshing data
+      try {
+        console.log('AUDIT DEBUG: About to log follow-up rule update');
+        console.log('AUDIT DEBUG: Current rule:', JSON.stringify(currentRule, null, 2));
+        console.log('AUDIT DEBUG: Updated rule:', JSON.stringify(updatedRule, null, 2));
+
+        // Also log the specific followUps arrays
+        console.log('AUDIT DEBUG: Current rule followUps:', JSON.stringify(currentRule.followUps, null, 2));
+        console.log('AUDIT DEBUG: Updated rule followUps:', JSON.stringify(updatedRule.followUps, null, 2));
+
+        await logAction(AuditLogTemplates.serviceFollowUpRule.update(
+          id,
+          updatedRule.triggering_service_name,
+          { before: currentRule, after: updatedRule }
+        ));
+      } catch (auditError) {
+        console.error('Failed to log follow-up rule update audit:', auditError);
+      }
+
       toast({
         title: 'Success',
         description: 'Follow-up rule has been updated.',
@@ -807,6 +852,13 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
   const deleteFollowUpRule = async (id: string): Promise<void> => {
     try {
       console.log(`Attempting to delete follow-up rule with ID: ${id}`);
+
+      // Get the current rule for audit logging
+      const currentRule = followUpRules.find(r => r.id === id);
+      if (!currentRule) {
+        console.error(`Follow-up rule with ID ${id} not found in local state`);
+        throw new Error('Follow-up rule not found');
+      }
 
       // Delete rule from Supabase using REST API (cascade will delete steps)
       const deleteResponse = await fetch(`${SUPABASE_URL}/rest/v1/service_follow_up_rules?id=eq.${id}`, {
@@ -836,6 +888,17 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
         title: 'Success',
         description: 'Follow-up rule has been deleted.',
       });
+
+      // Log the audit action with detailed information
+      try {
+        await logAction(AuditLogTemplates.serviceFollowUpRule.delete(
+          id,
+          currentRule.triggering_service_name,
+          currentRule.followUps
+        ));
+      } catch (auditError) {
+        console.error('Failed to log follow-up rule deletion audit:', auditError);
+      }
 
       // Fetch all rules to ensure UI is in sync with database
       await fetchFollowUpRules();

@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { useToast } from "@/hooks/use-toast";
+import { formatDateForExport, formatDateForFilename } from '@/utils/dateFormatter';
 
 
 
@@ -331,10 +332,10 @@ const LabWork = () => {
           `"${job.service}"`,
           `"${job.labWorkType}"`,
           `"${job.materialSpecs || ''}"`,
-          job.dateSent,
+          `"${formatDateForExport(job.dateSent)}"`,
           `"${job.assignedLab}"`,
           `"${job.notes || ''}"`,
-          job.expectedDelivery,
+          `"${formatDateForExport(job.expectedDelivery)}"`,
           deliveryStatus,
           job.paymentStatus,
           job.status
@@ -348,7 +349,7 @@ const LabWork = () => {
 
     // Create a temporary link and trigger download
     const link = document.createElement('a');
-    const filename = `lab_work_export_${new Date().toISOString().split('T')[0]}.csv`;
+    const filename = `lab_work_export_${formatDateForFilename()}.csv`;
 
     link.setAttribute('href', url);
     link.setAttribute('download', filename);

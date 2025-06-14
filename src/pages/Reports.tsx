@@ -46,6 +46,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
+import { formatDateForFilename } from '@/utils/dateFormatter';
 
 // Sample data for reports
 const appointmentData = [
@@ -191,7 +192,7 @@ const Reports = () => {
                   item.dental,
                   item.meditouch
                 ]);
-                filename = `appointments_report_${new Date().toISOString().split('T')[0]}.csv`;
+                filename = `appointments_report_${formatDateForFilename()}.csv`;
               } else if (activeTab === 'revenue') {
                 headers = ['Month', 'Dental Revenue (₹)', 'Meditouch Revenue (₹)'];
                 data = revenueData.map(item => [
@@ -199,14 +200,14 @@ const Reports = () => {
                   item.dental,
                   item.meditouch
                 ]);
-                filename = `revenue_report_${new Date().toISOString().split('T')[0]}.csv`;
+                filename = `revenue_report_${formatDateForFilename()}.csv`;
               } else if (activeTab === 'services') {
                 headers = ['Service', 'Percentage'];
                 data = serviceData.map(item => [
                   item.name,
                   item.value
                 ]);
-                filename = `services_report_${new Date().toISOString().split('T')[0]}.csv`;
+                filename = `services_report_${formatDateForFilename()}.csv`;
               }
 
               // Create CSV content

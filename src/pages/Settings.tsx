@@ -341,6 +341,7 @@ const Settings = () => {
   const [dentalLabs, setDentalLabs] = useState(initialDentalLabs);
   const [labWorkTypes, setLabWorkTypes] = useState(initialLabWorkTypes);
   const [currentService, setCurrentService] = useState<Service | null>(null);
+  const [editServiceDuration, setEditServiceDuration] = useState<number>(30);
   const [currentLab, setCurrentLab] = useState(null);
   const [currentLabWorkType, setCurrentLabWorkType] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -564,6 +565,7 @@ const Settings = () => {
 
   const handleEditService = (service: Service) => {
     setCurrentService(service);
+    setEditServiceDuration(service.duration); // Initialize with current duration
     setIsEditServiceDialogOpen(true);
   };
 
@@ -575,9 +577,12 @@ const Settings = () => {
     if (currentService) {
       // Get updated values from form fields
       const updatedName = document.getElementById('editServiceName') as HTMLInputElement;
-      const updatedDuration = document.getElementById('editServiceDuration') as HTMLInputElement;
+      const updatedDurationSelect = document.querySelector('[data-testid="edit-service-duration-select"]') as HTMLElement;
       const updatedPrice = document.getElementById('editServicePrice') as HTMLInputElement;
       const updatedDescription = document.getElementById('editServiceDescription') as HTMLTextAreaElement;
+
+      // Get duration value from the state
+      const durationValue = editServiceDuration;
 
       // Validate required fields
       if (!updatedName.value.trim()) {
@@ -589,7 +594,7 @@ const Settings = () => {
         return;
       }
 
-      if (!updatedDuration.value || parseInt(updatedDuration.value) <= 0) {
+      if (!durationValue || durationValue <= 0) {
         toast({
           title: "Error",
           description: "Duration must be a positive number.",
@@ -612,7 +617,7 @@ const Settings = () => {
         // Update the service using the ServiceContext
         await updateService(currentService.id, {
           name: capitalizeWords(updatedName.value.trim()),
-          duration: parseInt(updatedDuration.value),
+          duration: durationValue,
           price: parseFloat(updatedPrice.value),
           description: updatedDescription?.value?.trim() || ''
         });
@@ -2704,6 +2709,7 @@ const Settings = () => {
                       <Label htmlFor="editServiceDuration">Duration (minutes)</Label>
                       <Select
                         defaultValue={currentService.duration.toString()}
+                        onValueChange={(value) => setEditServiceDuration(parseInt(value))}
                       >
                         <SelectTrigger id="editServiceDuration">
                           <SelectValue placeholder="Select duration" />

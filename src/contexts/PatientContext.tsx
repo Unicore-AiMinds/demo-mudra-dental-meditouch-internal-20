@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSupabase } from './SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
+import { useAuditLog } from './AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 import { v4 as uuidv4 } from 'uuid';
 import { handleDatabaseError } from '@/utils/error-handler';
 
@@ -99,6 +101,7 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
 
   // Define refreshPatients as a public function that can be called from outside the component
   const refreshPatients = async (): Promise<void> => {
@@ -261,6 +264,20 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
           description: `Patient ${patient.name} added successfully.`,
         });
 
+        // Log the audit action with detailed information
+        try {
+          await logAction(AuditLogTemplates.patient.create(
+            createdPatient.id,
+            patient.name,
+            patient.age?.toString(),
+            patient.gender,
+            patient.phone,
+            patient.clinic
+          ));
+        } catch (auditError) {
+          console.error('Failed to log patient creation audit:', auditError);
+        }
+
         // Trigger a refresh of the patients list to ensure we have the latest data
         setTimeout(() => {
           refreshPatients();
@@ -327,6 +344,20 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
           title: 'Success',
           description: `Patient ${patient.name} added successfully.`,
         });
+
+        // Log the audit action with detailed information
+        try {
+          await logAction(AuditLogTemplates.patient.create(
+            createdPatient.id,
+            patient.name,
+            patient.age?.toString(),
+            patient.gender,
+            patient.phone,
+            patient.clinic
+          ));
+        } catch (auditError) {
+          console.error('Failed to log patient creation audit:', auditError);
+        }
 
         // Trigger a refresh of the patients list to ensure we have the latest data
         setTimeout(() => {
@@ -439,6 +470,17 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
         description: 'Patient updated successfully.',
       });
 
+      // Log the audit action
+      try {
+        await logAction(AuditLogTemplates.patient.update(
+          id,
+          completeUpdatedPatient.name,
+          { before: currentPatient, after: completeUpdatedPatient }
+        ));
+      } catch (auditError) {
+        console.error('Failed to log patient update audit:', auditError);
+      }
+
       return updatedPatient;
     } catch (error) {
       console.error('Error updating patient:', error);
@@ -457,11 +499,27 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Delete a patient
   const deletePatient = async (id: string): Promise<void> => {
     try {
+      // Get patient info before deletion for audit log
+      const patientToDelete = patients.find(p => p.id === id);
+      const patientName = patientToDelete?.name || 'Unknown Patient';
+
       // Delete from Supabase
       await supabase.from<Patient>('patients').delete(id);
 
       // Update local state
       setPatients(prev => prev.filter(p => p.id !== id));
+
+      // Log the audit action with detailed information
+      try {
+        await logAction(AuditLogTemplates.patient.delete(
+          id,
+          patientName,
+          patientToDelete?.age?.toString(),
+          patientToDelete?.phone
+        ));
+      } catch (auditError) {
+        console.error('Failed to log patient deletion audit:', auditError);
+      }
 
       // Refresh patients to ensure we have the latest data
       setTimeout(() => {

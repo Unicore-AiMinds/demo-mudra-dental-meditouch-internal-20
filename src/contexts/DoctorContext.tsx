@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getRandomDentalColor } from '@/utils/doctorColors';
 import { useToast } from '@/components/ui/use-toast';
 import { useClinic } from '@/contexts/ClinicContext';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 import { uploadFile, deleteFile, checkStorageAccess } from '@/lib/supabase-storage';
 import { createClient } from '@supabase/supabase-js';
 
@@ -70,6 +72,7 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { activeClinic } = useClinic();
+  const { logAction } = useAuditLog();
 
   // Filter doctors based on current clinic
   const doctors = React.useMemo(() => {
@@ -271,6 +274,18 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             description: `Doctor ${doctor.name} added successfully.`,
           });
 
+          // Log the audit action with detailed information
+          try {
+            await logAction(AuditLogTemplates.doctor.create(
+              refreshedDoctor.id,
+              doctor.name,
+              doctor.specialization,
+              doctor.clinic
+            ));
+          } catch (auditError) {
+            console.error('Failed to log doctor creation audit:', auditError);
+          }
+
           return refreshedDoctor;
         }
       } catch (refreshError) {
@@ -284,6 +299,18 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         title: 'Success',
         description: `Doctor ${doctor.name} added successfully.`,
       });
+
+      // Log the audit action with detailed information
+      try {
+        await logAction(AuditLogTemplates.doctor.create(
+          newDoctor.id,
+          doctor.name,
+          doctor.specialization,
+          doctor.clinic
+        ));
+      } catch (auditError) {
+        console.error('Failed to log doctor creation audit:', auditError);
+      }
 
       // Refresh doctors to ensure we have the latest data
       setTimeout(() => {
@@ -378,6 +405,18 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         description: 'Doctor updated successfully.',
       });
 
+      // Log the audit action
+      try {
+        const originalDoctor = allDoctors.find(d => d.id === id);
+        await logAction(AuditLogTemplates.doctor.update(
+          id,
+          updatedDoctor.name,
+          { before: originalDoctor, after: updatedDoctor }
+        ));
+      } catch (auditError) {
+        console.error('Failed to log doctor update audit:', auditError);
+      }
+
       // Refresh doctors to ensure we have the latest data
       setTimeout(() => {
         refreshDoctors();
@@ -398,8 +437,9 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Delete a doctor
   const deleteDoctor = async (id: string): Promise<void> => {
     try {
-      // Get the doctor to check for documents
+      // Get the doctor to check for documents and for audit log
       const doctorToDelete = allDoctors.find(d => d.id === id);
+      const doctorName = doctorToDelete?.name || 'Unknown Doctor';
 
       // Check if storage is accessible
       const isStorageAccessible = await checkStorageAccess();
@@ -459,6 +499,17 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       // Update local state
       setAllDoctors(prev => prev.filter(d => d.id !== id));
+
+      // Log the audit action with detailed information
+      try {
+        await logAction(AuditLogTemplates.doctor.delete(
+          id,
+          doctorName,
+          doctorToDelete?.specialization
+        ));
+      } catch (auditError) {
+        console.error('Failed to log doctor deletion audit:', auditError);
+      }
 
       toast({
         title: 'Success',

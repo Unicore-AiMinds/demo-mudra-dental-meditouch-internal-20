@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSupabase } from './SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
+import { useAuditLog } from './AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 import { useClinic } from './ClinicContext';
@@ -76,6 +78,7 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const { toast } = useToast();
   const { isDental } = useClinic();
   const { getServiceByName } = useServices();
+  const { logAction } = useAuditLog();
 
   // EMERGENCY FIX: Helper function to get patient names with caching
   const getPatientNamesForAppointments = async (appointments: Appointment[]): Promise<Appointment[]> => {
@@ -331,6 +334,20 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
           description: 'Appointment scheduled successfully.',
         });
 
+        // Log the audit action with detailed information
+        try {
+          await logAction(AuditLogTemplates.appointment.create(
+            newAppointment.id,
+            patient_name,
+            appointment.service,
+            appointment.date,
+            appointment.time,
+            appointment.doctor || appointment.therapist
+          ));
+        } catch (auditError) {
+          console.error('Failed to log appointment creation audit:', auditError);
+        }
+
         // Return the UI-friendly version with patient_name
         return appointmentForUI;
       } catch (error) {
@@ -416,6 +433,34 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
         description: 'Appointment updated successfully.',
       });
 
+      // Log the audit action with appropriate type and detailed information
+      try {
+        let updateType: 'status' | 'details' | 'cancel' | undefined;
+
+        // Determine the type of update
+        if (updates.status === 'cancelled') {
+          updateType = 'cancel';
+        } else if (updates.status && updates.status !== existingAppointment.status) {
+          updateType = 'status';
+        } else {
+          updateType = 'details';
+        }
+
+        // Create detailed audit log with appointment information
+        await logAction(AuditLogTemplates.appointment.updateDetailed(
+          id,
+          updatedLocalAppointment.patient_name || 'Unknown Patient',
+          updatedLocalAppointment.service,
+          updatedLocalAppointment.date,
+          updatedLocalAppointment.time,
+          updatedLocalAppointment.doctor || updatedLocalAppointment.therapist,
+          { before: existingAppointment, after: updatedLocalAppointment },
+          updateType
+        ));
+      } catch (auditError) {
+        console.error('Failed to log appointment update audit:', auditError);
+      }
+
       return updatedLocalAppointment;
     } catch (error) {
       console.error('Error updating appointment:', error);
@@ -442,6 +487,9 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
         throw new Error(`Appointment with ID ${id} not found`);
       }
 
+      // Store appointment info for audit log
+      const patientName = existingAppointment.patient_name || 'Unknown Patient';
+
       console.log('Deleting appointment from Supabase:', id);
 
       // Delete from Supabase first
@@ -462,6 +510,18 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setMeditouchAppointments(prev =>
           prev.filter(a => a.id !== id && a.appointment_code !== id)
         );
+      }
+
+      // Log the audit action with detailed information
+      try {
+        await logAction(AuditLogTemplates.appointment.delete(
+          id,
+          patientName,
+          existingAppointment.service,
+          existingAppointment.date
+        ));
+      } catch (auditError) {
+        console.error('Failed to log appointment deletion audit:', auditError);
       }
 
       toast({
@@ -643,10 +703,30 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const markAppointmentCompleted = async (appointmentId: string): Promise<void> => {
     try {
       console.log(`Marking appointment ${appointmentId} as completed`);
+
+      // Find the appointment first to get details for audit log
+      const appointment = dentalAppointments.find(a => a.id === appointmentId || a.appointment_code === appointmentId) ||
+                         meditouchAppointments.find(a => a.id === appointmentId || a.appointment_code === appointmentId);
+
+      // Update appointment status
       await updateAppointment(appointmentId, { status: 'completed' });
 
+      // Log specific completion audit entry
+      if (appointment) {
+        try {
+          await logAction(AuditLogTemplates.appointment.complete(
+            appointmentId,
+            appointment.patient_name || 'Unknown Patient',
+            appointment.service,
+            appointment.date,
+            appointment.time
+          ));
+        } catch (auditError) {
+          console.error('Failed to log appointment completion audit:', auditError);
+        }
+      }
+
       // Dispatch event to update dental charting if needed
-      const appointment = dentalAppointments.find(a => a.id === appointmentId || a.appointment_code === appointmentId);
 
       if (appointment) {
         console.log('Found appointment:', appointment);

@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSupabase } from '@/contexts/SupabaseContext';
+import { useAuditLog } from '@/contexts/AuditLogContext';
 import {
   Card,
   CardContent,
@@ -37,7 +37,6 @@ import {
 import {
   ArrowDownUp,
   Download,
-  Filter,
   Search,
   AlertCircle,
   Calendar,
@@ -46,136 +45,23 @@ import {
   Settings,
   PackageOpen,
   Microscope,
-  Eye,
   LogIn,
   Trash2,
   Edit,
   Plus
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { formatDateForExport, formatDateForFilename } from '@/utils/dateFormatter';
 
-interface AuditLogEntry {
-  id: string;
-  timestamp: string;
-  user: string;
-  userRole: string;
-  actionCategory: 'auth' | 'appointment' | 'stock' | 'lab' | 'patient' | 'user' | 'settings';
-  actionType: string;
-  targetEntity: string;
-  details: string;
-  changes?: {
-    before: any;
-    after: any;
-  };
-}
+// Use the AuditLog interface from the context
+import { AuditLog as AuditLogEntry } from '@/contexts/AuditLogContext';
 
-// Demo audit log data
-const demoAuditLogs: AuditLogEntry[] = [
-  {
-    id: '1',
-    timestamp: '2025-05-16 10:30:15',
-    user: 'Dr. Sharma',
-    userRole: 'Doctor',
-    actionCategory: 'appointment',
-    actionType: 'Create Appointment',
-    targetEntity: 'Appointment #APT123',
-    details: 'Created new appointment for patient Rahul Patel - Dental Checkup',
-  },
-  {
-    id: '2',
-    timestamp: '2025-05-16 10:15:00',
-    user: 'Dr. Sharma',
-    userRole: 'Doctor',
-    actionCategory: 'patient',
-    actionType: 'Update Patient',
-    targetEntity: 'Patient #PT456',
-    details: 'Updated medical history for Priya Singh',
-  },
-  {
-    id: '3',
-    timestamp: '2025-05-16 09:45:22',
-    user: 'Neha Kapoor',
-    userRole: 'Receptionist',
-    actionCategory: 'auth',
-    actionType: 'User Login',
-    targetEntity: 'System',
-    details: 'Successful login from Mumbai office IP',
-  },
-  {
-    id: '4',
-    timestamp: '2025-05-16 09:30:00',
-    user: 'Dr. Patel',
-    userRole: 'Doctor',
-    actionCategory: 'lab',
-    actionType: 'Create Lab Work',
-    targetEntity: 'Lab Work #LW789',
-    details: 'Created new lab work order for patient Amit Shah - Crown preparation',
-  },
-  {
-    id: '5',
-    timestamp: '2025-05-15 18:45:10',
-    user: 'Admin',
-    userRole: 'Administrator',
-    actionCategory: 'stock',
-    actionType: 'Update Stock',
-    targetEntity: 'Stock Item #ST101',
-    details: 'Updated quantity for Dental Composite (Filtek Supreme Ultra)',
-  },
-  {
-    id: '6',
-    timestamp: '2025-05-15 17:30:00',
-    user: 'Dr. Sharma',
-    userRole: 'Doctor',
-    actionCategory: 'appointment',
-    actionType: 'Reschedule Appointment',
-    targetEntity: 'Appointment #APT120',
-    details: 'Rescheduled appointment for Sonia Verma from 2025-05-17 to 2025-05-20',
-  },
-  {
-    id: '7',
-    timestamp: '2025-05-15 16:20:15',
-    user: 'Neha Kapoor',
-    userRole: 'Receptionist',
-    actionCategory: 'patient',
-    actionType: 'Create Patient',
-    targetEntity: 'Patient #PT789',
-    details: 'Created new patient record for Rajesh Kumar',
-  },
-  {
-    id: '8',
-    timestamp: '2025-05-15 15:45:30',
-    user: 'Dr. Patel',
-    userRole: 'Doctor',
-    actionCategory: 'lab',
-    actionType: 'Update Lab Work',
-    targetEntity: 'Lab Work #LW785',
-    details: 'Updated status to Ready for patient Meera Reddy',
-  },
-  {
-    id: '9',
-    timestamp: '2025-05-15 14:30:00',
-    user: 'Admin',
-    userRole: 'Administrator',
-    actionCategory: 'settings',
-    actionType: 'Update Settings',
-    targetEntity: 'System Settings',
-    details: 'Updated clinic working hours for weekends',
-  },
-  {
-    id: '10',
-    timestamp: '2025-05-15 14:15:45',
-    user: 'Dr. Sharma',
-    userRole: 'Doctor',
-    actionCategory: 'patient',
-    actionType: 'Delete Patient',
-    targetEntity: 'Patient #PT445',
-    details: 'Deleted inactive patient record for John Doe',
-  }
-];
+
 
 // Get icon for action category
-const getActionIcon = (category: AuditLogEntry['actionCategory']) => {
+const getActionIcon = (category: AuditLogEntry['action_category']) => {
   switch (category) {
     case 'auth':
       return <LogIn className="h-4 w-4" />;
@@ -191,6 +77,18 @@ const getActionIcon = (category: AuditLogEntry['actionCategory']) => {
       return <User className="h-4 w-4" />;
     case 'settings':
       return <Settings className="h-4 w-4" />;
+    case 'doctor':
+      return <User className="h-4 w-4" />;
+    case 'service':
+      return <FileText className="h-4 w-4" />;
+    case 'prescription':
+      return <FileText className="h-4 w-4" />;
+    case 'dental_history':
+      return <FileText className="h-4 w-4" />;
+    case 'dental_charting':
+      return <FileText className="h-4 w-4" />;
+    case 'vital_signs':
+      return <FileText className="h-4 w-4" />;
     default:
       return <AlertCircle className="h-4 w-4" />;
   }
@@ -218,35 +116,76 @@ const getActionBadge = (actionType: string) => {
 const AuditLog = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { supabase } = useSupabase();
+  const { auditLogs, isLoading, fetchAuditLogs } = useAuditLog();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const [selectedUser, setSelectedUser] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize with demo data
+  // Date range state - default to today
+  const today = new Date().toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState<string>(today);
+  const [endDate, setEndDate] = useState<string>(today);
+  const [dateRangePreset, setDateRangePreset] = useState<string>('today');
+
+  // Fetch audit logs on component mount
   useEffect(() => {
-    const loadDemoData = async () => {
-      try {
-        setIsLoading(true);
-        setAuditLogs(demoAuditLogs);
-      } catch (error) {
-        console.error('Error loading demo audit logs:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load audit logs',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    fetchAuditLogs();
+  }, [fetchAuditLogs]);
 
-    loadDemoData();
-  }, [supabase, toast]);
+  // Date range preset handler
+  const handleDateRangePreset = (preset: string) => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    setDateRangePreset(preset);
+
+    switch (preset) {
+      case 'today': {
+        setStartDate(todayStr);
+        setEndDate(todayStr);
+        break;
+      }
+      case 'yesterday': {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        setStartDate(yesterdayStr);
+        setEndDate(yesterdayStr);
+        break;
+      }
+      case 'last7days': {
+        const last7Days = new Date(today);
+        last7Days.setDate(last7Days.getDate() - 7);
+        setStartDate(last7Days.toISOString().split('T')[0]);
+        setEndDate(todayStr);
+        break;
+      }
+      case 'last30days': {
+        const last30Days = new Date(today);
+        last30Days.setDate(last30Days.getDate() - 30);
+        setStartDate(last30Days.toISOString().split('T')[0]);
+        setEndDate(todayStr);
+        break;
+      }
+      case 'thismonth': {
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        setStartDate(firstDayOfMonth.toISOString().split('T')[0]);
+        setEndDate(todayStr);
+        break;
+      }
+      case 'all': {
+        setStartDate('');
+        setEndDate('');
+        break;
+      }
+      default:
+        break;
+    }
+  };
+
+
 
   // Check if the user is an admin
   if (user?.role !== 'admin') {
@@ -280,21 +219,35 @@ const AuditLog = () => {
   }
 
   // Get unique users for the filter
-  const uniqueUsers = Array.from(new Set(auditLogs.map(log => log.user)));
+  const uniqueUsers = Array.from(new Set(auditLogs.map(log => log.user_name)));
 
-  // Filter logs based on search term and filters
+  // Filter logs based on search term, filters, and date range
   const filteredLogs = auditLogs.filter(log => {
     const matchesSearch = !searchTerm ||
-      log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.actionType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.targetEntity.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.action_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.target_entity.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.details.toLowerCase().includes(searchTerm.toLowerCase());
 
     // Fixed filtering logic - when "all" is selected or nothing is selected, show all items
-    const matchesCategory = !selectedCategory || selectedCategory === "all" || log.actionCategory === selectedCategory;
-    const matchesUser = !selectedUser || selectedUser === "all" || log.user === selectedUser;
+    const matchesCategory = !selectedCategory || selectedCategory === "all" || log.action_category === selectedCategory;
+    const matchesUser = !selectedUser || selectedUser === "all" || log.user_name === selectedUser;
 
-    return matchesSearch && matchesCategory && matchesUser;
+    // Date range filtering
+    let matchesDateRange = true;
+    if (startDate || endDate) {
+      const logDate = new Date(log.timestamp);
+      const logDateStr = logDate.toISOString().split('T')[0];
+
+      if (startDate && logDateStr < startDate) {
+        matchesDateRange = false;
+      }
+      if (endDate && logDateStr > endDate) {
+        matchesDateRange = false;
+      }
+    }
+
+    return matchesSearch && matchesCategory && matchesUser && matchesDateRange;
   });
 
   // Sort logs by timestamp based on sort order
@@ -310,67 +263,78 @@ const AuditLog = () => {
   };
 
   // Pagination logic
-  const logsPerPage = 5;
+  const logsPerPage = 25;
   const indexOfLastLog = currentPage * logsPerPage;
   const indexOfFirstLog = indexOfLastLog - logsPerPage;
   const currentLogs = sortedLogs.slice(indexOfFirstLog, indexOfLastLog);
   const totalPages = Math.ceil(sortedLogs.length / logsPerPage);
 
+  // For results summary
+  const startIndex = indexOfFirstLog;
+  const endIndex = indexOfLastLog;
+
+  // Export function
+  const exportToExcel = () => {
+    // Create CSV content from the filtered logs
+    const headers = ['Timestamp', 'User', 'Role', 'Action Category', 'Action Type', 'Target', 'Details'];
+
+    const csvContent = [
+      headers.join(','),
+      ...sortedLogs.map((log) => [
+        `"${formatDateForExport(log.timestamp)}"`,
+        `"${log.user_name}"`,
+        `"${log.user_role}"`,
+        `"${log.action_category}"`,
+        `"${log.action_type}"`,
+        `"${log.target_entity}"`,
+        `"${log.details}"`
+      ].join(','))
+    ].join('\n');
+
+    // Create a blob and download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary link and trigger download
+    const link = document.createElement('a');
+    const filename = `dental_audit_log_${formatDateForFilename()}.csv`;
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Export Successful",
+      description: `${sortedLogs.length} audit log entries exported to CSV.`,
+    });
+  };
+
   return (
-    <div className="space-y-6">
+    <TooltipProvider>
+      <div className="space-y-6">
       <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Audit Log</h1>
           <p className="text-muted-foreground">Track and monitor all system activities</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            // Create CSV content from the filtered logs
-            const headers = ['Timestamp', 'User', 'Role', 'Action Category', 'Action Type', 'Target', 'Details'];
-
-            const csvContent = [
-              headers.join(','),
-              ...sortedLogs.map((log) => [
-                `"${log.timestamp}"`,
-                `"${log.user}"`,
-                `"${log.userRole}"`,
-                `"${log.actionCategory}"`,
-                `"${log.actionType}"`,
-                `"${log.targetEntity}"`,
-                `"${log.details}"`
-              ].join(','))
-            ].join('\n');
-
-            // Create a blob and download link
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-
-            // Create a temporary link and trigger download
-            const link = document.createElement('a');
-            const filename = `dental_audit_log_${new Date().toISOString().split('T')[0]}.csv`;
-
-            link.setAttribute('href', url);
-            link.setAttribute('download', filename);
-            link.style.visibility = 'hidden';
-
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            toast({
-              title: "Export Successful",
-              description: `${sortedLogs.length} audit log entries exported to CSV.`,
-            });
-          }}
-        >
-          <Download className="mr-2 h-4 w-4" /> Export Log
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={exportToExcel}
+          >
+            <Download className="mr-2 h-4 w-4" /> Export Log
+          </Button>
+        </div>
       </div>
 
       {/* Filters and search */}
-      <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
-        <div className="relative flex-1">
+      <div className="space-y-4">
+        {/* Search bar */}
+        <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
@@ -381,40 +345,110 @@ const AuditLog = () => {
           />
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Action Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="auth">Authentication</SelectItem>
-              <SelectItem value="appointment">Appointments</SelectItem>
-              <SelectItem value="stock">Stock Management</SelectItem>
-              <SelectItem value="lab">Lab Work</SelectItem>
-              <SelectItem value="patient">Patients</SelectItem>
-              <SelectItem value="user">User Management</SelectItem>
-              <SelectItem value="settings">Settings</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Date range and filters */}
+        <div className="flex flex-col space-y-2 lg:flex-row lg:items-center lg:space-x-2 lg:space-y-0">
+          {/* Date range presets */}
+          <div className="flex items-center space-x-2">
+            <Select value={dateRangePreset} onValueChange={handleDateRangePreset}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Date Range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="yesterday">Yesterday</SelectItem>
+                <SelectItem value="last7days">Last 7 Days</SelectItem>
+                <SelectItem value="last30days">Last 30 Days</SelectItem>
+                <SelectItem value="thismonth">This Month</SelectItem>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Select value={selectedUser} onValueChange={setSelectedUser}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Filter by User" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Users</SelectItem>
-              {uniqueUsers.map((user) => (
-                <SelectItem key={user} value={user}>{user}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {/* Custom date inputs - show when custom is selected */}
+            {dateRangePreset === 'custom' && (
+              <>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-[140px]"
+                  placeholder="Start Date"
+                />
+                <span className="text-muted-foreground">to</span>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-[140px]"
+                  placeholder="End Date"
+                />
+              </>
+            )}
+          </div>
 
-          <Button variant="outline" onClick={toggleSortOrder} className="flex items-center gap-1">
-            <Calendar className="h-4 w-4" />
-            Sort by Date
-            <ArrowDownUp className="h-4 w-4 ml-1" />
-          </Button>
+          {/* Other filters */}
+          <div className="flex items-center space-x-2">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Action Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="auth">Authentication</SelectItem>
+                <SelectItem value="appointment">Appointments</SelectItem>
+                <SelectItem value="stock">Stock Management</SelectItem>
+                <SelectItem value="lab">Lab Work</SelectItem>
+                <SelectItem value="patient">Patients</SelectItem>
+                <SelectItem value="user">User Management</SelectItem>
+                <SelectItem value="settings">Settings</SelectItem>
+                <SelectItem value="doctor">Doctors</SelectItem>
+                <SelectItem value="service">Services</SelectItem>
+                <SelectItem value="prescription">Prescriptions</SelectItem>
+                <SelectItem value="dental_history">Dental History</SelectItem>
+                <SelectItem value="dental_charting">Dental Charting</SelectItem>
+                <SelectItem value="vital_signs">Vital Signs</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Filter by User" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Users</SelectItem>
+                {uniqueUsers.map((user) => (
+                  <SelectItem key={user} value={user}>{user}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button variant="outline" onClick={toggleSortOrder} className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              Sort by Date
+              <ArrowDownUp className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Results summary */}
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Showing {startIndex + 1}-{Math.min(endIndex, filteredLogs.length)} of {filteredLogs.length} entries
+          </p>
+          {(startDate || endDate) && (
+            <p className="text-xs text-muted-foreground">
+              {startDate && endDate && startDate === endDate
+                ? `Date: ${new Date(startDate).toLocaleDateString()}`
+                : startDate && endDate
+                ? `Date Range: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`
+                : startDate
+                ? `From: ${new Date(startDate).toLocaleDateString()}`
+                : `Until: ${new Date(endDate).toLocaleDateString()}`
+              }
+            </p>
+          )}
         </div>
       </div>
 
@@ -441,22 +475,44 @@ const AuditLog = () => {
                 currentLogs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell className="font-mono text-xs whitespace-nowrap">
-                      {log.timestamp}
+                      {new Date(log.timestamp).toLocaleString()}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-medium">{log.user}</span>
-                        <span className="text-xs text-muted-foreground">{log.userRole}</span>
+                        <span className="font-medium">{log.user_name}</span>
+                        <span className="text-xs text-muted-foreground">{log.user_role}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {getActionIcon(log.actionCategory)}
-                        {getActionBadge(log.actionType)}
+                        {getActionIcon(log.action_category)}
+                        {getActionBadge(log.action_type)}
                       </div>
                     </TableCell>
-                    <TableCell>{log.targetEntity}</TableCell>
-                    <TableCell className="hidden md:table-cell max-w-xs truncate">{log.details}</TableCell>
+                    <TableCell className="max-w-xs">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="truncate cursor-help">
+                            {log.target_entity}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{log.target_entity}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell max-w-xs">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="truncate cursor-help">
+                            {log.details}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          <p className="whitespace-pre-wrap">{log.details}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
 
                   </TableRow>
                 ))
@@ -503,7 +559,8 @@ const AuditLog = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 

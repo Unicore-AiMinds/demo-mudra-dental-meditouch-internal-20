@@ -39,6 +39,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatDateForExport, formatDateForFilename } from '@/utils/dateFormatter';
 
 interface StockItem {
   id: string;
@@ -1356,9 +1357,9 @@ const StockTracker = () => {
                       `"${item.dealer || ''}"`,
                       `"${item.rate ? '₹' + item.rate.toLocaleString() : ''}"`,
                       item.minimumThreshold,
-                      `"${item.nearestExpiryDate || ''}"`,
+                      `"${item.nearestExpiryDate ? formatDateForExport(item.nearestExpiryDate) : ''}"`,
                       `"${status}"`,
-                      `"${item.createdAt}"`
+                      `"${formatDateForExport(item.createdAt)}"`
                     ].join(',');
                   })
                 ].join('\n');
@@ -1369,7 +1370,7 @@ const StockTracker = () => {
 
                 // Create a temporary link and trigger download
                 const link = document.createElement('a');
-                const filename = `dental_stock_inventory_${new Date().toISOString().split('T')[0]}.csv`;
+                const filename = `dental_stock_inventory_${formatDateForFilename()}.csv`;
 
                 link.setAttribute('href', url);
                 link.setAttribute('download', filename);
