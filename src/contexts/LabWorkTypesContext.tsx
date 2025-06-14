@@ -3,6 +3,8 @@ import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/components/ui/use-toast';
 import { capitalizeFirstLetter } from '@/utils/string-utils';
 import { createClient } from '@supabase/supabase-js';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 
 // Create a direct Supabase client
 const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
@@ -38,6 +40,7 @@ export const LabWorkTypesProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
 
   // Fetch lab work types from Supabase
   const fetchLabWorkTypes = async () => {
@@ -108,6 +111,20 @@ export const LabWorkTypesProvider: React.FC<{ children: ReactNode }> = ({ childr
       // Update local state
       setLabWorkTypes(prev => [insertedData, ...prev]);
 
+      // Log audit action for lab work type creation
+      try {
+        const auditEntry = AuditLogTemplates.lab_work_type.create(
+          insertedData.id,
+          processedLabWorkType.name,
+          processedLabWorkType.turnaround_duration,
+          processedLabWorkType.turnaround_unit
+        );
+        // Lab work types are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log lab work type creation audit:', auditError);
+      }
+
       toast({
         title: 'Success',
         description: 'Lab work type added successfully.',
@@ -128,6 +145,12 @@ export const LabWorkTypesProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Update an existing lab work type
   const updateLabWorkType = async (id: string, labWorkType: Partial<LabWorkType>): Promise<LabWorkType> => {
     try {
+      // Get the current lab work type record for audit logging
+      const currentLabWorkType = labWorkTypes.find(l => l.id === id);
+      if (!currentLabWorkType) {
+        throw new Error('Lab work type not found');
+      }
+
       // Process the data
       const processedLabWorkType: any = {
         ...labWorkType,
@@ -163,17 +186,41 @@ export const LabWorkTypesProvider: React.FC<{ children: ReactNode }> = ({ childr
         throw new Error('Failed to update lab work type');
       }
 
-      // Update local state
+      // Create a complete updated lab work type object by merging current data with updates
+      const completeUpdatedLabWorkType: LabWorkType = {
+        ...currentLabWorkType,
+        ...processedLabWorkType,
+        id: id,
+        updated_at: new Date().toISOString()
+      };
+
+      // Update local state with the complete updated lab work type
       setLabWorkTypes(prev =>
-        prev.map(item => item.id === id ? updatedData : item)
+        prev.map(item => item.id === id ? completeUpdatedLabWorkType : item)
       );
+
+      // Log audit action for lab work type update
+      try {
+        const auditEntry = AuditLogTemplates.lab_work_type.update(
+          id,
+          completeUpdatedLabWorkType.name,
+          {
+            before: currentLabWorkType,
+            after: completeUpdatedLabWorkType
+          }
+        );
+        // Lab work types are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log lab work type update audit:', auditError);
+      }
 
       toast({
         title: 'Success',
         description: 'Lab work type updated successfully.',
       });
 
-      return data;
+      return completeUpdatedLabWorkType;
     } catch (error) {
       console.error('Error updating lab work type:', error);
       toast({
@@ -188,6 +235,12 @@ export const LabWorkTypesProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Delete a lab work type
   const deleteLabWorkType = async (id: string): Promise<void> => {
     try {
+      // Get the lab work type record before deletion for audit logging
+      const labWorkTypeToDelete = labWorkTypes.find(l => l.id === id);
+      if (!labWorkTypeToDelete) {
+        throw new Error('Lab work type not found');
+      }
+
       console.log(`Deleting lab work type ${id}`);
 
       // Delete lab work type from Supabase using direct client
@@ -202,6 +255,20 @@ export const LabWorkTypesProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       // Update local state
       setLabWorkTypes(prev => prev.filter(item => item.id !== id));
+
+      // Log audit action for lab work type deletion
+      try {
+        const auditEntry = AuditLogTemplates.lab_work_type.delete(
+          id,
+          labWorkTypeToDelete.name,
+          labWorkTypeToDelete.turnaround_duration,
+          labWorkTypeToDelete.turnaround_unit
+        );
+        // Lab work types are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log lab work type deletion audit:', auditError);
+      }
 
       toast({
         title: 'Success',

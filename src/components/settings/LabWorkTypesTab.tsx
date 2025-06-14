@@ -48,14 +48,14 @@ const LabWorkTypesTab: React.FC = () => {
 
   // State for form fields
   const [name, setName] = useState('');
-  const [turnaroundDuration, setTurnaroundDuration] = useState<number>(1);
+  const [turnaroundDuration, setTurnaroundDuration] = useState<number | ''>('');
   const [turnaroundUnit, setTurnaroundUnit] = useState<'days' | 'weeks' | 'months'>('days');
   const [editingLabWorkType, setEditingLabWorkType] = useState<LabWorkType | null>(null);
 
   // Reset form fields
   const resetForm = () => {
     setName('');
-    setTurnaroundDuration(1);
+    setTurnaroundDuration('');
     setTurnaroundUnit('days');
     setEditingLabWorkType(null);
   };
@@ -85,7 +85,7 @@ const LabWorkTypesTab: React.FC = () => {
       return;
     }
 
-    if (!turnaroundDuration || turnaroundDuration <= 0) {
+    if (!turnaroundDuration || turnaroundDuration === '' || Number(turnaroundDuration) <= 0) {
       toast({
         title: "Error",
         description: "Turnaround duration must be a positive number.",
@@ -97,7 +97,7 @@ const LabWorkTypesTab: React.FC = () => {
     try {
       await addLabWorkType({
         name,
-        turnaround_duration: turnaroundDuration,
+        turnaround_duration: Number(turnaroundDuration),
         turnaround_unit: turnaroundUnit,
       });
       setIsAddDialogOpen(false);
@@ -126,7 +126,7 @@ const LabWorkTypesTab: React.FC = () => {
       return;
     }
 
-    if (!turnaroundDuration || turnaroundDuration <= 0) {
+    if (!turnaroundDuration || turnaroundDuration === '' || Number(turnaroundDuration) <= 0) {
       toast({
         title: "Error",
         description: "Turnaround duration must be a positive number.",
@@ -138,7 +138,7 @@ const LabWorkTypesTab: React.FC = () => {
     try {
       await updateLabWorkType(editingLabWorkType.id, {
         name,
-        turnaround_duration: turnaroundDuration,
+        turnaround_duration: Number(turnaroundDuration),
         turnaround_unit: turnaroundUnit,
       });
       setIsEditDialogOpen(false);
@@ -276,7 +276,17 @@ const LabWorkTypesTab: React.FC = () => {
                     min="1"
                     placeholder="e.g., 3"
                     value={turnaroundDuration}
-                    onChange={(e) => setTurnaroundDuration(parseInt(e.target.value) || 1)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        setTurnaroundDuration('');
+                      } else {
+                        const numValue = parseInt(value);
+                        if (!isNaN(numValue) && numValue > 0) {
+                          setTurnaroundDuration(numValue);
+                        }
+                      }
+                    }}
                     required
                   />
                 </div>
@@ -349,7 +359,17 @@ const LabWorkTypesTab: React.FC = () => {
                       type="number"
                       min="1"
                       value={turnaroundDuration}
-                      onChange={(e) => setTurnaroundDuration(parseInt(e.target.value) || 1)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '') {
+                          setTurnaroundDuration('');
+                        } else {
+                          const numValue = parseInt(value);
+                          if (!isNaN(numValue) && numValue > 0) {
+                            setTurnaroundDuration(numValue);
+                          }
+                        }
+                      }}
                       required
                     />
                   </div>

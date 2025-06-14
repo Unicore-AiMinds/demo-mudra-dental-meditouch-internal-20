@@ -306,29 +306,239 @@ export const AuditLogTemplates = {
     ),
   },
 
-  // Lab Work
-  lab: {
-    create: (labWorkId: string, patientName: string, workType: string) => createAuditLogEntry(
+  // Lab Work (Tracker)
+  lab_work: {
+    create: (labWorkId: string, labJobId: string, patientName: string, service: string, workType: string, assignedLab: string, dateSent: string, expectedDelivery: string, status: string, paymentStatus: string, materialSpecs?: string, notes?: string) => createAuditLogEntry(
       'lab',
       'Create Lab Work',
       'Lab Work',
-      `Created lab work for ${patientName} - ${workType}`,
+      `Created lab work ${labJobId} for ${patientName} - Service: ${service}, Type: ${workType}, Lab: ${assignedLab}, Date Sent: ${dateSent}, Expected: ${expectedDelivery}, Status: ${status}, Payment: ${paymentStatus}${materialSpecs ? `, Material: ${materialSpecs}` : ''}${notes ? `, Notes: ${notes}` : ''}`,
       labWorkId
     ),
-    update: (labWorkId: string, patientName: string, changes: any) => createAuditLogEntry(
-      'lab',
-      'Update Lab Work',
-      'Lab Work',
-      `Updated lab work for ${patientName}`,
-      labWorkId,
-      changes
-    ),
-    statusChange: (labWorkId: string, patientName: string, oldStatus: string, newStatus: string) => createAuditLogEntry(
+
+    update: (labWorkId: string, labJobId: string, patientName: string, changes: { before: any, after: any }) => {
+      const fieldChanges: string[] = [];
+
+      // Helper function to safely get field value
+      const getFieldValue = (obj: any, field: string): string => {
+        const value = obj?.[field];
+        return (value !== null && value !== undefined && value !== '') ? value.toString() : 'Not specified';
+      };
+
+      // Helper function to format date
+      const formatDate = (dateStr: string): string => {
+        if (!dateStr) return 'Not specified';
+        try {
+          return new Date(dateStr).toLocaleDateString('en-GB');
+        } catch {
+          return dateStr;
+        }
+      };
+
+      // Compare each field and build detailed change description
+      if (changes.before.patient !== changes.after.patient) {
+        fieldChanges.push(`Patient: "${changes.before.patient}" → "${changes.after.patient}"`);
+      }
+
+      if (changes.before.service !== changes.after.service) {
+        fieldChanges.push(`Service: "${changes.before.service}" → "${changes.after.service}"`);
+      }
+
+      if (changes.before.labWorkType !== changes.after.labWorkType) {
+        fieldChanges.push(`Work Type: "${changes.before.labWorkType}" → "${changes.after.labWorkType}"`);
+      }
+
+      if (changes.before.assignedLab !== changes.after.assignedLab) {
+        fieldChanges.push(`Assigned Lab: "${changes.before.assignedLab}" → "${changes.after.assignedLab}"`);
+      }
+
+      if (changes.before.dateSent !== changes.after.dateSent) {
+        fieldChanges.push(`Date Sent: "${formatDate(changes.before.dateSent)}" → "${formatDate(changes.after.dateSent)}"`);
+      }
+
+      if (changes.before.expectedDelivery !== changes.after.expectedDelivery) {
+        fieldChanges.push(`Expected Delivery: "${formatDate(changes.before.expectedDelivery)}" → "${formatDate(changes.after.expectedDelivery)}"`);
+      }
+
+      if (changes.before.status !== changes.after.status) {
+        fieldChanges.push(`Status: "${changes.before.status}" → "${changes.after.status}"`);
+      }
+
+      if (changes.before.paymentStatus !== changes.after.paymentStatus) {
+        fieldChanges.push(`Payment Status: "${changes.before.paymentStatus}" → "${changes.after.paymentStatus}"`);
+      }
+
+      const beforeMaterial = getFieldValue(changes.before, 'materialSpecs');
+      const afterMaterial = getFieldValue(changes.after, 'materialSpecs');
+      if (beforeMaterial !== afterMaterial) {
+        fieldChanges.push(`Material Specs: "${beforeMaterial}" → "${afterMaterial}"`);
+      }
+
+      const beforeNotes = getFieldValue(changes.before, 'notes');
+      const afterNotes = getFieldValue(changes.after, 'notes');
+      if (beforeNotes !== afterNotes) {
+        fieldChanges.push(`Notes: "${beforeNotes}" → "${afterNotes}"`);
+      }
+
+      const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';
+
+      return createAuditLogEntry(
+        'lab',
+        'Update Lab Work',
+        'Lab Work',
+        `Updated lab work ${labJobId} for ${patientName}: ${changesText}`,
+        labWorkId,
+        changes
+      );
+    },
+
+    statusChange: (labWorkId: string, labJobId: string, patientName: string, oldStatus: string, newStatus: string) => createAuditLogEntry(
       'lab',
       'Update Lab Status',
       'Lab Work',
-      `Changed lab work status for ${patientName} from ${oldStatus} to ${newStatus}`,
+      `Changed lab work status for ${labJobId} (${patientName}) from "${oldStatus}" to "${newStatus}"`,
       labWorkId
+    ),
+
+    delete: (labWorkId: string, labJobId: string, patientName: string, service: string, workType: string, assignedLab: string, status: string) => createAuditLogEntry(
+      'lab',
+      'Delete Lab Work',
+      'Lab Work',
+      `Deleted lab work ${labJobId} for ${patientName} - Service: ${service}, Type: ${workType}, Lab: ${assignedLab}, Status: ${status}`,
+      labWorkId
+    ),
+  },
+
+  // Dental Labs (Settings)
+  dental_lab: {
+    create: (labId: string, labName: string, contact: string, address?: string, city?: string, specialization?: string) => createAuditLogEntry(
+      'lab',
+      'Add Dental Lab',
+      'Lab Work',
+      `Added new dental lab: ${labName} - Contact: ${contact}${address ? `, Address: ${address}` : ''}${city ? `, City: ${city}` : ''}${specialization ? `, Specialization: ${specialization}` : ''}`,
+      labId
+    ),
+
+    update: (labId: string, labName: string, changes: { before: any, after: any }) => {
+      const fieldChanges: string[] = [];
+
+      // Helper function to safely get field value
+      const getFieldValue = (obj: any, field: string): string => {
+        const value = obj?.[field];
+        return (value !== null && value !== undefined && value !== '') ? value : 'Not specified';
+      };
+
+      // Compare each field and build detailed change description
+      if (changes.before.name !== changes.after.name) {
+        fieldChanges.push(`Name: "${changes.before.name}" → "${changes.after.name}"`);
+      }
+      if (changes.before.contact !== changes.after.contact) {
+        fieldChanges.push(`Contact: "${changes.before.contact}" → "${changes.after.contact}"`);
+      }
+
+      const beforeAddress = getFieldValue(changes.before, 'address');
+      const afterAddress = getFieldValue(changes.after, 'address');
+      if (beforeAddress !== afterAddress) {
+        fieldChanges.push(`Address: "${beforeAddress}" → "${afterAddress}"`);
+      }
+
+      const beforeCity = getFieldValue(changes.before, 'city');
+      const afterCity = getFieldValue(changes.after, 'city');
+      if (beforeCity !== afterCity) {
+        fieldChanges.push(`City: "${beforeCity}" → "${afterCity}"`);
+      }
+
+      const beforePincode = getFieldValue(changes.before, 'pincode');
+      const afterPincode = getFieldValue(changes.after, 'pincode');
+      if (beforePincode !== afterPincode) {
+        fieldChanges.push(`Pincode: "${beforePincode}" → "${afterPincode}"`);
+      }
+
+      const beforeSpecialization = getFieldValue(changes.before, 'specialization');
+      const afterSpecialization = getFieldValue(changes.after, 'specialization');
+      if (beforeSpecialization !== afterSpecialization) {
+        fieldChanges.push(`Specialization: "${beforeSpecialization}" → "${afterSpecialization}"`);
+      }
+
+      const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';
+
+      return createAuditLogEntry(
+        'lab',
+        'Update Dental Lab',
+        'Lab Work',
+        `Updated dental lab ${labName}: ${changesText}`,
+        labId,
+        changes
+      );
+    },
+
+    delete: (labId: string, labName: string, contact: string, address?: string, city?: string, specialization?: string) => createAuditLogEntry(
+      'lab',
+      'Delete Dental Lab',
+      'Lab Work',
+      `Deleted dental lab: ${labName} - Contact: ${contact}${address ? `, Address: ${address}` : ''}${city ? `, City: ${city}` : ''}${specialization ? `, Specialization: ${specialization}` : ''}`,
+      labId
+    ),
+  },
+
+  // Lab Work Types (Settings)
+  lab_work_type: {
+    create: (workTypeId: string, workTypeName: string, duration: number, unit: string) => createAuditLogEntry(
+      'lab',
+      'Add Lab Work Type',
+      'Lab Work',
+      `Added new lab work type: ${workTypeName} - Turnaround: ${duration} ${unit}`,
+      workTypeId
+    ),
+
+    update: (workTypeId: string, workTypeName: string, changes: { before: any, after: any }) => {
+      const fieldChanges: string[] = [];
+
+      // Helper function to safely get field value
+      const getFieldValue = (obj: any, field: string): string => {
+        const value = obj?.[field];
+        return (value !== null && value !== undefined && value !== '') ? value.toString() : 'Not specified';
+      };
+
+      // Compare each field and build detailed change description
+      if (changes.before.name !== changes.after.name) {
+        fieldChanges.push(`Name: "${changes.before.name}" → "${changes.after.name}"`);
+      }
+
+      if (changes.before.turnaround_duration !== changes.after.turnaround_duration) {
+        fieldChanges.push(`Duration: "${changes.before.turnaround_duration}" → "${changes.after.turnaround_duration}"`);
+      }
+
+      if (changes.before.turnaround_unit !== changes.after.turnaround_unit) {
+        fieldChanges.push(`Unit: "${changes.before.turnaround_unit}" → "${changes.after.turnaround_unit}"`);
+      }
+
+      // Create a readable turnaround time comparison
+      const beforeTurnaround = `${changes.before.turnaround_duration} ${changes.before.turnaround_unit}`;
+      const afterTurnaround = `${changes.after.turnaround_duration} ${changes.after.turnaround_unit}`;
+
+      if (beforeTurnaround !== afterTurnaround) {
+        fieldChanges.push(`Turnaround Time: "${beforeTurnaround}" → "${afterTurnaround}"`);
+      }
+
+      const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';
+
+      return createAuditLogEntry(
+        'lab',
+        'Update Lab Work Type',
+        'Lab Work',
+        `Updated lab work type ${workTypeName}: ${changesText}`,
+        workTypeId,
+        changes
+      );
+    },
+
+    delete: (workTypeId: string, workTypeName: string, duration: number, unit: string) => createAuditLogEntry(
+      'lab',
+      'Delete Lab Work Type',
+      'Lab Work',
+      `Deleted lab work type: ${workTypeName} - Turnaround: ${duration} ${unit}`,
+      workTypeId
     ),
   },
 

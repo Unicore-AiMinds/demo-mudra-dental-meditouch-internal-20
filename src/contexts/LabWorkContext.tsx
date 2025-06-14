@@ -3,6 +3,8 @@ import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import { useDentalLabs } from '@/contexts/DentalLabsContext';
 import { createClient } from '@supabase/supabase-js';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 
 // Create a direct Supabase client
 const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
@@ -96,6 +98,7 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
 
   // Try to use DentalLabsContext, but provide a fallback if it's not available
   let dentalLabsContext;
@@ -107,6 +110,35 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }
 
   const { dentalLabs } = dentalLabsContext;
+
+  // Helper function to get patient info for audit logging
+  const getPatientInfoForAudit = async (patientId?: string, patientName?: string): Promise<{ name: string, clinic: 'dental' | 'meditouch' | 'both' }> => {
+    try {
+      if (patientId) {
+        const { data: patient, error } = await supabaseClient
+          .from('patients')
+          .select('name, clinic')
+          .eq('id', patientId)
+          .single();
+
+        if (!error && patient) {
+          return {
+            name: patient.name || 'Unknown Patient',
+            clinic: patient.clinic || 'dental'
+          };
+        }
+      }
+
+      // Fallback to provided patient name
+      return {
+        name: patientName || 'Unknown Patient',
+        clinic: 'dental' // Default to dental for lab work
+      };
+    } catch (error) {
+      console.error('Error fetching patient info for audit:', error);
+      return { name: patientName || 'Unknown Patient', clinic: 'dental' };
+    }
+  };
 
   // Fetch lab jobs from Supabase
   useEffect(() => {
@@ -268,6 +300,38 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Update local state and refresh data
       setLabJobs(prevJobs => [newLabJob, ...prevJobs]);
 
+      // Log audit action for lab work creation
+      try {
+        const patientInfo = await getPatientInfoForAudit(job.patient_id, job.patient);
+        const auditEntry = AuditLogTemplates.lab_work.create(
+          newLabJob.id,
+          newLabJob.labJobId,
+          patientInfo.name,
+          newLabJob.service,
+          newLabJob.labWorkType,
+          newLabJob.assignedLab,
+          newLabJob.dateSent,
+          newLabJob.expectedDelivery,
+          newLabJob.status,
+          newLabJob.paymentStatus,
+          newLabJob.materialSpecs,
+          newLabJob.notes
+        );
+
+        // Set clinic type based on patient's clinic registration
+        if (patientInfo.clinic === 'both') {
+          // Create audit log entries for both clinics
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+          await logAction({ ...auditEntry, clinic_type: 'meditouch' });
+        } else {
+          // Create single audit log entry
+          const clinicType = patientInfo.clinic === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({ ...auditEntry, clinic_type: clinicType });
+        }
+      } catch (auditError) {
+        console.error('Failed to log lab work creation audit:', auditError);
+      }
+
       // Fetch all lab jobs again to ensure UI is in sync with database
       try {
         const { data: refreshedData, error: refreshError } = await supabaseClient
@@ -379,6 +443,33 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
         )
       );
 
+      // Log audit action for lab work update
+      try {
+        const patientInfo = await getPatientInfoForAudit(existingJob.patient_id, existingJob.patient);
+        const auditEntry = AuditLogTemplates.lab_work.update(
+          id,
+          existingJob.labJobId,
+          patientInfo.name,
+          {
+            before: existingJob,
+            after: updatedJobFull
+          }
+        );
+
+        // Set clinic type based on patient's clinic registration
+        if (patientInfo.clinic === 'both') {
+          // Create audit log entries for both clinics
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+          await logAction({ ...auditEntry, clinic_type: 'meditouch' });
+        } else {
+          // Create single audit log entry
+          const clinicType = patientInfo.clinic === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({ ...auditEntry, clinic_type: clinicType });
+        }
+      } catch (auditError) {
+        console.error('Failed to log lab work update audit:', auditError);
+      }
+
       // Fetch all lab jobs again to ensure UI is in sync with database
       try {
         const { data: refreshedData, error: refreshError } = await supabaseClient
@@ -433,6 +524,12 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Delete a lab job
   const deleteLabJob = async (id: string): Promise<void> => {
     try {
+      // Get the lab job record before deletion for audit logging
+      const labJobToDelete = labJobs.find(job => job.id === id);
+      if (!labJobToDelete) {
+        throw new Error('Lab job not found');
+      }
+
       // Delete from Supabase using direct client
       const { error } = await supabaseClient
         .from('lab_jobs')
@@ -445,6 +542,33 @@ export const LabWorkProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Update local state
       setLabJobs(prevJobs => prevJobs.filter(job => job.id !== id));
+
+      // Log audit action for lab work deletion
+      try {
+        const patientInfo = await getPatientInfoForAudit(labJobToDelete.patient_id, labJobToDelete.patient);
+        const auditEntry = AuditLogTemplates.lab_work.delete(
+          id,
+          labJobToDelete.labJobId,
+          patientInfo.name,
+          labJobToDelete.service,
+          labJobToDelete.labWorkType,
+          labJobToDelete.assignedLab,
+          labJobToDelete.status
+        );
+
+        // Set clinic type based on patient's clinic registration
+        if (patientInfo.clinic === 'both') {
+          // Create audit log entries for both clinics
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+          await logAction({ ...auditEntry, clinic_type: 'meditouch' });
+        } else {
+          // Create single audit log entry
+          const clinicType = patientInfo.clinic === 'meditouch' ? 'meditouch' : 'dental';
+          await logAction({ ...auditEntry, clinic_type: clinicType });
+        }
+      } catch (auditError) {
+        console.error('Failed to log lab work deletion audit:', auditError);
+      }
 
       // Fetch all lab jobs again to ensure UI is in sync with database
       try {

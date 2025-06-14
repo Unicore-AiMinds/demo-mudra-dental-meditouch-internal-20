@@ -4,6 +4,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { handleDatabaseError } from '@/utils/error-handler';
 import { capitalizeFirstLetter } from '@/utils/string-utils';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 
 // Define the DentalLab interface
 export interface DentalLab {
@@ -39,6 +41,7 @@ export const DentalLabsProvider: React.FC<{ children: ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
 
   // Function to refresh labs from Supabase
   const refreshLabs = async (): Promise<void> => {
@@ -98,6 +101,22 @@ export const DentalLabsProvider: React.FC<{ children: ReactNode }> = ({ children
       // Update local state
       setDentalLabs(prev => [...prev, createdLab]);
 
+      // Log audit action for dental lab creation
+      try {
+        const auditEntry = AuditLogTemplates.dental_lab.create(
+          createdLab.id,
+          processedLab.name,
+          processedLab.contact,
+          processedLab.address,
+          processedLab.city,
+          processedLab.specialization
+        );
+        // Dental labs are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log dental lab creation audit:', auditError);
+      }
+
       toast({
         title: 'Success',
         description: `Dental lab ${lab.name} added successfully.`,
@@ -120,6 +139,12 @@ export const DentalLabsProvider: React.FC<{ children: ReactNode }> = ({ children
   // Update an existing lab
   const updateLab = async (id: string, lab: Partial<DentalLab>): Promise<DentalLab> => {
     try {
+      // Get the current lab record for audit logging
+      const currentLab = dentalLabs.find(l => l.id === id);
+      if (!currentLab) {
+        throw new Error('Dental lab not found');
+      }
+
       // Capitalize first letter of name, city, and address if they exist
       const processedLab = {
         ...lab,
@@ -131,26 +156,50 @@ export const DentalLabsProvider: React.FC<{ children: ReactNode }> = ({ children
       console.log(`Updating dental lab ${id}:`, processedLab);
 
       // Update lab in Supabase
-      const updatedLab = await supabase.from<DentalLab>('dental_labs').update(id, {
+      const supabaseResponse = await supabase.from<DentalLab>('dental_labs').update(id, {
         ...processedLab,
         updated_at: new Date().toISOString()
       });
 
-      if (!updatedLab) {
+      if (!supabaseResponse) {
         throw new Error('Failed to update dental lab');
       }
 
-      console.log('Updated dental lab:', updatedLab);
+      // Create a complete updated lab object by merging current data with updates
+      const completeUpdatedLab: DentalLab = {
+        ...currentLab,
+        ...processedLab,
+        id: id,
+        updated_at: new Date().toISOString()
+      };
 
-      // Update local state
-      setDentalLabs(prev => prev.map(l => l.id === id ? updatedLab : l));
+      console.log('Updated dental lab:', completeUpdatedLab);
+
+      // Update local state with the complete updated lab
+      setDentalLabs(prev => prev.map(l => l.id === id ? completeUpdatedLab : l));
+
+      // Log audit action for dental lab update
+      try {
+        const auditEntry = AuditLogTemplates.dental_lab.update(
+          id,
+          completeUpdatedLab.name,
+          {
+            before: currentLab,
+            after: completeUpdatedLab
+          }
+        );
+        // Dental labs are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log dental lab update audit:', auditError);
+      }
 
       toast({
         title: 'Success',
         description: `Dental lab ${lab.name || 'information'} updated successfully.`,
       });
 
-      return updatedLab;
+      return completeUpdatedLab;
     } catch (error) {
       console.error('Error updating dental lab:', error);
       handleDatabaseError({
@@ -167,6 +216,12 @@ export const DentalLabsProvider: React.FC<{ children: ReactNode }> = ({ children
   // Delete a lab
   const deleteLab = async (id: string): Promise<void> => {
     try {
+      // Get the lab record before deletion for audit logging
+      const labToDelete = dentalLabs.find(l => l.id === id);
+      if (!labToDelete) {
+        throw new Error('Dental lab not found');
+      }
+
       console.log(`Deleting dental lab ${id}`);
 
       // Delete lab from Supabase
@@ -174,6 +229,22 @@ export const DentalLabsProvider: React.FC<{ children: ReactNode }> = ({ children
 
       // Update local state
       setDentalLabs(prev => prev.filter(lab => lab.id !== id));
+
+      // Log audit action for dental lab deletion
+      try {
+        const auditEntry = AuditLogTemplates.dental_lab.delete(
+          id,
+          labToDelete.name,
+          labToDelete.contact,
+          labToDelete.address,
+          labToDelete.city,
+          labToDelete.specialization
+        );
+        // Dental labs are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log dental lab deletion audit:', auditError);
+      }
 
       toast({
         title: 'Success',
