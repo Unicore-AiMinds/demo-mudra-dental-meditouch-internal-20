@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 
 export interface StockDefinition {
   id: string;
@@ -38,6 +40,7 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
 
   // Fetch stock definitions from Supabase
   const fetchStockDefinitions = async () => {
@@ -100,6 +103,24 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
       // Update local state
       setStockDefinitions(prev => [...prev, data]);
 
+      // Log audit action for stock definition creation
+      try {
+        const auditEntry = AuditLogTemplates.stock_definition.create(
+          data.id,
+          data.name,
+          data.sub_item,
+          data.item_type,
+          data.description,
+          data.unit || '',
+          data.minimum_threshold
+        );
+
+        // Stock definitions are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log stock definition creation audit:', auditError);
+      }
+
       toast({
         title: "Stock Item Added",
         description: `${definition.name}${definition.sub_item ? ` (${definition.sub_item})` : ''} has been added successfully.`,
@@ -124,6 +145,12 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
     definition: Partial<StockDefinition>
   ): Promise<StockDefinition> => {
     try {
+      // Get the existing definition for audit logging
+      const existingDefinition = stockDefinitions.find(def => def.id === id);
+      if (!existingDefinition) {
+        throw new Error('Stock definition not found');
+      }
+
       // For older Supabase versions, we need to use update with id as first parameter
       const updatedData = await supabase
         .from('stock_item_definitions')
@@ -148,10 +175,31 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
         throw fetchError;
       }
 
+      // Create the updated definition object for comparison
+      const updatedDefinition = { ...existingDefinition, ...definition };
+
       // Update local state
       setStockDefinitions(prev =>
         prev.map(item => (item.id === id ? data : item))
       );
+
+      // Log audit action for stock definition update
+      try {
+        const auditEntry = AuditLogTemplates.stock_definition.update(
+          id,
+          existingDefinition.name,
+          existingDefinition.sub_item,
+          {
+            before: existingDefinition,
+            after: updatedDefinition
+          }
+        );
+
+        // Stock definitions are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log stock definition update audit:', auditError);
+      }
 
       toast({
         title: "Stock Item Updated",
@@ -185,9 +233,30 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
 
       // Get the item before removing it from state
       const itemToDelete = stockDefinitions.find(item => item.id === id);
+      if (!itemToDelete) {
+        throw new Error('Stock definition not found');
+      }
 
       // Update local state
       setStockDefinitions(prev => prev.filter(item => item.id !== id));
+
+      // Log audit action for stock definition deletion
+      try {
+        const auditEntry = AuditLogTemplates.stock_definition.delete(
+          id,
+          itemToDelete.name,
+          itemToDelete.sub_item,
+          itemToDelete.item_type,
+          itemToDelete.unit || '',
+          itemToDelete.minimum_threshold,
+          itemToDelete.description
+        );
+
+        // Stock definitions are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log stock definition deletion audit:', auditError);
+      }
 
       toast({
         title: "Stock Item Deleted",

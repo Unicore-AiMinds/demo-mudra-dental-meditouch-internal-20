@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 
 // Define the Dealer interface
 export interface Dealer {
@@ -36,6 +38,7 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
 
   // Fetch dealers from Supabase
   const fetchDealers = async () => {
@@ -98,6 +101,24 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Update local state
       setDealers(prev => [data, ...prev]);
 
+      // Log audit action for dealer creation
+      try {
+        const auditEntry = AuditLogTemplates.dealer.create(
+          data.id,
+          data.name,
+          data.email,
+          data.contact,
+          data.address,
+          data.city,
+          data.pincode
+        );
+
+        // Dealers are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log dealer creation audit:', auditError);
+      }
+
       toast({
         title: 'Success',
         description: `${dealer.name} added successfully.`,
@@ -121,6 +142,12 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
     dealer: Partial<Dealer>
   ): Promise<Dealer> => {
     try {
+      // Get the existing dealer for audit logging
+      const existingDealer = dealers.find(d => d.id === id);
+      if (!existingDealer) {
+        throw new Error('Dealer not found');
+      }
+
       // For older Supabase versions, we need to use update with id as first parameter
       const updatedData = await supabase
         .from('dealers')
@@ -145,10 +172,30 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
         throw fetchError;
       }
 
+      // Create the updated dealer object for comparison
+      const updatedDealer = { ...existingDealer, ...dealer };
+
       // Update local state
       setDealers(prev =>
         prev.map(item => (item.id === id ? data : item))
       );
+
+      // Log audit action for dealer update
+      try {
+        const auditEntry = AuditLogTemplates.dealer.update(
+          id,
+          existingDealer.name,
+          {
+            before: existingDealer,
+            after: updatedDealer
+          }
+        );
+
+        // Dealers are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log dealer update audit:', auditError);
+      }
 
       toast({
         title: 'Success',
@@ -170,6 +217,12 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Delete a dealer
   const deleteDealer = async (id: string): Promise<void> => {
     try {
+      // Get the dealer before deletion for audit logging
+      const dealerToDelete = dealers.find(dealer => dealer.id === id);
+      if (!dealerToDelete) {
+        throw new Error('Dealer not found');
+      }
+
       // For older Supabase versions, we need to use delete with id as parameter
       const error = await supabase
         .from('dealers')
@@ -181,6 +234,24 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       // Update local state
       setDealers(prev => prev.filter(item => item.id !== id));
+
+      // Log audit action for dealer deletion
+      try {
+        const auditEntry = AuditLogTemplates.dealer.delete(
+          id,
+          dealerToDelete.name,
+          dealerToDelete.email,
+          dealerToDelete.contact,
+          dealerToDelete.address,
+          dealerToDelete.city,
+          dealerToDelete.pincode
+        );
+
+        // Dealers are primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log dealer deletion audit:', auditError);
+      }
 
       toast({
         title: 'Success',

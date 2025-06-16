@@ -37,6 +37,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Plus, Edit, Trash2, AlertCircle, User } from 'lucide-react';
 import { capitalizeWords } from '@/utils/string-utils';
 
@@ -83,6 +90,29 @@ const DealersTab: React.FC = () => {
       toast({
         title: "Validation Error",
         description: "Name and contact are required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate email format if provided
+    if (newDealerEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newDealerEmail.trim())) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a valid email address.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    // Validate contact number (only digits)
+    if (!/^\d+$/.test(newDealerContact.trim())) {
+      toast({
+        title: "Validation Error",
+        description: "Contact number should contain only digits.",
         variant: "destructive"
       });
       return;
@@ -146,6 +176,29 @@ const DealersTab: React.FC = () => {
       toast({
         title: "Validation Error",
         description: "Name and contact are required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate email format if provided
+    if (newDealerEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newDealerEmail.trim())) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a valid email address.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    // Validate contact number (only digits)
+    if (!/^\d+$/.test(newDealerContact.trim())) {
+      toast({
+        title: "Validation Error",
+        description: "Contact number should contain only digits.",
         variant: "destructive"
       });
       return;
@@ -304,17 +357,30 @@ const DealersTab: React.FC = () => {
                 Contact*
               </Label>
               <div className="col-span-3 flex gap-2">
-                <Input
-                  id="countryCode"
+                <Select
                   value={newDealerContactCountryCode}
-                  onChange={(e) => setNewDealerContactCountryCode(e.target.value)}
-                  className="w-20"
-                />
+                  onValueChange={setNewDealerContactCountryCode}
+                >
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="+91" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="+91">+91 (IN)</SelectItem>
+                    <SelectItem value="+1">+1 (US)</SelectItem>
+                    <SelectItem value="+44">+44 (UK)</SelectItem>
+                    <SelectItem value="+61">+61 (AU)</SelectItem>
+                    <SelectItem value="+971">+971 (UAE)</SelectItem>
+                    <SelectItem value="+65">+65 (SG)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Input
                   id="contact"
                   value={newDealerContact}
                   onChange={(e) => setNewDealerContact(e.target.value)}
                   className="flex-1"
+                  placeholder="Contact Number"
+                  pattern="\d+"
+                  title="Please enter only digits"
                 />
               </div>
             </div>
@@ -399,17 +465,30 @@ const DealersTab: React.FC = () => {
                 Contact*
               </Label>
               <div className="col-span-3 flex gap-2">
-                <Input
-                  id="edit-countryCode"
+                <Select
                   value={newDealerContactCountryCode}
-                  onChange={(e) => setNewDealerContactCountryCode(e.target.value)}
-                  className="w-20"
-                />
+                  onValueChange={setNewDealerContactCountryCode}
+                >
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="+91" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="+91">+91 (IN)</SelectItem>
+                    <SelectItem value="+1">+1 (US)</SelectItem>
+                    <SelectItem value="+44">+44 (UK)</SelectItem>
+                    <SelectItem value="+61">+61 (AU)</SelectItem>
+                    <SelectItem value="+971">+971 (UAE)</SelectItem>
+                    <SelectItem value="+65">+65 (SG)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Input
                   id="edit-contact"
                   value={newDealerContact}
                   onChange={(e) => setNewDealerContact(e.target.value)}
                   className="flex-1"
+                  placeholder="Contact Number"
+                  pattern="\d+"
+                  title="Please enter only digits"
                 />
               </div>
             </div>

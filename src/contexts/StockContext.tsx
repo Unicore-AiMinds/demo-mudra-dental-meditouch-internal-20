@@ -3,6 +3,8 @@ import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import { useStockDefinitions, StockDefinition } from '@/contexts/StockDefinitionsContext';
 import { format } from 'date-fns';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 
 export interface StockItem {
   id: string;
@@ -97,6 +99,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const { supabase } = useSupabase();
   const { toast } = useToast();
   const { stockDefinitions } = useStockDefinitions();
+  const { logAction } = useAuditLog();
 
   // Fetch stock items from Supabase
   useEffect(() => {
@@ -215,6 +218,28 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       // Update local state
       setStockItems(prev => [data as StockItem, ...prev]);
 
+      // Log audit action for stock item creation
+      try {
+        const auditEntry = AuditLogTemplates.stock.create(
+          data.id,
+          data.name,
+          data.sub_item,
+          data.item_type,
+          data.description,
+          data.unit,
+          data.current_quantity,
+          data.minimum_threshold,
+          data.dealer,
+          data.rate,
+          data.nearest_expiry_date
+        );
+
+        // Stock management is primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log stock item creation audit:', auditError);
+      }
+
       toast({
         title: 'Success',
         description: `${item.name} added to stock successfully.`,
@@ -235,6 +260,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Update a stock item
   const updateStockItem = async (id: string, item: Partial<StockItem>): Promise<StockItem> => {
     try {
+      // Get the existing item for audit logging
+      const existingItem = stockItems.find(stockItem => stockItem.id === id);
+      if (!existingItem) {
+        throw new Error('Stock item not found');
+      }
+
       // First update the data
       const updatedData = await supabase
         .from('stock_items')
@@ -259,10 +290,31 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         throw fetchError;
       }
 
+      // Create the updated item object for comparison
+      const updatedItem = { ...existingItem, ...item };
+
       // Update local state
       setStockItems(prev =>
         prev.map(i => i.id === id ? { ...i, ...(data as StockItem) } : i)
       );
+
+      // Log audit action for stock item update
+      try {
+        const auditEntry = AuditLogTemplates.stock.update(
+          id,
+          existingItem.name,
+          existingItem.sub_item,
+          {
+            before: existingItem,
+            after: updatedItem
+          }
+        );
+
+        // Stock management is primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log stock item update audit:', auditError);
+      }
 
       toast({
         title: 'Success',
@@ -284,6 +336,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Delete a stock item
   const deleteStockItem = async (id: string): Promise<void> => {
     try {
+      // Get the stock item record before deletion for audit logging
+      const stockItemToDelete = stockItems.find(item => item.id === id);
+      if (!stockItemToDelete) {
+        throw new Error('Stock item not found');
+      }
+
       // Delete stock item from Supabase
       await supabase
         .from('stock_items')
@@ -291,6 +349,24 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       // Update local state
       setStockItems(prev => prev.filter(i => i.id !== id));
+
+      // Log audit action for stock item deletion
+      try {
+        const auditEntry = AuditLogTemplates.stock.delete(
+          id,
+          stockItemToDelete.name,
+          stockItemToDelete.sub_item,
+          stockItemToDelete.item_type,
+          stockItemToDelete.current_quantity,
+          stockItemToDelete.unit,
+          stockItemToDelete.minimum_threshold
+        );
+
+        // Stock management is primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log stock item deletion audit:', auditError);
+      }
 
       toast({
         title: 'Success',
@@ -474,6 +550,28 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           current_quantity: newQuantity,
           nearest_expiry_date: nearestExpiryDate
         });
+
+        // Log audit action for incoming stock
+        try {
+          const auditEntry = AuditLogTemplates.stock.incoming(
+            stockItemId,
+            stockItem.name,
+            stockItem.sub_item,
+            data.quantity_received,
+            stockItem.unit,
+            data.batch_number,
+            data.expiry_date,
+            data.received_date,
+            data.cost_per_unit,
+            data.performed_by,
+            data.notes
+          );
+
+          // Stock management is primarily for dental clinic
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+        } catch (auditError) {
+          console.error('Failed to log incoming stock audit:', auditError);
+        }
       }
 
       toast({
@@ -700,6 +798,54 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         current_quantity: newQuantity,
         nearest_expiry_date: nearestExpiryDate
       });
+
+      // Log audit action for stock consumption
+      try {
+        // Get batch information for audit logging if specific batch was used
+        let batchInfo = '';
+        if (data.specific_batch_id) {
+          const batch = allBatches.find(b => b.id === data.specific_batch_id);
+          if (batch) {
+            // Create a user-friendly batch identifier
+            if (batch.batch_number) {
+              batchInfo = batch.batch_number;
+            } else {
+              // If no batch number, create a descriptive identifier using expiry date
+              const formatDate = (dateStr: string): string => {
+                try {
+                  return new Date(dateStr).toLocaleDateString('en-GB');
+                } catch {
+                  return dateStr;
+                }
+              };
+
+              if (batch.expiry_date) {
+                batchInfo = `Batch (Exp: ${formatDate(batch.expiry_date)})`;
+              } else {
+                batchInfo = `Batch (${batch.received_date})`;
+              }
+            }
+          }
+        }
+
+        const auditEntry = AuditLogTemplates.stock.consumption(
+          stockItemId,
+          stockItem.name,
+          stockItem.sub_item,
+          data.quantity,
+          stockItem.unit,
+          data.transaction_date,
+          batchInfo || undefined,
+          data.performed_by,
+          data.purpose,
+          data.notes
+        );
+
+        // Stock management is primarily for dental clinic
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log stock consumption audit:', auditError);
+      }
 
       toast({
         title: 'Stock Updated',

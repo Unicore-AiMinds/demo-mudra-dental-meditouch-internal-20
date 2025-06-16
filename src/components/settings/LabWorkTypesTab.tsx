@@ -71,7 +71,16 @@ const LabWorkTypesTab: React.FC = () => {
 
   // Format turnaround time for display
   const formatTurnaround = (duration: number, unit: string): string => {
-    return `${duration} ${unit}${duration !== 1 ? 's' : ''}`;
+    // Handle pluralization correctly - don't add 's' if unit already ends with 's'
+    if (duration === 1) {
+      // For singular, remove 's' if present
+      const singularUnit = unit.endsWith('s') ? unit.slice(0, -1) : unit;
+      return `${duration} ${singularUnit}`;
+    } else {
+      // For plural, add 's' only if unit doesn't already end with 's'
+      const pluralUnit = unit.endsWith('s') ? unit : `${unit}s`;
+      return `${duration} ${pluralUnit}`;
+    }
   };
 
   // Handle adding a new lab work type

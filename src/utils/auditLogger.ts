@@ -280,31 +280,7 @@ export const AuditLogTemplates = {
     ),
   },
 
-  // Stock Management
-  stock: {
-    create: (itemId: string, itemName: string, quantity: number) => createAuditLogEntry(
-      'stock',
-      'Create Stock Item',
-      'Stock Item',
-      `Added new stock item: ${itemName} (Quantity: ${quantity})`,
-      itemId
-    ),
-    update: (itemId: string, itemName: string, changes: any) => createAuditLogEntry(
-      'stock',
-      'Update Stock',
-      'Stock Item',
-      `Updated stock for ${itemName}`,
-      itemId,
-      changes
-    ),
-    consume: (itemId: string, itemName: string, quantity: number) => createAuditLogEntry(
-      'stock',
-      'Consume Stock',
-      'Stock Item',
-      `Consumed ${quantity} units of ${itemName}`,
-      itemId
-    ),
-  },
+
 
   // Lab Work (Tracker)
   lab_work: {
@@ -539,6 +515,323 @@ export const AuditLogTemplates = {
       'Lab Work',
       `Deleted lab work type: ${workTypeName} - Turnaround: ${duration} ${unit}`,
       workTypeId
+    ),
+  },
+
+  // Stock Management (Tracker)
+  stock: {
+    create: (stockId: string, itemName: string, subItem: string | undefined, itemType: string, description: string, unit: string, quantity: number, threshold: number, dealer?: string, rate?: number, expiryDate?: string) => createAuditLogEntry(
+      'stock',
+      'Add Stock Item',
+      'Stock Management',
+      `Added new stock item: ${itemName}${subItem ? ` (${subItem})` : ''} - Type: ${itemType}, Quantity: ${quantity} ${unit}, Threshold: ${threshold} ${unit}${dealer ? `, Dealer: ${dealer}` : ''}${rate ? `, Rate: ₹${rate}/${unit}` : ''}${expiryDate ? `, Expiry: ${expiryDate}` : ''}, Description: ${description}`,
+      stockId
+    ),
+
+    update: (stockId: string, itemName: string, subItem: string | undefined, changes: { before: any, after: any }) => {
+      const fieldChanges: string[] = [];
+
+      // Helper function to safely get field value
+      const getFieldValue = (obj: any, field: string): string => {
+        const value = obj?.[field];
+        return (value !== null && value !== undefined && value !== '') ? value.toString() : 'Not specified';
+      };
+
+      // Helper function to format date
+      const formatDate = (dateStr: string): string => {
+        if (!dateStr) return 'Not specified';
+        try {
+          return new Date(dateStr).toLocaleDateString('en-GB');
+        } catch {
+          return dateStr;
+        }
+      };
+
+      // Compare each field and build detailed change description
+      if (changes.before.name !== changes.after.name) {
+        fieldChanges.push(`Name: "${changes.before.name}" → "${changes.after.name}"`);
+      }
+
+      const beforeSubItem = getFieldValue(changes.before, 'sub_item');
+      const afterSubItem = getFieldValue(changes.after, 'sub_item');
+      if (beforeSubItem !== afterSubItem) {
+        fieldChanges.push(`Sub-item: "${beforeSubItem}" → "${afterSubItem}"`);
+      }
+
+      if (changes.before.item_type !== changes.after.item_type) {
+        fieldChanges.push(`Type: "${changes.before.item_type}" → "${changes.after.item_type}"`);
+      }
+
+      const beforeDescription = getFieldValue(changes.before, 'description');
+      const afterDescription = getFieldValue(changes.after, 'description');
+      if (beforeDescription !== afterDescription) {
+        fieldChanges.push(`Description: "${beforeDescription}" → "${afterDescription}"`);
+      }
+
+      if (changes.before.unit !== changes.after.unit) {
+        fieldChanges.push(`Unit: "${changes.before.unit}" → "${changes.after.unit}"`);
+      }
+
+      if (changes.before.current_quantity !== changes.after.current_quantity) {
+        fieldChanges.push(`Quantity: "${changes.before.current_quantity}" → "${changes.after.current_quantity}"`);
+      }
+
+      if (changes.before.minimum_threshold !== changes.after.minimum_threshold) {
+        fieldChanges.push(`Threshold: "${changes.before.minimum_threshold}" → "${changes.after.minimum_threshold}"`);
+      }
+
+      const beforeDealer = getFieldValue(changes.before, 'dealer');
+      const afterDealer = getFieldValue(changes.after, 'dealer');
+      if (beforeDealer !== afterDealer) {
+        fieldChanges.push(`Dealer: "${beforeDealer}" → "${afterDealer}"`);
+      }
+
+      const beforeRate = changes.before.rate ? `₹${changes.before.rate}` : 'Not specified';
+      const afterRate = changes.after.rate ? `₹${changes.after.rate}` : 'Not specified';
+      if (beforeRate !== afterRate) {
+        fieldChanges.push(`Rate: "${beforeRate}" → "${afterRate}"`);
+      }
+
+      const beforeExpiry = changes.before.nearest_expiry_date ? formatDate(changes.before.nearest_expiry_date) : 'Not specified';
+      const afterExpiry = changes.after.nearest_expiry_date ? formatDate(changes.after.nearest_expiry_date) : 'Not specified';
+      if (beforeExpiry !== afterExpiry) {
+        fieldChanges.push(`Expiry Date: "${beforeExpiry}" → "${afterExpiry}"`);
+      }
+
+      const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';
+      const displayName = `${itemName}${subItem ? ` (${subItem})` : ''}`;
+
+      return createAuditLogEntry(
+        'stock',
+        'Update Stock Item',
+        'Stock Management',
+        `Updated stock item ${displayName}: ${changesText}`,
+        stockId,
+        changes
+      );
+    },
+
+    delete: (stockId: string, itemName: string, subItem: string | undefined, itemType: string, quantity: number, unit: string, threshold: number) => createAuditLogEntry(
+      'stock',
+      'Delete Stock Item',
+      'Stock Management',
+      `Deleted stock item: ${itemName}${subItem ? ` (${subItem})` : ''} - Type: ${itemType}, Quantity: ${quantity} ${unit}, Threshold: ${threshold} ${unit}`,
+      stockId
+    ),
+
+    // Stock transactions
+    incoming: (stockId: string, itemName: string, subItem: string | undefined, quantity: number, unit: string, batchNumber?: string, expiryDate?: string, receivedDate?: string, costPerUnit?: number, performedBy?: string, notes?: string) => {
+      // Helper function to format date
+      const formatDate = (dateStr: string): string => {
+        if (!dateStr) return '';
+        try {
+          return new Date(dateStr).toLocaleDateString('en-GB');
+        } catch {
+          return dateStr;
+        }
+      };
+
+      const details = [
+        `Added incoming stock for ${itemName}${subItem ? ` (${subItem})` : ''}: ${quantity} ${unit}`,
+        batchNumber ? `Batch: ${batchNumber}` : '',
+        expiryDate ? `Expiry: ${formatDate(expiryDate)}` : '',
+        receivedDate ? `Received: ${formatDate(receivedDate)}` : '',
+        costPerUnit ? `Cost: ₹${costPerUnit}/${unit}` : '',
+        performedBy ? `By: ${performedBy}` : '',
+        notes ? `Notes: ${notes}` : ''
+      ].filter(Boolean).join(', ');
+
+      return createAuditLogEntry(
+        'stock',
+        'Add Incoming Stock',
+        'Stock Management',
+        details,
+        stockId
+      );
+    },
+
+    consumption: (stockId: string, itemName: string, subItem: string | undefined, quantity: number, unit: string, transactionDate?: string, specificBatchId?: string, performedBy?: string, purpose?: string, notes?: string) => {
+      // Helper function to format date
+      const formatDate = (dateStr: string): string => {
+        if (!dateStr) return '';
+        try {
+          return new Date(dateStr).toLocaleDateString('en-GB');
+        } catch {
+          return dateStr;
+        }
+      };
+
+      // Build details array, avoiding duplicate purpose/notes
+      const detailParts = [
+        `Recorded consumption for ${itemName}${subItem ? ` (${subItem})` : ''}: ${quantity} ${unit}`,
+        transactionDate ? `Date: ${formatDate(transactionDate)}` : '',
+        specificBatchId ? `${specificBatchId}` : 'Method: FEFO (First Expiry, First Out)',
+        performedBy ? `By: ${performedBy}` : ''
+      ];
+
+      // Only add purpose and notes if they're different and meaningful
+      if (purpose && purpose !== 'Stock consumption' && purpose.trim() !== '') {
+        detailParts.push(`Purpose: ${purpose}`);
+      }
+
+      if (notes && notes !== purpose && notes !== 'Stock consumption' && notes.trim() !== '') {
+        detailParts.push(`Notes: ${notes}`);
+      }
+
+      const details = detailParts.filter(Boolean).join(', ');
+
+      return createAuditLogEntry(
+        'stock',
+        'Record Stock Consumption',
+        'Stock Management',
+        details,
+        stockId
+      );
+    },
+  },
+
+  // Stock Definitions (Settings Page)
+  stock_definition: {
+    create: (definitionId: string, itemName: string, subItem: string | undefined, itemType: string, description: string, unit: string, threshold: number) => createAuditLogEntry(
+      'stock',
+      'Add Stock Definition',
+      'Stock Management',
+      `Added new stock definition: ${itemName}${subItem ? ` (${subItem})` : ''} - Type: ${itemType}, Unit: ${unit}, Threshold: ${threshold} ${unit}, Description: ${description}`,
+      definitionId
+    ),
+
+    update: (definitionId: string, itemName: string, subItem: string | undefined, changes: { before: any, after: any }) => {
+      const fieldChanges: string[] = [];
+
+      // Helper function to safely get field value
+      const getFieldValue = (obj: any, field: string): string => {
+        const value = obj?.[field];
+        return (value !== null && value !== undefined && value !== '') ? value.toString() : 'Not specified';
+      };
+
+      // Compare each field and build detailed change description
+      if (changes.before.name !== changes.after.name) {
+        fieldChanges.push(`Name: "${changes.before.name}" → "${changes.after.name}"`);
+      }
+
+      const beforeSubItem = getFieldValue(changes.before, 'sub_item');
+      const afterSubItem = getFieldValue(changes.after, 'sub_item');
+      if (beforeSubItem !== afterSubItem) {
+        fieldChanges.push(`Sub-item: "${beforeSubItem}" → "${afterSubItem}"`);
+      }
+
+      if (changes.before.item_type !== changes.after.item_type) {
+        fieldChanges.push(`Type: "${changes.before.item_type}" → "${changes.after.item_type}"`);
+      }
+
+      const beforeDescription = getFieldValue(changes.before, 'description');
+      const afterDescription = getFieldValue(changes.after, 'description');
+      if (beforeDescription !== afterDescription) {
+        fieldChanges.push(`Description: "${beforeDescription}" → "${afterDescription}"`);
+      }
+
+      const beforeUnit = getFieldValue(changes.before, 'unit');
+      const afterUnit = getFieldValue(changes.after, 'unit');
+      if (beforeUnit !== afterUnit) {
+        fieldChanges.push(`Unit: "${beforeUnit}" → "${afterUnit}"`);
+      }
+
+      if (changes.before.minimum_threshold !== changes.after.minimum_threshold) {
+        fieldChanges.push(`Threshold: "${changes.before.minimum_threshold}" → "${changes.after.minimum_threshold}"`);
+      }
+
+      const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';
+      const displayName = `${itemName}${subItem ? ` (${subItem})` : ''}`;
+
+      return createAuditLogEntry(
+        'stock',
+        'Update Stock Definition',
+        'Stock Management',
+        `Updated stock definition ${displayName}: ${changesText}`,
+        definitionId,
+        changes
+      );
+    },
+
+    delete: (definitionId: string, itemName: string, subItem: string | undefined, itemType: string, unit: string, threshold: number, description: string) => createAuditLogEntry(
+      'stock',
+      'Delete Stock Definition',
+      'Stock Management',
+      `Deleted stock definition: ${itemName}${subItem ? ` (${subItem})` : ''} - Type: ${itemType}, Unit: ${unit}, Threshold: ${threshold} ${unit}, Description: ${description}`,
+      definitionId
+    ),
+  },
+
+  // Dealers (Settings Page)
+  dealer: {
+    create: (dealerId: string, dealerName: string, email: string | null, contact: string, address: string | null, city: string | null, pincode: string | null) => createAuditLogEntry(
+      'stock',
+      'Add Dealer',
+      'Stock Management',
+      `Added new dealer: ${dealerName} - Contact: ${contact}${email ? `, Email: ${email}` : ''}${address ? `, Address: ${address}` : ''}${city ? `, City: ${city}` : ''}${pincode ? `, Pincode: ${pincode}` : ''}`,
+      dealerId
+    ),
+
+    update: (dealerId: string, dealerName: string, changes: { before: any, after: any }) => {
+      const fieldChanges: string[] = [];
+
+      // Helper function to safely get field value
+      const getFieldValue = (obj: any, field: string): string => {
+        const value = obj?.[field];
+        return (value !== null && value !== undefined && value !== '') ? value.toString() : 'Not specified';
+      };
+
+      // Compare each field and build detailed change description
+      if (changes.before.name !== changes.after.name) {
+        fieldChanges.push(`Name: "${changes.before.name}" → "${changes.after.name}"`);
+      }
+
+      const beforeEmail = getFieldValue(changes.before, 'email');
+      const afterEmail = getFieldValue(changes.after, 'email');
+      if (beforeEmail !== afterEmail) {
+        fieldChanges.push(`Email: "${beforeEmail}" → "${afterEmail}"`);
+      }
+
+      if (changes.before.contact !== changes.after.contact) {
+        fieldChanges.push(`Contact: "${changes.before.contact}" → "${changes.after.contact}"`);
+      }
+
+      const beforeAddress = getFieldValue(changes.before, 'address');
+      const afterAddress = getFieldValue(changes.after, 'address');
+      if (beforeAddress !== afterAddress) {
+        fieldChanges.push(`Address: "${beforeAddress}" → "${afterAddress}"`);
+      }
+
+      const beforeCity = getFieldValue(changes.before, 'city');
+      const afterCity = getFieldValue(changes.after, 'city');
+      if (beforeCity !== afterCity) {
+        fieldChanges.push(`City: "${beforeCity}" → "${afterCity}"`);
+      }
+
+      const beforePincode = getFieldValue(changes.before, 'pincode');
+      const afterPincode = getFieldValue(changes.after, 'pincode');
+      if (beforePincode !== afterPincode) {
+        fieldChanges.push(`Pincode: "${beforePincode}" → "${afterPincode}"`);
+      }
+
+      const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';
+
+      return createAuditLogEntry(
+        'stock',
+        'Update Dealer',
+        'Stock Management',
+        `Updated dealer ${dealerName}: ${changesText}`,
+        dealerId,
+        changes
+      );
+    },
+
+    delete: (dealerId: string, dealerName: string, email: string | null, contact: string, address: string | null, city: string | null, pincode: string | null) => createAuditLogEntry(
+      'stock',
+      'Delete Dealer',
+      'Stock Management',
+      `Deleted dealer: ${dealerName} - Contact: ${contact}${email ? `, Email: ${email}` : ''}${address ? `, Address: ${address}` : ''}${city ? `, City: ${city}` : ''}${pincode ? `, Pincode: ${pincode}` : ''}`,
+      dealerId
     ),
   },
 
