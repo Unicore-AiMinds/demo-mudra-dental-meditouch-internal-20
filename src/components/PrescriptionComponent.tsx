@@ -15,6 +15,7 @@ import { useClinicInfo } from '@/contexts/ClinicInfoContext';
 import { useDoctors } from '@/contexts/DoctorContext';
 import { useMedicines } from '@/contexts/MedicineContext';
 import { useSupabase } from '@/contexts/SupabaseContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import { Medicine, getUniqueMedicineNames, getDosagesForMedicine } from '@/types/medicines';
 import { format as formatDate } from 'date-fns';
 import { Combobox } from '@/components/ui/combobox';
@@ -48,6 +49,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   const { doctors } = useDoctors();
   const { medicines } = useMedicines();
   const { supabase } = useSupabase();
+  const { hasPermission } = usePermissions();
 
   // Log available medicines for debugging
   useEffect(() => {
@@ -1037,7 +1039,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle>Prescriptions</CardTitle>
-          {!isAddingNew && !isEditing && (
+          {!isAddingNew && !isEditing && hasPermission('patients.create_prescriptions') && (
             <Button
               onClick={() => setIsAddingNew(true)}
               className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700"
@@ -1382,13 +1384,15 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                           <TableCell>{getStatusBadge(prescription.status)}</TableCell>
                           <TableCell>
                             <div className="flex space-x-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditPrescription(prescription.id)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
+                              {hasPermission('patients.edit_prescriptions') && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditPrescription(prescription.id)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"

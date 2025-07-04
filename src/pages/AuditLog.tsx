@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import { useAuditLog } from '@/contexts/AuditLogContext';
 import {
   Card,
@@ -115,6 +116,7 @@ const getActionBadge = (actionType: string) => {
 
 const AuditLog = () => {
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const { auditLogs, isLoading, fetchAuditLogs } = useAuditLog();
   const [searchTerm, setSearchTerm] = useState("");
@@ -187,8 +189,8 @@ const AuditLog = () => {
 
 
 
-  // Check if the user is an admin
-  if (user?.role !== 'admin') {
+  // Check if the user has permission to view audit logs
+  if (!hasPermission('audit_logs.view')) {
     return (
       <div className="flex flex-col items-center justify-center h-96">
         <div className="text-4xl font-bold text-gray-300 mb-4">
@@ -196,7 +198,7 @@ const AuditLog = () => {
         </div>
         <h2 className="text-2xl font-semibold text-gray-700 mb-2">Access Restricted</h2>
         <p className="text-gray-500 mb-6 text-center max-w-md">
-          The Audit Log is only accessible to administrators.
+          You don't have permission to view audit logs.
           Please contact your system administrator if you need access.
         </p>
       </div>
@@ -322,12 +324,14 @@ const AuditLog = () => {
           <p className="text-muted-foreground">Track and monitor all system activities</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={exportToExcel}
-          >
-            <Download className="mr-2 h-4 w-4" /> Export Log
-          </Button>
+          {hasPermission('audit_logs.export') && (
+            <Button
+              variant="outline"
+              onClick={exportToExcel}
+            >
+              <Download className="mr-2 h-4 w-4" /> Export Log
+            </Button>
+          )}
         </div>
       </div>
 

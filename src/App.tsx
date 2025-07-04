@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PermissionProvider } from "@/contexts/PermissionContext";
 import { ClinicProvider } from "@/contexts/ClinicContext";
 import { ClinicInfoProvider } from "@/contexts/ClinicInfoContext";
 import { DoctorProvider } from "@/contexts/DoctorContext";
@@ -28,6 +29,9 @@ import { ServiceFollowUpRuleProvider } from "@/contexts/ServiceFollowUpRuleConte
 import { FollowUpProvider } from "@/contexts/FollowUpContext";
 import { AuditLogProvider } from "@/contexts/AuditLogContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
+import { UserManagementProvider } from "@/contexts/UserManagementContext";
+import { SessionTimeoutProvider } from "@/contexts/SessionTimeoutContext";
+import SessionTimeoutModal from "@/components/SessionTimeoutModal";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Login from "@/pages/Login";
@@ -44,6 +48,7 @@ import Settings from "@/pages/Settings";
 import RecallList from "@/pages/RecallList";
 import Unauthorized from "@/pages/Unauthorized";
 import NotFound from "@/pages/NotFound";
+import { PermissionBasedRedirect } from "@/components/PermissionBasedRedirect";
 
 const queryClient = new QueryClient();
 
@@ -55,29 +60,32 @@ const App = () => (
       <BrowserRouter>
         <SupabaseProvider>
           <AuthProvider>
-            <ClinicProvider>
-              <ClinicInfoProvider>
-                <AuditLogProvider>
-                  <DoctorProvider>
-                    <ServiceProvider>
-                      <PatientProvider>
-                        <AppointmentProvider>
-                          <ServiceFollowUpProvider>
-                            <ServiceFollowUpRuleProvider>
-                              <FollowUpProvider>
-                              <DentalHistoryProvider>
-                                <DentalChartingProvider>
-                                  <VitalSignsProvider>
-                                    <PrescriptionProvider>
-                                      {/* Important: DentalLabsProvider must come before LabWorkProvider */}
-                                      <DentalLabsProvider>
-                                        <LabWorkTypesProvider>
-                                          <LabWorkProvider>
-                                            <StockDefinitionsProvider>
-                                              <UnitsProvider>
-                                                <StockProvider>
-                                                  <DealersProvider>
-                                                    <MedicineProvider>
+            <PermissionProvider>
+              <SessionTimeoutProvider>
+                <ClinicProvider>
+                  <ClinicInfoProvider>
+                    <AuditLogProvider>
+                      <UserManagementProvider>
+                        <DoctorProvider>
+                          <ServiceProvider>
+                            <PatientProvider>
+                              <AppointmentProvider>
+                                <ServiceFollowUpProvider>
+                                  <ServiceFollowUpRuleProvider>
+                                    <FollowUpProvider>
+                                      <DentalHistoryProvider>
+                                        <DentalChartingProvider>
+                                          <VitalSignsProvider>
+                                            <PrescriptionProvider>
+                                              {/* Important: DentalLabsProvider must come before LabWorkProvider */}
+                                              <DentalLabsProvider>
+                                                <LabWorkTypesProvider>
+                                                  <LabWorkProvider>
+                                                    <StockDefinitionsProvider>
+                                                      <UnitsProvider>
+                                                        <StockProvider>
+                                                          <DealersProvider>
+                                                            <MedicineProvider>
                                               <Routes>
                                                 <Route path="/login" element={<Login />} />
                                                 <Route path="/unauthorized" element={<Unauthorized />} />
@@ -96,7 +104,7 @@ const App = () => (
                                                   <Route
                                                     path="/stock"
                                                     element={
-                                                      <ProtectedRoute allowedRoles={['admin', 'inventory']}>
+                                                      <ProtectedRoute requiredPermissions={['stock.view']}>
                                                         <StockTracker />
                                                       </ProtectedRoute>
                                                     }
@@ -104,18 +112,39 @@ const App = () => (
                                                   <Route
                                                     path="/lab"
                                                     element={
-                                                      <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
+                                                      <ProtectedRoute requiredPermissions={['lab_work.view']}>
                                                         <LabWork />
                                                       </ProtectedRoute>
                                                     }
                                                   />
-                                                  <Route path="/patients" element={<Patients />} />
-                                                  <Route path="/patients/:patientId" element={<PatientDetails />} />
-                                                  <Route path="/recall-list" element={<RecallList />} />
+                                                  <Route
+                                                    path="/patients"
+                                                    element={
+                                                      <ProtectedRoute requiredPermissions={['patients.view']}>
+                                                        <Patients />
+                                                      </ProtectedRoute>
+                                                    }
+                                                  />
+                                                  <Route
+                                                    path="/patients/:patientId"
+                                                    element={
+                                                      <ProtectedRoute requiredPermissions={['patients.view']}>
+                                                        <PatientDetails />
+                                                      </ProtectedRoute>
+                                                    }
+                                                  />
+                                                  <Route
+                                                    path="/recall-list"
+                                                    element={
+                                                      <ProtectedRoute requiredPermissions={['recall_list.view']}>
+                                                        <RecallList />
+                                                      </ProtectedRoute>
+                                                    }
+                                                  />
                                                   <Route
                                                     path="/reports"
                                                     element={
-                                                      <ProtectedRoute allowedRoles={['admin']}>
+                                                      <ProtectedRoute requiredPermissions={['reports.view']}>
                                                         <Reports />
                                                       </ProtectedRoute>
                                                     }
@@ -123,7 +152,7 @@ const App = () => (
                                                   <Route
                                                     path="/audit"
                                                     element={
-                                                      <ProtectedRoute allowedRoles={['admin']}>
+                                                      <ProtectedRoute requiredPermissions={['audit_logs.view']}>
                                                         <AuditLog />
                                                       </ProtectedRoute>
                                                     }
@@ -131,41 +160,45 @@ const App = () => (
                                                   <Route
                                                     path="/settings"
                                                     element={
-                                                      <ProtectedRoute allowedRoles={['admin']}>
+                                                      <ProtectedRoute requiredPermissions={['settings.view_doctors', 'settings.view_services', 'settings.view_user_management', 'settings.view_roles']} requireAll={false}>
                                                         <Settings />
                                                       </ProtectedRoute>
                                                     }
                                                   />
                                                 </Route>
 
-                                                {/* Redirect root to dashboard if logged in, otherwise to login */}
-                                                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                                                {/* Permission-based routing for root path */}
+                                                <Route path="/" element={<PermissionBasedRedirect />} />
 
                                                 {/* 404 route */}
                                                 <Route path="*" element={<NotFound />} />
                                               </Routes>
-                                              </MedicineProvider>
-                                                  </DealersProvider>
-                                                </StockProvider>
-                                              </UnitsProvider>
-                                            </StockDefinitionsProvider>
-                                        </LabWorkProvider>
-                                      </LabWorkTypesProvider>
-                                    </DentalLabsProvider>
-                                    </PrescriptionProvider>
-                                  </VitalSignsProvider>
-                                </DentalChartingProvider>
-                                </DentalHistoryProvider>
-                              </FollowUpProvider>
-                            </ServiceFollowUpRuleProvider>
-                          </ServiceFollowUpProvider>
-                        </AppointmentProvider>
-                      </PatientProvider>
-                    </ServiceProvider>
-                  </DoctorProvider>
-                </AuditLogProvider>
-              </ClinicInfoProvider>
-            </ClinicProvider>
+                                            </MedicineProvider>
+                                          </DealersProvider>
+                                        </StockProvider>
+                                      </UnitsProvider>
+                                    </StockDefinitionsProvider>
+                                  </LabWorkProvider>
+                                </LabWorkTypesProvider>
+                              </DentalLabsProvider>
+                            </PrescriptionProvider>
+                          </VitalSignsProvider>
+                        </DentalChartingProvider>
+                      </DentalHistoryProvider>
+                    </FollowUpProvider>
+                  </ServiceFollowUpRuleProvider>
+                </ServiceFollowUpProvider>
+              </AppointmentProvider>
+            </PatientProvider>
+          </ServiceProvider>
+        </DoctorProvider>
+      </UserManagementProvider>
+    </AuditLogProvider>
+  </ClinicInfoProvider>
+</ClinicProvider>
+                <SessionTimeoutModal />
+              </SessionTimeoutProvider>
+            </PermissionProvider>
           </AuthProvider>
         </SupabaseProvider>
       </BrowserRouter>

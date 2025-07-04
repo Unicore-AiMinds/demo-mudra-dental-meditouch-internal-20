@@ -835,6 +835,125 @@ export const AuditLogTemplates = {
     ),
   },
 
+  // User Management (Settings Page)
+  user: {
+    create: (userId: string, userName: string, email: string, role: string, phone?: string, isActive?: boolean) => createAuditLogEntry(
+      'user',
+      'Add User',
+      'User Management',
+      `Added new user: ${userName} - Email: ${email}, Role: ${role}${phone ? `, Phone: ${phone}` : ''}${isActive !== undefined ? `, Status: ${isActive ? 'Active' : 'Inactive'}` : ''}`,
+      userId
+    ),
+
+    update: (userId: string, userName: string, changes: { before: any, after: any }) => {
+      const fieldChanges: string[] = [];
+
+      // Helper function to safely get field value
+      const getFieldValue = (obj: any, field: string): string => {
+        const value = obj?.[field];
+        return (value !== null && value !== undefined && value !== '') ? value.toString() : 'Not specified';
+      };
+
+      // Compare each field and build detailed change description
+      if (changes.before.name !== changes.after.name) {
+        fieldChanges.push(`Name: "${changes.before.name}" → "${changes.after.name}"`);
+      }
+
+      if (changes.before.email !== changes.after.email) {
+        fieldChanges.push(`Email: "${changes.before.email}" → "${changes.after.email}"`);
+      }
+
+      if (changes.before.role !== changes.after.role) {
+        fieldChanges.push(`Role: "${changes.before.role}" → "${changes.after.role}"`);
+      }
+
+      const beforePhone = getFieldValue(changes.before, 'phone');
+      const afterPhone = getFieldValue(changes.after, 'phone');
+      if (beforePhone !== afterPhone) {
+        fieldChanges.push(`Phone: "${beforePhone}" → "${afterPhone}"`);
+      }
+
+      if (changes.before.is_active !== changes.after.is_active) {
+        fieldChanges.push(`Status: "${changes.before.is_active ? 'Active' : 'Inactive'}" → "${changes.after.is_active ? 'Active' : 'Inactive'}"`);
+      }
+
+      if (changes.before.is_verified !== changes.after.is_verified) {
+        fieldChanges.push(`Verification: "${changes.before.is_verified ? 'Verified' : 'Unverified'}" → "${changes.after.is_verified ? 'Verified' : 'Unverified'}"`);
+      }
+
+      // Check for password change
+      if (changes.after.password) {
+        fieldChanges.push('Password: Changed');
+      }
+
+      const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';
+
+      return createAuditLogEntry(
+        'user',
+        'Update User',
+        'User Management',
+        `Updated user ${userName}: ${changesText}`,
+        userId,
+        changes
+      );
+    },
+
+    delete: (userId: string, userName: string, email: string, role: string) => createAuditLogEntry(
+      'user',
+      'Delete User',
+      'User Management',
+      `Deleted user: ${userName} - Email: ${email}, Role: ${role}`,
+      userId
+    ),
+
+    login: (userId: string, userName: string, email: string) => createAuditLogEntry(
+      'auth',
+      'User Login',
+      'Authentication',
+      `User logged in: ${userName} (${email})`,
+      userId
+    ),
+
+    logout: (userId: string, userName: string, email: string) => createAuditLogEntry(
+      'auth',
+      'User Logout',
+      'Authentication',
+      `User logged out: ${userName} (${email})`,
+      userId
+    ),
+
+    loginFailed: (email: string, reason?: string) => createAuditLogEntry(
+      'auth',
+      'Login Failed',
+      'Authentication',
+      `Failed login attempt for: ${email}${reason ? ` - ${reason}` : ''}`
+    ),
+
+    passwordReset: (userId: string, userName: string, email: string) => createAuditLogEntry(
+      'user',
+      'Password Reset',
+      'User Management',
+      `Password reset for user: ${userName} (${email})`,
+      userId
+    ),
+
+    accountLocked: (userId: string, userName: string, email: string) => createAuditLogEntry(
+      'auth',
+      'Account Locked',
+      'Authentication',
+      `Account locked due to failed login attempts: ${userName} (${email})`,
+      userId
+    ),
+
+    accountUnlocked: (userId: string, userName: string, email: string) => createAuditLogEntry(
+      'user',
+      'Account Unlocked',
+      'User Management',
+      `Account unlocked for user: ${userName} (${email})`,
+      userId
+    ),
+  },
+
   // Settings
   settings: {
     update: (settingName: string, details: string) => createAuditLogEntry(
@@ -1507,38 +1626,5 @@ export const AuditLogTemplates = {
         ruleId
       );
     },
-  },
-
-  // User Management
-  user: {
-    create: (userId: string, userName: string, role: string) => createAuditLogEntry(
-      'user',
-      'Create User',
-      'User',
-      `Created new user: ${userName} (Role: ${role})`,
-      userId
-    ),
-    update: (userId: string, userName: string, changes: any) => createAuditLogEntry(
-      'user',
-      'Update User',
-      'User',
-      `Updated user: ${userName}`,
-      userId,
-      changes
-    ),
-    delete: (userId: string, userName: string) => createAuditLogEntry(
-      'user',
-      'Delete User',
-      'User',
-      `Deleted user: ${userName}`,
-      userId
-    ),
-    roleChange: (userId: string, userName: string, oldRole: string, newRole: string) => createAuditLogEntry(
-      'user',
-      'Change User Role',
-      'User',
-      `Changed role for ${userName} from ${oldRole} to ${newRole}`,
-      userId
-    ),
   },
 };

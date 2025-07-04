@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useClinicInfo } from '@/contexts/ClinicInfoContext';
 import { useDoctors } from '@/contexts/DoctorContext';
@@ -14,6 +15,9 @@ import LabsTab from '@/components/settings/LabsTab';
 import LabWorkTypesTab from '@/components/settings/LabWorkTypesTab';
 import StockItemsTab from '@/components/settings/StockItemsTab';
 import DealersTab from '@/components/settings/DealersTab';
+import UserManagementTab from '@/components/settings/UserManagementTab';
+import { RolesTab } from '@/components/settings/RolesTab';
+import { initializeSystem } from '@/utils/initializeSystem';
 
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { demoFollowUpRules } from '@/data/demo-dental-history';
@@ -157,8 +161,23 @@ const systemUsers = [
 
 const Settings = () => {
   const { user } = useAuth();
+  const { hasPermission, hasAnyPermission } = usePermissions();
   const { activeClinic } = useClinic();
   const { currentClinicInfo } = useClinicInfo();
+
+  // Determine the first available tab based on permissions
+  const getFirstAvailableTab = () => {
+    if (hasPermission('settings.view_doctors')) return 'doctors';
+    if (hasPermission('settings.view_services')) return 'services';
+    if (hasPermission('settings.view_medicines')) return 'medicines';
+    if (hasPermission('settings.view_labs')) return 'labs';
+    if (hasPermission('settings.view_lab_work_types')) return 'lab-work-types';
+    if (hasPermission('settings.view_stock_items')) return 'stock-items';
+    if (hasPermission('settings.view_dealers')) return 'dealers';
+    if (hasPermission('settings.view_user_management')) return 'user-management';
+    if (hasPermission('settings.view_roles')) return 'roles';
+    return 'doctors'; // fallback
+  };
   // Add dialogs
   const [isAddDoctorDialogOpen, setIsAddDoctorDialogOpen] = useState(false);
   const [isAddServiceDialogOpen, setIsAddServiceDialogOpen] = useState(false);
@@ -372,8 +391,21 @@ const Settings = () => {
 
 
 
-  // Check if user is admin
-  if (user?.role !== 'admin') {
+  // Check if user has any settings permissions
+  const settingsPermissions = [
+    'settings.view_doctors',
+    'settings.view_services',
+    'settings.view_service_followup',
+    'settings.view_labs',
+    'settings.view_lab_work_types',
+    'settings.view_stock_settings',
+    'settings.view_dealers',
+    'settings.view_medicines',
+    'settings.view_user_management',
+    'settings.view_roles'
+  ];
+
+  if (!hasAnyPermission(settingsPermissions)) {
     return (
       <div className="flex flex-col items-center justify-center h-96">
         <div className="text-4xl font-bold text-gray-300 mb-4">
@@ -381,7 +413,7 @@ const Settings = () => {
         </div>
         <h2 className="text-2xl font-semibold text-gray-700 mb-2">Access Restricted</h2>
         <p className="text-gray-500 mb-6 text-center max-w-md">
-          The Settings module is only accessible to administrators.
+          You don't have permission to access the Settings module.
           Please contact your system administrator if you need access.
         </p>
       </div>
@@ -1725,20 +1757,22 @@ const Settings = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="doctors" className="w-full">
+      <Tabs defaultValue={getFirstAvailableTab()} className="w-full">
         <TabsList className="mb-4">
           {/* COMMENTED OUT: Clinic Details tab as requested by user */}
           {/* <TabsTrigger value="clinic">Clinic Details</TabsTrigger> */}
-          <TabsTrigger value="doctors">Doctors</TabsTrigger>
-          <TabsTrigger value="services">Services</TabsTrigger>
-          <TabsTrigger value="service-followups">Service Follow-ups</TabsTrigger>
-          {activeClinic === 'dental' && <TabsTrigger value="labs">Labs</TabsTrigger>}
-          {activeClinic === 'dental' && <TabsTrigger value="labwork">Lab Work Types</TabsTrigger>}
-          {activeClinic === 'dental' && <TabsTrigger value="stock">Stock</TabsTrigger>}
-          {activeClinic === 'dental' && <TabsTrigger value="dealers">Dealers</TabsTrigger>}
-          <TabsTrigger value="medicines">Medicines</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="users">User Management</TabsTrigger>
+          {hasPermission('settings.view_doctors') && <TabsTrigger value="doctors">Doctors</TabsTrigger>}
+          {hasPermission('settings.view_services') && <TabsTrigger value="services">Services</TabsTrigger>}
+          {hasPermission('settings.view_service_followup') && <TabsTrigger value="service-followups">Service Follow-ups</TabsTrigger>}
+          {activeClinic === 'dental' && hasPermission('settings.view_labs') && <TabsTrigger value="labs">Labs</TabsTrigger>}
+          {activeClinic === 'dental' && hasPermission('settings.view_lab_work_types') && <TabsTrigger value="labwork">Lab Work Types</TabsTrigger>}
+          {activeClinic === 'dental' && hasPermission('settings.view_stock_settings') && <TabsTrigger value="stock">Stock</TabsTrigger>}
+          {activeClinic === 'dental' && hasPermission('settings.view_dealers') && <TabsTrigger value="dealers">Dealers</TabsTrigger>}
+          {hasPermission('settings.view_medicines') && <TabsTrigger value="medicines">Medicines</TabsTrigger>}
+          {/* TEMPORARILY COMMENTED OUT: Notifications tab */}
+          {/* <TabsTrigger value="notifications">Notifications</TabsTrigger> */}
+          {hasPermission('settings.view_roles') && <TabsTrigger value="roles">Roles & Permissions</TabsTrigger>}
+          {hasPermission('settings.view_user_management') && <TabsTrigger value="users">User Management</TabsTrigger>}
         </TabsList>
 
         {/* COMMENTED OUT: Clinic Details tab content as requested by user */}
@@ -1886,9 +1920,11 @@ const Settings = () => {
                     Add and manage doctors for {activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch'} Clinic
                   </CardDescription>
                 </div>
-                <Button onClick={() => setIsAddDoctorDialogOpen(true)}>
-                  <UserPlus className="mr-2 h-4 w-4" /> Add Doctor
-                </Button>
+                {hasPermission('settings.manage_doctors') && (
+                  <Button onClick={() => setIsAddDoctorDialogOpen(true)}>
+                    <UserPlus className="mr-2 h-4 w-4" /> Add Doctor
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 <Table>
@@ -2523,9 +2559,11 @@ const Settings = () => {
                   Add and manage services for {activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch'} Clinic
                 </CardDescription>
               </div>
-              <Button onClick={() => setIsAddServiceDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" /> Add Service
-              </Button>
+              {hasPermission('settings.manage_services') && (
+                <Button onClick={() => setIsAddServiceDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Service
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <Table>
@@ -3235,12 +3273,14 @@ const Settings = () => {
                     Add and manage medicines for {activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch'} Clinic
                   </CardDescription>
                 </div>
-                <Button
-                  onClick={() => setIsAddMedicineDialogOpen(true)}
-                  className={activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
-                >
-                  <Plus className="mr-2 h-4 w-4" /> Add Medicine
-                </Button>
+                {hasPermission('settings.manage_medicines') && (
+                  <Button
+                    onClick={() => setIsAddMedicineDialogOpen(true)}
+                    className={activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Add Medicine
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 <Table>
@@ -3453,7 +3493,8 @@ const Settings = () => {
           </TabsContent>
         )}
 
-        <TabsContent value="notifications" className="space-y-6">
+        {/* TEMPORARILY COMMENTED OUT: Notifications tab content */}
+        {/* <TabsContent value="notifications" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -3584,256 +3625,14 @@ const Settings = () => {
             </CardFooter>
           </Card>
         </TabsContent>
+        */}
+
+        <TabsContent value="roles" className="space-y-6">
+          <RolesTab />
+        </TabsContent>
 
         <TabsContent value="users" className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center">
-                  <User className="mr-2 h-5 w-5" />
-                  User Management
-                </CardTitle>
-                <CardDescription>
-                  Add, edit, and manage system users and their permissions
-                </CardDescription>
-              </div>
-              <Button onClick={() => setIsAddUserDialogOpen(true)}>
-                <UserPlus className="mr-2 h-4 w-4" /> Add User
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {systemUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {user.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {user.status === 'active' ? (
-                          <Badge className="bg-green-500">Active</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-gray-500">Inactive</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-red-500 hover:text-red-700"
-                            onClick={() => {
-                              setCurrentUser(user);
-                              setIsConfirmDeleteUserOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Add User Dialog */}
-          <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add New User</DialogTitle>
-                <DialogDescription>
-                  Create a new user account with appropriate role and permissions.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="userName">Full Name</Label>
-                    <Input id="userName" placeholder="Enter full name" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="userEmail">Email</Label>
-                    <Input id="userEmail" type="email" placeholder="email@example.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="userRole">Role</Label>
-                    <Select>
-                      <SelectTrigger id="userRole">
-                        <SelectValue placeholder="Select Role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="doctor">Doctor</SelectItem>
-                        <SelectItem value="receptionist">Receptionist</SelectItem>
-                        <SelectItem value="inventory">Inventory Manager</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="userPassword">Temporary Password</Label>
-                    <Input id="userPassword" type="password" placeholder="Enter temporary password" />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="requirePasswordChange" defaultChecked />
-                    <Label htmlFor="requirePasswordChange">Require password change on first login</Label>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => {
-                  toast({
-                    title: "User Created",
-                    description: "The new user account has been created successfully.",
-                  });
-                  setIsAddUserDialogOpen(false);
-                }}>
-                  Create User
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Edit User Dialog */}
-          <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Edit User</DialogTitle>
-                <DialogDescription>
-                  Update user account information and permissions.
-                </DialogDescription>
-              </DialogHeader>
-              {currentUser && (
-                <div className="grid gap-3 py-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor="editUserName">Full Name</Label>
-                      <Input
-                        id="editUserName"
-                        defaultValue={currentUser.name}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="editUserEmail">Email</Label>
-                      <Input
-                        id="editUserEmail"
-                        type="email"
-                        defaultValue={currentUser.email}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="editUserRole">Role</Label>
-                      <Select defaultValue={currentUser.role}>
-                        <SelectTrigger id="editUserRole">
-                          <SelectValue placeholder="Select Role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="doctor">Doctor</SelectItem>
-                          <SelectItem value="receptionist">Receptionist</SelectItem>
-                          <SelectItem value="inventory">Inventory Manager</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="editUserStatus">Status</Label>
-                      <Select defaultValue={currentUser.status}>
-                        <SelectTrigger id="editUserStatus">
-                          <SelectValue placeholder="Select Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-1 mt-2">
-                    <div className="flex items-center space-x-2">
-                      <Switch id="resetPassword" />
-                      <Label htmlFor="resetPassword">Reset password and require change on next login</Label>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditUserDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleUpdateUserConfirm}
-                >
-                  <Save className="h-4 w-4 mr-2" /> Save Changes
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Confirmation Dialogs */}
-          <Dialog open={isConfirmDeleteUserOpen} onOpenChange={setIsConfirmDeleteUserOpen}>
-            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Confirm Deletion</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete this user? This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              {currentUser && (
-                <div className="py-4">
-                  <p className="font-medium">{currentUser.name}</p>
-                  <p className="text-sm text-muted-foreground">{currentUser.email}</p>
-                  <Badge variant="outline" className="mt-2 capitalize">{currentUser.role}</Badge>
-                </div>
-              )}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsConfirmDeleteUserOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleDeleteUser}>
-                  Delete
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={isConfirmUpdateUserOpen} onOpenChange={setIsConfirmUpdateUserOpen}>
-            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Confirm Update</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to save these changes?
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsConfirmUpdateUserOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleUpdateUser}>
-                  Save Changes
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <UserManagementTab />
         </TabsContent>
 
 

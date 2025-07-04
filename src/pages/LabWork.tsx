@@ -4,6 +4,7 @@ import { useLabWork, LabJob, NewLabJob } from '@/contexts/LabWorkContext';
 import { useDentalLabs, DentalLab } from '@/contexts/DentalLabsContext';
 import { useLabWorkTypes, LabWorkType } from '@/contexts/LabWorkTypesContext';
 import { useServices } from '@/contexts/ServiceContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import { createClient } from '@supabase/supabase-js';
 
 // Create a direct Supabase client
@@ -91,6 +92,7 @@ const getStatusBadge = (status: LabJob['status']) => {
 
 const LabWork = () => {
   const { activeClinic } = useClinic();
+  const { hasPermission } = usePermissions();
   const {
     labJobs,
     addLabJob,
@@ -578,12 +580,14 @@ const LabWork = () => {
           <h1 className="text-3xl font-bold tracking-tight">Lab Work Tracker</h1>
           <p className="text-muted-foreground">Manage and track dental laboratory orders</p>
         </div>
-        <Button
-          onClick={() => setIsNewLabDialogOpen(true)}
-          className="bg-dental-primary hover:bg-dental-dark"
-        >
-          <Plus className="h-4 w-4 mr-2" /> Create New Lab Entry
-        </Button>
+        {hasPermission('lab_work.create') && (
+          <Button
+            onClick={() => setIsNewLabDialogOpen(true)}
+            className="bg-dental-primary hover:bg-dental-dark"
+          >
+            <Plus className="h-4 w-4 mr-2" /> Create New Lab Entry
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
@@ -643,9 +647,11 @@ const LabWork = () => {
             Sort by Date
             <ArrowUpDown className="h-4 w-4 ml-1" />
           </Button>
-          <Button variant="outline" size="icon" onClick={exportToCSV} title="Export to CSV">
-            <Download className="h-4 w-4" />
-          </Button>
+          {hasPermission('lab_work.export') && (
+            <Button variant="outline" size="icon" onClick={exportToCSV} title="Export to CSV">
+              <Download className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -707,8 +713,8 @@ const LabWork = () => {
                     <TableCell>
                       <Badge
                         variant={job.paymentStatus === 'paid' ? 'default' : 'outline'}
-                        className={`cursor-pointer hover:opacity-80 ${job.paymentStatus === 'paid' ? 'bg-green-500' : ''}`}
-                        onClick={() => openPaymentConfirmation(job.id)}
+                        className={`${hasPermission('lab_work.change_status') ? 'cursor-pointer hover:opacity-80' : ''} ${job.paymentStatus === 'paid' ? 'bg-green-500' : ''}`}
+                        onClick={hasPermission('lab_work.change_status') ? () => openPaymentConfirmation(job.id) : undefined}
                       >
                         {job.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
                       </Badge>
@@ -720,21 +726,23 @@ const LabWork = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end space-x-2">
-                        <Select
-                          onValueChange={(value) => openStatusConfirmation(job.id, value as LabJob['status'])}
-                          value={job.status}
-                        >
-                          <SelectTrigger className="h-8 w-[130px]">
-                            <SelectValue placeholder="Update Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending-send">Pending Send</SelectItem>
-                            <SelectItem value="sent">Sent to Lab</SelectItem>
-                            <SelectItem value="received">Received</SelectItem>
-                            <SelectItem value="ready">Ready</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {hasPermission('lab_work.change_status') && (
+                          <Select
+                            onValueChange={(value) => openStatusConfirmation(job.id, value as LabJob['status'])}
+                            value={job.status}
+                          >
+                            <SelectTrigger className="h-8 w-[130px]">
+                              <SelectValue placeholder="Update Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending-send">Pending Send</SelectItem>
+                              <SelectItem value="sent">Sent to Lab</SelectItem>
+                              <SelectItem value="received">Received</SelectItem>
+                              <SelectItem value="ready">Ready</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                         <Button
                           variant="outline"
                           size="icon"
@@ -1324,18 +1332,22 @@ const LabWork = () => {
             </div>
           )}
           <DialogFooter className="flex justify-between">
-            <Button variant="destructive" onClick={openDeleteConfirmation}>
-              Delete Entry
-            </Button>
+            {hasPermission('lab_work.delete') && (
+              <Button variant="destructive" onClick={openDeleteConfirmation}>
+                Delete Entry
+              </Button>
+            )}
             <div className="flex space-x-2">
               <Button variant="outline" onClick={() => setIsEditLabDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button
-                onClick={openUpdateConfirmation}
-                className="bg-dental-primary hover:bg-dental-dark">
-                Update Lab Entry
-              </Button>
+              {hasPermission('lab_work.edit') && (
+                <Button
+                  onClick={openUpdateConfirmation}
+                  className="bg-dental-primary hover:bg-dental-dark">
+                  Update Lab Entry
+                </Button>
+              )}
             </div>
           </DialogFooter>
         </DialogContent>

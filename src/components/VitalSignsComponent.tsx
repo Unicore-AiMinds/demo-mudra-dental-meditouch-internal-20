@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Edit, Plus, Save, X, Trash } from 'lucide-react';
 import { VitalSign } from '@/types/vital-signs';
 import { useVitalSigns } from '@/contexts/VitalSignsContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import {
   Tooltip,
   TooltipContent,
@@ -50,6 +51,7 @@ interface VitalSignsComponentProps {
 
 const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, patientName }) => {
   const { getPatientVitalSigns, addVitalSign, updateVitalSign, deleteVitalSign } = useVitalSigns();
+  const { hasPermission } = usePermissions();
   const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([]);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
@@ -311,7 +313,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle>Vital Signs</CardTitle>
-          {!isAddingNew && !isEditing && (
+          {!isAddingNew && !isEditing && hasPermission('patients.create_vital_signs') && (
             <Button
               onClick={() => setIsAddingNew(true)}
               className="flex items-center gap-1"
@@ -445,25 +447,29 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditVitalSign(vs.id)}
-                            disabled={isAddingNew || isEditing !== null}
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteVitalSign(vs.id)}
-                            disabled={isAddingNew || isEditing !== null}
-                            title="Delete"
-                            className="text-red-500 hover:text-red-700 hover:bg-red-100"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
+                          {hasPermission('patients.edit_vital_signs') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditVitalSign(vs.id)}
+                              disabled={isAddingNew || isEditing !== null}
+                              title="Edit"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {hasPermission('patients.delete_vital_signs') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteVitalSign(vs.id)}
+                              disabled={isAddingNew || isEditing !== null}
+                              title="Delete"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

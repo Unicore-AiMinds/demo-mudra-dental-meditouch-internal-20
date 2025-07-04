@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useClinic } from '@/contexts/ClinicContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import { DentalHistoryEntry } from '@/types/dental-history';
 import { usePatients, Patient } from '@/contexts/PatientContext';
@@ -102,6 +103,7 @@ const PatientDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { activeClinic } = useClinic();
+  const { hasPermission } = usePermissions();
   const [patient, setPatient] = useState<LocalPatient | null>(null);
 
   // Get the tab parameter from the URL query string
@@ -236,14 +238,16 @@ const PatientDetails = () => {
             </div>
           </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleEditPatient}
-          className="flex items-center gap-2"
-        >
-          <Edit className="h-4 w-4" />
-          Edit Patient
-        </Button>
+        {hasPermission('patients.edit') && (
+          <Button
+            variant="outline"
+            onClick={handleEditPatient}
+            className="flex items-center gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Edit Patient
+          </Button>
+        )}
       </div>
 
       {/* Tabbed Interface for Patient Information */}
@@ -252,22 +256,33 @@ const PatientDetails = () => {
         onValueChange={setActiveTab}
         className="w-full">
         <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 lg:flex lg:flex-wrap">
-          <TabsTrigger value="overview">Patient Info</TabsTrigger>
-          <TabsTrigger value="appointments">Appointments</TabsTrigger>
-          {(patient.clinic === 'dental' || patient.clinic === 'both') && (
+          {hasPermission('patients.view_patient_info') && (
+            <TabsTrigger value="overview">Patient Info</TabsTrigger>
+          )}
+          {hasPermission('patients.view_appointments') && (
+            <TabsTrigger value="appointments">Appointments</TabsTrigger>
+          )}
+          {(patient.clinic === 'dental' || patient.clinic === 'both') && hasPermission('patients.view_dental_chart') && (
             <TabsTrigger value="dental-charting">Dental Charting</TabsTrigger>
           )}
-          <TabsTrigger value="appointment-history">
-            {patient.clinic === 'dental' ? 'Dental History' :
-             patient.clinic === 'meditouch' ? 'Appointment History' :
-             'Appointment History'}
-          </TabsTrigger>
-          <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
-          <TabsTrigger value="vital-signs">Vital Signs</TabsTrigger>
+          {hasPermission('patients.view_treatment_history') && (
+            <TabsTrigger value="appointment-history">
+              {patient.clinic === 'dental' ? 'Dental History' :
+               patient.clinic === 'meditouch' ? 'Appointment History' :
+               'Appointment History'}
+            </TabsTrigger>
+          )}
+          {hasPermission('patients.view_prescriptions') && (
+            <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
+          )}
+          {hasPermission('patients.view_vital_signs') && (
+            <TabsTrigger value="vital-signs">Vital Signs</TabsTrigger>
+          )}
         </TabsList>
 
         {/* Patient Info Tab - Personal Information */}
-        <TabsContent value="overview" className="mt-6">
+        {hasPermission('patients.view_patient_info') && (
+          <TabsContent value="overview" className="mt-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle>Personal Information</CardTitle>
@@ -336,9 +351,11 @@ const PatientDetails = () => {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
         {/* Appointments Tab - Show all upcoming appointments */}
-        <TabsContent value="appointments" className="mt-6">
+        {hasPermission('patients.view_appointments') && (
+          <TabsContent value="appointments" className="mt-6">
           {/* Always show the alert for unresolved past appointments */}
           <UnresolvedAppointmentsAlert patientId={patient.id} />
 
@@ -352,39 +369,46 @@ const PatientDetails = () => {
             dentalOnly={patient.clinic === 'dental'} // Only filter to dental if patient is dental-only
           />
         </TabsContent>
+        )}
 
         {/* Dental Charting Tab */}
-        {(patient.clinic === 'dental' || patient.clinic === 'both') && (
+        {(patient.clinic === 'dental' || patient.clinic === 'both') && hasPermission('patients.view_dental_chart') && (
           <TabsContent value="dental-charting" className="mt-6">
             <DentalChartingComponent patientId={patient.id} patientAge={patient.age} />
           </TabsContent>
         )}
 
         {/* Appointment History Tab - Available for all patients */}
-        <TabsContent value="appointment-history" className="mt-6">
-          <PatientAppointmentHistoryWrapper
-            patientId={patient.id}
-            patientClinic={patient.clinic}
-          />
-        </TabsContent>
+        {hasPermission('patients.view_treatment_history') && (
+          <TabsContent value="appointment-history" className="mt-6">
+            <PatientAppointmentHistoryWrapper
+              patientId={patient.id}
+              patientClinic={patient.clinic}
+            />
+          </TabsContent>
+        )}
 
         {/* Prescriptions Tab */}
-        <TabsContent value="prescriptions" className="mt-6">
-          <PrescriptionComponent
-            patientId={patient.id}
-            patientName={patient.name}
-            patientAge={patient.age}
-            patientDOB={patient.dateOfBirth}
-          />
-        </TabsContent>
+        {hasPermission('patients.view_prescriptions') && (
+          <TabsContent value="prescriptions" className="mt-6">
+            <PrescriptionComponent
+              patientId={patient.id}
+              patientName={patient.name}
+              patientAge={patient.age}
+              patientDOB={patient.dateOfBirth}
+            />
+          </TabsContent>
+        )}
 
         {/* Vital Signs Tab */}
-        <TabsContent value="vital-signs" className="mt-6">
-          <VitalSignsComponent
-            patientId={patient.id}
-            patientName={patient.name}
-          />
-        </TabsContent>
+        {hasPermission('patients.view_vital_signs') && (
+          <TabsContent value="vital-signs" className="mt-6">
+            <VitalSignsComponent
+              patientId={patient.id}
+              patientName={patient.name}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

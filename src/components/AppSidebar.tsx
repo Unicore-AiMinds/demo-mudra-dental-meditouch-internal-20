@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import { cn } from '@/lib/utils';
 import {
   SidebarProvider,
@@ -38,7 +39,9 @@ interface NavItem {
   icon: React.ElementType;
   path: string;
   clinics?: ('dental' | 'meditouch')[];
-  roles?: string[];
+  roles?: string[]; // Deprecated - kept for backward compatibility
+  permissions?: string[]; // New dynamic permission system
+  requireAll?: boolean; // Whether user needs ALL permissions or just ONE
 }
 
 // Navigation items
@@ -47,53 +50,58 @@ const navItems: NavItem[] = [
     title: 'Dashboard',
     icon: LayoutDashboard,
     path: '/dashboard',
+    permissions: ['dashboard.view'],
   },
   {
     title: 'Appointments',
     icon: Calendar,
     path: '/appointments',
+    permissions: ['appointments.view'],
   },
   {
     title: 'Patients',
     icon: Users,
     path: '/patients',
+    permissions: ['patients.view'],
   },
   {
     title: 'Recall List',
     icon: Clock,
     path: '/recall-list',
+    permissions: ['recall_list.view'],
   },
   {
     title: 'Lab Work',
     icon: Microscope,
     path: '/lab',
     clinics: ['dental'],
-    roles: ['admin', 'doctor', 'receptionist'],
+    permissions: ['lab_work.view'],
   },
   {
     title: 'Stock Tracker',
     icon: PackageOpen,
     path: '/stock',
     clinics: ['dental'],
-    roles: ['admin', 'inventory'],
+    permissions: ['stock.view'],
   },
   {
     title: 'Reports',
     icon: FileText,
     path: '/reports',
-    roles: ['admin'],
+    permissions: ['reports.view'],
   },
   {
     title: 'Audit Log',
     icon: AlertCircle,
     path: '/audit',
-    roles: ['admin'],
+    permissions: ['audit_logs.view'],
   },
   {
     title: 'Settings',
     icon: Settings,
     path: '/settings',
-    roles: ['admin'],
+    permissions: ['settings.view_doctors', 'settings.view_services', 'settings.view_user_management', 'settings.view_roles'],
+    requireAll: false, // User needs ANY of these permissions to see Settings
   },
 ];
 
@@ -101,12 +109,33 @@ const AppSidebar = () => {
   const location = useLocation();
   const { activeClinic } = useClinic();
   const { user, logout } = useAuth();
+  const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions();
   const { state, toggleSidebar } = useSidebar();
 
-  // Check if a nav item should be visible based on clinic and role
+
+
+  // Check if a nav item should be visible based on clinic and permissions
   const isVisible = (item: NavItem) => {
-    return (!item.clinics || item.clinics.includes(activeClinic)) &&
-      (!item.roles || (user && item.roles.includes(user.role)));
+    // Check clinic restriction first
+    if (item.clinics && !item.clinics.includes(activeClinic)) {
+      return false;
+    }
+
+    // Check dynamic permissions (preferred method)
+    if (item.permissions && item.permissions.length > 0) {
+      const hasAccess = item.requireAll
+        ? hasAllPermissions(item.permissions)
+        : hasAnyPermission(item.permissions);
+      return hasAccess;
+    }
+
+    // Fallback to role-based check (deprecated but kept for backward compatibility)
+    if (item.roles && user) {
+      return item.roles.includes(user.role);
+    }
+
+    // If no restrictions, show the item
+    return true;
   };
 
   return (

@@ -170,9 +170,19 @@ export const supabase = {
       const tablePath = table;
       if (options?.filters) {
         const filterEntries = Object.entries(options.filters);
+        console.log(`[SUPABASE] Applying filters to ${table}:`, options.filters);
         if (filterEntries.length > 0) {
           filterEntries.forEach(([key, value]) => {
-            params[key] = `eq.${value}`;
+            if (typeof value === 'object' && value !== null && 'in' in value) {
+              // Handle 'in' operator for arrays
+              const inValue = (value as { in: unknown[] }).in;
+              params[key] = `in.(${inValue.join(',')})`;
+              console.log(`[SUPABASE] Applied 'in' filter: ${key} = ${params[key]}`);
+            } else {
+              // Default to equality
+              params[key] = `eq.${value}`;
+              console.log(`[SUPABASE] Applied 'eq' filter: ${key} = ${params[key]}`);
+            }
           });
         }
       }
@@ -243,8 +253,10 @@ export const supabase = {
 
         // Always use the real Supabase database
         console.log('REAL MODE: Using Supabase for insert');
-        // Make the actual request to Supabase
-        return await supabaseRequest<T>(table, 'POST', dataWithTimestamps);
+        // Make the actual request to Supabase with return=representation header
+        return await supabaseRequest<T>(table, 'POST', dataWithTimestamps, {
+          headers: { 'Prefer': 'return=representation' }
+        });
       } catch (error) {
         console.error(`Error inserting into ${table}:`, error);
         throw error;
@@ -267,8 +279,10 @@ export const supabase = {
 
         // Always use the real Supabase database
         console.log('REAL MODE: Using Supabase for update');
-        // Make the actual request to Supabase
-        return await supabaseRequest<T>(`${table}?id=eq.${id}`, 'PATCH', dataWithTimestamp);
+        // Make the actual request to Supabase with return=representation header
+        return await supabaseRequest<T>(`${table}?id=eq.${id}`, 'PATCH', dataWithTimestamp, {
+          headers: { 'Prefer': 'return=representation' }
+        });
       } catch (error) {
         console.error(`Error updating in ${table}:`, error);
         throw error;

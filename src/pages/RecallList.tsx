@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFollowUps, FollowUp } from '@/contexts/FollowUpContext';
 import { useClinic } from '@/contexts/ClinicContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import { format, isAfter, isBefore, parseISO, addMonths } from 'date-fns';
 import { Calendar, Search, Filter, ArrowUpDown, Clock, AlarmClock, FileText, Info, RefreshCw, Trash2 } from 'lucide-react';
 import {
@@ -72,6 +73,7 @@ const RecallList = () => {
     updateFollowUp
   } = useFollowUps();
   const { activeClinic } = useClinic();
+  const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { supabase } = useSupabase();
@@ -1284,14 +1286,16 @@ const RecallList = () => {
                                   <AlarmClock className="mr-2 h-4 w-4" />
                                   Snooze
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                                  onClick={() => handleDeleteFollowUp(followUp)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                {hasPermission('recall_list.delete') && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    onClick={() => handleDeleteFollowUp(followUp)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </>
                             ) : activeTab === 'waiting' ? (
                               <>
@@ -1312,14 +1316,16 @@ const RecallList = () => {
                                   <Clock className="mr-2 h-4 w-4" />
                                   Activate Early
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                                  onClick={() => handleDeleteFollowUp(followUp)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                {hasPermission('recall_list.delete') && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    onClick={() => handleDeleteFollowUp(followUp)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </>
                             ) : (
                               <>
@@ -1331,14 +1337,16 @@ const RecallList = () => {
                                   <Clock className="mr-2 h-4 w-4" />
                                   Activate
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                                  onClick={() => handleDeleteFollowUp(followUp)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                {hasPermission('recall_list.delete') && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    onClick={() => handleDeleteFollowUp(followUp)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </>
                             )}
                           </div>

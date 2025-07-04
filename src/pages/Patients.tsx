@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { useClinic } from '@/contexts/ClinicContext';
 import { usePatients, Patient } from '@/contexts/PatientContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import {
   Card,
@@ -74,6 +75,7 @@ import {
   ChevronDown,
   X,
   Search,
+  Download,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -84,6 +86,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from '@/components/ui/badge';
+import { formatDateForExport, formatDateForFilename } from '@/utils/dateFormatter';
 
 // Patient interface is imported from PatientContext
 
@@ -115,6 +118,7 @@ const getClinicBadge = (clinic: Patient['clinic'], activeClinic: 'dental' | 'med
 
 const Patients = () => {
   const { activeClinic } = useClinic();
+  const { hasPermission } = usePermissions();
   const navigate = useNavigate();
   const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
   const [isEditPatientDialogOpen, setIsEditPatientDialogOpen] = useState(false);
@@ -311,6 +315,57 @@ const Patients = () => {
     setCurrentEditPatient(null);
     setEditPhoneCountryCode("+91");
     setEditUseAgeInput(true); // Reset to age input by default
+  };
+
+  // Export patients to CSV
+  const exportToCSV = () => {
+    // Create CSV content from the filtered patients data
+    const headers = ['Patient Code', 'Name', 'Gender', 'Age', 'Date of Birth', 'Email', 'Phone', 'Alt Phone', 'Address', 'City', 'Pincode', 'Blood Group', 'Referred By', 'Clinic', 'Last Visit', 'Created Date'];
+
+    const csvContent = [
+      headers.join(','),
+      ...filteredPatientsList.map(patient => {
+        return [
+          `"${patient.patient_code || ''}"`,
+          `"${patient.name || ''}"`,
+          `"${patient.gender || ''}"`,
+          patient.age || 0,
+          `"${patient.date_of_birth ? formatDateForExport(patient.date_of_birth) : ''}"`,
+          `"${patient.email || ''}"`,
+          `"${patient.phone || ''}"`,
+          `"${patient.alt_phone || ''}"`,
+          `"${patient.address || ''}"`,
+          `"${patient.city || ''}"`,
+          `"${patient.pincode || ''}"`,
+          `"${patient.blood_group || ''}"`,
+          `"${patient.referred_by || ''}"`,
+          `"${patient.clinic || ''}"`,
+          `"${patient.last_visit ? formatDateForExport(patient.last_visit) : ''}"`,
+          `"${patient.created_at ? formatDateForExport(patient.created_at) : ''}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    // Create a blob and download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary link and trigger download
+    const link = document.createElement('a');
+    const filename = `patients_export_${formatDateForFilename()}.csv`;
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Export Successful",
+      description: `${filteredPatientsList.length} patient records exported to CSV.`,
+    });
   };
 
   // Direct function to handle edit patient click
@@ -857,26 +912,32 @@ const Patients = () => {
               <Eye className="mr-2 h-4 w-4" />
               View Details
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleEditPatientClick(row.original)}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Patient
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                console.log('Delete clicked for patient:', row.original);
-                setCurrentEditPatient(row.original);
-                setIsConfirmDeleteOpen(true);
-              }}
-              className="text-red-600">
-              <Trash className="mr-2 h-4 w-4" />
-              Delete Patient
-            </DropdownMenuItem>
+            {hasPermission('patients.edit') && (
+              <DropdownMenuItem onClick={() => handleEditPatientClick(row.original)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Patient
+              </DropdownMenuItem>
+            )}
+            {hasPermission('patients.delete') && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    console.log('Delete clicked for patient:', row.original);
+                    setCurrentEditPatient(row.original);
+                    setIsConfirmDeleteOpen(true);
+                  }}
+                  className="text-red-600">
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete Patient
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
     },
-  ], [activeClinic, handleViewDetails, patientLastVisitDates]); // Depend on activeClinic, handleViewDetails, and patientLastVisitDates
+  ], [activeClinic, handleViewDetails, patientLastVisitDates, hasPermission]); // Depend on activeClinic, handleViewDetails, patientLastVisitDates, and hasPermission
 
   // Memoize the table options to prevent unnecessary re-renders
   const tableOptions = useMemo(() => ({
@@ -901,14 +962,27 @@ const Patients = () => {
           <h1 className="text-3xl font-bold tracking-tight">Patients</h1>
           <p className="text-muted-foreground">Manage patient records and information</p>
         </div>
-        <Button
-          onClick={() => setIsAddPatientDialogOpen(true)}
-          className={activeClinic === 'dental'
-            ? "bg-dental-primary hover:bg-dental-dark"
-            : "bg-meditouch-primary hover:bg-meditouch-dark"}
-        >
-          <Plus className="h-4 w-4 mr-2" /> Add New Patient
-        </Button>
+        <div className="flex gap-2">
+          {hasPermission('patients.export') && (
+            <Button
+              variant="outline"
+              onClick={exportToCSV}
+              title="Export Patients to CSV"
+            >
+              <Download className="h-4 w-4 mr-2" /> Export
+            </Button>
+          )}
+          {hasPermission('patients.create') && (
+            <Button
+              onClick={() => setIsAddPatientDialogOpen(true)}
+              className={activeClinic === 'dental'
+                ? "bg-dental-primary hover:bg-dental-dark"
+                : "bg-meditouch-primary hover:bg-meditouch-dark"}
+            >
+              <Plus className="h-4 w-4 mr-2" /> Add New Patient
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs

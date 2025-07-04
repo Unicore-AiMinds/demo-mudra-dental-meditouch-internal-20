@@ -1,6 +1,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import { useNavigate } from 'react-router-dom';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import { useDoctors } from '@/contexts/DoctorContext';
@@ -104,7 +105,8 @@ const AppointmentCard = ({
   onEdit,
   onReschedule,
   onCancel,
-  onComplete
+  onComplete,
+  hasPermission
 }: {
   time: string;
   patient_name: string;
@@ -117,6 +119,7 @@ const AppointmentCard = ({
   onReschedule: () => void;
   onCancel: () => void;
   onComplete?: () => void;
+  hasPermission: (permission: string) => boolean;
 }) => {
   if (status === 'cancelled') {
     return null;
@@ -132,9 +135,13 @@ const AppointmentCard = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
-            <DropdownMenuItem onClick={onReschedule}>Reschedule</DropdownMenuItem>
-            {status !== 'completed' && onComplete && (
+            {hasPermission('appointments.edit') && (
+              <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
+            )}
+            {hasPermission('appointments.edit') && (
+              <DropdownMenuItem onClick={onReschedule}>Reschedule</DropdownMenuItem>
+            )}
+            {status !== 'completed' && onComplete && hasPermission('appointments.edit') && (
               <DropdownMenuItem
                 onClick={() => {
                   console.log("Mark as Completed clicked in dropdown menu");
@@ -145,9 +152,11 @@ const AppointmentCard = ({
                 Mark as Completed
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={onCancel} className="text-red-500">
-              Cancel
-            </DropdownMenuItem>
+            {hasPermission('appointments.delete') && (
+              <DropdownMenuItem onClick={onCancel} className="text-red-500">
+                Cancel
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -366,6 +375,7 @@ const weekDaysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const Appointments = () => {
   const { activeClinic, isDental } = useClinic();
+  const { hasPermission } = usePermissions();
   const { doctors } = useDoctors(); // Get doctors from context
   const { patients } = usePatients(); // Get patients from context
   const {
@@ -3137,12 +3147,14 @@ const Appointments = () => {
           </div>
           <DialogFooter>
             <div className="flex space-x-2 ml-auto">
-              <Button
-                onClick={handleCreateAppointment}
-                className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
-              >
-                Create Appointment
-              </Button>
+              {hasPermission('appointments.create') && (
+                <Button
+                  onClick={handleCreateAppointment}
+                  className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
+                >
+                  Create Appointment
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setIsNewAppointmentOpen(false)}>
                 Cancel
               </Button>
@@ -3415,13 +3427,15 @@ const Appointments = () => {
           </div>
           <DialogFooter className="flex justify-between">
             <div className="space-x-2">
-              <Button
-                onClick={openUpdateConfirmation}
-                className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
-              >
-                Update
-              </Button>
-              {editingAppointment && editingAppointment.status !== 'completed' && (
+              {hasPermission('appointments.edit') && (
+                <Button
+                  onClick={openUpdateConfirmation}
+                  className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
+                >
+                  Update
+                </Button>
+              )}
+              {editingAppointment && editingAppointment.status !== 'completed' && hasPermission('appointments.edit') && (
                 <Button
                   variant="outline"
                   className="text-green-600 border-green-600 hover:bg-green-50"
@@ -3436,9 +3450,11 @@ const Appointments = () => {
                   Mark as Completed
                 </Button>
               )}
-              <Button variant="destructive" onClick={openCancelConfirmation}>
-                Cancel
-              </Button>
+              {hasPermission('appointments.delete') && (
+                <Button variant="destructive" onClick={openCancelConfirmation}>
+                  Cancel
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setIsEditAppointmentOpen(false)}>
                 Close
               </Button>

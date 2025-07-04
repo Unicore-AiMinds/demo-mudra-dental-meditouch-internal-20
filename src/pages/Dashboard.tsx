@@ -1,5 +1,6 @@
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import { useLabWork } from '@/contexts/LabWorkContext';
 import { useAppointments } from '@/contexts/AppointmentContext';
 import { usePatients } from '@/contexts/PatientContext';
@@ -23,6 +24,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInte
 const Dashboard = () => {
   const { activeClinic, isDental, isMeditouch } = useClinic();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const { getOverdueCount, getPendingCount, labJobs, isOverdue } = useLabWork();
   const { dentalAppointments, meditouchAppointments, getAppointmentsByDate, getAppointmentsByDateRange } = useAppointments();
   const { patients } = usePatients();
@@ -64,6 +66,7 @@ const Dashboard = () => {
 
   const isAdmin = user?.role === 'admin';
   const isClinicUser = user?.role === 'doctor' || user?.role === 'receptionist';
+  const canViewDashboard = hasPermission('dashboard.view');
 
   // EMERGENCY FIX: Optimized appointment fetching with date ranges instead of daily loops
   useEffect(() => {
@@ -173,7 +176,7 @@ const Dashboard = () => {
         </p>
       </div>
 
-      {isAdmin && (
+      {canViewDashboard && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="card-shadow card-hover">
             <CardHeader className="text-center pb-2">
@@ -415,7 +418,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {isDental && isAdmin && (
+        {isDental && canViewDashboard && (
           <>
             <StockAlerts />
 

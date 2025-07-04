@@ -40,6 +40,7 @@ import {
 } from '@/types/dental-charting';
 import { useDentalCharting } from '@/contexts/DentalChartingContext';
 import { useServices } from '@/contexts/ServiceContext'; // Import the ServiceContext
+import { usePermissions } from '@/contexts/PermissionContext';
 import VisualToothChart from './VisualToothChart';
 import ToothIndicator from './ToothIndicator';
 import SurfaceIndicator from './SurfaceIndicator';
@@ -53,6 +54,7 @@ interface DentalChartingComponentProps {
 
 const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patientId, patientAge }) => {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
   const { addTentativeFollowUps, getPatientName } = useDentalHistory();
   const { getDentalServiceNames, dentalServices, isLoading: isServicesLoading } = useServices(); // Get dental services from context
 
@@ -545,17 +547,19 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
           </div>
 
           {/* Add Entry Button */}
-          <Button
-            onClick={handleAddChartingEntry}
-            className="w-full md:w-auto"
-            disabled={
-              selectedTeeth.length === 0 ||
-              (selectedStatus === 'Existing' && !selectedFinding) ||
-              ((selectedStatus === 'Planned' || selectedStatus === 'Completed') && !selectedService)
-            }
-          >
-            Add Charting Entry
-          </Button>
+          {hasPermission('patients.edit_dental_chart') && (
+            <Button
+              onClick={handleAddChartingEntry}
+              className="w-full md:w-auto"
+              disabled={
+                selectedTeeth.length === 0 ||
+                (selectedStatus === 'Existing' && !selectedFinding) ||
+                ((selectedStatus === 'Planned' || selectedStatus === 'Completed') && !selectedService)
+              }
+            >
+              Add Charting Entry
+            </Button>
+          )}
         </div>
 
         {/* Display Area - History Table */}
