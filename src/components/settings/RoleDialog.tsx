@@ -9,6 +9,8 @@ import { Role, roleOperations, Permission, permissionOperations, rolePermissionO
 import { PermissionMatrix } from './PermissionMatrix';
 import { triggerGlobalPermissionRefresh } from '@/contexts/PermissionContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 
 interface RoleDialogProps {
   open: boolean;
@@ -36,28 +38,43 @@ export const RoleDialog: React.FC<RoleDialogProps> = ({
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { logAction } = useAuditLog();
 
   // Load permissions
   const loadPermissions = async () => {
     try {
       setIsLoadingPermissions(true);
+      
+      // Load all permissions
+      console.log('📝 Loading all permissions...');
       const permissions = await permissionOperations.getAll();
-      setAllPermissions(permissions);
+      console.log('📝 Loaded permissions:', permissions?.length || 0);
+      setAllPermissions(permissions || []);
 
       // If editing, load role permissions
-      if (mode === 'edit' && role) {
+      if (mode === 'edit' && role && role.id) {
         console.log('📝 Loading permissions for role:', role.name, role.id);
-        const rolePermissions = await rolePermissionOperations.getRolePermissions(role.id);
-        console.log('📝 Loaded role permissions:', rolePermissions);
-        const permissionIds = rolePermissions.map(p => p.id);
-        console.log('📝 Setting selected permissions:', permissionIds);
-        setSelectedPermissions(permissionIds);
+        try {
+          const rolePermissions = await rolePermissionOperations.getRolePermissions(role.id);
+          console.log('📝 Loaded role permissions:', rolePermissions?.length || 0);
+          const permissionIds = rolePermissions?.map(p => p.id) || [];
+          console.log('📝 Setting selected permissions:', permissionIds);
+          setSelectedPermissions(permissionIds);
+        } catch (rolePermError) {
+          console.error('Error loading role permissions:', rolePermError);
+          setSelectedPermissions([]);
+        }
+      } else {
+        console.log('📝 Mode is add or no role provided, clearing selected permissions');
+        setSelectedPermissions([]);
       }
     } catch (error) {
       console.error('Error loading permissions:', error);
+      setAllPermissions([]);
+      setSelectedPermissions([]);
       toast({
         title: 'Error',
-        description: 'Failed to load permissions.',
+        description: 'Failed to load permissions. You can still create the role but will need to assign permissions later.',
         variant: 'destructive',
       });
     } finally {
@@ -236,26 +253,35 @@ export const RoleDialog: React.FC<RoleDialogProps> = ({
       setIsLoading(true);
 
       let savedRole: Role;
+      let existingRoleData: any = null;
 
       if (mode === 'add') {
         // Create new role
-        console.log('🆕 Creating new role with data:', {
+        const createData = {
           name: formData.name.trim(),
           display_name: formData.display_name.trim(),
           description: formData.description.trim() || undefined,
           is_system_role: false,
           is_deletable: true
-        });
+        };
 
-        savedRole = await roleOperations.create({
-          name: formData.name.trim(),
-          display_name: formData.display_name.trim(),
-          description: formData.description.trim() || undefined,
-          is_system_role: false,
-          is_deletable: true
-        });
-
+        console.log('🆕 Creating role with data:', createData);
+        savedRole = await roleOperations.create(createData);
         console.log('🆕 Created role response:', savedRole);
+
+        // Ensure we have a valid role object with ID
+        if (!savedRole || !savedRole.id) {
+          console.error('❌ Created role missing ID, attempting to fetch by name');
+          // Try to fetch the role by name as a fallback
+          const allRoles = await roleOperations.getAll();
+          const foundRole = allRoles.find(r => r.name === createData.name);
+          if (foundRole) {
+            savedRole = foundRole;
+            console.log('✅ Found created role by name:', savedRole);
+          } else {
+            throw new Error('Failed to create role or retrieve created role ID');
+          }
+        }
 
         toast({
           title: 'Role Created',
@@ -265,13 +291,36 @@ export const RoleDialog: React.FC<RoleDialogProps> = ({
         // Update existing role
         if (!role) return;
 
-        savedRole = await roleOperations.update(role.id, {
+        // Get existing permissions for audit logging (before update)
+        const existingPermissions = await rolePermissionOperations.getRolePermissions(role.id);
+        const existingPermissionNames = existingPermissions.map(p => p.display_name);
+        
+        // Store the existing role data for audit logging
+        existingRoleData = {
+          name: role.name,
+          display_name: role.display_name,
+          description: role.description,
+          permissions: existingPermissionNames
+        };
+
+        await roleOperations.update(role.id, {
           display_name: formData.display_name.trim(),
           description: formData.description.trim() || undefined
         });
 
-        // Ensure we have the role ID for permission updates
-        savedRole.id = role.id;
+        // Fetch the updated role to ensure we have the complete object
+        const updatedRole = await roleOperations.getById(role.id);
+        if (updatedRole) {
+          savedRole = updatedRole;
+        } else {
+          // Fallback: construct the role object manually
+          savedRole = {
+            ...role,
+            display_name: formData.display_name.trim(),
+            description: formData.description.trim() || undefined,
+            updated_at: new Date().toISOString()
+          };
+        }
 
         toast({
           title: 'Role Updated',
@@ -289,6 +338,47 @@ export const RoleDialog: React.FC<RoleDialogProps> = ({
       }
 
       await rolePermissionOperations.updateRolePermissions(savedRole.id, selectedPermissions);
+
+      // Log audit actions
+      try {
+        if (mode === 'add') {
+          // Log role creation
+          const permissionNames = allPermissions
+            .filter(p => selectedPermissions.includes(p.id))
+            .map(p => p.display_name);
+          
+          const auditEntry = AuditLogTemplates.role.create(
+            savedRole.id,
+            savedRole.display_name,
+            permissionNames
+          );
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+        } else {
+          // Log role update with detailed changes
+          const newPermissionNames = allPermissions
+            .filter(p => selectedPermissions.includes(p.id))
+            .map(p => p.display_name);
+
+          const afterRole = {
+            name: savedRole.name,
+            display_name: savedRole.display_name,
+            description: savedRole.description,
+            permissions: newPermissionNames
+          };
+
+          const auditEntry = AuditLogTemplates.role.update(
+            savedRole.id,
+            savedRole.display_name,
+            {
+              before: existingRoleData,
+              after: afterRole
+            }
+          );
+          await logAction({ ...auditEntry, clinic_type: 'dental' });
+        }
+      } catch (auditError) {
+        console.error('Failed to log role audit:', auditError);
+      }
 
       // Trigger global permission refresh for all users
       console.log('🔄 Triggering permission refresh after role update');

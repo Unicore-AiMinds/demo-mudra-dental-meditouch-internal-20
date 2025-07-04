@@ -10,6 +10,8 @@ import { RoleDialog } from './RoleDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { initializeSystem } from '@/utils/initializeSystem';
 import supabase from '@/lib/supabase';
+import { useAuditLog } from '@/contexts/AuditLogContext';
+import { AuditLogTemplates } from '@/utils/auditLogger';
 
 export const RolesTab: React.FC = () => {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -22,6 +24,7 @@ export const RolesTab: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
+  const { logAction } = useAuditLog();
 
   // Load roles
   const loadRoles = async () => {
@@ -76,7 +79,36 @@ export const RolesTab: React.FC = () => {
     if (!currentRole) return;
 
     try {
+      // Get role permissions before deletion for audit logging
+      const rolePermissions = await rolePermissionOperations.getRolePermissions(currentRole.id);
+      const permissionNames = rolePermissions.map(p => p.display_name);
+
+      // Get user count for this role (using the custom supabase wrapper)
+      let userCount = 0;
+      try {
+        const users = await supabase.from('users').getAll({
+          filters: { role_id: currentRole.id }
+        });
+        userCount = users ? users.length : 0;
+      } catch (countError) {
+        console.warn('Could not get user count for role deletion audit:', countError);
+      }
+
       await roleOperations.delete(currentRole.id);
+
+      // Log audit action
+      try {
+        const auditEntry = AuditLogTemplates.role.delete(
+          currentRole.id,
+          currentRole.display_name,
+          permissionNames,
+          userCount
+        );
+        await logAction({ ...auditEntry, clinic_type: 'dental' });
+      } catch (auditError) {
+        console.error('Failed to log role deletion audit:', auditError);
+      }
+
       setIsDeleteDialogOpen(false);
       setCurrentRole(null);
       await loadRoles();
@@ -249,14 +281,14 @@ export const RolesTab: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Button
+                  {/* <Button
                     variant="outline"
                     size="sm"
                     onClick={() => debugRolePermissions(role.id)}
                     className="text-blue-600 hover:text-blue-700"
                   >
                     🔍
-                  </Button>
+                  </Button> */}
                   {hasPermission('settings.manage_roles') && (
                     <Button
                       variant="outline"

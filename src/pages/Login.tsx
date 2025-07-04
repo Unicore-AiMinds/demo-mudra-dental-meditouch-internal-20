@@ -22,16 +22,14 @@ const Login = () => {
 
     try {
       await login(email, password);
-      toast({
-        title: "Login successful",
-        description: "Welcome to Mudra Clinic",
-      });
+      // Success toast is already handled in AuthContext
     } catch (error) {
-      toast({
-        title: "Login failed",
-        description: "Invalid email or password",
-        variant: "destructive",
-      });
+      // Error toasts are already handled in AuthContext for specific cases:
+      // - "Account Disabled" for inactive accounts
+      // - "Account Locked" for locked accounts  
+      // - "Invalid email or password" for wrong credentials
+      // So we don't need to show a generic error here
+      console.log('Login error caught in Login component:', error);
     } finally {
       setIsLoading(false);
     }

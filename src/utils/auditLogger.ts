@@ -1394,6 +1394,194 @@ export const AuditLogTemplates = {
     ),
   },
 
+  // Roles Management
+  role: {
+    create: (roleId: string, roleName: string, permissions: string[]) => createAuditLogEntry(
+      'role',
+      'Create Role',
+      'Role Management',
+      `Created new role: ${roleName} with ${permissions.length} permissions${permissions.length > 0 ? ` (${permissions.join(', ')})` : ''}`,
+      roleId
+    ),
+
+    update: (roleId: string, roleName: string, changes: { before: any, after: any }) => {
+      const fieldChanges: string[] = [];
+
+      // Helper function to safely get field value
+      const getFieldValue = (obj: any, field: string): string => {
+        const value = obj?.[field];
+        return (value !== null && value !== undefined && value !== '') ? value.toString() : 'Not specified';
+      };
+
+      // Compare each field and build detailed change description
+      if (changes.before.name !== changes.after.name) {
+        fieldChanges.push(`Name: "${changes.before.name}" → "${changes.after.name}"`);
+      }
+
+      const beforeDescription = getFieldValue(changes.before, 'description');
+      const afterDescription = getFieldValue(changes.after, 'description');
+      if (beforeDescription !== afterDescription) {
+        fieldChanges.push(`Description: "${beforeDescription}" → "${afterDescription}"`);
+      }
+
+      if (changes.before.is_active !== changes.after.is_active) {
+        fieldChanges.push(`Status: "${changes.before.is_active ? 'Active' : 'Inactive'}" → "${changes.after.is_active ? 'Active' : 'Inactive'}"`);
+      }
+
+      // Check for permissions changes
+      const beforePermissions = Array.isArray(changes.before.permissions) ? changes.before.permissions : [];
+      const afterPermissions = Array.isArray(changes.after.permissions) ? changes.after.permissions : [];
+
+      if (JSON.stringify(beforePermissions.sort()) !== JSON.stringify(afterPermissions.sort())) {
+        const addedPermissions = afterPermissions.filter(p => !beforePermissions.includes(p));
+        const removedPermissions = beforePermissions.filter(p => !afterPermissions.includes(p));
+        
+        if (addedPermissions.length > 0) {
+          fieldChanges.push(`Added Permissions: ${addedPermissions.join(', ')}`);
+        }
+        if (removedPermissions.length > 0) {
+          fieldChanges.push(`Removed Permissions: ${removedPermissions.join(', ')}`);
+        }
+      }
+
+      const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';
+
+      return createAuditLogEntry(
+        'role',
+        'Update Role',
+        'Role Management',
+        `Updated role ${roleName}: ${changesText}`,
+        roleId,
+        changes
+      );
+    },
+
+    delete: (roleId: string, roleName: string, permissions: string[], userCount?: number) => createAuditLogEntry(
+      'role',
+      'Delete Role',
+      'Role Management',
+      `Deleted role: ${roleName} with ${permissions.length} permissions${permissions.length > 0 ? ` (${permissions.join(', ')})` : ''}${userCount ? ` - ${userCount} users affected` : ''}`,
+      roleId
+    ),
+
+    assignPermission: (roleId: string, roleName: string, permissionName: string) => createAuditLogEntry(
+      'role',
+      'Assign Permission',
+      'Role Management',
+      `Assigned permission "${permissionName}" to role ${roleName}`,
+      roleId
+    ),
+
+    removePermission: (roleId: string, roleName: string, permissionName: string) => createAuditLogEntry(
+      'role',
+      'Remove Permission',
+      'Role Management',
+      `Removed permission "${permissionName}" from role ${roleName}`,
+      roleId
+    ),
+
+    updatePermissions: (roleId: string, roleName: string, changes: { added: string[], removed: string[] }) => {
+      const changeDescriptions: string[] = [];
+      
+      if (changes.added.length > 0) {
+        changeDescriptions.push(`Added: ${changes.added.join(', ')}`);
+      }
+      if (changes.removed.length > 0) {
+        changeDescriptions.push(`Removed: ${changes.removed.join(', ')}`);
+      }
+
+      const changesText = changeDescriptions.length > 0 ? changeDescriptions.join('; ') : 'No permission changes';
+
+      return createAuditLogEntry(
+        'role',
+        'Update Role Permissions',
+        'Role Management',
+        `Updated permissions for role ${roleName}: ${changesText}`,
+        roleId,
+        changes
+      );
+    },
+  },
+
+  // Permissions Management
+  permission: {
+    create: (permissionId: string, permissionName: string, module: string, action: string, description?: string) => createAuditLogEntry(
+      'permission',
+      'Create Permission',
+      'Permission Management',
+      `Created new permission: ${permissionName} for module ${module} - Action: ${action}${description ? `, Description: ${description}` : ''}`,
+      permissionId
+    ),
+
+    update: (permissionId: string, permissionName: string, changes: { before: any, after: any }) => {
+      const fieldChanges: string[] = [];
+
+      // Helper function to safely get field value
+      const getFieldValue = (obj: any, field: string): string => {
+        const value = obj?.[field];
+        return (value !== null && value !== undefined && value !== '') ? value.toString() : 'Not specified';
+      };
+
+      // Compare each field and build detailed change description
+      if (changes.before.name !== changes.after.name) {
+        fieldChanges.push(`Name: "${changes.before.name}" → "${changes.after.name}"`);
+      }
+
+      if (changes.before.module !== changes.after.module) {
+        fieldChanges.push(`Module: "${changes.before.module}" → "${changes.after.module}"`);
+      }
+
+      if (changes.before.action !== changes.after.action) {
+        fieldChanges.push(`Action: "${changes.before.action}" → "${changes.after.action}"`);
+      }
+
+      const beforeDescription = getFieldValue(changes.before, 'description');
+      const afterDescription = getFieldValue(changes.after, 'description');
+      if (beforeDescription !== afterDescription) {
+        fieldChanges.push(`Description: "${beforeDescription}" → "${afterDescription}"`);
+      }
+
+      if (changes.before.is_active !== changes.after.is_active) {
+        fieldChanges.push(`Status: "${changes.before.is_active ? 'Active' : 'Inactive'}" → "${changes.after.is_active ? 'Active' : 'Inactive'}"`);
+      }
+
+      const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';
+
+      return createAuditLogEntry(
+        'permission',
+        'Update Permission',
+        'Permission Management',
+        `Updated permission ${permissionName}: ${changesText}`,
+        permissionId,
+        changes
+      );
+    },
+
+    delete: (permissionId: string, permissionName: string, module: string, action: string, roleCount?: number) => createAuditLogEntry(
+      'permission',
+      'Delete Permission',
+      'Permission Management',
+      `Deleted permission: ${permissionName} for module ${module} - Action: ${action}${roleCount ? ` - ${roleCount} roles affected` : ''}`,
+      permissionId
+    ),
+
+    assignToRole: (permissionId: string, permissionName: string, roleId: string, roleName: string) => createAuditLogEntry(
+      'permission',
+      'Assign to Role',
+      'Permission Management',
+      `Assigned permission "${permissionName}" to role "${roleName}"`,
+      permissionId
+    ),
+
+    removeFromRole: (permissionId: string, permissionName: string, roleId: string, roleName: string) => createAuditLogEntry(
+      'permission',
+      'Remove from Role',
+      'Permission Management',
+      `Removed permission "${permissionName}" from role "${roleName}"`,
+      permissionId
+    ),
+  },
+
   // Service Follow-up Rules
   serviceFollowUpRule: {
     create: (ruleId: string, triggeringService: string, followUpSteps: any[]) => {

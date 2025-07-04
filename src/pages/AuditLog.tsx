@@ -404,6 +404,8 @@ const AuditLog = () => {
                 <SelectItem value="lab">Lab Work</SelectItem>
                 <SelectItem value="patient">Patients</SelectItem>
                 <SelectItem value="user">User Management</SelectItem>
+                <SelectItem value="role">Role Management</SelectItem>
+                <SelectItem value="permission">Permission Management</SelectItem>
                 <SelectItem value="settings">Settings</SelectItem>
                 <SelectItem value="doctor">Doctors</SelectItem>
                 <SelectItem value="service">Services</SelectItem>

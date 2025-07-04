@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { AuditLogTemplates } from '../../utils/auditLogger';
 
 export interface Role {
   id: string;

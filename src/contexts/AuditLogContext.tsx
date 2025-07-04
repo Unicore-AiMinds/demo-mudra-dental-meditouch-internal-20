@@ -16,7 +16,7 @@ export interface AuditLog {
   user_id?: string;
   user_name: string;
   user_role: string;
-  action_category: 'auth' | 'appointment' | 'stock' | 'lab' | 'patient' | 'user' | 'settings' | 'doctor' | 'service' | 'prescription' | 'dental_history' | 'dental_charting' | 'vital_signs';
+  action_category: 'auth' | 'appointment' | 'stock' | 'lab' | 'patient' | 'user' | 'settings' | 'doctor' | 'service' | 'prescription' | 'dental_history' | 'dental_charting' | 'vital_signs' | 'role' | 'permission';
   action_type: string;
   target_entity: string;
   target_id?: string;
@@ -148,7 +148,7 @@ export const AuditLogProvider: React.FC<{ children: ReactNode }> = ({ children }
       const validCategories = [
         'auth', 'appointment', 'stock', 'lab', 'patient', 'user',
         'settings', 'doctor', 'service', 'prescription', 'dental_history',
-        'dental_charting', 'vital_signs'
+        'dental_charting', 'vital_signs', 'role', 'permission'
       ];
 
       if (!validCategories.includes(action.action_category)) {

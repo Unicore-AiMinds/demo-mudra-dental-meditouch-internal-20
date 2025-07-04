@@ -236,6 +236,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Account locked');
       }
 
+      // If lock has expired, reset the counter and clear locked_until
+      if (foundUser.locked_until && new Date(foundUser.locked_until) <= new Date()) {
+        console.log('🔓 Lock has expired, resetting login attempts');
+        await supabase.from('users').update(foundUser.id, {
+          login_attempts: 0,
+          locked_until: null,
+          updated_at: new Date().toISOString()
+        });
+        // Update the foundUser object for the current login attempt
+        foundUser.login_attempts = 0;
+        foundUser.locked_until = null;
+      }
+
       // Verify password
       console.log('🔑 Verifying password...');
       if (!foundUser.password_hash) {
@@ -288,6 +301,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('🔍 Password hash from DB:', foundUser.password_hash ? 'Present' : 'Missing');
         console.log('🔍 Password provided:', password ? 'Present' : 'Missing');
 
+        // Log failed login attempt
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
+          const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw';
+          const auditClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+          const auditEntry = {
+            timestamp: new Date().toISOString(),
+            user_id: foundUser.id,
+            user_name: foundUser.name,
+            user_role: foundUser.role,
+            action_category: 'auth',
+            action_type: 'Login Failed',
+            target_entity: 'Authentication',
+            details: `Failed login attempt for: ${foundUser.name} (${foundUser.email}) - Invalid password`,
+            ip_address: null,
+            user_agent: navigator.userAgent,
+            clinic_type: 'dental',
+            created_at: new Date().toISOString()
+          };
+
+          await auditClient.from('audit_logs').insert(auditEntry);
+          console.log('✅ Failed login audit log created');
+        } catch (auditError) {
+          console.error('Failed to log failed login audit:', auditError);
+        }
+
         toast({
           title: 'Login Failed',
           description: `Invalid email or password. ${5 - newAttempts} attempts remaining.`,
@@ -332,6 +373,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('✅ Database login successful for user:', foundUser.name);
 
+      // Log successful login audit entry
+      try {
+        // Import the audit log client directly to avoid circular dependency
+        const { createClient } = await import('@supabase/supabase-js');
+        const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw';
+        const auditClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const auditEntry = {
+          timestamp: new Date().toISOString(),
+          user_id: foundUser.id,
+          user_name: foundUser.name,
+          user_role: foundUser.role,
+          action_category: 'auth',
+          action_type: 'User Login',
+          target_entity: 'Authentication',
+          details: `User logged in: ${foundUser.name} (${foundUser.email})`,
+          ip_address: null,
+          user_agent: navigator.userAgent,
+          clinic_type: 'dental',
+          created_at: new Date().toISOString()
+        };
+
+        await auditClient.from('audit_logs').insert(auditEntry);
+        console.log('✅ Login audit log created');
+      } catch (auditError) {
+        console.error('Failed to log login audit:', auditError);
+      }
+
       toast({
         title: 'Login Successful',
         description: `Welcome back, ${foundUser.name}!`,
@@ -350,9 +420,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = async () => {
     try {
-      // TODO: Re-enable audit logging after fixing schema issue
       if (user) {
         console.log('👋 Logout for user:', user.name);
+        
+        // Log logout audit entry
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
+          const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw';
+          const auditClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+          const auditEntry = {
+            timestamp: new Date().toISOString(),
+            user_id: user.id,
+            user_name: user.name,
+            user_role: user.role,
+            action_category: 'auth',
+            action_type: 'User Logout',
+            target_entity: 'Authentication',
+            details: `User logged out: ${user.name} (${user.email})`,
+            ip_address: null,
+            user_agent: navigator.userAgent,
+            clinic_type: 'dental',
+            created_at: new Date().toISOString()
+          };
+
+          await auditClient.from('audit_logs').insert(auditEntry);
+          console.log('✅ Logout audit log created');
+        } catch (auditError) {
+          console.error('Failed to log logout audit:', auditError);
+        }
       }
 
       // Delete session from database
