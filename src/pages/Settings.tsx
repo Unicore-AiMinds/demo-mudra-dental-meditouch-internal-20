@@ -1920,7 +1920,7 @@ const Settings = () => {
                     Add and manage doctors for {activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch'} Clinic
                   </CardDescription>
                 </div>
-                {hasPermission('settings.manage_doctors') && (
+                {hasPermission('settings.view_doctors') && (
                   <Button onClick={() => setIsAddDoctorDialogOpen(true)}>
                     <UserPlus className="mr-2 h-4 w-4" /> Add Doctor
                   </Button>
@@ -2559,7 +2559,7 @@ const Settings = () => {
                   Add and manage services for {activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch'} Clinic
                 </CardDescription>
               </div>
-              {hasPermission('settings.manage_services') && (
+              {hasPermission('settings.view_services') && (
                 <Button onClick={() => setIsAddServiceDialogOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" /> Add Service
                 </Button>
@@ -3273,7 +3273,7 @@ const Settings = () => {
                     Add and manage medicines for {activeClinic === 'dental' ? 'Dental Metrix' : 'Meditouch'} Clinic
                   </CardDescription>
                 </div>
-                {hasPermission('settings.manage_medicines') && (
+                {hasPermission('settings.view_medicines') && (
                   <Button
                     onClick={() => setIsAddMedicineDialogOpen(true)}
                     className={activeClinic === 'dental' ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
