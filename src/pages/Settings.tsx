@@ -172,7 +172,7 @@ const Settings = () => {
     if (hasPermission('settings.view_medicines')) return 'medicines';
     if (hasPermission('settings.view_labs')) return 'labs';
     if (hasPermission('settings.view_lab_work_types')) return 'lab-work-types';
-    if (hasPermission('settings.view_stock_items')) return 'stock-items';
+    if (hasPermission('settings.view_stock_settings')) return 'stock';
     if (hasPermission('settings.view_dealers')) return 'dealers';
     if (hasPermission('settings.view_user_management')) return 'user-management';
     if (hasPermission('settings.view_roles')) return 'roles';

@@ -100,7 +100,18 @@ const navItems: NavItem[] = [
     title: 'Settings',
     icon: Settings,
     path: '/settings',
-    permissions: ['settings.view_doctors', 'settings.view_services', 'settings.view_user_management', 'settings.view_roles'],
+    permissions: [
+      'settings.view_doctors',
+      'settings.view_services', 
+      'settings.view_service_followup',
+      'settings.view_labs',
+      'settings.view_lab_work_types',
+      'settings.view_stock_settings',
+      'settings.view_dealers',
+      'settings.view_medicines',
+      'settings.view_user_management',
+      'settings.view_roles'
+    ],
     requireAll: false, // User needs ANY of these permissions to see Settings
   },
 ];

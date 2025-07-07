@@ -160,7 +160,18 @@ const App = () => (
                                                   <Route
                                                     path="/settings"
                                                     element={
-                                                      <ProtectedRoute requiredPermissions={['settings.view_doctors', 'settings.view_services', 'settings.view_user_management', 'settings.view_roles']} requireAll={false}>
+                                                      <ProtectedRoute requiredPermissions={[
+                                                        'settings.view_doctors',
+                                                        'settings.view_services', 
+                                                        'settings.view_service_followup',
+                                                        'settings.view_labs',
+                                                        'settings.view_lab_work_types',
+                                                        'settings.view_stock_settings',
+                                                        'settings.view_dealers',
+                                                        'settings.view_medicines',
+                                                        'settings.view_user_management',
+                                                        'settings.view_roles'
+                                                      ]} requireAll={false}>
                                                         <Settings />
                                                       </ProtectedRoute>
                                                     }

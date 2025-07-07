@@ -85,13 +85,27 @@ export const RolesTab: React.FC = () => {
 
       // Get user count for this role (using the custom supabase wrapper)
       let userCount = 0;
+      let usersWithRole = [];
       try {
         const users = await supabase.from('users').getAll({
           filters: { role_id: currentRole.id }
         });
-        userCount = users ? users.length : 0;
+        usersWithRole = users || [];
+        userCount = usersWithRole.length;
       } catch (countError) {
         console.warn('Could not get user count for role deletion audit:', countError);
+      }
+
+      // Check if users are still assigned to this role
+      if (userCount > 0) {
+        toast({
+          title: 'Cannot Delete Role',
+          description: `This role cannot be deleted because ${userCount} user${userCount > 1 ? 's are' : ' is'} still assigned to it. Please reassign the user${userCount > 1 ? 's' : ''} to a different role first.`,
+          variant: 'destructive',
+        });
+        setIsDeleteDialogOpen(false);
+        setCurrentRole(null);
+        return;
       }
 
       await roleOperations.delete(currentRole.id);
@@ -119,9 +133,16 @@ export const RolesTab: React.FC = () => {
       });
     } catch (error) {
       console.error('Error deleting role:', error);
+      
+      // Check if this is a foreign key constraint error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isForeignKeyError = errorMessage.includes('23503') || errorMessage.includes('foreign key constraint') || errorMessage.includes('still referenced');
+      
       toast({
         title: 'Error',
-        description: 'Failed to delete role. Please try again.',
+        description: isForeignKeyError 
+          ? 'Cannot delete role because users are still assigned to it. Please reassign the users to a different role first.'
+          : 'Failed to delete role. Please try again.',
         variant: 'destructive',
       });
     }
