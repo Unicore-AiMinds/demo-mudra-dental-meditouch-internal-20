@@ -16,6 +16,7 @@ export interface Patient {
   email: string | null;
   phone: string;
   alt_phone?: string | null;
+  has_whatsapp?: boolean;
   address?: string;
   city?: string;
   pincode?: string;

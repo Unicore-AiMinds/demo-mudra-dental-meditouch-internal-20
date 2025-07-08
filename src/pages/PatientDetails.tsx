@@ -48,6 +48,7 @@ interface LocalPatient {
   email: string | null;
   phone: string;
   altPhone?: string | null;
+  hasWhatsApp?: boolean;
   address?: string;
   city?: string;
   pincode?: string;
@@ -105,6 +106,7 @@ const PatientDetails = () => {
   const { activeClinic } = useClinic();
   const { hasPermission } = usePermissions();
   const [patient, setPatient] = useState<LocalPatient | null>(null);
+  const [dynamicLastVisit, setDynamicLastVisit] = useState<string>('');
 
   // Get the tab parameter from the URL query string
   const searchParams = new URLSearchParams(location.search);
@@ -113,8 +115,9 @@ const PatientDetails = () => {
   // State to track the active tab
   const [activeTab, setActiveTab] = useState<string>("overview");
 
-  const { getPatientById, isLoading } = usePatients();
+  const { getPatientById, isLoading, patients } = usePatients();
   const { toast } = useToast();
+  const { getPatientHistory } = useDentalHistory();
 
   // Find the patient data when the component mounts
   useEffect(() => {
@@ -134,6 +137,7 @@ const PatientDetails = () => {
               email: foundPatient.email,
               phone: foundPatient.phone,
               altPhone: foundPatient.alt_phone,
+              hasWhatsApp: foundPatient.has_whatsapp,
               address: foundPatient.address,
               city: foundPatient.city,
               pincode: foundPatient.pincode,
@@ -166,6 +170,61 @@ const PatientDetails = () => {
 
     fetchPatient();
   }, [patientId, navigate, getPatientById, toast]);
+
+  // Listen for patient data updates in the patients context
+  useEffect(() => {
+    if (patientId && patients.length > 0) {
+      const updatedPatient = patients.find(p => p.id === patientId);
+      if (updatedPatient && patient) {
+        // Update local patient state if the patient data has changed
+        const formattedPatient: LocalPatient = {
+          id: updatedPatient.id,
+          patient_code: updatedPatient.patient_code,
+          name: updatedPatient.name,
+          gender: updatedPatient.gender,
+          age: updatedPatient.age,
+          dateOfBirth: updatedPatient.date_of_birth,
+          email: updatedPatient.email,
+          phone: updatedPatient.phone,
+          altPhone: updatedPatient.alt_phone,
+          hasWhatsApp: updatedPatient.has_whatsapp,
+          address: updatedPatient.address,
+          city: updatedPatient.city,
+          pincode: updatedPatient.pincode,
+          bloodGroup: updatedPatient.blood_group,
+          referredBy: updatedPatient.referred_by,
+          clinic: updatedPatient.clinic,
+          lastVisit: updatedPatient.last_visit || ''
+        };
+        setPatient(formattedPatient);
+      }
+    }
+  }, [patients, patientId, patient]);
+
+  // Calculate dynamic last visit from appointment history (same logic as grid)
+  useEffect(() => {
+    const calculateLastVisit = async () => {
+      if (patientId) {
+        try {
+          const history = await getPatientHistory(patientId);
+          if (history && history.length > 0) {
+            // Sort by date and get the most recent
+            const sortedHistory = history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const lastVisitDate = sortedHistory[0].date;
+            setDynamicLastVisit(lastVisitDate);
+          } else {
+            setDynamicLastVisit('');
+          }
+        } catch (error) {
+          console.error('Error fetching patient history for last visit:', error);
+          setDynamicLastVisit('');
+        }
+      }
+    };
+
+    calculateLastVisit();
+  }, [patientId, getPatientHistory]);
+
 
   // Set the active tab based on the URL parameter when the component mounts or URL changes
   useEffect(() => {
@@ -289,6 +348,12 @@ const PatientDetails = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {patient.patient_code && (
+                  <div>
+                    <h3 className="font-medium text-sm text-muted-foreground">Patient Code</h3>
+                    <p className="text-base">{patient.patient_code}</p>
+                  </div>
+                )}
                 <div>
                   <h3 className="font-medium text-sm text-muted-foreground">Full Name</h3>
                   <p className="text-base">{patient.name}</p>
@@ -313,12 +378,19 @@ const PatientDetails = () => {
                 </div>
                 <div>
                   <h3 className="font-medium text-sm text-muted-foreground">Phone</h3>
-                  <p className="text-base">+91 {patient.phone}</p>
+                  <p className="text-base">
+                    {patient.phone}
+                    {patient.hasWhatsApp && (
+                      <span className="ml-2 text-green-600 text-sm">
+                        (WhatsApp ✓)
+                      </span>
+                    )}
+                  </p>
                 </div>
                 {patient.altPhone && (
                   <div>
                     <h3 className="font-medium text-sm text-muted-foreground">Alternative Phone</h3>
-                    <p className="text-base">+91 {patient.altPhone}</p>
+                    <p className="text-base">{patient.altPhone}</p>
                   </div>
                 )}
                 <div>
@@ -344,7 +416,7 @@ const PatientDetails = () => {
                 <div>
                   <h3 className="font-medium text-sm text-muted-foreground">Last Visit</h3>
                   <p className="text-base">
-                    {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'No previous visits'}
+                    {dynamicLastVisit ? new Date(dynamicLastVisit).toLocaleDateString() : 'No previous visits'}
                   </p>
                 </div>
               </div>

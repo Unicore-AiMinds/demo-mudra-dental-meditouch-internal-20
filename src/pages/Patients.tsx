@@ -87,6 +87,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from '@/components/ui/badge';
 import { formatDateForExport, formatDateForFilename } from '@/utils/dateFormatter';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Patient interface is imported from PatientContext
 
@@ -136,6 +137,8 @@ const Patients = () => {
   const [filteredPatientsList, setFilteredPatientsList] = useState<Patient[]>([]);
   const [phoneCountryCode, setPhoneCountryCode] = useState("+91");
   const [searchValue, setSearchValue] = useState("");
+  const [hasWhatsApp, setHasWhatsApp] = useState(false);
+  const [editHasWhatsApp, setEditHasWhatsApp] = useState(false);
 
   // Effect to filter patients based on search and tab
   useEffect(() => {
@@ -247,6 +250,7 @@ const Patients = () => {
     email: '',
     phone: '',
     altPhone: '', // Added alternative phone
+    hasWhatsApp: false, // Added WhatsApp field
     address: '',
     city: '',
     pincode: '',
@@ -264,6 +268,7 @@ const Patients = () => {
     email: '',
     phone: '',
     altPhone: '', // Added alternative phone
+    hasWhatsApp: false, // Added WhatsApp field
     address: '',
     city: '',
     pincode: '',
@@ -283,6 +288,7 @@ const Patients = () => {
       email: '',
       phone: '',
       altPhone: '', // Added alternative phone
+      hasWhatsApp: false, // Added WhatsApp field
       address: '',
       city: '',
       pincode: '',
@@ -292,6 +298,7 @@ const Patients = () => {
       lastVisit: ''
     });
     setUseAgeInput(true); // Reset to age input by default
+    setHasWhatsApp(false); // Reset WhatsApp checkbox
   };
 
   // Direct function to reset edit form data
@@ -304,6 +311,7 @@ const Patients = () => {
       email: '',
       phone: '',
       altPhone: '', // Added alternative phone
+      hasWhatsApp: false, // Added WhatsApp field
       address: '',
       city: '',
       pincode: '',
@@ -315,6 +323,7 @@ const Patients = () => {
     setCurrentEditPatient(null);
     setEditPhoneCountryCode("+91");
     setEditUseAgeInput(true); // Reset to age input by default
+    setEditHasWhatsApp(false); // Reset WhatsApp checkbox
   };
 
   // Export patients to CSV
@@ -379,6 +388,9 @@ const Patients = () => {
     // Determine if we should use age or DOB based on available data
     const hasDateOfBirth = !!patient.date_of_birth;
     setEditUseAgeInput(!hasDateOfBirth);
+    
+    // Set WhatsApp checkbox state
+    setEditHasWhatsApp(patient.has_whatsapp || false);
 
     console.log('Editing patient with data:', patient);
 
@@ -390,6 +402,7 @@ const Patients = () => {
       email: patient.email || '',
       phone: patient.phone || '',
       altPhone: patient.alt_phone || '', // Added alternative phone
+      hasWhatsApp: patient.has_whatsapp || false, // Added WhatsApp field
       address: patient.address || '',
       city: patient.city || '',
       pincode: patient.pincode || '',
@@ -527,6 +540,7 @@ const Patients = () => {
         email: editFormData.email && editFormData.email.trim() !== '' ? editFormData.email.trim() : null,
         phone: phoneNumber,
         alt_phone: editFormData.altPhone && editFormData.altPhone.trim() !== '' ? editFormData.altPhone.trim() : null,
+        has_whatsapp: editFormData.hasWhatsApp || false,
         address: editFormData.address && editFormData.address.trim() !== '' ? editFormData.address.trim() : null,
         city: editFormData.city && editFormData.city.trim() !== '' ? editFormData.city.trim() : null,
         pincode: editFormData.pincode && editFormData.pincode.trim() !== '' ? editFormData.pincode.trim() : null,
@@ -709,6 +723,7 @@ const Patients = () => {
         email: formData.email || null,
         phone: phoneNumber, // Use the validated phone number
         alt_phone: formData.altPhone || null,
+        has_whatsapp: formData.hasWhatsApp || false,
         address: formData.address || null,
         city: formData.city || null,
         pincode: formData.pincode || null,
@@ -854,10 +869,10 @@ const Patients = () => {
       ),
     },
     {
-      accessorKey: "bloodGroup",
+      accessorKey: "blood_group",
       header: "Blood Group",
       cell: ({ row }) => (
-        <div>{row.getValue("bloodGroup") || "Not provided"}</div>
+        <div>{row.getValue("blood_group") || "Not provided"}</div>
       ),
     },
     {
@@ -1205,7 +1220,22 @@ const Patients = () => {
                 </div>
                 <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
                   <div className="space-y-2 flex-1">
-                    <Label htmlFor="phone">Phone Number *</Label>
+                    <div className="flex items-center gap-3">
+                      <Label htmlFor="phone">Phone Number *</Label>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="whatsapp"
+                          checked={formData.hasWhatsApp}
+                          onCheckedChange={(checked) => {
+                            setFormData({...formData, hasWhatsApp: checked as boolean});
+                            setHasWhatsApp(checked as boolean);
+                          }}
+                        />
+                        <Label htmlFor="whatsapp" className="text-sm font-normal cursor-pointer">
+                          WhatsApp
+                        </Label>
+                      </div>
+                    </div>
                     <div className="flex">
                       <Select
                         defaultValue="+91"
@@ -1505,7 +1535,22 @@ const Patients = () => {
                   </div>
                   <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
                     <div className="space-y-2 flex-1">
-                      <Label htmlFor="phone">Phone Number *</Label>
+                      <div className="flex items-center gap-3">
+                        <Label htmlFor="phone">Phone Number *</Label>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="editWhatsapp"
+                            checked={editFormData.hasWhatsApp}
+                            onCheckedChange={(checked) => {
+                              setEditFormData({...editFormData, hasWhatsApp: checked as boolean});
+                              setEditHasWhatsApp(checked as boolean);
+                            }}
+                          />
+                          <Label htmlFor="editWhatsapp" className="text-sm font-normal cursor-pointer">
+                            WhatsApp
+                          </Label>
+                        </div>
+                      </div>
                       <div className="flex">
                         <Select
                           defaultValue="+91"

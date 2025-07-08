@@ -635,11 +635,12 @@ const Settings = () => {
         return;
       }
 
-      const priceValue = parseFloat(updatedPrice.value);
-      if (!updatedPrice.value || isNaN(priceValue) || priceValue < 0) {
+      // Price is optional, but if provided should be valid
+      const priceValue = updatedPrice.value ? parseFloat(updatedPrice.value) : 0;
+      if (updatedPrice.value && (isNaN(priceValue) || priceValue < 0)) {
         toast({
           title: "Error",
-          description: "Price must be a valid non-negative number.",
+          description: "Please enter a valid price (numbers only, no negative values).",
           variant: "destructive"
         });
         return;
@@ -650,7 +651,7 @@ const Settings = () => {
         await updateService(currentService.id, {
           name: capitalizeWords(updatedName.value.trim()),
           duration: durationValue,
-          price: parseFloat(updatedPrice.value),
+          price: priceValue || 0, // Use priceValue which defaults to 0 if empty
           description: updatedDescription?.value?.trim() || ''
         });
 
@@ -2618,11 +2619,11 @@ const Settings = () => {
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="serviceName">Service Name</Label>
+                    <Label htmlFor="serviceName">Service Name <span className="text-red-500">*</span></Label>
                     <Input id="serviceName" placeholder="Enter service name" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="serviceDuration">Duration (minutes)</Label>
+                    <Label htmlFor="serviceDuration">Duration (minutes) <span className="text-red-500">*</span></Label>
                     <Select defaultValue="30">
                       <SelectTrigger id="serviceDuration">
                         <SelectValue placeholder="Select duration" />
@@ -2676,11 +2677,12 @@ const Settings = () => {
 
                     // Duration validation is not needed as it's a dropdown with predefined values
 
-                    const priceValue = parseFloat(servicePrice.value);
-                    if (!servicePrice.value || isNaN(priceValue) || priceValue < 0) {
+                    // Price is optional, but if provided should be valid
+                    const priceValue = servicePrice.value ? parseFloat(servicePrice.value) : 0;
+                    if (servicePrice.value && (isNaN(priceValue) || priceValue < 0)) {
                       toast({
                         title: "Error",
-                        description: "Price must be a valid non-negative number.",
+                        description: "Please enter a valid price (numbers only, no negative values).",
                         variant: "destructive"
                       });
                       return;
@@ -2691,7 +2693,7 @@ const Settings = () => {
                       const newService = {
                         name: capitalizeWords(serviceName.value.trim()),
                         duration: parseInt(serviceDurationValue),
-                        price: parseFloat(servicePrice.value),
+                        price: priceValue || 0, // Use priceValue which defaults to 0 if empty
                         description: serviceDescription?.value?.trim() || '',
                         clinic_type: activeClinic as 'dental' | 'meditouch'
                       };
@@ -2737,14 +2739,14 @@ const Settings = () => {
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="editServiceName">Service Name</Label>
+                      <Label htmlFor="editServiceName">Service Name <span className="text-red-500">*</span></Label>
                       <Input
                         id="editServiceName"
                         defaultValue={currentService.name}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="editServiceDuration">Duration (minutes)</Label>
+                      <Label htmlFor="editServiceDuration">Duration (minutes) <span className="text-red-500">*</span></Label>
                       <Select
                         defaultValue={currentService.duration.toString()}
                         onValueChange={(value) => setEditServiceDuration(parseInt(value))}

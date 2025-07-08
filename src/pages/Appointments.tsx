@@ -56,6 +56,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import AddPatientDialog from '@/components/AddPatientDialog';
+import AppointmentList from '@/components/AppointmentList';
 
 // Patients will be fetched from PatientContext
 
@@ -2289,6 +2290,11 @@ const Appointments = () => {
                     <TabsTrigger value="weekly">Weekly</TabsTrigger>
                     <TabsTrigger value="monthly">Monthly</TabsTrigger>
                     {isDental && <TabsTrigger value="pending">Pending Treatments</TabsTrigger>}
+                    {isDental && (
+                      <div className="ml-4 px-2 py-1 text-sm">
+                        <AppointmentList />
+                      </div>
+                    )}
                   </TabsList>
 
                   <TabsContent value="daily" className="m-0 w-full">
