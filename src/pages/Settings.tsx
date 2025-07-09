@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/contexts/PermissionContext';
 import { useClinic } from '@/contexts/ClinicContext';
@@ -169,6 +169,7 @@ const Settings = () => {
   const getFirstAvailableTab = () => {
     if (hasPermission('settings.view_doctors')) return 'doctors';
     if (hasPermission('settings.view_services')) return 'services';
+    if (hasPermission('settings.view_service_followup')) return 'service-followups';
     if (hasPermission('settings.view_medicines')) return 'medicines';
     if (hasPermission('settings.view_labs')) return 'labs';
     if (hasPermission('settings.view_lab_work_types')) return 'lab-work-types';
@@ -356,7 +357,7 @@ const Settings = () => {
   // Use service follow-ups from ServiceFollowUpContext
   const { generateFollowUpsForCompletedService } = useServiceFollowUps();
   // Use service follow-up rules from ServiceFollowUpRuleContext
-  const { followUpRules, addFollowUpRule, updateFollowUpRule, deleteFollowUpRule, cleanupDuplicateRules, isLoading: isLoadingRules } = useServiceFollowUpRules();
+  const { followUpRules, addFollowUpRule, updateFollowUpRule, deleteFollowUpRule, cleanupDuplicateRules, fetchFollowUpRules, isLoading: isLoadingRules } = useServiceFollowUpRules();
   const [dentalLabs, setDentalLabs] = useState(initialDentalLabs);
   const [labWorkTypes, setLabWorkTypes] = useState(initialLabWorkTypes);
   const [currentService, setCurrentService] = useState<Service | null>(null);
@@ -368,6 +369,9 @@ const Settings = () => {
 
   const [currentFollowUpRule, setCurrentFollowUpRule] = useState<ServiceFollowUpRule | null>(null);
   const [currentServiceWithFollowUp, setCurrentServiceWithFollowUp] = useState<ServiceWithFollowUp | null>(null);
+  
+  // Track active tab - will be initialized after getFirstAvailableTab is defined
+  const [activeTab, setActiveTab] = useState<string>('');
 
   // Follow-up rule form states
   const [newTriggeringService, setNewTriggeringService] = useState('');
@@ -437,6 +441,22 @@ const Settings = () => {
       .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
   };
+
+  // Fetch follow-up rules when service-followups tab is selected
+  useEffect(() => {
+    if (activeTab === 'service-followups') {
+      console.log('Service follow-ups tab selected');
+      console.log('Current follow-up rules:', followUpRules);
+      console.log('Is loading rules:', isLoadingRules);
+      console.log('Current services:', activeClinic === 'dental' ? dentalServices : meditouchServices);
+      
+      // Always fetch when tab is selected to ensure data is fresh
+      if (!isLoadingRules) {
+        console.log('Fetching follow-up rules...');
+        fetchFollowUpRules();
+      }
+    }
+  }, [activeTab, activeClinic]);
 
   const handleSaveClinicDetails = () => {
     toast({
@@ -1758,7 +1778,7 @@ const Settings = () => {
         </div>
       </div>
 
-      <Tabs defaultValue={getFirstAvailableTab()} className="w-full">
+      <Tabs defaultValue={getFirstAvailableTab()} className="w-full" onValueChange={setActiveTab}>
         <TabsList className="mb-4">
           {/* COMMENTED OUT: Clinic Details tab as requested by user */}
           {/* <TabsTrigger value="clinic">Clinic Details</TabsTrigger> */}

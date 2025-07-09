@@ -71,6 +71,7 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
       const currentServices = getCurrentClinicServices();
       const currentServiceNames = currentServices.map(s => s.name);
       console.log(`Filtering rules for ${activeClinic} clinic. Available services:`, currentServiceNames);
+      console.log('Total rules before filtering:', rulesData?.length || 0);
 
       const filteredRulesData = rulesData?.filter(rule =>
         currentServiceNames.includes(rule.triggering_service_name)
@@ -257,6 +258,13 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
   // EMERGENCY FIX: Fetch follow-up rules from Supabase on component mount
   useEffect(() => {
     const initializeRules = async () => {
+      // Only fetch if we have services loaded
+      const currentServices = activeClinic === 'dental' ? dentalServices : meditouchServices;
+      if (currentServices.length === 0) {
+        console.log('Skipping follow-up rules fetch - no services loaded yet');
+        return;
+      }
+
       await fetchFollowUpRules();
 
       // Clean up duplicate rules
@@ -268,7 +276,7 @@ export const ServiceFollowUpRuleProvider: React.FC<{ children: ReactNode }> = ({
 
     initializeRules();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeClinic]); // Refetch when clinic changes
+  }, [activeClinic, dentalServices.length, meditouchServices.length]); // Refetch when clinic changes or services are loaded
 
   // Add a new follow-up rule
   const addFollowUpRule = async (rule: Omit<ServiceFollowUpRule, 'id' | 'rule_id' | 'created_at' | 'updated_at'>): Promise<ServiceFollowUpRule> => {
