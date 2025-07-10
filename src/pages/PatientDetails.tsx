@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useClinic } from '@/contexts/ClinicContext';
 import { usePermissions } from '@/contexts/PermissionContext';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
@@ -103,17 +103,28 @@ const PatientDetails = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { activeClinic } = useClinic();
   const { hasPermission } = usePermissions();
   const [patient, setPatient] = useState<LocalPatient | null>(null);
   const [dynamicLastVisit, setDynamicLastVisit] = useState<string>('');
 
   // Get the tab parameter from the URL query string
-  const searchParams = new URLSearchParams(location.search);
   const tabFromUrl = searchParams.get('tab');
 
   // State to track the active tab
   const [activeTab, setActiveTab] = useState<string>("overview");
+
+  // Function to handle tab changes and update URL
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    // Update URL parameters when tab changes
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('tab', newTab);
+      return newParams;
+    }, { replace: true });
+  };
 
   const { getPatientById, isLoading, patients } = usePatients();
   const { toast } = useToast();
@@ -312,7 +323,7 @@ const PatientDetails = () => {
       {/* Tabbed Interface for Patient Information */}
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={handleTabChange}
         className="w-full">
         <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 lg:flex lg:flex-wrap">
           {hasPermission('patients.view_patient_info') && (
