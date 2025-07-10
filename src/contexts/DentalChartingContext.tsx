@@ -458,10 +458,15 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
           throw error;
         }
 
-        // Refresh the local state
-        const updatedEntries = await supabase.from<ChartingEntry>('dental_charting').getAll();
-        setPatientChartingHistory(updatedEntries);
-        console.log('Refreshed local state with latest data');
+        // Update local state efficiently instead of full refresh
+        setPatientChartingHistory(prev => 
+          prev.map(entry => 
+            entry.entry_id === entryId 
+              ? { ...entry, status, updated_at: new Date().toISOString() }
+              : entry
+          )
+        );
+        console.log('Updated local state efficiently');
       } else {
         console.log('Found charting entry in local state:', entry);
 
@@ -622,32 +627,9 @@ export const DentalChartingProvider: React.FC<{ children: ReactNode }> = ({ chil
         description: `The treatment has been marked as ${status.toLowerCase()}.`,
       });
 
-      // Refresh the data again to ensure everything is up to date
-      console.log('Performing final refresh of data from Supabase');
-
-      // Use direct REST API to get the latest data
-      const finalResponse = await fetch(`${SUPABASE_URL}/rest/v1/dental_charting`, {
-        method: 'GET',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-        }
-      });
-
-      if (!finalResponse.ok) {
-        console.error('Error fetching final data:', finalResponse.statusText);
-      } else {
-        const finalEntries = await finalResponse.json();
-        console.log('Final entries from Supabase:', finalEntries);
-
-        // Update the local state with the latest data
-        setPatientChartingHistory(finalEntries);
-        console.log('Final refresh of local state completed');
-
-        // Double-check that our specific entry was updated
-        const updatedEntry = finalEntries.find((e: { entry_id: string }) => e.entry_id === entryId);
-        console.log('Our updated entry in final refresh:', updatedEntry);
-      }
+      // Database update completed successfully
+      // Local state was already updated efficiently above
+      console.log('Charting entry status update completed successfully');
 
     } catch (error) {
       console.error('Error updating charting entry status:', error);
