@@ -1,8 +1,8 @@
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { usePermissions } from '@/contexts/PermissionContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import { useDoctors } from '@/contexts/DoctorContext';
 import { usePatients } from '@/contexts/PatientContext';
@@ -401,16 +401,24 @@ const Appointments = () => {
     return isDental ? dentalAppointments : meditouchAppointments;
   }, [dentalAppointments, meditouchAppointments, isDental]);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Get URL parameters
-  const getUrlParams = () => {
-    const params = new URLSearchParams(window.location.search);
-    return {
-      view: params.get('view') || 'daily'
-    };
+  // Get view from URL parameters, default to 'daily'
+  const getInitialView = () => {
+    return searchParams.get('view') || 'daily';
   };
 
-  const [view, setView] = useState(getUrlParams().view);
+  const [view, setView] = useState(getInitialView());
+  
+  // Sync view with URL changes (e.g. from pending treatments)
+  useEffect(() => {
+    const urlView = searchParams.get('view') || 'daily';
+    if (urlView !== view) {
+      console.log('URL parameter changed, updating view to:', urlView);
+      setView(urlView);
+    }
+  }, [searchParams, view]); // Watch for changes to search parameters
   const [date, setDate] = useState<Date>(new Date());
   const [selectedDoctor, setSelectedDoctor] = useState<string | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
@@ -2005,13 +2013,7 @@ const Appointments = () => {
     };
   }, [date, resetAppointmentForm, patients, activeClinic]);
 
-  // Update URL when view changes
-  useEffect(() => {
-    // Update the URL with the current view
-    const url = new URL(window.location.href);
-    url.searchParams.set('view', view);
-    window.history.replaceState({}, '', url.toString());
-  }, [view]);
+  // Removed the URL update effect to prevent circular dependency
 
   // Check for pending treatments in Supabase when the component mounts
   useEffect(() => {
@@ -2278,11 +2280,16 @@ const Appointments = () => {
             <CardContent className="p-4">
               <div className="flex justify-center items-center mb-4">
                 <Tabs
-                  defaultValue="daily"
                   value={view}
                   onValueChange={(newView) => {
                     resetExpandedStates();
                     setView(newView);
+                    // Update URL when tab changes
+                    setSearchParams(prev => {
+                      const newParams = new URLSearchParams(prev);
+                      newParams.set('view', newView);
+                      return newParams;
+                    }, { replace: true });
                   }}
                   className="w-full">
                   <TabsList className="mx-auto">

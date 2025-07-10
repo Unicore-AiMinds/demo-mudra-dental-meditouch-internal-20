@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { format, addDays, isBefore } from 'date-fns';
 import { Search, Calendar, Clock, AlarmClock, ArrowUpDown, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,7 @@ const PatientName: React.FC<{ patientId: string }> = ({ patientId }) => {
 // No props needed for this component
 const PendingTreatmentsView: React.FC = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { getPlannedChartingEntries, getPatientName, snoozeChartingEntry, unsnoozeChartingEntry } = useDentalCharting();
   const { supabase } = useSupabase();
 
@@ -336,8 +338,7 @@ const PendingTreatmentsView: React.FC = () => {
       });
 
       // Navigate to the appointments page with daily view
-      // Use window.location.href for a full page reload to ensure the URL parameters are processed
-      window.location.href = '/appointments?view=daily';
+      navigate('/appointments?view=daily');
     } catch (error) {
       console.error('Error in handleScheduleAppointment:', error);
 
@@ -348,7 +349,7 @@ const PendingTreatmentsView: React.FC = () => {
       });
 
       // Navigate to the appointments page with daily view
-      window.location.href = '/appointments?view=daily';
+      navigate('/appointments?view=daily');
     }
   };
 
@@ -379,8 +380,15 @@ const PendingTreatmentsView: React.FC = () => {
       // Call the context function to snooze the entry
       await snoozeChartingEntry(entryId, snoozeUntilDate, snoozeNotes);
 
+      // Refresh the data to update the UI
+      await fetchPlannedEntries();
+
       // Close dialog and show success message
       setIsSnoozeDialogOpen(false);
+      
+      // Switch to snoozed tab to show the user where the item went
+      setActiveTab('snoozed');
+      
       toast({
         title: "Treatment Snoozed",
         description: `The treatment has been snoozed until ${format(snoozeDate, 'dd/MM/yyyy')}.`,
@@ -604,7 +612,7 @@ const PendingTreatmentsView: React.FC = () => {
                     To add treatments, go to a patient's record and add dental charting entries with status "Planned".
                   </p>
                   <Button
-                    onClick={() => window.location.href = '/patients'}
+                    onClick={() => navigate('/patients')}
                     className="bg-dental-primary hover:bg-dental-dark text-white"
                   >
                     Go to Patients
