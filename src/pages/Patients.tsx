@@ -50,6 +50,8 @@ import {
   useReactTable,
   SortingState,
   getSortedRowModel,
+  getPaginationRowModel,
+  PaginationState,
 } from "@tanstack/react-table";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -88,6 +90,15 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { formatDateForExport, formatDateForFilename } from '@/utils/dateFormatter';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 // Patient interface is imported from PatientContext
 
@@ -131,6 +142,10 @@ const Patients = () => {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "created_at", desc: true } // Sort by creation date descending to show newest records first
   ]);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 25,
+  });
   const [currentTab, setCurrentTab] = useState<string>("all");
   const { toast } = useToast();
   const { patients, isLoading, addPatient, updatePatient, deletePatient, searchPatients } = usePatients();
@@ -959,13 +974,15 @@ const Patients = () => {
     data: filteredPatientsList, // Use the filtered patients list from state
     columns,
     onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    // No pagination - show all records
+    getPaginationRowModel: getPaginationRowModel(),
     state: {
       sorting,
+      pagination,
     },
-  }), [filteredPatientsList, columns, sorting]);
+  }), [filteredPatientsList, columns, sorting, pagination]);
 
   // Create the table instance with memoized options
   const table = useReactTable(tableOptions);
@@ -1108,6 +1125,105 @@ const Patients = () => {
               )}
             </CardContent>
           </Card>
+          
+          {/* Pagination */}
+          {!isLoading && filteredPatientsList.length > 0 && (
+            <div className="flex items-center justify-between space-x-6 lg:space-x-8 py-4">
+              <div className="flex items-center space-x-2">
+                <p className="text-sm font-medium">Rows per page</p>
+                <select
+                  value={table.getState().pagination.pageSize}
+                  onChange={(e) => {
+                    table.setPageSize(Number(e.target.value))
+                  }}
+                  className="h-8 w-[70px] rounded-md border border-input bg-background px-2 py-1 text-sm"
+                >
+                  {[10, 20, 25, 50, 100].map((pageSize) => (
+                    <option key={pageSize} value={pageSize}>
+                      {pageSize}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                Page {table.getState().pagination.pageIndex + 1} of{" "}
+                {table.getPageCount()}
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                  {table.getFilteredRowModel().rows.length > 0 && (
+                    <>
+                      {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}-
+                      {Math.min(
+                        (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+                        table.getFilteredRowModel().rows.length
+                      )}{" "}
+                      of {table.getFilteredRowModel().rows.length}
+                    </>
+                  )}
+                </div>
+                
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                      >
+                        Previous
+                      </Button>
+                    </PaginationItem>
+                    
+                    {/* Page numbers */}
+                    {Array.from({ length: Math.min(5, table.getPageCount()) }, (_, i) => {
+                      const currentPage = table.getState().pagination.pageIndex;
+                      const totalPages = table.getPageCount();
+                      
+                      let pageNumber;
+                      if (totalPages <= 5) {
+                        pageNumber = i;
+                      } else if (currentPage < 3) {
+                        pageNumber = i;
+                      } else if (currentPage > totalPages - 4) {
+                        pageNumber = totalPages - 5 + i;
+                      } else {
+                        pageNumber = currentPage - 2 + i;
+                      }
+                      
+                      if (pageNumber < 0 || pageNumber >= totalPages) return null;
+                      
+                      return (
+                        <PaginationItem key={pageNumber}>
+                          <PaginationLink
+                            onClick={() => table.setPageIndex(pageNumber)}
+                            isActive={pageNumber === currentPage}
+                            className="cursor-pointer"
+                          >
+                            {pageNumber + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+                    
+                    <PaginationItem>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                      >
+                        Next
+                      </Button>
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </div>
+          )}
         </div>
       </Tabs>
 
