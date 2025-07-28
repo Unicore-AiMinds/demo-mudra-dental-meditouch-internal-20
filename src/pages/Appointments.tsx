@@ -27,7 +27,8 @@ import {
   Clock,
   CalendarRange,
   Filter,
-  MoreVertical
+  MoreVertical,
+  Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -2372,7 +2373,7 @@ const Appointments = () => {
                     </div>
                     <div className="w-full">
                       <div className="relative">
-                        <div className="absolute left-0 top-0 bottom-0 w-16 border-r flex flex-col">
+                        <div className={`absolute left-0 top-0 bottom-0 w-16 border-r flex flex-col ${isMobile ? 'hidden' : ''}`}>
                           <div className="h-16 border-b"></div>
                           {Object.keys(hourlyTimeSlots).map(hour => (
                             <div key={hour} className="h-16 border-b flex items-start justify-end pr-2 text-xs text-gray-500 font-medium">
@@ -2381,12 +2382,114 @@ const Appointments = () => {
                           ))}
                         </div>
 
-                        <div className="ml-16 overflow-y-auto">
+                        <div className={`${isMobile ? 'ml-0' : 'ml-16'} overflow-y-auto`}>
                           <div className="h-16 border-b flex items-center px-2 font-medium">
                             {format(date, 'EEEE, MMMM d, yyyy')}
                           </div>
 
-                          {Object.entries(hourlyTimeSlots).map(([hour, slots]) => (
+                          {isMobile ? (
+                            // Mobile: Flexible hour rows with vertically stacked slots
+                            <div>
+                              {Object.entries(hourlyTimeSlots).map(([hour, slots]) => (
+                                <div key={hour} className="flex border-b border-gray-200 py-3">
+                                  {/* Hour label on the left */}
+                                  <div className="w-16 flex-shrink-0 flex items-start justify-end pr-3 pt-1">
+                                    <span className="text-sm font-bold text-gray-800">{hour}</span>
+                                  </div>
+                                  
+                                  {/* Slots area on the right - vertically stacked */}
+                                  <div className="flex-1 space-y-2 max-w-[calc(100vw-6rem)] overflow-hidden">
+                                    {slots.map(slot => {
+                                      const appointments = getAppointmentsForTimeSlot(slot);
+                                      const slotCounts = getBookedTimeSlots();
+                                      const currentCount = slotCounts[slot] || 0;
+                                      const maxAllowed = isDental ? 2 : 1;
+                                      const isFullyBooked = currentCount >= maxAllowed;
+
+                                      return (
+                                        <div
+                                          key={slot}
+                                          className={`p-2 border rounded min-h-[80px] ${
+                                            appointments.length === 0
+                                              ? isFullyBooked
+                                                ? 'border-dashed border-orange-200 bg-orange-50'
+                                                : 'border-dashed border-gray-200'
+                                              : 'border-solid border-blue-200 bg-blue-50'
+                                          }`}
+                                          onClick={() => {
+                                            // Only allow new appointment creation if slot is empty
+                                            if (appointments.length === 0) {
+                                              const slotCounts = getBookedTimeSlots();
+                                              const currentCount = slotCounts[slot] || 0;
+                                              const maxAllowed = isDental ? 2 : 1;
+                                              const isFullyBooked = currentCount >= maxAllowed;
+
+                                              setAppointmentTime(slot);
+
+                                              if (isFullyBooked) {
+                                                setWarningMessage(`This time slot already has ${currentCount} appointment(s). Adding more may cause scheduling conflicts. Do you want to continue?`);
+                                                setIsWarningDialogOpen(true);
+                                                return;
+                                              }
+
+                                              if (selectedDoctor && selectedDoctor !== 'all') {
+                                                const serviceToCheck = appointmentService || (services && services.length > 0 ? services[0].name : '');
+                                                
+                                                if (isDoctorBookedInOtherClinic(selectedDoctor, slot, serviceToCheck)) {
+                                                  setWarningMessage(`Dr. ${selectedDoctor} is already booked in the ${isDental ? 'Meditouch' : 'Dental'} clinic at ${slot}. This may cause scheduling conflicts. Do you want to continue?`);
+                                                  setIsWarningDialogOpen(true);
+                                                  return;
+                                                }
+                                              }
+
+                                              handleNewAppointmentForTimeSlot(slot);
+                                            }
+                                          }}
+                                        >
+                                          {/* Time slot header */}
+                                          <div className="font-medium text-gray-700 text-sm mb-2">{slot}</div>
+                                          
+                                          {/* Show appointments like desktop */}
+                                          {appointments.length === 0 ? (
+                                            <div className="text-center text-gray-400 text-xs py-2 cursor-pointer hover:bg-gray-50">
+                                              {isFullyBooked ? 'Full' : 'Available'}
+                                            </div>
+                                          ) : (
+                                            <div className="space-y-1">
+                                              {appointments.map(appointment => {
+                                                const isFirstSlot = appointment.time === slot;
+                                                const slotsOccupied = getSlotsOccupied(appointment.service);
+                                                return (
+                                                  <div key={appointment.id} className="max-w-full">
+                                                    <div className="max-w-full overflow-hidden">
+                                                      <TimeSlotAppointment
+                                                      appointment={appointment}
+                                                      isDental={isDental}
+                                                      isCompact={true}
+                                                      isMultiSlot={slotsOccupied > 1}
+                                                      isFirstSlot={isFirstSlot}
+                                                      slotsOccupied={slotsOccupied}
+                                                      doctorsList={doctors}
+                                                      onClick={() => {
+                                                        handleEditAppointment(appointment);
+                                                      }}
+                                                    />
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            // Desktop: Original hourly grid layout
+                            Object.entries(hourlyTimeSlots).map(([hour, slots]) => (
                             <div key={hour} className="h-16 border-b relative">
                               <div className="absolute inset-0 grid grid-cols-4 divide-x">
                                 {slots.map(slot => {
@@ -2485,7 +2588,8 @@ const Appointments = () => {
                                 })}
                               </div>
                             </div>
-                          ))}
+                          ))
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2906,7 +3010,7 @@ const Appointments = () => {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] overflow-y-auto' : 'sm:max-w-[500px]'}`}>
           <DialogHeader>
             <DialogTitle>Create New Appointment</DialogTitle>
             <DialogDescription>
@@ -3192,7 +3296,7 @@ const Appointments = () => {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] overflow-y-auto' : 'sm:max-w-[500px]'}`}>
           <DialogHeader>
             <DialogTitle>Edit Appointment</DialogTitle>
             <DialogDescription>
@@ -3478,7 +3582,7 @@ const Appointments = () => {
 
       {/* Update Confirmation Dialog */}
       <Dialog open={isConfirmUpdateOpen} onOpenChange={setIsConfirmUpdateOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className={`${isMobile ? 'max-w-[90vw] max-h-[80vh]' : 'sm:max-w-[425px]'}`}>
           <DialogHeader>
             <DialogTitle>Confirm Update</DialogTitle>
             <DialogDescription>
@@ -3508,7 +3612,7 @@ const Appointments = () => {
 
       {/* Cancel Confirmation Dialog */}
       <Dialog open={isConfirmCancelOpen} onOpenChange={setIsConfirmCancelOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className={`${isMobile ? 'max-w-[90vw] max-h-[80vh]' : 'sm:max-w-[425px]'}`}>
           <DialogHeader>
             <DialogTitle>Confirm Cancellation</DialogTitle>
             <DialogDescription>
@@ -3538,7 +3642,7 @@ const Appointments = () => {
 
       {/* Appointment Creation Confirmation Dialog */}
       <Dialog open={isConfirmCreateOpen} onOpenChange={setIsConfirmCreateOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className={`${isMobile ? 'max-w-[90vw] max-h-[80vh]' : 'sm:max-w-[425px]'}`}>
           <DialogHeader>
             <DialogTitle>Confirm Appointment</DialogTitle>
             <DialogDescription>
@@ -3611,7 +3715,7 @@ const Appointments = () => {
 
       {/* Warning Dialog for Fully Booked Slots */}
       <Dialog open={isWarningDialogOpen} onOpenChange={setIsWarningDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className={`${isMobile ? 'max-w-[90vw] max-h-[80vh]' : 'sm:max-w-[425px]'}`}>
           <DialogHeader>
             <DialogTitle>Warning: Time Slot Conflict</DialogTitle>
             <DialogDescription>

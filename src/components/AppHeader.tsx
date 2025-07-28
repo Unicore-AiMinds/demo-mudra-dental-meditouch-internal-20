@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { usePatients } from '@/contexts/PatientContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { DentalMetrixLogo, MeditouchLogo } from '@/assets/logos';
 import ClinicSelector from './ClinicSelector';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -35,8 +36,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 
 const AppHeader = () => {
   const { user, logout } = useAuth();
-  const { activeClinic } = useClinic();
+  const { activeClinic, setActiveClinic } = useClinic();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { searchPatients } = usePatients();
   const { toast } = useToast();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -143,19 +145,28 @@ const AppHeader = () => {
         </Button>
 
         <div className="ml-2 md:hidden">
-          {activeClinic === 'dental' ?
-            <DentalMetrixLogo /> :
-            <MeditouchLogo />
-          }
+          <button
+            onClick={() => setActiveClinic(activeClinic === 'dental' ? 'meditouch' : 'dental')}
+            className="transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+          >
+            {activeClinic === 'dental' ?
+              <DentalMetrixLogo /> :
+              <MeditouchLogo />
+            }
+          </button>
         </div>
 
-        <div className="lg:hidden flex-1 ml-4">
-          <ClinicSelector variant="tabs" />
-        </div>
+        {!isMobile && (
+          <>
+            <div className="lg:hidden flex-1 ml-4">
+              <ClinicSelector variant="tabs" />
+            </div>
 
-        <div className="hidden lg:flex lg:flex-1 ml-4">
-          <ClinicSelector />
-        </div>
+            <div className="hidden lg:flex lg:flex-1 ml-4">
+              <ClinicSelector />
+            </div>
+          </>
+        )}
 
         <div className="ml-auto flex items-center gap-2 md:gap-4">
           {/* Global Patient Search */}

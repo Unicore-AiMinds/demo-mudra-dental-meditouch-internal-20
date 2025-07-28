@@ -118,7 +118,7 @@ const navItems: NavItem[] = [
 
 const AppSidebar = () => {
   const location = useLocation();
-  const { activeClinic } = useClinic();
+  const { activeClinic, setActiveClinic } = useClinic();
   const { user, logout } = useAuth();
   const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions();
   const { state, toggleSidebar } = useSidebar();
@@ -153,11 +153,16 @@ const AppSidebar = () => {
     <Sidebar variant="floating">
       <SidebarHeader className="flex flex-col items-center justify-center py-6">
         <div className="mb-4 w-full flex justify-center">
-          {activeClinic === 'dental' ? (
-            <DentalMetrixLogo />
-          ) : (
-            <MeditouchLogo />
-          )}
+          <button
+            onClick={() => setActiveClinic(activeClinic === 'dental' ? 'meditouch' : 'dental')}
+            className="transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+          >
+            {activeClinic === 'dental' ? (
+              <DentalMetrixLogo />
+            ) : (
+              <MeditouchLogo />
+            )}
+          </button>
         </div>
       </SidebarHeader>
 
