@@ -692,13 +692,19 @@ export const AuditLogTemplates = {
 
   // Stock Definitions (Settings Page)
   stock_definition: {
-    create: (definitionId: string, itemName: string, subItem: string | undefined, itemType: string, description: string, unit: string, threshold: number) => createAuditLogEntry(
-      'stock',
-      'Add Stock Definition',
-      'Stock Management',
-      `Added new stock definition: ${itemName}${subItem ? ` (${subItem})` : ''} - Type: ${itemType}, Unit: ${unit}, Threshold: ${threshold} ${unit}, Description: ${description}`,
-      definitionId
-    ),
+    create: (definitionId: string, itemName: string, subItem: string | undefined, itemType: string, description: string, unit: string, threshold: number, clinicType?: string) => {
+      const clinicDisplay = clinicType === 'dental' ? 'Dental Matrix' : 
+                           clinicType === 'meditouch' ? 'Meditouch' : 
+                           clinicType === 'both' ? 'Both Clinics' : 'Not specified';
+      
+      return createAuditLogEntry(
+        'stock',
+        'Add Stock Definition',
+        'Stock Management',
+        `Added new stock definition: ${itemName}${subItem ? ` (${subItem})` : ''} - Type: ${itemType}, Unit: ${unit}, Threshold: ${threshold} ${unit}, Clinic: ${clinicDisplay}, Description: ${description}`,
+        definitionId
+      );
+    },
 
     update: (definitionId: string, itemName: string, subItem: string | undefined, changes: { before: any, after: any }) => {
       const fieldChanges: string[] = [];
@@ -740,6 +746,19 @@ export const AuditLogTemplates = {
         fieldChanges.push(`Threshold: "${changes.before.minimum_threshold}" → "${changes.after.minimum_threshold}"`);
       }
 
+      // Track clinic type changes
+      const beforeClinicType = changes.before.clinic_type || 'Not specified';
+      const afterClinicType = changes.after.clinic_type || 'Not specified';
+      if (beforeClinicType !== afterClinicType) {
+        const displayBefore = beforeClinicType === 'dental' ? 'Dental Matrix' : 
+                             beforeClinicType === 'meditouch' ? 'Meditouch' : 
+                             beforeClinicType === 'both' ? 'Both Clinics' : beforeClinicType;
+        const displayAfter = afterClinicType === 'dental' ? 'Dental Matrix' : 
+                            afterClinicType === 'meditouch' ? 'Meditouch' : 
+                            afterClinicType === 'both' ? 'Both Clinics' : afterClinicType;
+        fieldChanges.push(`Clinic: "${displayBefore}" → "${displayAfter}"`);
+      }
+
       const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';
       const displayName = `${itemName}${subItem ? ` (${subItem})` : ''}`;
 
@@ -764,13 +783,19 @@ export const AuditLogTemplates = {
 
   // Dealers (Settings Page)
   dealer: {
-    create: (dealerId: string, dealerName: string, email: string | null, contact: string, address: string | null, city: string | null, pincode: string | null) => createAuditLogEntry(
-      'stock',
-      'Add Dealer',
-      'Stock Management',
-      `Added new dealer: ${dealerName} - Contact: ${contact}${email ? `, Email: ${email}` : ''}${address ? `, Address: ${address}` : ''}${city ? `, City: ${city}` : ''}${pincode ? `, Pincode: ${pincode}` : ''}`,
-      dealerId
-    ),
+    create: (dealerId: string, dealerName: string, email: string | null, contact: string, address: string | null, city: string | null, pincode: string | null, clinicType?: string) => {
+      const clinicDisplay = clinicType === 'dental' ? 'Dental Matrix' : 
+                           clinicType === 'meditouch' ? 'Meditouch' : 
+                           clinicType === 'both' ? 'Both Clinics' : 'Not specified';
+      
+      return createAuditLogEntry(
+        'stock',
+        'Add Dealer',
+        'Stock Management',
+        `Added new dealer: ${dealerName} - Contact: ${contact}${email ? `, Email: ${email}` : ''}${address ? `, Address: ${address}` : ''}${city ? `, City: ${city}` : ''}${pincode ? `, Pincode: ${pincode}` : ''}, Clinic: ${clinicDisplay}`,
+        dealerId
+      );
+    },
 
     update: (dealerId: string, dealerName: string, changes: { before: any, after: any }) => {
       const fieldChanges: string[] = [];
@@ -812,6 +837,19 @@ export const AuditLogTemplates = {
       const afterPincode = getFieldValue(changes.after, 'pincode');
       if (beforePincode !== afterPincode) {
         fieldChanges.push(`Pincode: "${beforePincode}" → "${afterPincode}"`);
+      }
+
+      // Track clinic type changes
+      const beforeClinicType = changes.before.clinic_type || 'Not specified';
+      const afterClinicType = changes.after.clinic_type || 'Not specified';
+      if (beforeClinicType !== afterClinicType) {
+        const displayBefore = beforeClinicType === 'dental' ? 'Dental Matrix' : 
+                             beforeClinicType === 'meditouch' ? 'Meditouch' : 
+                             beforeClinicType === 'both' ? 'Both Clinics' : beforeClinicType;
+        const displayAfter = afterClinicType === 'dental' ? 'Dental Matrix' : 
+                            afterClinicType === 'meditouch' ? 'Meditouch' : 
+                            afterClinicType === 'both' ? 'Both Clinics' : afterClinicType;
+        fieldChanges.push(`Clinic: "${displayBefore}" → "${displayAfter}"`);
       }
 
       const changesText = fieldChanges.length > 0 ? fieldChanges.join(', ') : 'No changes detected';

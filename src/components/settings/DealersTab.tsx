@@ -50,6 +50,9 @@ import { capitalizeWords } from '@/utils/string-utils';
 const DealersTab: React.FC = () => {
   const { dealers, isLoading, addDealer, updateDealer, deleteDealer } = useDealers();
   const { toast } = useToast();
+  
+  console.log('DealersTab: dealers =', dealers);
+  console.log('DealersTab: isLoading =', isLoading);
 
   // State for dialogs
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -66,6 +69,7 @@ const DealersTab: React.FC = () => {
   const [newDealerAddress, setNewDealerAddress] = useState('');
   const [newDealerCity, setNewDealerCity] = useState('');
   const [newDealerPincode, setNewDealerPincode] = useState('');
+  const [newDealerClinicType, setNewDealerClinicType] = useState<'dental' | 'meditouch' | 'both'>('dental');
 
   // Reset form fields
   const resetForm = () => {
@@ -76,6 +80,7 @@ const DealersTab: React.FC = () => {
     setNewDealerAddress('');
     setNewDealerCity('');
     setNewDealerPincode('');
+    setNewDealerClinicType('dental');
   };
 
   // Handle add dialog open
@@ -129,7 +134,8 @@ const DealersTab: React.FC = () => {
         contact: formattedContact,
         address: newDealerAddress.trim() || null,
         city: capitalizeWords(newDealerCity.trim()) || null,
-        pincode: newDealerPincode.trim() || null
+        pincode: newDealerPincode.trim() || null,
+        clinic_type: newDealerClinicType
       };
 
       await addDealer(newDealer);
@@ -164,6 +170,7 @@ const DealersTab: React.FC = () => {
     setNewDealerAddress(dealer.address || '');
     setNewDealerCity(dealer.city || '');
     setNewDealerPincode(dealer.pincode || '');
+    setNewDealerClinicType(dealer.clinic_type || 'dental');
 
     setIsEditDialogOpen(true);
   };
@@ -215,7 +222,8 @@ const DealersTab: React.FC = () => {
         contact: formattedContact,
         address: newDealerAddress.trim() || null,
         city: capitalizeWords(newDealerCity.trim()) || null,
-        pincode: newDealerPincode.trim() || null
+        pincode: newDealerPincode.trim() || null,
+        clinic_type: newDealerClinicType
       };
 
       await updateDealer(currentDealer.id, updatedDealer);
@@ -281,6 +289,7 @@ const DealersTab: React.FC = () => {
                   <TableHead>Address</TableHead>
                   <TableHead>City</TableHead>
                   <TableHead>Pincode</TableHead>
+                  <TableHead>Clinic</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -293,6 +302,11 @@ const DealersTab: React.FC = () => {
                     <TableCell>{dealer.address || '-'}</TableCell>
                     <TableCell>{dealer.city || '-'}</TableCell>
                     <TableCell>{dealer.pincode || '-'}</TableCell>
+                    <TableCell>
+                      {dealer.clinic_type === 'dental' ? 'Dental Matrix' : 
+                       dealer.clinic_type === 'meditouch' ? 'Meditouch' : 
+                       dealer.clinic_type === 'both' ? 'Both Clinics' : '-'}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="icon" onClick={() => handleEditItem(dealer)}>
@@ -417,6 +431,24 @@ const DealersTab: React.FC = () => {
                 className="col-span-3"
               />
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="clinic-type" className="text-right">
+                Clinic*
+              </Label>
+              <Select
+                value={newDealerClinicType}
+                onValueChange={(value: 'dental' | 'meditouch' | 'both') => setNewDealerClinicType(value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select clinic" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dental">Dental Matrix</SelectItem>
+                  <SelectItem value="meditouch">Meditouch</SelectItem>
+                  <SelectItem value="both">Both Clinics</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -524,6 +556,24 @@ const DealersTab: React.FC = () => {
                 onChange={(e) => setNewDealerPincode(e.target.value)}
                 className="col-span-3"
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-clinic-type" className="text-right">
+                Clinic*
+              </Label>
+              <Select
+                value={newDealerClinicType}
+                onValueChange={(value: 'dental' | 'meditouch' | 'both') => setNewDealerClinicType(value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select clinic" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dental">Dental Matrix</SelectItem>
+                  <SelectItem value="meditouch">Meditouch</SelectItem>
+                  <SelectItem value="both">Both Clinics</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import { useStockDefinitions, StockDefinition } from '@/contexts/StockDefinitionsContext';
+import { useClinic } from '@/contexts/ClinicContext';
 import { format } from 'date-fns';
 import { useAuditLog } from '@/contexts/AuditLogContext';
 import { AuditLogTemplates } from '@/utils/auditLogger';
@@ -18,6 +19,7 @@ export interface StockItem {
   current_quantity: number;
   minimum_threshold: number;
   nearest_expiry_date?: string;
+  clinic_type?: 'dental' | 'meditouch' | 'both';
   created_at: string; // Date when the item was added to inventory
 }
 
@@ -94,39 +96,69 @@ export interface StockContextType {
 export const StockContext = createContext<StockContextType | undefined>(undefined);
 
 export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [allStockItems, setAllStockItems] = useState<StockItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { activeClinic } = useClinic();
   const { stockDefinitions } = useStockDefinitions();
   const { logAction } = useAuditLog();
 
+  // Filter stock items based on current clinic
+  const stockItems = useMemo(() => {
+    console.log('StockContext filtering - activeClinic:', activeClinic);
+    console.log('StockContext filtering - allStockItems count:', allStockItems.length);
+    
+    if (activeClinic === 'dental' || activeClinic === 'meditouch') {
+      const filtered = allStockItems.filter(item => {
+        const matches = item.clinic_type === activeClinic || 
+                       item.clinic_type === 'both' ||
+                       !item.clinic_type; // Include items without clinic_type for now
+        if (!matches) {
+          console.log(`Filtered out item: ${item.name} (clinic_type: ${item.clinic_type})`);
+        }
+        return matches;
+      });
+      console.log('StockContext filtering - filtered count:', filtered.length);
+      return filtered;
+    }
+    return allStockItems;
+  }, [allStockItems, activeClinic]);
+
   // Fetch stock items from Supabase
-  useEffect(() => {
-    const fetchStockItems = async () => {
-      try {
-        setIsLoading(true);
+  const fetchStockItems = useCallback(async () => {
+    try {
+      setIsLoading(true);
 
-        // For older Supabase versions, we need to use getAll with options
-        const data = await supabase.from('stock_items').getAll({
-          order: { column: 'created_at', ascending: false }
-        });
+      // Fetch all stock items first, then filter in React
+      const data = await supabase.from('stock_items').getAll({
+        order: { column: 'created_at', ascending: false }
+      });
 
-        setStockItems(data as StockItem[] || []);
-      } catch (error: unknown) {
-        console.error('Error fetching stock items:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load stock items. Please try again.',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchStockItems();
+      setAllStockItems(data as StockItem[] || []);
+    } catch (error: unknown) {
+      console.error('Error fetching stock items:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load stock items. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }, [supabase, toast]);
+
+  // Initialize data on mount and when clinic changes (like ServiceFollowUpRuleContext pattern)
+  useEffect(() => {
+    fetchStockItems();
+  }, [fetchStockItems]);
+
+  // Refetch when clinic changes to ensure proper data isolation
+  useEffect(() => {
+    if (activeClinic) {
+      fetchStockItems();
+    }
+  }, [activeClinic, fetchStockItems]);
 
   // Add a new stock item
   const addStockItem = async (item: Omit<StockItem, 'id' | 'created_at'>): Promise<StockItem> => {
@@ -215,8 +247,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       }
 
-      // Update local state
-      setStockItems(prev => [data as StockItem, ...prev]);
+      // Refresh data from database to ensure proper filtering
+      await fetchStockItems();
 
       // Log audit action for stock item creation
       try {
@@ -234,8 +266,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           data.nearest_expiry_date
         );
 
-        // Stock management is primarily for dental clinic
-        await logAction({ ...auditEntry, clinic_type: 'dental' });
+        // Log action with current clinic context
+        await logAction({ ...auditEntry, clinic_type: activeClinic === 'meditouch' ? 'meditouch' : 'dental' });
       } catch (auditError) {
         console.error('Failed to log stock item creation audit:', auditError);
       }
@@ -293,10 +325,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       // Create the updated item object for comparison
       const updatedItem = { ...existingItem, ...item };
 
-      // Update local state
-      setStockItems(prev =>
-        prev.map(i => i.id === id ? { ...i, ...(data as StockItem) } : i)
-      );
+      // Refresh data from database to ensure proper filtering
+      await fetchStockItems();
 
       // Log audit action for stock item update
       try {
@@ -310,8 +340,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           }
         );
 
-        // Stock management is primarily for dental clinic
-        await logAction({ ...auditEntry, clinic_type: 'dental' });
+        // Log action with current clinic context
+        await logAction({ ...auditEntry, clinic_type: activeClinic === 'meditouch' ? 'meditouch' : 'dental' });
       } catch (auditError) {
         console.error('Failed to log stock item update audit:', auditError);
       }
@@ -347,8 +377,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         .from('stock_items')
         .delete(id);
 
-      // Update local state
-      setStockItems(prev => prev.filter(i => i.id !== id));
+      // Refresh data from database to ensure proper filtering
+      await fetchStockItems();
 
       // Log audit action for stock item deletion
       try {
@@ -362,8 +392,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           stockItemToDelete.minimum_threshold
         );
 
-        // Stock management is primarily for dental clinic
-        await logAction({ ...auditEntry, clinic_type: 'dental' });
+        // Log action with current clinic context
+        await logAction({ ...auditEntry, clinic_type: activeClinic === 'meditouch' ? 'meditouch' : 'dental' });
       } catch (auditError) {
         console.error('Failed to log stock item deletion audit:', auditError);
       }
@@ -567,8 +597,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             data.notes
           );
 
-          // Stock management is primarily for dental clinic
-          await logAction({ ...auditEntry, clinic_type: 'dental' });
+          // Log action with current clinic context
+          await logAction({ ...auditEntry, clinic_type: activeClinic === 'meditouch' ? 'meditouch' : 'dental' });
         } catch (auditError) {
           console.error('Failed to log incoming stock audit:', auditError);
         }
@@ -841,8 +871,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           data.notes
         );
 
-        // Stock management is primarily for dental clinic
-        await logAction({ ...auditEntry, clinic_type: 'dental' });
+        // Log action with current clinic context
+        await logAction({ ...auditEntry, clinic_type: activeClinic === 'meditouch' ? 'meditouch' : 'dental' });
       } catch (auditError) {
         console.error('Failed to log stock consumption audit:', auditError);
       }

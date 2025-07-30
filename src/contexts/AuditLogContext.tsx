@@ -31,6 +31,7 @@ export interface AuditLog {
 // Define the context type
 interface AuditLogContextType {
   auditLogs: AuditLog[];
+  allUsers: string[];
   isLoading: boolean;
   fetchAuditLogs: () => Promise<void>;
   logAction: (action: Omit<AuditLog, 'id' | 'timestamp' | 'user_id' | 'user_name' | 'user_role' | 'created_at' | 'ip_address' | 'user_agent'>) => Promise<void>;
@@ -49,6 +50,7 @@ const AuditLogContext = createContext<AuditLogContextType | undefined>(undefined
 // Provider component
 export const AuditLogProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [allUsers, setAllUsers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { activeClinic } = useClinic();
@@ -64,6 +66,32 @@ export const AuditLogProvider: React.FC<{ children: ReactNode }> = ({ children }
       return 'unknown';
     }
   };
+
+  // Function to fetch all unique users from all audit logs (for filter dropdown)
+  const fetchAllUsers = useCallback(async (): Promise<void> => {
+    try {
+      console.log('Fetching all users from audit logs...');
+      
+      const { data: allLogs, error } = await supabaseClient
+        .from('audit_logs')
+        .select('user_name')
+        .not('user_name', 'is', null)
+        .neq('user_name', 'system')
+        .neq('user_name', 'System')
+        .neq('user_name', 'Unknown User');
+
+      if (error) {
+        throw error;
+      }
+
+      const uniqueUsers = Array.from(new Set(allLogs?.map(log => log.user_name) || []));
+      console.log(`Found ${uniqueUsers.length} unique users:`, uniqueUsers);
+      setAllUsers(uniqueUsers);
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      setAllUsers([]);
+    }
+  }, []);
 
   // Function to fetch audit logs from Supabase
   const fetchAuditLogs = useCallback(async (): Promise<void> => {
@@ -82,7 +110,7 @@ export const AuditLogProvider: React.FC<{ children: ReactNode }> = ({ children }
       // Filter by clinic type if active clinic is set
       if (activeClinic && ['dental', 'meditouch'].includes(activeClinic)) {
         console.log(`Filtering audit logs for clinic: ${activeClinic}`);
-        query = query.or(`clinic_type.eq.${activeClinic},clinic_type.is.null`);
+        query = query.eq('clinic_type', activeClinic);
       }
 
       const { data: fetchedLogs, error } = await query;
@@ -281,9 +309,10 @@ export const AuditLogProvider: React.FC<{ children: ReactNode }> = ({ children }
     });
   }, [auditLogs, activeClinic]);
 
-  // Initialize audit logs on component mount
+  // Initialize audit logs and users on component mount
   useEffect(() => {
     fetchAuditLogs();
+    fetchAllUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -304,6 +333,7 @@ export const AuditLogProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const value: AuditLogContextType = {
     auditLogs,
+    allUsers,
     isLoading,
     fetchAuditLogs,
     logAction,

@@ -118,7 +118,7 @@ const AuditLog = () => {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
-  const { auditLogs, isLoading, fetchAuditLogs } = useAuditLog();
+  const { auditLogs, allUsers, isLoading, fetchAuditLogs } = useAuditLog();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
@@ -220,8 +220,8 @@ const AuditLog = () => {
     );
   }
 
-  // Get unique users for the filter
-  const uniqueUsers = Array.from(new Set(auditLogs.map(log => log.user_name)));
+  // Use all users from context for the filter (shows users from all clinics)
+  const uniqueUsers = allUsers;
 
   // Filter logs based on search term, filters, and date range
   const filteredLogs = auditLogs.filter(log => {

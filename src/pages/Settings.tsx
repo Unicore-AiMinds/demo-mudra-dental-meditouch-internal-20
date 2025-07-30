@@ -1787,8 +1787,8 @@ const Settings = () => {
           {hasPermission('settings.view_service_followup') && <TabsTrigger value="service-followups">Service Follow-ups</TabsTrigger>}
           {activeClinic === 'dental' && hasPermission('settings.view_labs') && <TabsTrigger value="labs">Labs</TabsTrigger>}
           {activeClinic === 'dental' && hasPermission('settings.view_lab_work_types') && <TabsTrigger value="labwork">Lab Work Types</TabsTrigger>}
-          {activeClinic === 'dental' && hasPermission('settings.view_stock_settings') && <TabsTrigger value="stock">Stock</TabsTrigger>}
-          {activeClinic === 'dental' && hasPermission('settings.view_dealers') && <TabsTrigger value="dealers">Dealers</TabsTrigger>}
+          {hasPermission('settings.view_stock_settings') && <TabsTrigger value="stock">Stock</TabsTrigger>}
+          {hasPermission('settings.view_dealers') && <TabsTrigger value="dealers">Dealers</TabsTrigger>}
           {hasPermission('settings.view_medicines') && <TabsTrigger value="medicines">Medicines</TabsTrigger>}
           {/* TEMPORARILY COMMENTED OUT: Notifications tab */}
           {/* <TabsTrigger value="notifications">Notifications</TabsTrigger> */}
@@ -3277,11 +3277,9 @@ const Settings = () => {
           </TabsContent>
         )}
 
-        {activeClinic === 'dental' && (
-          <TabsContent value="dealers" className="space-y-6">
-            <DealersTab />
-          </TabsContent>
-        )}
+        <TabsContent value="dealers" className="space-y-6">
+          <DealersTab />
+        </TabsContent>
 
         <TabsContent value="medicines" className="space-y-6">
             <Card>
@@ -3509,11 +3507,9 @@ const Settings = () => {
 
           </TabsContent>
 
-        {activeClinic === 'dental' && (
-          <TabsContent value="stock" className="space-y-6">
-            <StockItemsTab />
-          </TabsContent>
-        )}
+        <TabsContent value="stock" className="space-y-6">
+          <StockItemsTab />
+        </TabsContent>
 
         {/* TEMPORARILY COMMENTED OUT: Notifications tab content */}
         {/* <TabsContent value="notifications" className="space-y-6">

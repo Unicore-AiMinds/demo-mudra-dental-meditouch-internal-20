@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAuditLog } from '@/contexts/AuditLogContext';
+import { useClinic } from '@/contexts/ClinicContext';
 import { AuditLogTemplates } from '@/utils/auditLogger';
 
 export interface StockDefinition {
@@ -12,6 +13,7 @@ export interface StockDefinition {
   item_type: 'Consumable' | 'Inventory';
   minimum_threshold: number;
   unit?: string;
+  clinic_type?: 'dental' | 'meditouch' | 'both';
   created_at?: string;
   updated_at?: string;
 }
@@ -36,23 +38,34 @@ export const useStockDefinitions = () => {
 };
 
 export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [stockDefinitions, setStockDefinitions] = useState<StockDefinition[]>([]);
+  const [allStockDefinitions, setAllStockDefinitions] = useState<StockDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { activeClinic } = useClinic();
   const { logAction } = useAuditLog();
+
+  // Filter stock definitions based on current clinic
+  const stockDefinitions = React.useMemo(() => {
+    if (activeClinic === 'dental' || activeClinic === 'meditouch') {
+      return allStockDefinitions.filter(def => 
+        def.clinic_type === activeClinic || def.clinic_type === 'both'
+      );
+    }
+    return allStockDefinitions;
+  }, [allStockDefinitions, activeClinic]);
 
   // Fetch stock definitions from Supabase
   const fetchStockDefinitions = async () => {
     try {
       setIsLoading(true);
 
-      // For older Supabase versions, we need to use getAll with options
+      // Fetch all stock definitions using custom getAll method
       const data = await supabase.from('stock_item_definitions').getAll({
         order: { column: 'name', ascending: true }
       });
 
-      setStockDefinitions(data || []);
+      setAllStockDefinitions(data || []);
     } catch (error) {
       console.error('Error fetching stock definitions:', error);
       toast({
@@ -84,24 +97,21 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
         throw insertError;
       }
 
-      // Then fetch the newly inserted data
-      // For older Supabase versions, we need to use getAll with filters
+      // Then fetch the newly inserted data using custom getAll method
       const fetchedData = await supabase.from('stock_item_definitions').getAll({
         filters: { name: definition.name },
         order: { column: 'created_at', ascending: false },
         limit: 1
       });
-
+      
       // Get the first item (most recently created)
-      const data = fetchedData.length > 0 ? fetchedData[0] : null;
-      const fetchError = !data ? new Error('Failed to fetch newly created item') : null;
-
-      if (fetchError) {
-        throw fetchError;
+      const data = fetchedData && fetchedData.length > 0 ? fetchedData[0] : null;
+      if (!data) {
+        throw new Error('Failed to fetch newly created item');
       }
 
       // Update local state
-      setStockDefinitions(prev => [...prev, data]);
+      setAllStockDefinitions(prev => [...prev, data]);
 
       // Log audit action for stock definition creation
       try {
@@ -112,11 +122,12 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
           data.item_type,
           data.description,
           data.unit || '',
-          data.minimum_threshold
+          data.minimum_threshold,
+          data.clinic_type
         );
 
-        // Stock definitions are primarily for dental clinic
-        await logAction({ ...auditEntry, clinic_type: 'dental' });
+        // Use the active clinic type for audit logging
+        await logAction({ ...auditEntry, clinic_type: activeClinic });
       } catch (auditError) {
         console.error('Failed to log stock definition creation audit:', auditError);
       }
@@ -179,7 +190,7 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
       const updatedDefinition = { ...existingDefinition, ...definition };
 
       // Update local state
-      setStockDefinitions(prev =>
+      setAllStockDefinitions(prev =>
         prev.map(item => (item.id === id ? data : item))
       );
 
@@ -195,8 +206,8 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
           }
         );
 
-        // Stock definitions are primarily for dental clinic
-        await logAction({ ...auditEntry, clinic_type: 'dental' });
+        // Use the active clinic type for audit logging
+        await logAction({ ...auditEntry, clinic_type: activeClinic });
       } catch (auditError) {
         console.error('Failed to log stock definition update audit:', auditError);
       }
@@ -238,7 +249,7 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
       }
 
       // Update local state
-      setStockDefinitions(prev => prev.filter(item => item.id !== id));
+      setAllStockDefinitions(prev => prev.filter(item => item.id !== id));
 
       // Log audit action for stock definition deletion
       try {
@@ -252,8 +263,8 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
           itemToDelete.description
         );
 
-        // Stock definitions are primarily for dental clinic
-        await logAction({ ...auditEntry, clinic_type: 'dental' });
+        // Use the active clinic type for audit logging
+        await logAction({ ...auditEntry, clinic_type: activeClinic });
       } catch (auditError) {
         console.error('Failed to log stock definition deletion audit:', auditError);
       }

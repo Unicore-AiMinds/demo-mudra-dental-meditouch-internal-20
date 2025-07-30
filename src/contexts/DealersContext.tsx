@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAuditLog } from '@/contexts/AuditLogContext';
+import { useClinic } from '@/contexts/ClinicContext';
 import { AuditLogTemplates } from '@/utils/auditLogger';
 
 // Define the Dealer interface
@@ -13,6 +14,7 @@ export interface Dealer {
   address: string | null;
   city: string | null;
   pincode: string | null;
+  clinic_type?: 'dental' | 'meditouch' | 'both';
   created_at: string;
   updated_at: string;
 }
@@ -34,23 +36,40 @@ const DealersContext = createContext<DealersContextType | undefined>(undefined);
 
 // Provider component
 export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [dealers, setDealers] = useState<Dealer[]>([]);
+  const [allDealers, setAllDealers] = useState<Dealer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { supabase } = useSupabase();
   const { toast } = useToast();
+  const { activeClinic } = useClinic();
   const { logAction } = useAuditLog();
+
+  // Filter dealers based on current clinic
+  const dealers = React.useMemo(() => {
+    console.log('DealersContext: activeClinic =', activeClinic);
+    console.log('DealersContext: allDealers =', allDealers);
+    
+    if (activeClinic === 'dental' || activeClinic === 'meditouch') {
+      const filteredDealers = allDealers.filter(dealer => 
+        dealer.clinic_type === activeClinic || dealer.clinic_type === 'both'
+      );
+      console.log('DealersContext: filteredDealers =', filteredDealers);
+      return filteredDealers;
+    }
+    console.log('DealersContext: returning all dealers (no filtering)');
+    return allDealers;
+  }, [allDealers, activeClinic]);
 
   // Fetch dealers from Supabase
   const fetchDealers = async () => {
     try {
       setIsLoading(true);
       
-      // For older Supabase versions, we need to use getAll with options
+      // Fetch all dealers using custom getAll method
       const data = await supabase.from('dealers').getAll({
         order: { column: 'created_at', ascending: false }
       });
 
-      setDealers(data || []);
+      setAllDealers(data || []);
     } catch (error) {
       console.error('Error fetching dealers:', error);
       toast({
@@ -82,8 +101,7 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
         throw insertError;
       }
 
-      // Then fetch the newly inserted data
-      // For older Supabase versions, we need to use getAll with filters
+      // Then fetch the newly inserted data using custom getAll method
       const fetchedData = await supabase.from('dealers').getAll({
         filters: { name: dealer.name },
         order: { column: 'created_at', ascending: false },
@@ -91,15 +109,13 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
       
       // Get the first item (most recently created)
-      const data = fetchedData.length > 0 ? fetchedData[0] : null;
-      const fetchError = !data ? new Error('Failed to fetch newly created dealer') : null;
-
-      if (fetchError) {
-        throw fetchError;
+      const data = fetchedData && fetchedData.length > 0 ? fetchedData[0] : null;
+      if (!data) {
+        throw new Error('Failed to fetch newly created dealer');
       }
 
       // Update local state
-      setDealers(prev => [data, ...prev]);
+      setAllDealers(prev => [data, ...prev]);
 
       // Log audit action for dealer creation
       try {
@@ -110,11 +126,12 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
           data.contact,
           data.address,
           data.city,
-          data.pincode
+          data.pincode,
+          data.clinic_type
         );
 
-        // Dealers are primarily for dental clinic
-        await logAction({ ...auditEntry, clinic_type: 'dental' });
+        // Use the active clinic type for audit logging
+        await logAction({ ...auditEntry, clinic_type: activeClinic });
       } catch (auditError) {
         console.error('Failed to log dealer creation audit:', auditError);
       }
@@ -176,7 +193,7 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
       const updatedDealer = { ...existingDealer, ...dealer };
 
       // Update local state
-      setDealers(prev =>
+      setAllDealers(prev =>
         prev.map(item => (item.id === id ? data : item))
       );
 
@@ -191,8 +208,8 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
           }
         );
 
-        // Dealers are primarily for dental clinic
-        await logAction({ ...auditEntry, clinic_type: 'dental' });
+        // Use the active clinic type for audit logging
+        await logAction({ ...auditEntry, clinic_type: activeClinic });
       } catch (auditError) {
         console.error('Failed to log dealer update audit:', auditError);
       }
@@ -233,7 +250,7 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
 
       // Update local state
-      setDealers(prev => prev.filter(item => item.id !== id));
+      setAllDealers(prev => prev.filter(item => item.id !== id));
 
       // Log audit action for dealer deletion
       try {
@@ -247,8 +264,8 @@ export const DealersProvider: React.FC<{ children: ReactNode }> = ({ children })
           dealerToDelete.pincode
         );
 
-        // Dealers are primarily for dental clinic
-        await logAction({ ...auditEntry, clinic_type: 'dental' });
+        // Use the active clinic type for audit logging
+        await logAction({ ...auditEntry, clinic_type: activeClinic });
       } catch (auditError) {
         console.error('Failed to log dealer deletion audit:', auditError);
       }

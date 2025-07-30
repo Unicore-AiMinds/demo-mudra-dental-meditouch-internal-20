@@ -66,6 +66,7 @@ const StockItemsTab: React.FC = () => {
   const [newItemType, setNewItemType] = useState<'Consumable' | 'Inventory'>('Consumable');
   const [newItemMinThreshold, setNewItemMinThreshold] = useState(0);
   const [newItemUnit, setNewItemUnit] = useState('Piece');
+  const [newItemClinicType, setNewItemClinicType] = useState<'dental' | 'meditouch' | 'both'>('dental');
 
   // State for edit item
   const [editItemName, setEditItemName] = useState('');
@@ -74,6 +75,7 @@ const StockItemsTab: React.FC = () => {
   const [editItemType, setEditItemType] = useState<'Consumable' | 'Inventory'>('Consumable');
   const [editItemMinThreshold, setEditItemMinThreshold] = useState(0);
   const [editItemUnit, setEditItemUnit] = useState('');
+  const [editItemClinicType, setEditItemClinicType] = useState<'dental' | 'meditouch' | 'both'>('dental');
 
   // Handle edit item
   const handleEditItem = (item: StockDefinition) => {
@@ -84,6 +86,7 @@ const StockItemsTab: React.FC = () => {
     setEditItemType(item.item_type);
     setEditItemMinThreshold(item.minimum_threshold);
     setEditItemUnit(item.unit || '');
+    setEditItemClinicType(item.clinic_type || 'dental');
     setIsEditDialogOpen(true);
   };
 
@@ -112,6 +115,7 @@ const StockItemsTab: React.FC = () => {
         item_type: newItemType,
         minimum_threshold: newItemMinThreshold,
         unit: newItemUnit, // Unit is now required
+        clinic_type: newItemClinicType,
       });
 
       // Reset form
@@ -121,6 +125,7 @@ const StockItemsTab: React.FC = () => {
       setNewItemType('Consumable');
       setNewItemMinThreshold(0);
       setNewItemUnit('Piece');
+      setNewItemClinicType('dental');
       setIsAddDialogOpen(false);
     } catch (error) {
       console.error('Error adding stock item:', error);
@@ -148,6 +153,7 @@ const StockItemsTab: React.FC = () => {
         item_type: editItemType,
         minimum_threshold: editItemMinThreshold,
         unit: editItemUnit, // Unit is now required
+        clinic_type: editItemClinicType,
       });
 
       setIsEditDialogOpen(false);
@@ -207,6 +213,7 @@ const StockItemsTab: React.FC = () => {
                 <TableHead>Item Type</TableHead>
                 <TableHead>Unit</TableHead>
                 <TableHead>Min Threshold</TableHead>
+                <TableHead>Clinic</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -225,6 +232,11 @@ const StockItemsTab: React.FC = () => {
                   </TableCell>
                   <TableCell>{item.unit || '-'}</TableCell>
                   <TableCell>{item.minimum_threshold || '-'}</TableCell>
+                  <TableCell>
+                    {item.clinic_type === 'dental' ? 'Dental Matrix' : 
+                     item.clinic_type === 'meditouch' ? 'Meditouch' : 
+                     item.clinic_type === 'both' ? 'Both Clinics' : '-'}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="ghost" size="icon" onClick={() => handleEditItem(item)}>
@@ -316,6 +328,24 @@ const StockItemsTab: React.FC = () => {
                   onValueChange={setNewItemUnit}
                   placeholder="Select Unit"
                 />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="itemClinicType" className="flex items-center">
+                  Clinic <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <Select
+                  value={newItemClinicType}
+                  onValueChange={(value: 'dental' | 'meditouch' | 'both') => setNewItemClinicType(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select clinic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dental">Dental Matrix</SelectItem>
+                    <SelectItem value="meditouch">Meditouch</SelectItem>
+                    <SelectItem value="both">Both Clinics</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="itemMinThreshold" className="flex items-center">
@@ -412,6 +442,24 @@ const StockItemsTab: React.FC = () => {
                   onValueChange={setEditItemUnit}
                   placeholder="Select Unit"
                 />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="editItemClinicType" className="flex items-center">
+                  Clinic <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <Select
+                  value={editItemClinicType}
+                  onValueChange={(value: 'dental' | 'meditouch' | 'both') => setEditItemClinicType(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select clinic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dental">Dental Matrix</SelectItem>
+                    <SelectItem value="meditouch">Meditouch</SelectItem>
+                    <SelectItem value="both">Both Clinics</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="editItemMinThreshold" className="flex items-center">

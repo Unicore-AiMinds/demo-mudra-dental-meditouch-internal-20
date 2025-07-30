@@ -312,6 +312,26 @@ const Dashboard = () => {
             <>
               <Card
                 className="card-shadow card-hover cursor-pointer transition-all hover:scale-105"
+                onClick={() => navigate('/stock')}
+              >
+                <CardHeader className="text-center pb-2">
+                  <CardTitle className="text-sm font-medium">Total Items</CardTitle>
+                  <PackageOpen className="h-4 w-4 mx-auto mt-1 text-meditouch-primary" />
+                </CardHeader>
+                <CardContent className="flex flex-col justify-between h-24">
+                  <div className="text-2xl font-bold text-center">
+                    <StockAlertsCount />
+                  </div>
+                  <div className="flex-1 flex items-center justify-center">
+                    <p className="text-base text-muted-foreground font-semibold text-center">
+                      <StockAlertsAnalytics />
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card
+                className="card-shadow card-hover cursor-pointer transition-all hover:scale-105"
                 onClick={() => navigate('/appointments')}
               >
                 <CardHeader className="text-center pb-2">
@@ -330,25 +350,6 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card
-                className="card-shadow card-hover cursor-pointer transition-all hover:scale-105"
-                onClick={() => navigate('/appointments')}
-              >
-                <CardHeader className="text-center pb-2">
-                  <CardTitle className="text-sm font-medium">Services Completed</CardTitle>
-                  <Clock className="h-4 w-4 mx-auto mt-1 text-meditouch-primary" />
-                </CardHeader>
-                <CardContent className="flex flex-col justify-between h-24">
-                  <div className="text-2xl font-bold text-center">
-                    <ServicesCompletedCount />
-                  </div>
-                  <div className="flex-1 flex items-center justify-center">
-                    <p className="text-base text-muted-foreground font-semibold text-center">
-                      <ServicesCompletedAnalytics />
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
             </>
           )}
         </div>
@@ -549,106 +550,110 @@ const Dashboard = () => {
         )}
 
         {isMeditouch && (
-          <Card className="md:col-span-1 lg:col-span-2 card-shadow card-hover flex flex-col">
-            <CardHeader>
-              <CardTitle>Recent Patients</CardTitle>
-              <CardDescription>Recently registered patients</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <div className="flex-1 space-y-3 min-h-0">
-                {patients
-                  .filter(p => p.clinic === 'meditouch' || p.clinic === 'both')
-                  .sort((a, b) => {
-                    // Sort by creation date, most recent first
-                    const dateA = new Date(a.created_at || '').getTime();
-                    const dateB = new Date(b.created_at || '').getTime();
-                    return dateB - dateA;
-                  })
-                  .slice(0, 5).length > 0 ? (
-                  <div className="space-y-3 max-h-80 overflow-y-auto">
-                    {patients
-                      .filter(p => p.clinic === 'meditouch' || p.clinic === 'both')
-                      .sort((a, b) => {
-                        // Sort by creation date, most recent first
-                        const dateA = new Date(a.created_at || '').getTime();
-                        const dateB = new Date(b.created_at || '').getTime();
-                        return dateB - dateA;
-                      })
-                      .slice(0, 5)
-                      .map((patient) => {
-                        // Calculate days since registration - use date-only comparison to avoid timezone issues
-                        const createdDate = new Date(patient.created_at || '');
-                        const today = new Date();
+          <>
+            <StockAlerts />
 
-                        // Reset time to midnight for accurate date comparison
-                        const createdDateOnly = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
-                        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            <Card className="card-shadow card-hover flex flex-col">
+              <CardHeader>
+                <CardTitle>Recent Patients</CardTitle>
+                <CardDescription>Recently registered patients</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col">
+                <div className="flex-1 space-y-3 min-h-0">
+                  {patients
+                    .filter(p => p.clinic === 'meditouch' || p.clinic === 'both')
+                    .sort((a, b) => {
+                      // Sort by creation date, most recent first
+                      const dateA = new Date(a.created_at || '').getTime();
+                      const dateB = new Date(b.created_at || '').getTime();
+                      return dateB - dateA;
+                    })
+                    .slice(0, 5).length > 0 ? (
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      {patients
+                        .filter(p => p.clinic === 'meditouch' || p.clinic === 'both')
+                        .sort((a, b) => {
+                          // Sort by creation date, most recent first
+                          const dateA = new Date(a.created_at || '').getTime();
+                          const dateB = new Date(b.created_at || '').getTime();
+                          return dateB - dateA;
+                        })
+                        .slice(0, 5)
+                        .map((patient) => {
+                          // Calculate days since registration - use date-only comparison to avoid timezone issues
+                          const createdDate = new Date(patient.created_at || '');
+                          const today = new Date();
 
-                        const diffTime = todayOnly.getTime() - createdDateOnly.getTime();
-                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                          // Reset time to midnight for accurate date comparison
+                          const createdDateOnly = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+                          const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-                        let timeText = '';
-                        if (diffDays === 0) {
-                          timeText = 'Registered today';
-                        } else if (diffDays === 1) {
-                          timeText = 'Registered yesterday';
-                        } else if (diffDays <= 7) {
-                          timeText = `Registered ${diffDays} days ago`;
-                        } else {
-                          timeText = `Registered ${createdDate.toLocaleDateString()}`;
-                        }
+                          const diffTime = todayOnly.getTime() - createdDateOnly.getTime();
+                          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-                        return (
-                          <div
-                            key={patient.id}
-                            className="flex justify-between items-center p-2 rounded-md bg-meditouch-light border border-meditouch-light"
-                          >
-                            <div>
-                              <p className="text-sm font-medium">{patient.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {timeText} • {patient.phone || 'No phone'}
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/patients/${patient.id}`)}
+                          let timeText = '';
+                          if (diffDays === 0) {
+                            timeText = 'Registered today';
+                          } else if (diffDays === 1) {
+                            timeText = 'Registered yesterday';
+                          } else if (diffDays <= 7) {
+                            timeText = `Registered ${diffDays} days ago`;
+                          } else {
+                            timeText = `Registered ${createdDate.toLocaleDateString()}`;
+                          }
+
+                          return (
+                            <div
+                              key={patient.id}
+                              className="flex justify-between items-center p-2 rounded-md bg-meditouch-light border border-meditouch-light"
                             >
-                              View
-                            </Button>
-                          </div>
-                        );
-                      })
-                    }
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                    <div className="text-center">
-                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No patients registered yet</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => navigate('/patients')}
-                      >
-                        Add First Patient
-                      </Button>
+                              <div>
+                                <p className="text-sm font-medium">{patient.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {timeText} • {patient.phone || 'No phone'}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => navigate(`/patients/${patient.id}`)}
+                              >
+                                View
+                              </Button>
+                            </div>
+                          );
+                        })
+                      }
                     </div>
-                  </div>
-                )}
-              </div>
-              <div className="mt-4 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigate('/patients')}
-                >
-                  View All Patients
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No patients registered yet</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => navigate('/patients')}
+                        >
+                          Add First Patient
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => navigate('/patients')}
+                  >
+                    View All Patients
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
     </div>

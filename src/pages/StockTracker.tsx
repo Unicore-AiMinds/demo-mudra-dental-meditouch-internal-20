@@ -209,30 +209,26 @@ const StockTracker = () => {
     createdAt: new Date().toISOString().split('T')[0] // Current date in YYYY-MM-DD format
   });
 
-  if (!isDental) {
-    navigate('/dashboard');
-  }
+  // Removed clinic restriction - Stock Tracker now available for both clinics
 
   // Update stockItems when dbStockItems changes
   useEffect(() => {
-    if (dbStockItems.length > 0) {
-      // Convert from database format to component format
-      const convertedItems = dbStockItems.map(item => ({
-        id: item.id,
-        name: item.name,
-        subItem: item.sub_item,
-        itemType: item.item_type,
-        dealer: item.dealer,
-        rate: item.rate,
-        description: item.description,
-        unit: item.unit,
-        currentQuantity: item.current_quantity,
-        minimumThreshold: item.minimum_threshold,
-        nearestExpiryDate: item.nearest_expiry_date,
-        createdAt: item.created_at
-      }));
-      setStockItems(convertedItems);
-    }
+    // Always convert and set items, even if array is empty (important for clinic filtering)
+    const convertedItems = dbStockItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      subItem: item.sub_item,
+      itemType: item.item_type,
+      dealer: item.dealer,
+      rate: item.rate,
+      description: item.description,
+      unit: item.unit,
+      currentQuantity: item.current_quantity,
+      minimumThreshold: item.minimum_threshold,
+      nearestExpiryDate: item.nearest_expiry_date,
+      createdAt: item.created_at
+    }));
+    setStockItems(convertedItems);
   }, [dbStockItems]);
 
   // Priority-based status functions to avoid logical conflicts
@@ -347,7 +343,8 @@ const StockTracker = () => {
         unit: newItem.unit,
         current_quantity: newItem.currentQuantity,
         minimum_threshold: newItem.minimumThreshold,
-        nearest_expiry_date: newItem.nearestExpiryDate
+        nearest_expiry_date: newItem.nearestExpiryDate,
+        clinic_type: activeClinic as 'dental' | 'meditouch'
       };
 
       await addStockItem(dbItem);
@@ -512,7 +509,8 @@ const StockTracker = () => {
         unit: currentEditItem.unit,
         current_quantity: currentEditItem.currentQuantity,
         minimum_threshold: currentEditItem.minimumThreshold,
-        nearest_expiry_date: currentEditItem.nearestExpiryDate
+        nearest_expiry_date: currentEditItem.nearestExpiryDate,
+        clinic_type: activeClinic as 'dental' | 'meditouch'
       };
 
       await updateStockItem(currentEditItem.id, dbItem);

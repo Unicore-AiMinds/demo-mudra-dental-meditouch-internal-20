@@ -81,7 +81,7 @@ const navItems: NavItem[] = [
     title: 'Stock Tracker',
     icon: PackageOpen,
     path: '/stock',
-    clinics: ['dental'],
+    clinics: ['dental', 'meditouch'],
     permissions: ['stock.view'],
   },
   {
