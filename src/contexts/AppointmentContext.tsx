@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { useClinic } from './ClinicContext';
 import { useServices } from './ServiceContext';
 import { handleDatabaseError } from '@/utils/error-handler';
+import { sendAppointmentConfirmation, sendDoctorNotification, canSendWhatsApp } from '@/lib/whatsapp';
 
 // Define appointment types
 export interface Appointment {
@@ -33,6 +34,8 @@ export interface Appointment {
   doctor_id?: string;
   charting_entry_id?: string;
   duration_minutes?: number;
+  whatsapp_status?: 'not_sent' | 'sent' | 'failed';
+  whatsapp_sent_at?: string;
 }
 
 export type DentalAppointment = Appointment & {
@@ -60,6 +63,7 @@ interface AppointmentContextType {
   getUpcomingAppointments: (clinic: 'dental' | 'meditouch') => Promise<Appointment[]>;
   markAppointmentCompleted: (appointmentId: string) => Promise<void>;
   getAvailableTimeSlots: (date: Date, clinic: 'dental' | 'meditouch') => Promise<string[]>;
+  sendWhatsAppMessage: (appointmentId: string) => Promise<boolean>;
 }
 
 // Create context
@@ -282,7 +286,8 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         duration_minutes: appointment.duration_minutes,
-        status: 'confirmed' as const
+        status: 'confirmed' as const,
+        whatsapp_status: 'not_sent' as const
       };
 
       // Note: patient_name will be added back for UI display after Supabase insert
@@ -328,7 +333,7 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
         console.log('Successfully created appointment');
 
-        // Show success toast
+        // Show success toast for appointment creation
         toast({
           title: 'Success',
           description: 'Appointment scheduled successfully.',
@@ -347,6 +352,8 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
         } catch (auditError) {
           console.error('Failed to log appointment creation audit:', auditError);
         }
+
+        // WhatsApp notification is now manual - removed automatic sending
 
         // Return the UI-friendly version with patient_name
         return appointmentForUI;
@@ -942,6 +949,164 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
+  // Manual WhatsApp sending function - sends to both patient and doctor
+  const sendWhatsAppMessage = async (appointmentId: string): Promise<boolean> => {
+    try {
+      console.log(`Manually sending WhatsApp for appointment ${appointmentId} to both patient and doctor`);
+
+      // Find the appointment
+      const appointment = dentalAppointments.find(a => a.id === appointmentId || a.appointment_code === appointmentId) ||
+                         meditouchAppointments.find(a => a.id === appointmentId || a.appointment_code === appointmentId);
+
+      if (!appointment) {
+        throw new Error(`Appointment with ID ${appointmentId} not found`);
+      }
+
+      // Format appointment date for WhatsApp message
+      const formattedDate = format(new Date(appointment.date), 'PPP'); // "January 1, 2024" format
+      
+      // Determine clinic name
+      const clinicName = appointment.clinic_type === 'dental' ? 'Dental Metrix' : 'Meditouch';
+
+      const messageParams = {
+        patientName: appointment.patient_name || 'Patient',
+        appointmentDate: formattedDate,
+        appointmentTime: appointment.time,
+        doctorName: appointment.doctor || appointment.therapist || 'Staff',
+        serviceType: appointment.service,
+        clinicName: clinicName
+      };
+
+      let patientSuccess = false;
+      let doctorSuccess = false;
+      let errors = [];
+
+      // 1. Send WhatsApp to Patient
+      try {
+        // Get patient details to check WhatsApp availability
+        const patientData = await supabase.from<{phone: string, has_whatsapp?: boolean}>('patients').getById(appointment.patient_id, {
+          select: 'phone, has_whatsapp'
+        });
+
+        if (patientData && canSendWhatsApp(patientData)) {
+          console.log('📱 Sending WhatsApp to patient:', patientData.phone);
+          
+          const patientResult = await sendAppointmentConfirmation(patientData.phone, messageParams);
+          
+          if (patientResult.success) {
+            console.log('✅ WhatsApp sent to patient successfully');
+            patientSuccess = true;
+          } else {
+            console.error('❌ Failed to send WhatsApp to patient:', patientResult.error);
+            errors.push(`Patient: ${patientResult.error}`);
+          }
+        } else {
+          console.log('🔴 Patient WhatsApp not available');
+          errors.push('Patient: WhatsApp not enabled or invalid phone number');
+        }
+      } catch (patientError) {
+        console.error('❌ Error sending WhatsApp to patient:', patientError);
+        errors.push(`Patient: ${patientError instanceof Error ? patientError.message : 'Technical error'}`);
+      }
+
+      // 2. Send WhatsApp to Doctor
+      try {
+        // Get doctor details from doctors table based on appointment's doctor name
+        const doctorName = appointment.doctor || appointment.therapist;
+        
+        if (doctorName) {
+          console.log('🔍 Looking up doctor phone for:', doctorName);
+          
+          // Query doctors table to get phone number
+          const doctorData = await supabase.from<{name: string, phone?: string}>('doctors').getAll({
+            filters: { name: doctorName },
+            select: 'name, phone'
+          });
+          
+          if (doctorData && doctorData.length > 0 && doctorData[0].phone) {
+            const doctorPhone = doctorData[0].phone;
+            console.log('📱 Sending WhatsApp to doctor:', doctorPhone);
+            
+            const doctorResult = await sendDoctorNotification(doctorPhone, messageParams);
+            
+            if (doctorResult.success) {
+              console.log('✅ WhatsApp sent to doctor successfully');
+              doctorSuccess = true;
+            } else {
+              console.error('❌ Failed to send WhatsApp to doctor:', doctorResult.error);
+              errors.push(`Doctor: ${doctorResult.error}`);
+            }
+          } else {
+            console.log('🔴 Doctor phone not found in database');
+            errors.push('Doctor: Phone number not found in doctors table');
+          }
+        } else {
+          console.log('🔴 No doctor assigned to appointment');
+          errors.push('Doctor: No doctor assigned to appointment');
+        }
+      } catch (doctorError) {
+        console.error('❌ Error sending WhatsApp to doctor:', doctorError);
+        errors.push(`Doctor: ${doctorError instanceof Error ? doctorError.message : 'Technical error'}`);
+      }
+
+      // Update appointment status based on results
+      const overallSuccess = patientSuccess || doctorSuccess;
+      
+      if (overallSuccess) {
+        await updateAppointment(appointmentId, {
+          whatsapp_status: 'sent',
+          whatsapp_sent_at: new Date().toISOString()
+        });
+      } else {
+        await updateAppointment(appointmentId, {
+          whatsapp_status: 'failed'
+        });
+      }
+
+      // Show appropriate toast message
+      if (patientSuccess && doctorSuccess) {
+        toast({
+          title: 'WhatsApp Sent Successfully',
+          description: `Messages sent to both ${appointment.patient_name} and ${appointment.doctor || appointment.therapist}`,
+        });
+        return true;
+      } else if (patientSuccess || doctorSuccess) {
+        const sentTo = patientSuccess ? 'patient' : 'doctor';
+        toast({
+          title: 'Partial Success',
+          description: `WhatsApp sent to ${sentTo} only. ${errors.join(', ')}`,
+          variant: 'destructive',
+        });
+        return true;
+      } else {
+        toast({
+          title: 'WhatsApp Failed',
+          description: `Could not send messages: ${errors.join(', ')}`,
+          variant: 'destructive',
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error('Error sending WhatsApp messages:', error);
+      
+      // Try to update appointment with failure status
+      try {
+        await updateAppointment(appointmentId, {
+          whatsapp_status: 'failed'
+        });
+      } catch (updateError) {
+        console.error('Failed to update WhatsApp status:', updateError);
+      }
+
+      toast({
+        title: 'WhatsApp Error',
+        description: 'Could not send WhatsApp messages due to technical error',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   return (
     <AppointmentContext.Provider
       value={{
@@ -956,7 +1121,8 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
         getPatientAppointments,
         getUpcomingAppointments,
         markAppointmentCompleted,
-        getAvailableTimeSlots
+        getAvailableTimeSlots,
+        sendWhatsAppMessage
       }}
     >
       {children}

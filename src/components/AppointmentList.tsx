@@ -3,7 +3,7 @@ import { format, parseISO, isToday, isTomorrow, isThisWeek, isThisMonth, addDays
 import { useAppointments } from '@/contexts/AppointmentContext';
 import { usePatients } from '@/contexts/PatientContext';
 import { useClinic } from '@/contexts/ClinicContext';
-import { Phone, Calendar, Download, Filter, CalendarIcon } from 'lucide-react';
+import { Phone, Calendar, Download, Filter, CalendarIcon, MessageCircle, Send, X, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Appointment } from '@/types/appointment';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
 import { formatDateForExport, formatDateForFilename } from '@/utils/dateFormatter';
+import { canSendWhatsApp } from '@/lib/whatsapp';
 
 /**
  * Component that displays all created appointments
@@ -23,7 +24,7 @@ import { formatDateForExport, formatDateForFilename } from '@/utils/dateFormatte
 type DateFilter = 'all' | 'today' | 'tomorrow' | 'thisWeek' | 'next7Days' | 'thisMonth' | 'customRange';
 
 export const AppointmentList = () => {
-  const { dentalAppointments, meditouchAppointments } = useAppointments();
+  const { dentalAppointments, meditouchAppointments, sendWhatsAppMessage } = useAppointments();
   const { patients } = usePatients();
   const { activeClinic } = useClinic();
   const [appointmentList, setAppointmentList] = useState<(Appointment & { phone?: string })[]>([]);
@@ -34,6 +35,7 @@ export const AppointmentList = () => {
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
   const [isCustomRangeOpen, setIsCustomRangeOpen] = useState(false);
   const [phoneListOnly, setPhoneListOnly] = useState(false);
+  const [sendingWhatsApp, setSendingWhatsApp] = useState<Set<string>>(new Set());
 
   // Find all appointments for patients without WhatsApp (excluding completed/cancelled)
   useEffect(() => {
@@ -154,7 +156,7 @@ export const AppointmentList = () => {
   // Export appointments to CSV
   const exportToCSV = () => {
     // Create CSV content from the filtered appointment list data
-    const headers = ['Date', 'Time', 'Patient', 'Phone Number', 'Service', 'Status', 'Clinic Type'];
+    const headers = ['Date', 'Time', 'Patient', 'Phone Number', 'Service', 'Status', 'Clinic Type', 'WhatsApp Status'];
     
     const csvContent = [
       headers.join(','),
@@ -167,6 +169,7 @@ export const AppointmentList = () => {
           `"${app.service || ''}"`,
           `"${app.status || ''}"`,
           `"${app.clinic_type || ''}"`,
+          `"${app.whatsapp_status || 'not_sent'}"`,
         ].join(',');
       })
     ].join('\n');
@@ -195,6 +198,38 @@ export const AppointmentList = () => {
 
   const handleClick = () => {
     setIsDialogOpen(true);
+  };
+
+  // Handle WhatsApp sending
+  const handleSendWhatsApp = async (appointmentId: string) => {
+    setSendingWhatsApp(prev => new Set(prev).add(appointmentId));
+    
+    try {
+      await sendWhatsAppMessage(appointmentId);
+    } catch (error) {
+      console.error('Failed to send WhatsApp:', error);
+    } finally {
+      setSendingWhatsApp(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(appointmentId);
+        return newSet;
+      });
+    }
+  };
+
+  // Check if patient can receive WhatsApp
+  const getPatientWhatsAppStatus = (appointment: Appointment) => {
+    const patient = patients.find(p => p.id === appointment.patient_id);
+    if (!patient) return { canSend: false, reason: 'Patient not found' };
+    
+    const canSend = canSendWhatsApp(patient);
+    if (!canSend) {
+      if (!patient.has_whatsapp) return { canSend: false, reason: 'WhatsApp not enabled' };
+      if (!patient.phone) return { canSend: false, reason: 'No phone number' };
+      return { canSend: false, reason: 'Invalid phone number' };
+    }
+    
+    return { canSend: true, reason: '' };
   };
 
   return (
@@ -336,38 +371,84 @@ export const AppointmentList = () => {
                       <th className="text-left py-2 px-3">Phone Number</th>
                       <th className="text-left py-2 px-3">Service</th>
                       <th className="text-left py-2 px-3">Status</th>
+                      <th className="text-left py-2 px-3">WhatsApp</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredAppointmentList.map((app) => (
-                      <tr
-                        key={app.id}
-                        className="border-b border-gray-100 hover:bg-gray-50"
-                      >
-                        <td className="py-2 px-3">{format(parseISO(app.date), 'MMM d, yyyy')}</td>
-                        <td className="py-2 px-3">{app.time}</td>
-                        <td className="py-2 px-3">{app.patient_name}</td>
-                        <td className="py-2 px-3">
-                          {app.phone ? (
-                            <a 
-                              href={`tel:${app.phone}`} 
-                              className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
-                            >
-                              <Phone className="h-4 w-4" />
-                              {app.phone}
-                            </a>
-                          ) : (
-                            <span className="text-gray-400">No phone</span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3">{app.service}</td>
-                        <td className="py-2 px-3">
-                          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                            {app.status}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredAppointmentList.map((app) => {
+                      const whatsappStatus = getPatientWhatsAppStatus(app);
+                      const isSending = sendingWhatsApp.has(app.id);
+                      
+                      return (
+                        <tr
+                          key={app.id}
+                          className="border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          <td className="py-2 px-3">{format(parseISO(app.date), 'MMM d, yyyy')}</td>
+                          <td className="py-2 px-3">{app.time}</td>
+                          <td className="py-2 px-3">{app.patient_name}</td>
+                          <td className="py-2 px-3">
+                            {app.phone ? (
+                              <a 
+                                href={`tel:${app.phone}`} 
+                                className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                              >
+                                <Phone className="h-4 w-4" />
+                                {app.phone}
+                              </a>
+                            ) : (
+                              <span className="text-gray-400">No phone</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3">{app.service}</td>
+                          <td className="py-2 px-3">
+                            <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                              {app.status}
+                            </Badge>
+                          </td>
+                          <td className="py-2 px-3">
+                            <div className="flex items-center gap-2">
+                              {app.whatsapp_status === 'sent' ? (
+                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1">
+                                  <Check className="h-3 w-3" />
+                                  Sent
+                                </Badge>
+                              ) : app.whatsapp_status === 'failed' ? (
+                                <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 flex items-center gap-1">
+                                  <X className="h-3 w-3" />
+                                  Failed
+                                </Badge>
+                              ) : whatsappStatus.canSend ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSendWhatsApp(app.id)}
+                                  disabled={isSending}
+                                  className="text-green-600 border-green-300 hover:bg-green-50 flex items-center gap-1"
+                                >
+                                  {isSending ? (
+                                    <>
+                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
+                                      Sending
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Send className="h-3 w-3" />
+                                      Send
+                                    </>
+                                  )}
+                                </Button>
+                              ) : (
+                                <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-300" title={whatsappStatus.reason}>
+                                  <MessageCircle className="h-3 w-3 mr-1" />
+                                  N/A
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </>

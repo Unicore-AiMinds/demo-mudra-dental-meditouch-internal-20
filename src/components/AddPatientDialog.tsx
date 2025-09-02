@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
+import { usePatients } from '@/contexts/PatientContext';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -47,6 +48,7 @@ interface Patient {
   referredBy?: string;
   clinic: 'dental' | 'meditouch' | 'both';
   lastVisit: string;
+  hasWhatsapp?: boolean;
 }
 
 interface AddPatientDialogProps {
@@ -61,6 +63,7 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
   onPatientAdded
 }) => {
   const { activeClinic } = useClinic();
+  const { addPatient } = usePatients();
   const { toast } = useToast();
   const [isConfirmAddOpen, setIsConfirmAddOpen] = useState(false);
   const [useAgeInput, setUseAgeInput] = useState(true);
@@ -80,7 +83,8 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
     bloodGroup: '',
     referredBy: '',
     clinic: activeClinic, // Set default clinic to current active clinic
-    lastVisit: ''
+    lastVisit: '',
+    hasWhatsapp: true // Default to true for WhatsApp notifications
   });
 
   // Reset form data
@@ -99,7 +103,8 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
       bloodGroup: '',
       referredBy: '',
       clinic: activeClinic, // Set default clinic to current active clinic
-      lastVisit: ''
+      lastVisit: '',
+      hasWhatsapp: true // Default to true for WhatsApp notifications
     });
     setUseAgeInput(true);
   };
@@ -156,7 +161,7 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
   };
 
   // Function to confirm adding a new patient
-  const confirmAddPatient = () => {
+  const confirmAddPatient = async () => {
     // Calculate age from DOB if DOB is used
     let calculatedAge = Number(formData.age);
 
@@ -171,41 +176,63 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
       }
     }
 
-    // Create new patient object
-    const newPatient = {
-      id: `PT${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-      name: formData.name,
-      gender: formData.gender as 'male' | 'female' | 'other',
-      age: calculatedAge,
-      dateOfBirth: !useAgeInput ? formData.dateOfBirth : undefined,
-      email: formData.email || null,
-      phone: formData.phone,
-      altPhone: formData.altPhone || null,
-      address: formData.address,
-      city: formData.city,
-      pincode: formData.pincode,
-      bloodGroup: formData.bloodGroup,
-      referredBy: formData.referredBy,
-      clinic: formData.clinic as 'dental' | 'meditouch' | 'both',
-      lastVisit: formData.lastVisit || ''
-    };
+    try {
+      // Create patient data object for PatientContext
+      const patientData = {
+        name: formData.name,
+        gender: formData.gender as 'male' | 'female' | 'other',
+        age: calculatedAge,
+        date_of_birth: !useAgeInput ? formData.dateOfBirth : undefined,
+        email: formData.email || null,
+        phone: `${phoneCountryCode} ${formData.phone}`, // Include country code
+        alt_phone: formData.altPhone ? `${phoneCountryCode} ${formData.altPhone}` : null,
+        has_whatsapp: formData.hasWhatsapp,
+        address: formData.address,
+        city: formData.city,
+        pincode: formData.pincode,
+        blood_group: formData.bloodGroup,
+        referred_by: formData.referredBy,
+        clinic: formData.clinic as 'dental' | 'meditouch' | 'both',
+        last_visit: formData.lastVisit || ''
+      };
 
-    // Close dialogs and show success message
-    setIsConfirmAddOpen(false);
-    onClose();
+      // Save patient to database through PatientContext
+      const savedPatient = await addPatient(patientData);
 
-    toast({
-      title: "Patient Added",
-      description: `${formData.name} has been added to the patient registry.`,
-    });
+      // Close dialogs and show success message
+      setIsConfirmAddOpen(false);
+      onClose();
 
-    // Call the callback if provided
-    if (onPatientAdded) {
-      onPatientAdded(newPatient);
+      toast({
+        title: "Patient Added",
+        description: `${formData.name} has been added to the patient registry with WhatsApp ${formData.hasWhatsapp ? 'enabled' : 'disabled'}.`,
+      });
+
+      // Call the callback if provided (with minimal data for UI)
+      if (onPatientAdded) {
+        onPatientAdded({
+          id: savedPatient.id,
+          name: savedPatient.name,
+          gender: savedPatient.gender,
+          age: savedPatient.age,
+          email: savedPatient.email,
+          phone: savedPatient.phone,
+          clinic: savedPatient.clinic,
+          lastVisit: savedPatient.last_visit,
+          hasWhatsapp: savedPatient.has_whatsapp
+        });
+      }
+
+      // Reset the form
+      resetFormData();
+    } catch (error) {
+      console.error('Error adding patient:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add patient. Please try again.",
+        variant: "destructive"
+      });
     }
-
-    // Reset the form
-    resetFormData();
   };
 
   return (
@@ -388,6 +415,20 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
                         title="Please enter only digits"
                       />
                     </div>
+                  </div>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="hasWhatsapp"
+                      checked={formData.hasWhatsapp}
+                      onChange={(e) => setFormData({...formData, hasWhatsapp: e.target.checked})}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <Label htmlFor="hasWhatsapp" className="cursor-pointer text-sm">
+                      Enable WhatsApp notifications for appointment confirmations
+                    </Label>
                   </div>
                 </div>
                 <div className="space-y-2 md:col-span-2">

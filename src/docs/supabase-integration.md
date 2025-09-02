@@ -13,10 +13,12 @@ The application is now connected to Supabase using the direct REST API approach.
 
 ## Configuration
 
-The Supabase connection is configured in `src/lib/supabase.ts` with the following parameters:
+The Supabase connection is configured in `src/lib/supabase.ts` using environment variables:
 
-- **URL**: `https://cqtloiklvpvafeoiyyhy.supabase.co`
-- **Anon Key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw`
+- **URL**: `VITE_SUPABASE_URL` environment variable
+- **Anon Key**: `VITE_SUPABASE_ANON_KEY` environment variable
+
+These values are loaded from your `.env` file or deployment environment variables.
 
 ## Usage
 

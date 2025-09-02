@@ -10,6 +10,7 @@ import { useAppointments, Appointment, DentalAppointment, MeditouchAppointment }
 import { DentalChartingProvider, useDentalCharting } from '@/contexts/DentalChartingContext';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useServices } from '@/contexts/ServiceContext';
+import { sendRescheduleNotification, sendDoctorRescheduleNotification, sendCancellationNotification, sendDoctorCancellationNotification, canSendWhatsApp } from '@/lib/whatsapp';
 import AppointmentCompletionDialog from '@/components/AppointmentCompletionDialog';
 import UnresolvedAppointmentsAlert from '@/components/UnresolvedAppointmentsAlert';
 import { getLighterColor } from '@/utils/doctorColors';
@@ -386,7 +387,8 @@ const Appointments = () => {
     addAppointment,
     updateAppointment,
     deleteAppointment,
-    markAppointmentCompleted
+    markAppointmentCompleted,
+    sendWhatsAppMessage
   } = useAppointments(); // Get appointments from context
   const { dentalServices, meditouchServices } = useServices(); // Get services from context
 
@@ -429,6 +431,8 @@ const Appointments = () => {
   const [isConfirmUpdateOpen, setIsConfirmUpdateOpen] = useState(false);
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<AppointmentType | null>(null);
+  const [sendRescheduleWhatsApp, setSendRescheduleWhatsApp] = useState(true);
+  const [sendCancellationWhatsApp, setSendCancellationWhatsApp] = useState(true);
   const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
   const isMobile = useIsMobile();
 
@@ -1099,10 +1103,107 @@ const Appointments = () => {
           updateData
         );
 
-        toast({
-          title: "Appointment Rescheduled",
-          description: `${editingAppointment.patient_name}'s appointment has been rescheduled to ${format(appointmentDate || new Date(), 'PP')} at ${appointmentTime}`
-        });
+        // Send reschedule WhatsApp if enabled
+        if (sendRescheduleWhatsApp) {
+          try {
+            // Get patient details for WhatsApp availability check
+            const patientData = await supabase.from<{phone: string, has_whatsapp?: boolean}>('patients').getById(editingAppointment.patient_id, {
+              select: 'phone, has_whatsapp'
+            });
+
+            // Get doctor details for WhatsApp
+            const doctorId = appointmentDoctor || editingAppointment.doctor || editingAppointment.therapist;
+            console.log('🔍 Doctor lookup - appointmentDoctor:', appointmentDoctor);
+            console.log('🔍 Doctor lookup - editingAppointment.doctor:', editingAppointment.doctor);
+            console.log('🔍 Doctor lookup - editingAppointment.therapist:', editingAppointment.therapist);
+            console.log('🔍 Doctor lookup - final doctorId:', doctorId);
+            console.log('🔍 Available doctors:', doctors.map(d => ({ id: d.id, name: d.name, phone: d.phone })));
+            const doctor = doctors.find(d => d.id === doctorId || d.name === doctorId);
+            console.log('🔍 Found doctor:', doctor);
+
+            const patientHasWhatsApp = patientData && canSendWhatsApp(patientData);
+            let patientWhatsappSent = false;
+            let doctorWhatsappSent = false;
+
+            const oldFormattedDate = format(new Date(editingAppointment.date), 'PPP');
+            const newFormattedDate = format(appointmentDate || new Date(), 'PPP');
+            const clinicName = isDental ? 'Dental Metrix' : 'Meditouch';
+
+            // Send to patient
+            if (patientHasWhatsApp) {
+              const result = await sendRescheduleNotification(patientData.phone, {
+                patientName: editingAppointment.patient_name || 'Patient',
+                oldDate: oldFormattedDate,
+                oldTime: editingAppointment.time,
+                appointmentDate: newFormattedDate,
+                appointmentTime: appointmentTime,
+                doctorName: doctor?.name || appointmentDoctor || editingAppointment.doctor || editingAppointment.therapist || 'Staff',
+                serviceType: appointmentService || editingAppointment.service,
+                clinicName: clinicName
+              });
+
+              patientWhatsappSent = result.success;
+            }
+
+            // Send to doctor
+            if (doctor && doctor.phone) {
+              console.log('🔵 Sending reschedule WhatsApp to doctor:', doctor.phone);
+              const doctorResult = await sendDoctorRescheduleNotification(doctor.phone, {
+                patientName: editingAppointment.patient_name || 'Patient',
+                oldDate: oldFormattedDate,
+                oldTime: editingAppointment.time,
+                appointmentDate: newFormattedDate,
+                appointmentTime: appointmentTime,
+                doctorName: doctor.name,
+                serviceType: appointmentService || editingAppointment.service,
+                clinicName: clinicName
+              });
+
+              doctorWhatsappSent = doctorResult.success;
+              
+              if (doctorResult.success) {
+                console.log('✅ Doctor reschedule WhatsApp sent successfully');
+              } else {
+                console.error('❌ Doctor reschedule WhatsApp failed:', doctorResult.error);
+              }
+            }
+
+            // Show appropriate message
+            const sentTo = [];
+            if (patientHasWhatsApp && patientWhatsappSent) sentTo.push('patient');
+            if (doctor && doctor.phone && doctorWhatsappSent) sentTo.push('doctor');
+            
+            if (sentTo.length > 0) {
+              toast({
+                title: "Appointment Rescheduled & WhatsApp Sent",
+                description: `${editingAppointment.patient_name}'s appointment rescheduled and WhatsApp notification sent to ${sentTo.join(' and ')}`
+              });
+            } else if (!patientHasWhatsApp && (!doctor || !doctor.phone)) {
+              toast({
+                title: "Appointment Rescheduled",
+                description: `${editingAppointment.patient_name}'s appointment rescheduled. Please call patient and doctor to inform about the change`
+              });
+            } else {
+              toast({
+                title: "Appointment Rescheduled",
+                description: `${editingAppointment.patient_name}'s appointment rescheduled, but WhatsApp failed to send. Please call patient and doctor`,
+                variant: "destructive"
+              });
+            }
+          } catch (whatsappError) {
+            console.error('Failed to send reschedule WhatsApp:', whatsappError);
+            toast({
+              title: "Appointment Rescheduled",
+              description: `${editingAppointment.patient_name}'s appointment rescheduled. Please call patient and doctor to inform about the change`,
+              variant: "destructive"
+            });
+          }
+        } else {
+          toast({
+            title: "Appointment Rescheduled",
+            description: `${editingAppointment.patient_name}'s appointment has been rescheduled to ${format(appointmentDate || new Date(), 'PP')} at ${appointmentTime}`
+          });
+        }
 
         setIsConfirmUpdateOpen(false);
         setEditingAppointment(null);
@@ -1137,6 +1238,105 @@ const Appointments = () => {
           editingAppointment.id || editingAppointment.appointment_id,
           { status: 'cancelled' }
         );
+
+        // Send cancellation WhatsApp notifications if enabled
+        if (sendCancellationWhatsApp) {
+          try {
+            const patient = patients.find(p => p.id === editingAppointment.patient_id);
+            
+            // Get doctor details for WhatsApp (same logic as reschedule)
+            const doctorId = editingAppointment.doctor || editingAppointment.therapist;
+            console.log('🔍 Cancellation doctor lookup - editingAppointment.doctor:', editingAppointment.doctor);
+            console.log('🔍 Cancellation doctor lookup - editingAppointment.therapist:', editingAppointment.therapist);
+            console.log('🔍 Cancellation doctor lookup - final doctorId:', doctorId);
+            const doctor = doctors.find(d => d.id === doctorId || d.name === doctorId);
+            console.log('🔍 Cancellation found doctor:', doctor);
+            
+            const clinicName = isDental ? 'Dental Metrix' : 'Meditouch';
+            const whatsappParams = {
+              patientName: patient?.name || editingAppointment.patient_name,
+              appointmentDate: format(new Date(editingAppointment.date), 'PPP'),
+              appointmentTime: editingAppointment.time,
+              doctorName: doctor?.name || editingAppointment.doctor || editingAppointment.therapist || 'Staff',
+              serviceType: editingAppointment.service,
+              clinicName: clinicName
+            };
+
+            let patientSuccess = false;
+            let doctorSuccess = false;
+
+            // Send to patient
+            if (patient && patient.phone && canSendWhatsApp(patient)) {
+              console.log('🔵 Sending cancellation WhatsApp to patient:', patient.phone);
+              const patientResult = await sendCancellationNotification(patient.phone, whatsappParams);
+              patientSuccess = patientResult.success;
+              
+              if (patientResult.success) {
+                console.log('✅ Patient cancellation WhatsApp sent successfully');
+              } else {
+                console.error('❌ Failed to send patient cancellation WhatsApp:', patientResult.error);
+              }
+            }
+
+            // Send to doctor
+            if (doctor && doctor.phone) {
+              console.log('🔵 Sending cancellation WhatsApp to doctor:', doctor.phone);
+              const doctorResult = await sendDoctorCancellationNotification(doctor.phone, whatsappParams);
+              doctorSuccess = doctorResult.success;
+              
+              if (doctorResult.success) {
+                console.log('✅ Doctor cancellation WhatsApp sent successfully');
+              } else {
+                console.error('❌ Failed to send doctor cancellation WhatsApp:', doctorResult.error);
+              }
+            }
+
+            // Determine message recipients
+            const patientHasWhatsApp = patient && patient.phone && canSendWhatsApp(patient);
+            const doctorHasWhatsApp = doctor && doctor.phone;
+
+            // Show appropriate toast based on WhatsApp availability and results
+            const whatsappRecipients = [];
+            const callRecipients = [];
+
+            if (patientHasWhatsApp && patientSuccess) {
+              whatsappRecipients.push("patient");
+            } else if (patient && !patientHasWhatsApp) {
+              callRecipients.push("patient");
+            }
+
+            if (doctorHasWhatsApp && doctorSuccess) {
+              whatsappRecipients.push("doctor");
+            } else if (doctor && !doctorHasWhatsApp) {
+              callRecipients.push("doctor");
+            }
+
+            // Show combined message
+            let description = "";
+            if (whatsappRecipients.length > 0) {
+              description += `Cancellation notifications sent via WhatsApp to ${whatsappRecipients.join(" and ")}`;
+            }
+            if (callRecipients.length > 0) {
+              if (description) description += ". ";
+              description += `Please call ${callRecipients.join(" and ")} to inform about cancellation`;
+            }
+
+            if (description) {
+              toast({
+                title: whatsappRecipients.length > 0 ? "Notification Status" : "Please Call",
+                description: description,
+                variant: "default"
+              });
+            }
+          } catch (whatsappError) {
+            console.error('❌ WhatsApp cancellation error:', whatsappError);
+            toast({
+              title: "WhatsApp Error",
+              description: "Error sending cancellation notifications",
+              variant: "destructive"
+            });
+          }
+        }
 
         toast({
           title: "Appointment Cancelled",
@@ -2298,11 +2498,9 @@ const Appointments = () => {
                     <TabsTrigger value="weekly">Weekly</TabsTrigger>
                     <TabsTrigger value="monthly">Monthly</TabsTrigger>
                     {isDental && <TabsTrigger value="pending">Pending Treatments</TabsTrigger>}
-                    {isDental && (
-                      <div className="ml-4 px-2 py-1 text-sm">
-                        <AppointmentList />
-                      </div>
-                    )}
+                    <div className="ml-4 px-2 py-1 text-sm">
+                      <AppointmentList />
+                    </div>
                   </TabsList>
 
                   <TabsContent value="daily" className="m-0 w-full">
@@ -3589,12 +3787,42 @@ const Appointments = () => {
               Are you sure you want to update this appointment?
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-4">
             {editingAppointment && (
               <p className="text-sm text-muted-foreground">
                 You are about to update the appointment for <span className="font-semibold">{editingAppointment.patient_name}</span> on {format(appointmentDate || new Date(), 'PP')} at {appointmentTime}.
               </p>
             )}
+            
+            {/* WhatsApp Checkbox - only show if patient has WhatsApp */}
+            {(() => {
+              const patient = editingAppointment && patients.find(p => p.id === editingAppointment.patient_id);
+              const hasWhatsApp = patient && patient.phone && canSendWhatsApp(patient);
+              
+              if (hasWhatsApp) {
+                return (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="reschedule-whatsapp"
+                      checked={sendRescheduleWhatsApp}
+                      onChange={(e) => setSendRescheduleWhatsApp(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <label htmlFor="reschedule-whatsapp" className="text-sm font-medium cursor-pointer">
+                      Send reschedule WhatsApp notification to patient and doctor
+                    </label>
+                  </div>
+                );
+              } else if (patient) {
+                return (
+                  <div className="text-sm text-amber-600 bg-amber-50 p-2 rounded border">
+                    ⚠️ Patient doesn't have WhatsApp enabled. You'll need to call them about the reschedule.
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={cancelUpdate}>
@@ -3621,9 +3849,41 @@ const Appointments = () => {
           </DialogHeader>
           <div className="py-4">
             {editingAppointment && (
-              <p className="text-sm text-muted-foreground">
-                You are about to cancel the appointment for <span className="font-semibold">{editingAppointment.patient_name}</span> on {format(new Date(editingAppointment.date), 'PP')} at {editingAppointment.time}.
-              </p>
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  You are about to cancel the appointment for <span className="font-semibold">{editingAppointment.patient_name}</span> on {format(new Date(editingAppointment.date), 'PP')} at {editingAppointment.time}.
+                </p>
+                
+                {/* WhatsApp Notification Checkbox - only show if patient has WhatsApp */}
+                {(() => {
+                  const patient = patients.find(p => p.id === editingAppointment.patient_id);
+                  const hasWhatsApp = patient && patient.phone && canSendWhatsApp(patient);
+                  
+                  if (hasWhatsApp) {
+                    return (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="send-cancellation-whatsapp"
+                          checked={sendCancellationWhatsApp}
+                          onChange={(e) => setSendCancellationWhatsApp(e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        />
+                        <label htmlFor="send-cancellation-whatsapp" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          Send cancellation WhatsApp notification to patient and doctor
+                        </label>
+                      </div>
+                    );
+                  } else if (patient) {
+                    return (
+                      <div className="text-sm text-amber-600 bg-amber-50 p-2 rounded border">
+                        ⚠️ Patient doesn't have WhatsApp enabled. You'll need to call them about the cancellation.
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </>
             )}
           </div>
           <DialogFooter>
