@@ -30,6 +30,7 @@ import { FollowUpProvider } from "@/contexts/FollowUpContext";
 import { AuditLogProvider } from "@/contexts/AuditLogContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import { UserManagementProvider } from "@/contexts/UserManagementContext";
+import { ReportsAnalyticsProvider } from "@/contexts/ReportsAnalyticsContext";
 import { SessionTimeoutProvider } from "@/contexts/SessionTimeoutContext";
 import SessionTimeoutModal from "@/components/SessionTimeoutModal";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -86,7 +87,8 @@ const App = () => (
                                                         <StockProvider>
                                                           <DealersProvider>
                                                             <MedicineProvider>
-                                              <Routes>
+                                                              <ReportsAnalyticsProvider>
+                                                                <Routes>
                                                 <Route path="/login" element={<Login />} />
                                                 <Route path="/unauthorized" element={<Unauthorized />} />
 
@@ -183,7 +185,8 @@ const App = () => (
 
                                                 {/* 404 route */}
                                                 <Route path="*" element={<NotFound />} />
-                                              </Routes>
+                                                                </Routes>
+                                                              </ReportsAnalyticsProvider>
                                             </MedicineProvider>
                                           </DealersProvider>
                                         </StockProvider>
