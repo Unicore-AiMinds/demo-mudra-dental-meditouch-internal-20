@@ -27,6 +27,7 @@ import { formatDateForFilename } from '@/utils/dateFormatter';
 import GeographicChart from '@/components/charts/GeographicChart';
 import TreatmentPieChart from '@/components/charts/TreatmentPieChart';
 import AgeGroupChart from '@/components/charts/AgeGroupChart';
+import GenderDistributionChart from '@/components/charts/GenderDistributionChart';
 import WeeklyChart from '@/components/charts/WeeklyChart';
 
 const Reports = () => {
@@ -37,6 +38,7 @@ const Reports = () => {
     geographic,
     treatments,
     ageGroups,
+    genders,
     weekly,
     isLoading
   } = useReportsAnalytics();
@@ -186,12 +188,19 @@ const Reports = () => {
               <Download className="mr-2 h-4 w-4" /> Export
             </Button>
           </div>
-          <AgeGroupChart
-            data={ageGroups.ageGroups}
-            insight={ageGroups.insight}
-            total={ageGroups.total}
-            isLoading={isLoading}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AgeGroupChart
+              data={ageGroups.ageGroups}
+              insight={ageGroups.insight}
+              total={ageGroups.total}
+              isLoading={isLoading}
+            />
+            <GenderDistributionChart
+              data={genders.genders}
+              insight={genders.insight}
+              isLoading={isLoading}
+            />
+          </div>
         </TabsContent>
 
         {/* Schedule Analytics Tab */}

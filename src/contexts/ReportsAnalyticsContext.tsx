@@ -10,6 +10,7 @@ import {
   generateGeographicInsight,
   generateTreatmentInsight,
   generateAgeInsight,
+  generateGenderInsight,
   generateWeeklyInsight,
   generateDoctorInsight,
   sortByValue,
@@ -48,6 +49,12 @@ export interface DoctorData {
   topDoctor: string;
 }
 
+export interface GenderData {
+  genders: Record<string, number>;
+  insight: string;
+  total: number;
+}
+
 export interface GrowthData {
   months: { month: string; count: number }[];
   trend: 'increasing' | 'decreasing' | 'stable';
@@ -58,6 +65,7 @@ export interface ReportsAnalyticsData {
   geographic: GeographicData;
   treatments: TreatmentData;
   ageGroups: AgeGroupData;
+  genders: GenderData;
   weekly: WeeklyData;
   doctors: DoctorData;
   growth: GrowthData;
@@ -143,6 +151,24 @@ export const ReportsAnalyticsProvider: React.FC<{ children: React.ReactNode }> =
     return {
       ageGroups: ageCounts,
       insight: generateAgeInsight(ageCounts),
+      total
+    };
+  }, [filteredPatients]);
+
+  // Gender Distribution Analytics
+  const genders = useMemo<GenderData>(() => {
+    const genderCounts: Record<string, number> = {};
+
+    filteredPatients.forEach(patient => {
+      const gender = patient.gender || 'Not Specified';
+      genderCounts[gender] = (genderCounts[gender] || 0) + 1;
+    });
+
+    const total = Object.values(genderCounts).reduce((sum, count) => sum + count, 0);
+
+    return {
+      genders: genderCounts,
+      insight: generateGenderInsight(genderCounts),
       total
     };
   }, [filteredPatients]);
@@ -246,6 +272,7 @@ export const ReportsAnalyticsProvider: React.FC<{ children: React.ReactNode }> =
     geographic,
     treatments,
     ageGroups,
+    genders,
     weekly,
     doctors,
     growth,

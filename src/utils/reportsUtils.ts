@@ -596,6 +596,18 @@ export const generateAgeInsight = (data: Record<string, number>): string => {
   return `Largest patient group: ${topAgeGroup} (${percentage}% of patients)`;
 };
 
+// Generate insight text for gender data
+export const generateGenderInsight = (data: Record<string, number>): string => {
+  const sorted = sortByValue(data);
+  if (sorted.length === 0) return 'No gender data available';
+
+  const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+  const [topGender, count] = sorted[0];
+  const percentage = calculatePercentage(count, total);
+
+  return `Gender distribution: ${percentage}% ${topGender} patients`;
+};
+
 // Generate insight text for weekly data
 export const generateWeeklyInsight = (data: Record<string, number>): string => {
   const sorted = sortByValue(data);
