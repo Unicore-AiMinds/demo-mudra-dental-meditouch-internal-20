@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { usePatients } from './PatientContext';
 import { useAppointments } from './AppointmentContext';
+import { useLabWork } from './LabWorkContext';
 import { useClinic } from './ClinicContext';
 import {
   getAreaFromPincode,
@@ -61,6 +62,15 @@ export interface GrowthData {
   totalGrowth: number;
 }
 
+export interface LabWorkData {
+  totalJobs: number;
+  completedJobs: number;
+  overdueJobs: number;
+  pendingJobs: number;
+  statusBreakdown: { status: string; count: number; color: string }[];
+}
+
+
 export interface ReportsAnalyticsData {
   geographic: GeographicData;
   treatments: TreatmentData;
@@ -69,6 +79,7 @@ export interface ReportsAnalyticsData {
   weekly: WeeklyData;
   doctors: DoctorData;
   growth: GrowthData;
+  labWork: LabWorkData;
   isLoading: boolean;
 }
 
@@ -77,6 +88,7 @@ const ReportsAnalyticsContext = createContext<ReportsAnalyticsData | undefined>(
 export const ReportsAnalyticsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { patients, isLoading: patientsLoading } = usePatients();
   const { dentalAppointments, meditouchAppointments, isLoading: appointmentsLoading } = useAppointments();
+  const { labJobs, isLoading: labWorkLoading } = useLabWork();
   const { activeClinic, isDental } = useClinic();
 
   // Filter data based on active clinic
@@ -97,6 +109,7 @@ export const ReportsAnalyticsProvider: React.FC<{ children: React.ReactNode }> =
   const completedAppointments = useMemo(() => {
     return allAppointments.filter(appointment => appointment.status === 'completed');
   }, [allAppointments]);
+
 
   // Geographic Analytics (reverted to original synchronous version)
   const geographic = useMemo<GeographicData>(() => {
@@ -266,7 +279,72 @@ export const ReportsAnalyticsProvider: React.FC<{ children: React.ReactNode }> =
     };
   }, [filteredPatients]);
 
-  const isLoading = patientsLoading || appointmentsLoading;
+  // Lab Work Analytics (dental only)
+  const labWork = useMemo<LabWorkData>(() => {
+    // Only process for dental clinic
+    if (!isDental) {
+      return {
+        totalJobs: 0,
+        completedJobs: 0,
+        overdueJobs: 0,
+        pendingJobs: 0,
+        statusBreakdown: []
+      };
+    }
+
+    const totalJobs = labJobs.length;
+    const completedJobs = labJobs.filter(job => job.status === 'completed').length;
+    const pendingJobs = labJobs.filter(job => job.status !== 'completed').length;
+
+    // Calculate overdue jobs using the same logic as LabWorkContext
+    const overdueJobs = labJobs.filter(job => {
+      if (!job.expectedDelivery || job.status === 'completed') return false;
+
+      const expectedDate = new Date(job.expectedDelivery);
+      const today = new Date();
+
+      // Set both dates to midnight to compare just the dates
+      expectedDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+
+      // Return true if expected delivery date is in the past
+      return expectedDate < today;
+    }).length;
+
+    // Status breakdown with colors
+    const statusCounts: Record<string, number> = {};
+    labJobs.forEach(job => {
+      const status = job.status || 'unknown';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+
+    const statusColors: Record<string, string> = {
+      'pending-send': '#F59E0B', // Yellow
+      'sent': '#3B82F6',         // Blue
+      'received': '#8B5CF6',     // Purple
+      'ready': '#10B981',        // Green
+      'completed': '#22C55E',    // Success Green
+      'unknown': '#6B7280'       // Gray
+    };
+
+    const statusBreakdown = Object.entries(statusCounts)
+      .map(([status, count]) => ({
+        status: status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        count,
+        color: statusColors[status] || '#6B7280'
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      totalJobs,
+      completedJobs,
+      overdueJobs,
+      pendingJobs,
+      statusBreakdown
+    };
+  }, [labJobs, isDental]);
+
+  const isLoading = patientsLoading || appointmentsLoading || labWorkLoading;
 
   const value: ReportsAnalyticsData = {
     geographic,
@@ -276,6 +354,7 @@ export const ReportsAnalyticsProvider: React.FC<{ children: React.ReactNode }> =
     weekly,
     doctors,
     growth,
+    labWork,
     isLoading
   };
 

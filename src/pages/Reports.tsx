@@ -203,6 +203,7 @@ const Reports = () => {
           </div>
         </TabsContent>
 
+
         {/* Schedule Analytics Tab */}
         <TabsContent value="schedule" className="space-y-4">
           <div className="flex justify-between items-center">
@@ -223,49 +224,6 @@ const Reports = () => {
 
 
       </Tabs>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Area</CardTitle>
-            <MapPin className={`h-4 w-4 ${activeClinic === 'dental' ? 'text-dental-primary' : 'text-meditouch-primary'}`} />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{geographic.topAreaCount}</div>
-            <p className="text-xs text-muted-foreground">
-              patients from {geographic.topArea}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Treatments</CardTitle>
-            <Activity className={`h-4 w-4 ${activeClinic === 'dental' ? 'text-dental-primary' : 'text-meditouch-primary'}`} />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{treatments.total}</div>
-            <p className="text-xs text-muted-foreground">
-              completed treatments
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Busiest Day</CardTitle>
-            <Calendar className={`h-4 w-4 ${activeClinic === 'dental' ? 'text-dental-primary' : 'text-meditouch-primary'}`} />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{weekly.busiestDay}</div>
-            <p className="text-xs text-muted-foreground">
-              most appointments
-            </p>
-          </CardContent>
-        </Card>
-
-      </div>
     </div>
   );
 };

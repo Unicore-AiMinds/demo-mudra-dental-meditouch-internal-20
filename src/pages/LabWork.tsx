@@ -31,7 +31,10 @@ import {
   Microscope,
   ArrowUpDown,
   CalendarDays,
-  AlertTriangle
+  AlertTriangle,
+  FlaskConical,
+  CheckCircle,
+  Clock
 } from 'lucide-react';
 import {
   Dialog,
@@ -588,6 +591,61 @@ const LabWork = () => {
             <Plus className="h-4 w-4 mr-2" /> Create New Lab Entry
           </Button>
         )}
+      </div>
+
+      {/* Lab Work Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+        <Card className="card-shadow">
+          <div className="p-4 flex items-center space-x-4">
+            <div className="bg-blue-50 p-2 rounded-full">
+              <FlaskConical className="h-5 w-5 text-dental-primary" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-muted-foreground">Total Jobs</div>
+              <div className="text-2xl font-bold">{labJobs.length}</div>
+              <div className="text-xs text-muted-foreground">All lab work entries</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="card-shadow">
+          <div className="p-4 flex items-center space-x-4">
+            <div className="bg-green-50 p-2 rounded-full">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-muted-foreground">Completed</div>
+              <div className="text-2xl font-bold">{labJobs.filter(job => job.status === 'completed').length}</div>
+              <div className="text-xs text-muted-foreground">Successfully finished</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="card-shadow">
+          <div className="p-4 flex items-center space-x-4">
+            <div className="bg-orange-50 p-2 rounded-full">
+              <Clock className="h-5 w-5 text-orange-500" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-muted-foreground">Pending</div>
+              <div className="text-2xl font-bold">{labJobs.filter(job => job.status !== 'completed').length}</div>
+              <div className="text-xs text-muted-foreground">In progress</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="card-shadow">
+          <div className="p-4 flex items-center space-x-4">
+            <div className="bg-amber-50 p-2 rounded-full">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-muted-foreground">Overdue</div>
+              <div className="text-2xl font-bold">{labJobs.filter(job => isOverdue(job)).length}</div>
+              <div className="text-xs text-muted-foreground">Need immediate attention</div>
+            </div>
+          </div>
+        </Card>
       </div>
 
       <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
