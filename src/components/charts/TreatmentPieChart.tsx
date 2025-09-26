@@ -40,15 +40,31 @@ const TreatmentPieChart: React.FC<TreatmentPieChartProps> = ({
   const { activeClinic } = useClinic();
 
   // Convert data to chart format
-  const chartData = sortByValue(data)
-    .slice(0, 6) // Show top 6 treatments
-    .map(([treatment, count], index) => ({
-      name: treatment.length > 20 ? `${treatment.substring(0, 20)}...` : treatment,
-      fullName: treatment,
-      value: count,
-      percentage: calculatePercentage(count, total),
-      fill: COLORS[index % COLORS.length]
-    }));
+  const sortedTreatments = sortByValue(data);
+  const topTreatments = sortedTreatments.slice(0, 6); // Show top 6 treatments
+  const otherTreatments = sortedTreatments.slice(6); // Remaining treatments
+
+  // Calculate "Others" total
+  const othersCount = otherTreatments.reduce((sum, [, count]) => sum + count, 0);
+
+  const chartData = topTreatments.map(([treatment, count], index) => ({
+    name: treatment.length > 20 ? `${treatment.substring(0, 20)}...` : treatment,
+    fullName: treatment,
+    value: count,
+    percentage: calculatePercentage(count, total),
+    fill: COLORS[index % COLORS.length]
+  }));
+
+  // Add "Others" category if there are remaining treatments
+  if (othersCount > 0) {
+    chartData.push({
+      name: "Others",
+      fullName: `Others (${otherTreatments.length} treatments)`,
+      value: othersCount,
+      percentage: calculatePercentage(othersCount, total),
+      fill: COLORS[6 % COLORS.length] // Use next color
+    });
+  }
 
   if (isLoading) {
     return (

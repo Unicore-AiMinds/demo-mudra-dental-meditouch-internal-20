@@ -120,7 +120,7 @@ const GenderDistributionChart: React.FC<GenderDistributionChartProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={400}>
           <PieChart>
             <Pie
               data={chartData}
@@ -128,7 +128,7 @@ const GenderDistributionChart: React.FC<GenderDistributionChartProps> = ({
               cy="50%"
               labelLine={false}
               label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
-              outerRadius={80}
+              outerRadius={120}
               fill="#8884d8"
               dataKey="value"
             >
@@ -144,36 +144,30 @@ const GenderDistributionChart: React.FC<GenderDistributionChartProps> = ({
         </ResponsiveContainer>
 
         {/* Gender breakdown */}
-        <div className="mt-6 grid grid-cols-2 gap-4">
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
           {chartData.map((item) => {
             const percentage = totalPatients > 0 ? ((item.value / totalPatients) * 100).toFixed(1) : 0;
             return (
               <div
                 key={item.name}
-                className="flex items-center justify-between p-3 rounded-lg border"
+                className="flex items-center justify-between p-6 rounded-lg border bg-gradient-to-r from-gray-50 to-white"
               >
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <div
-                    className="w-3 h-3 rounded-full"
+                    className="w-4 h-4 rounded-full"
                     style={{ backgroundColor: getColorForGender(item.name) }}
                   />
-                  <span className="text-sm font-medium">{item.name}</span>
+                  <span className="text-base font-medium">{item.name}</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold">{item.value}</div>
-                  <div className="text-xs text-muted-foreground">{percentage}%</div>
+                  <div className="text-lg font-bold">{item.value}</div>
+                  <div className="text-sm text-muted-foreground">{percentage}%</div>
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Summary statistics */}
-        <div className="mt-6 pt-4 border-t">
-          <div className="text-sm text-muted-foreground">
-            Total Patients: <span className="font-semibold text-foreground">{totalPatients}</span>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );

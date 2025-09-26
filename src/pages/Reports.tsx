@@ -11,17 +11,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Download,
   FileText,
   MapPin,
   Activity,
   Users,
   Calendar,
 } from "lucide-react";
-import { formatDateForFilename } from '@/utils/dateFormatter';
 
 // Import chart components
 import GeographicChart from '@/components/charts/GeographicChart';
@@ -60,53 +57,6 @@ const Reports = () => {
     );
   }
 
-  const exportData = (data: any, filename: string, headers: string[]) => {
-    try {
-      // Convert data to CSV format
-      let csvContent = '';
-
-      if (Array.isArray(data)) {
-        // Handle array data (like growth data)
-        csvContent = [
-          headers.join(','),
-          ...data.map(row =>
-            headers.map(header => {
-              const key = header.toLowerCase().replace(' ', '');
-              return row[key] || row[header] || '';
-            }).join(',')
-          )
-        ].join('\n');
-      } else {
-        // Handle object data (like geographic, treatments, etc.)
-        csvContent = [
-          headers.join(','),
-          ...Object.entries(data).map(([key, value]) => `${key},${value}`)
-        ].join('\n');
-      }
-
-      // Create and download file
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${filename}_${formatDateForFilename()}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast({
-        title: "Export Successful",
-        description: `${filename} data exported to CSV.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Export Failed",
-        description: "Failed to export data. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -120,8 +70,12 @@ const Reports = () => {
       </div>
 
       {/* Analytics Tabs */}
-      <Tabs defaultValue="geographic" className="w-full">
+      <Tabs defaultValue="demographics" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="demographics" className="flex items-center gap-1">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Demographics</span>
+          </TabsTrigger>
           <TabsTrigger value="geographic" className="flex items-center gap-1">
             <MapPin className="h-4 w-4" />
             <span className="hidden sm:inline">Geography</span>
@@ -129,10 +83,6 @@ const Reports = () => {
           <TabsTrigger value="treatments" className="flex items-center gap-1">
             <Activity className="h-4 w-4" />
             <span className="hidden sm:inline">Treatments</span>
-          </TabsTrigger>
-          <TabsTrigger value="demographics" className="flex items-center gap-1">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Demographics</span>
           </TabsTrigger>
           <TabsTrigger value="schedule" className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
@@ -144,12 +94,6 @@ const Reports = () => {
         <TabsContent value="geographic" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Patient Geographic Distribution</h2>
-            <Button
-              variant="outline"
-              onClick={() => exportData(geographic.areas, 'geographic_distribution', ['Area', 'Patient Count'])}
-            >
-              <Download className="mr-2 h-4 w-4" /> Export
-            </Button>
           </div>
           <GeographicChart
             data={geographic.areas}
@@ -162,12 +106,6 @@ const Reports = () => {
         <TabsContent value="treatments" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Treatment Distribution</h2>
-            <Button
-              variant="outline"
-              onClick={() => exportData(treatments.treatments, 'treatment_distribution', ['Treatment', 'Count'])}
-            >
-              <Download className="mr-2 h-4 w-4" /> Export
-            </Button>
           </div>
           <TreatmentPieChart
             data={treatments.treatments}
@@ -181,12 +119,6 @@ const Reports = () => {
         <TabsContent value="demographics" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Patient Demographics</h2>
-            <Button
-              variant="outline"
-              onClick={() => exportData(ageGroups.ageGroups, 'age_demographics', ['Age Group', 'Patient Count'])}
-            >
-              <Download className="mr-2 h-4 w-4" /> Export
-            </Button>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <AgeGroupChart
@@ -208,12 +140,6 @@ const Reports = () => {
         <TabsContent value="schedule" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Weekly Appointment Patterns</h2>
-            <Button
-              variant="outline"
-              onClick={() => exportData(weekly.days, 'weekly_schedule', ['Day', 'Appointments'])}
-            >
-              <Download className="mr-2 h-4 w-4" /> Export
-            </Button>
           </div>
           <WeeklyChart
             data={weekly.days}
