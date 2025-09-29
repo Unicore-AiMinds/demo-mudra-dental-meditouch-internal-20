@@ -28,6 +28,7 @@ import { ServiceFollowUpProvider } from "@/contexts/ServiceFollowUpContext";
 import { ServiceFollowUpRuleProvider } from "@/contexts/ServiceFollowUpRuleContext";
 import { FollowUpProvider } from "@/contexts/FollowUpContext";
 import { AuditLogProvider } from "@/contexts/AuditLogContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import { UserManagementProvider } from "@/contexts/UserManagementContext";
 import { ReportsAnalyticsProvider } from "@/contexts/ReportsAnalyticsContext";
@@ -66,7 +67,8 @@ const App = () => (
                 <ClinicProvider>
                   <ClinicInfoProvider>
                     <AuditLogProvider>
-                      <UserManagementProvider>
+                      <NotificationProvider>
+                        <UserManagementProvider>
                         <DoctorProvider>
                           <ServiceProvider>
                             <PatientProvider>
@@ -207,7 +209,8 @@ const App = () => (
           </ServiceProvider>
         </DoctorProvider>
       </UserManagementProvider>
-    </AuditLogProvider>
+    </NotificationProvider>
+  </AuditLogProvider>
   </ClinicInfoProvider>
 </ClinicProvider>
                 <SessionTimeoutModal />

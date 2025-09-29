@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { usePatients } from '@/contexts/PatientContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { DentalMetrixLogo, MeditouchLogo } from '@/assets/logos';
 import ClinicSelector from './ClinicSelector';
@@ -37,6 +38,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 const AppHeader = () => {
   const { user, logout } = useAuth();
   const { activeClinic, setActiveClinic } = useClinic();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { searchPatients } = usePatients();
@@ -116,6 +118,24 @@ const AppHeader = () => {
       setSearchQuery('');
       setSearchResults([]);
     }
+  };
+
+  // Handle notification click
+  const handleNotificationClick = (notification: any) => {
+    markAsRead(notification.id);
+    // Removed automatic navigation - just mark as read
+  };
+
+  // Format notification timestamp
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
   return (
@@ -268,19 +288,82 @@ const AppHeader = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon" className="relative h-9 w-9 rounded-full">
                 <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-medium">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+              <div className="flex items-center justify-between px-4 py-2">
+                <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+                {notifications.length > 0 && unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={markAllAsRead}
+                    className="text-xs h-auto p-1"
+                  >
+                    Mark all read
+                  </Button>
+                )}
+              </div>
               <DropdownMenuSeparator />
               <div className="max-h-80 overflow-y-auto">
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <Bell className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium">No notifications</h3>
-                  <p className="text-muted-foreground mt-2">
-                    You're all caught up! New notifications will appear here.
-                  </p>
-                </div>
+                {notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Bell className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium">No notifications</h3>
+                    <p className="text-muted-foreground mt-2">
+                      You're all caught up! New notifications will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {notifications.map((notification) => (
+                      <DropdownMenuItem
+                        key={notification.id}
+                        className={`cursor-pointer p-3 focus:bg-muted ${
+                          !notification.isRead ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                        }`}
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium truncate ${
+                                !notification.isRead ? 'text-blue-900' : 'text-gray-900'
+                              }`}>
+                                {notification.title}
+                              </p>
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                {notification.message}
+                              </p>
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs text-muted-foreground">
+                                  {formatTimestamp(notification.timestamp)}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                  notification.priority === 'high'
+                                    ? 'bg-red-100 text-red-800'
+                                    : notification.priority === 'medium'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {notification.priority}
+                                </span>
+                              </div>
+                            </div>
+                            {!notification.isRead && (
+                              <div className="h-2 w-2 bg-blue-500 rounded-full ml-2 mt-1 flex-shrink-0"></div>
+                            )}
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                )}
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
