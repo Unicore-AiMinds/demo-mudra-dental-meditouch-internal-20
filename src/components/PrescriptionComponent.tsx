@@ -832,7 +832,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
         throw new Error('Could not access iframe document');
       }
 
-      // Write the prescription content
+      // Write the prescription content with exact letterhead recreation
       doc.open();
       doc.write(`
         <!DOCTYPE html>
@@ -840,133 +840,337 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
           <head>
             <title>Prescription - ${patientName}</title>
             <style>
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
+
               body {
                 font-family: Arial, sans-serif;
-                padding: 20px;
-                max-width: 800px;
-                margin: 0 auto;
+                width: 210mm;
+                min-height: 297mm;
+                background: white;
+                color: #333;
               }
+
+              /* Header Section - Two column layout */
               .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 30px 40px 20px 40px;
+                background: white;
+                min-height: 150px;
+              }
+
+              /* Left Block: Doctor's Credentials */
+              .doctor-info {
+                flex: 1;
+                text-align: left;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-end;
+                align-self: flex-end;
+                margin-bottom: 0px;
+              }
+
+              /* Right Block: Clinic Branding with Logo */
+              .clinic-branding {
+                flex: 1;
                 text-align: center;
-                margin-bottom: 20px;
-                border-bottom: 1px solid #ddd;
-                padding-bottom: 10px;
-              }
-              .header h2 {
-                margin-bottom: 5px;
-              }
-              .info-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                margin-bottom: 20px;
-              }
-              .text-right {
-                text-align: right;
-              }
-              .rx {
-                font-size: 20px;
-                font-family: serif;
-                margin-bottom: 10px;
-              }
-              .medications {
+                display: flex;
+                align-items: center;
+                justify-content: center;
                 margin-left: 20px;
               }
-              .medication {
-                margin-bottom: 15px;
+
+              .logo-container {
+                width: 300px;
+                height: 180px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
               }
+
+              .dental-metrix-logo {
+                width: 100%;
+                height: auto;
+                max-width: 300px;
+                max-height: 180px;
+              }
+
+              /* Main Content Area */
+              .main-content {
+                padding: 30px 40px 20px 40px;
+                min-height: 450px;
+                background: white;
+                position: relative;
+              }
+
+
+              .patient-info {
+                margin-bottom: 25px;
+                font-size: 14px;
+                color: #333;
+                line-height: 1.5;
+              }
+
+              .patient-info div {
+                margin-bottom: 4px;
+              }
+
+              .rx-symbol {
+                font-size: 32px;
+                font-family: serif;
+                color: #333;
+                margin: 20px 0 15px 0;
+                font-weight: bold;
+              }
+
+              .medications {
+                margin: 0;
+                padding: 0;
+                list-style: none;
+                counter-reset: medication-counter;
+              }
+
+              .medication {
+                margin-bottom: 10px;
+                padding-left: 20px;
+                position: relative;
+                font-size: 14px;
+                color: #333;
+              }
+
+              .medication::before {
+                content: counter(medication-counter) ".";
+                counter-increment: medication-counter;
+                position: absolute;
+                left: 0;
+                font-weight: bold;
+                color: #333;
+              }
+
               .medication-name {
                 font-weight: bold;
+                font-size: 14px;
+                color: #333;
+                margin-bottom: 2px;
               }
+
               .medication-details {
-                margin-left: 15px;
-                font-size: 0.9em;
+                font-size: 12px;
+                color: #555;
+                line-height: 1.3;
+                margin-bottom: 1px;
               }
+
               .dispense {
                 font-weight: bold;
+                color: #333;
+                font-size: 12px;
               }
-              .section {
-                margin-top: 15px;
-                padding-top: 10px;
-                border-top: 1px solid #ddd;
+
+              .notes-section {
+                margin-top: 20px;
+                padding: 15px;
+                background: rgba(240, 245, 250, 0.5);
+                border-left: 3px solid #00BCD4;
+                border-radius: 3px;
+                font-size: 13px;
+                color: #333;
               }
-              .signature {
-                margin-top: 60px;
-                text-align: right;
+
+              /* Services Section */
+              .services-section {
+                position: absolute;
+                bottom: 90px;
+                left: 0;
+                right: 0;
+                background: white;
+                padding: 10px 40px;
+                text-align: center;
               }
+
+              .services-row {
+                font-size: 11px;
+                color: #333;
+                margin-bottom: 3px;
+                line-height: 1.3;
+                font-weight: normal;
+              }
+
+              /* Footer separator line */
+              .footer-separator {
+                position: absolute;
+                bottom: 70px;
+                left: 40px;
+                right: 40px;
+                height: 3px;
+                background: #1976D2;
+                z-index: 5;
+              }
+
+              /* Footer */
+              .footer {
+                position: absolute;
+                bottom: 20px;
+                left: 0;
+                right: 0;
+                background: white;
+                color: #333;
+                text-align: center;
+                padding: 10px 40px;
+                font-size: 11px;
+                line-height: 1.3;
+              }
+
+              .footer-address {
+                margin-bottom: 4px;
+                font-weight: normal;
+              }
+
+              .footer-contact {
+                font-weight: normal;
+              }
+
+              .footer-contact .bold {
+                font-weight: bold;
+              }
+
+              /* Signature Area */
+              .signature-area {
+                position: absolute;
+                bottom: 170px;
+                right: 80px;
+                text-align: center;
+                z-index: 10;
+              }
+
               .signature-line {
-                margin-bottom: 40px;
-                border-bottom: 1px solid #000;
+                border-bottom: 1px solid #333;
                 width: 200px;
-                display: inline-block;
+                margin: 25px 0 8px 0;
               }
+
+              .signature-name {
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+              }
+
+              .signature-reg {
+                font-size: 11px;
+                color: #666;
+                margin-top: 3px;
+              }
+
               @media print {
                 body {
-                  padding: 0;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
+                .services-section,
+                .footer,
+                .signature-area,
+                .footer-separator {
+                  position: fixed;
                 }
               }
+
             </style>
           </head>
           <body>
+            <!-- Header Section -->
             <div class="header">
-              <h2>${currentClinicInfo.name}</h2>
-              <p>${getFullAddress()}</p>
-              <p>Phone: ${currentClinicInfo.phone}</p>
-            </div>
-
-            <div class="info-grid">
-              <div>
-                <p><strong>Patient:</strong> ${patientName}</p>
-                <p><strong>Age/DOB:</strong> ${getPatientAgeOrDOB()}</p>
-                <p><strong>Date:</strong> ${format(new Date(prescription.date), 'dd/MM/yyyy')}</p>
+              <div class="doctor-info">
+                <div style="font-size: 24px; font-weight: bold; margin-bottom: 12px; white-space: nowrap;">Dr. Bhargavi Railkar - Kolhapure</div>
+                <div style="font-size: 16px; margin-bottom: 6px;">MDS Prosthodontics & Implantology</div>
+                <div style="font-size: 16px; margin-bottom: 6px;">Certification in Maxillofacial Prosthodontics</div>
+                <div style="font-size: 16px;">Reg. No.: A 14618</div>
               </div>
-              <div class="text-right">
-                <p><strong>Doctor:</strong> ${prescription.prescribed_by}</p>
-                <p><strong>Reg. No:</strong> ${prescription.doctor_reg_no || 'N/A'}</p>
-                <p><strong>Diagnosis:</strong> ${prescription.diagnosis}</p>
+              <div class="clinic-branding">
+                <div class="logo-container">
+                  <img class="dental-metrix-logo" src="/images/dentalmatrix.png" alt="Dental Metrix Logo" />
+                </div>
               </div>
             </div>
 
-            <div class="rx">Rx</div>
-
-            ${prescription.medications && prescription.medications.length > 0 ? `
-              <ol class="medications">
-                ${prescription.medications.map(med => `
-                  <li class="medication">
-                    <div class="medication-name">${med.name} - ${med.dosage}</div>
-                    <div class="medication-details">
-                      For ${med.duration}
-                      ${med.timing && (med.timing.morning || med.timing.afternoon || med.timing.night) ?
-                        ` - Timing: ${[
-                          med.timing.morning ? 'Morning' : '',
-                          med.timing.afternoon ? 'Afternoon' : '',
-                          med.timing.night ? 'Night' : ''
-                        ].filter(Boolean).join(', ')}` : ''}
-                      ${med.food_instructions ? ` - ${med.food_instructions}` : ''}
-                      ${med.instructions ? ` - Notes: ${med.instructions}` : ''}
-                    </div>
-                    <div class="medication-details dispense">
-                      Dispense: ${med.dispense_quantity}
-                    </div>
-                  </li>
-                `).join('')}
-              </ol>
-            ` : `
-              <p class="no-medications">No medications added to this prescription.</p>
-            `}
-
-            ${prescription.notes ? `
-              <div class="section">
-                <p><strong>Notes:</strong></p>
-                <p>${prescription.notes}</p>
+            <!-- Main Content Area -->
+            <div class="main-content">
+              <!-- Patient Info -->
+              <div class="patient-info">
+                <div><strong>Patient:</strong> ${patientName}</div>
+                <div><strong>Age:</strong> ${getPatientAgeOrDOB()}</div>
+                <div><strong>Date:</strong> ${format(new Date(prescription.date), 'dd/MM/yyyy')}</div>
+                ${prescription.diagnosis ? `<div><strong>Diagnosis:</strong> ${prescription.diagnosis}</div>` : ''}
               </div>
-            ` : ''}
 
-            <div class="signature">
+              <!-- Rx Symbol -->
+              <div class="rx-symbol">℞</div>
+
+              <!-- Medications -->
+              ${prescription.medications && prescription.medications.length > 0 ? `
+                <ol class="medications">
+                  ${prescription.medications.map(med => `
+                    <li class="medication">
+                      <div class="medication-name">${med.name} - ${med.dosage}</div>
+                      <div class="medication-details">
+                        Duration: ${med.duration}${
+                          med.timing && (med.timing.morning || med.timing.afternoon || med.timing.night)
+                            ? `<br>Timing: ${[
+                                med.timing.morning ? 'Morning' : '',
+                                med.timing.afternoon ? 'Afternoon' : '',
+                                med.timing.night ? 'Night' : ''
+                              ].filter(Boolean).join(', ')}`
+                            : ''
+                        }${med.food_instructions ? `<br>Instructions: ${med.food_instructions}` : ''}${
+                          med.instructions ? `<br>Notes: ${med.instructions}` : ''
+                        }
+                      </div>
+                      <div class="medication-details dispense">
+                        Dispense: ${med.dispense_quantity}
+                      </div>
+                    </li>
+                  `).join('')}
+                </ol>
+              ` : `
+                <p>No medications prescribed</p>
+              `}
+
+              <!-- Additional Notes -->
+              ${prescription.notes ? `
+                <div class="notes-section">
+                  <strong>Additional Notes:</strong><br>
+                  ${prescription.notes}
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Services Section -->
+            <div class="services-section">
+              <div class="services-row"><span style="color:#00BCD4;">I</span> Esthetic Smile Designing <span style="color:#00BCD4;">I</span> Dental Implants <span style="color:#00BCD4;">I</span> Full Mouth Rehabilitation <span style="color:#00BCD4;">I</span> Dental Aligners <span style="color:#00BCD4;">I</span></div>
+              <div class="services-row"><span style="color:#00BCD4;">I</span> Teeth Whitening <span style="color:#00BCD4;">I</span> Oral Surgical Procedures <span style="color:#00BCD4;">I</span> Dental Extraction <span style="color:#00BCD4;">I</span> Specialist Children Dentistry <span style="color:#00BCD4;">I</span></div>
+              <div class="services-row"><span style="color:#00BCD4;">I</span> Preventive Procedures <span style="color:#00BCD4;">I</span> Gum Surgeries <span style="color:#00BCD4;">I</span> Artificial Eyes Ears Nose & Finger <span style="color:#00BCD4;">I</span></div>
+            </div>
+
+            <!-- Footer separator line -->
+            <div class="footer-separator"></div>
+
+            <!-- Signature Area -->
+            <div class="signature-area">
               <div class="signature-line"></div>
-              <p>${prescription.prescribed_by}</p>
+              <div class="signature-name">${prescription.prescribed_by || 'Doctor Name'}</div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+              <div class="footer-address">Manas, 1st Floor, Lakaki Road, Opp. Hotel Ambience, Model Colony, Shivajinagar, Pune 411 016.</div>
+              <div class="footer-contact">T : <span class="bold">+91 91529 51573</span> &nbsp;&nbsp; Time : <span class="bold">10am to 6pm</span></div>
             </div>
           </body>
-        </html>
+          </html>
       `);
       doc.close();
 
@@ -986,7 +1190,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
           document.body.removeChild(iframe);
           alert('There was an error while printing. Please try again.');
         }
-      }, 100);
+      }, 500);
     } catch (error) {
       console.error('Error preparing print document:', error);
       alert('Error preparing prescription for print. Please try again.');
