@@ -1077,6 +1077,18 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 .footer-separator {
                   position: fixed;
                 }
+
+                /* Hide browser default print headers and footers */
+                @page {
+                  margin: 0;
+                  size: A4;
+                }
+
+                /* Additional CSS to ensure clean printing */
+                html, body {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                }
               }
 
             </style>
