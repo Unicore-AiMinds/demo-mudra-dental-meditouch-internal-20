@@ -5,6 +5,7 @@ import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import { AuditLogTemplates } from '@/utils/auditLogger';
 import bcrypt from 'bcryptjs';
+import { supabaseClient as auditSupabaseClient } from '@/lib/supabase-config';
 
 // Define types for user roles
 export type UserRole = 'admin' | 'doctor' | 'receptionist' | 'inventory_manager';
@@ -303,11 +304,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Log failed login attempt
         try {
-          const { createClient } = await import('@supabase/supabase-js');
-          const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
-          const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw';
-          const auditClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
           const auditEntry = {
             timestamp: new Date().toISOString(),
             user_id: foundUser.id,
@@ -323,7 +319,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             created_at: new Date().toISOString()
           };
 
-          await auditClient.from('audit_logs').insert(auditEntry);
+          await auditSupabaseClient.from('audit_logs').insert(auditEntry);
           console.log('✅ Failed login audit log created');
         } catch (auditError) {
           console.error('Failed to log failed login audit:', auditError);
@@ -375,12 +371,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Log successful login audit entry
       try {
-        // Import the audit log client directly to avoid circular dependency
-        const { createClient } = await import('@supabase/supabase-js');
-        const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw';
-        const auditClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
         const auditEntry = {
           timestamp: new Date().toISOString(),
           user_id: foundUser.id,
@@ -396,7 +386,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           created_at: new Date().toISOString()
         };
 
-        await auditClient.from('audit_logs').insert(auditEntry);
+        await auditSupabaseClient.from('audit_logs').insert(auditEntry);
         console.log('✅ Login audit log created');
       } catch (auditError) {
         console.error('Failed to log login audit:', auditError);
@@ -425,11 +415,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Log logout audit entry
         try {
-          const { createClient } = await import('@supabase/supabase-js');
-          const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
-          const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw';
-          const auditClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
           const auditEntry = {
             timestamp: new Date().toISOString(),
             user_id: user.id,
@@ -445,7 +430,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             created_at: new Date().toISOString()
           };
 
-          await auditClient.from('audit_logs').insert(auditEntry);
+          await auditSupabaseClient.from('audit_logs').insert(auditEntry);
           console.log('✅ Logout audit log created');
         } catch (auditError) {
           console.error('Failed to log logout audit:', auditError);

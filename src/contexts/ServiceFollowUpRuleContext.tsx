@@ -8,9 +8,7 @@ import { AuditLogTemplates } from '@/utils/auditLogger';
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { v4 as uuidv4 } from 'uuid';
 
-// Supabase configuration - same as in supabase.ts
-const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase-config';
 
 // Define the context type
 interface ServiceFollowUpRuleContextType {

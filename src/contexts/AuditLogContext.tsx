@@ -1,13 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { useAuth } from './AuthContext';
 import { useClinic } from './ClinicContext';
 import { useToast } from '@/hooks/use-toast';
-
-// Create a direct Supabase client
-const SUPABASE_URL = 'https://cqtloiklvpvafeoiyyhy.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw';
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabaseClient } from '@/lib/supabase-config';
 
 // Define the AuditLog type based on your database schema
 export interface AuditLog {

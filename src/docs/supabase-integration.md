@@ -13,10 +13,10 @@ The application is now connected to Supabase using the direct REST API approach.
 
 ## Configuration
 
-The Supabase connection is configured in `src/lib/supabase.ts` with the following parameters:
+The Supabase connection is configured in `src/lib/supabase-config.ts` as the single source of truth. All other files import from there.
 
-- **URL**: `https://cqtloiklvpvafeoiyyhy.supabase.co`
-- **Anon Key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxdGxvaWtsdnB2YWZlb2l5eWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczOTE1MjAsImV4cCI6MjA2Mjk2NzUyMH0.iaGIQNydn1xK8SQXidXLHya6X2qUtQGq0lVqGw8OZbw`
+- **URL**: `https://pwijqupjtminhcmtbxta.supabase.co`
+- **Anon Key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3aWpxdXBqdG1pbmhjbXRieHRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1OTM1NTgsImV4cCI6MjA4NjE2OTU1OH0.x3Xn3_JC2crG7yuB02xeR0bTF773aqNSHMMZgT1shLU`
 
 ## Usage
 
