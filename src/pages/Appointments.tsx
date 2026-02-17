@@ -1933,11 +1933,14 @@ const Appointments = () => {
       setDate(pendingAppointment.date);
     } catch (error) {
       console.error('Error creating appointment:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to schedule appointment. Please try again.',
-        variant: 'destructive',
-      });
+      const isDuplicate = error instanceof Error && error.message.includes('already scheduled');
+      if (!isDuplicate) {
+        toast({
+          title: 'Error',
+          description: 'Failed to schedule appointment. An appointment with the same details already exists.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsLoading(false);
     }

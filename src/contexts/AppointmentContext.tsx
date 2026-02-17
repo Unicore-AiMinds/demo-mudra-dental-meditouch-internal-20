@@ -231,6 +231,33 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
         throw new Error('Clinic type is required');
       }
 
+      // Check for duplicate appointment
+      const existingAppointments = appointment.clinic_type === 'dental'
+        ? dentalAppointments
+        : meditouchAppointments;
+
+      const duplicateAppointment = existingAppointments.find(existing =>
+        existing.patient_id === appointment.patient_id &&
+        existing.date === appointment.date &&
+        existing.time === appointment.time &&
+        existing.service === appointment.service &&
+        (appointment.clinic_type === 'dental'
+          ? existing.doctor === appointment.doctor
+          : existing.therapist === appointment.therapist) &&
+        existing.status !== 'cancelled' &&
+        existing.status !== 'completed'
+      );
+
+      if (duplicateAppointment) {
+        console.warn('Duplicate appointment detected for patient:', appointment.patient_name);
+        toast({
+          title: 'Already Scheduled',
+          description: 'Failed to schedule appointment. An appointment with the same details already exists.',
+          variant: 'destructive',
+        });
+        throw new Error('already scheduled');
+      }
+
       // Generate a unique appointment code
       const isDental = appointment.clinic_type === 'dental';
       const appointmentCode = `${isDental ? 'd' : 'm'}${uuidv4().substring(0, 8)}`;
@@ -368,11 +395,14 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
     } catch (error) {
       console.error('Error adding appointment:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to schedule appointment. Please try again.',
-        variant: 'destructive',
-      });
+      const isDuplicate = error instanceof Error && error.message.includes('already scheduled');
+      if (!isDuplicate) {
+        toast({
+          title: 'Error',
+          description: 'Failed to schedule appointment. Please try again.',
+          variant: 'destructive',
+        });
+      }
       throw error;
     }
   };
