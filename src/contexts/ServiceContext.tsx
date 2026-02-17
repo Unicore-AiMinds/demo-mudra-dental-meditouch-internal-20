@@ -128,6 +128,18 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Add a new service
   const addService = async (service: Omit<Service, 'id' | 'created_at' | 'updated_at'>): Promise<Service> => {
     try {
+      // Check for duplicate service (same name and clinic_type)
+      const existingServices = service.clinic_type === 'dental' ? dentalServices : meditouchServices;
+      const duplicateService = existingServices.find(existing =>
+        existing.name.trim().toLowerCase() === service.name.trim().toLowerCase()
+      );
+
+      if (duplicateService) {
+        throw new Error(
+          `A service with the name "${duplicateService.name}" already exists in ${service.clinic_type} services.`
+        );
+      }
+
       // Add service to Supabase
       const data = await supabase
         .from('services')

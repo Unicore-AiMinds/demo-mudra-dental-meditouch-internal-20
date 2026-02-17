@@ -2713,6 +2713,21 @@ const Settings = () => {
                     }
 
                     try {
+                      // Check for duplicate service before adding
+                      const currentServices = activeClinic === 'dental' ? dentalServices : meditouchServices;
+                      const duplicateService = currentServices.find(existing =>
+                        existing.name.trim().toLowerCase() === serviceName.value.trim().toLowerCase()
+                      );
+
+                      if (duplicateService) {
+                        toast({
+                          title: "Duplicate Service",
+                          description: `A service with the name "${duplicateService.name}" already exists in ${activeClinic} services.`,
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
                       // Create new service object
                       const newService = {
                         name: capitalizeWords(serviceName.value.trim()),
