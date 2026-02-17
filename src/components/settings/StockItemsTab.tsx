@@ -107,6 +107,28 @@ const StockItemsTab: React.FC = () => {
       return;
     }
 
+    // Check for duplicate stock item before adding
+    const duplicateItem = stockDefinitions.find(existing => {
+      const nameMatch = existing.name.trim().toLowerCase() === newItemName.trim().toLowerCase();
+      const subItemMatch = (existing.sub_item || '').trim().toLowerCase() === (newItemSubItem || '').trim().toLowerCase();
+      // Check clinic_type overlap: either one is 'both', or they match
+      const clinicOverlap =
+        existing.clinic_type === 'both' ||
+        newItemClinicType === 'both' ||
+        existing.clinic_type === newItemClinicType;
+      return nameMatch && subItemMatch && clinicOverlap;
+    });
+
+    if (duplicateItem) {
+      const subItemLabel = duplicateItem.sub_item ? ` (${duplicateItem.sub_item})` : '';
+      toast({
+        title: 'Duplicate Stock Item',
+        description: `A stock item "${duplicateItem.name}${subItemLabel}" already exists for the selected clinic.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       await addStockDefinition({
         name: newItemName,

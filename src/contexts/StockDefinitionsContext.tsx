@@ -88,6 +88,25 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
     definition: Omit<StockDefinition, 'id' | 'created_at' | 'updated_at'>
   ): Promise<StockDefinition> => {
     try {
+      // Check for duplicate stock item (same name and sub_item with overlapping clinic_type)
+      const duplicateItem = allStockDefinitions.find(existing => {
+        const nameMatch = existing.name.trim().toLowerCase() === definition.name.trim().toLowerCase();
+        const subItemMatch = (existing.sub_item || '').trim().toLowerCase() === (definition.sub_item || '').trim().toLowerCase();
+        // Check clinic_type overlap: either one is 'both', or they match
+        const clinicOverlap =
+          existing.clinic_type === 'both' ||
+          definition.clinic_type === 'both' ||
+          existing.clinic_type === definition.clinic_type;
+        return nameMatch && subItemMatch && clinicOverlap;
+      });
+
+      if (duplicateItem) {
+        const subItemLabel = duplicateItem.sub_item ? ` (${duplicateItem.sub_item})` : '';
+        throw new Error(
+          `A stock item "${duplicateItem.name}${subItemLabel}" already exists for the selected clinic.`
+        );
+      }
+
       // First insert the data
       const { error: insertError } = await supabase
         .from('stock_item_definitions')
