@@ -471,6 +471,16 @@ const Patients = () => {
       return;
     }
 
+    // Validate mobile number is exactly 10 digits
+    if (!/^\d{10}$/.test(editFormData.phone)) {
+      toast({
+        title: "Invalid Mobile Number",
+        description: "Mobile number should be exactly 10 digits.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Check age or DOB based on the selected option
     if (editUseAgeInput && !editFormData.age) {
       toast({
@@ -488,6 +498,19 @@ const Patients = () => {
         variant: "destructive",
       });
       return;
+    }
+
+    // Validate email format if provided
+    if (editFormData.email && editFormData.email.trim() !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(editFormData.email.trim())) {
+        toast({
+          title: "Invalid Email Address",
+          description: "Please enter a valid email address (e.g. name@example.com).",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setIsConfirmUpdateOpen(true);
@@ -655,6 +678,16 @@ const Patients = () => {
       return;
     }
 
+    // Validate mobile number is exactly 10 digits
+    if (!/^\d{10}$/.test(formData.phone)) {
+      toast({
+        title: "Invalid Mobile Number",
+        description: "Mobile number should be exactly 10 digits.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Check age or DOB based on the selected option
     if (useAgeInput && !formData.age) {
       toast({
@@ -669,6 +702,36 @@ const Patients = () => {
       toast({
         title: "Missing Date of Birth",
         description: "Please enter the patient's date of birth.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email format if provided
+    if (formData.email && formData.email.trim() !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        toast({
+          title: "Invalid Email Address",
+          description: "Please enter a valid email address (e.g. name@example.com).",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Check for duplicate patient before showing confirmation
+    const duplicatePatient = patients.find(existing =>
+      existing.name.trim().toLowerCase() === formData.name.trim().toLowerCase() &&
+      existing.phone.trim() === formData.phone.trim() &&
+      existing.gender.toLowerCase() === formData.gender.toLowerCase() &&
+      existing.clinic.toLowerCase() === formData.clinic.toLowerCase()
+    );
+
+    if (duplicatePatient) {
+      toast({
+        title: "Duplicate Patient",
+        description: `A patient with the same details already exists: ${duplicatePatient.name} (${duplicatePatient.patient_code || duplicatePatient.id})`,
         variant: "destructive",
       });
       return;
@@ -1690,16 +1753,20 @@ const Patients = () => {
                           className="rounded-l-none h-10 w-full"
                           placeholder="Contact Number"
                           value={editFormData.phone}
+                          maxLength={10}
                           onChange={(e) => {
-                            // Only allow digits
-                            const numericValue = e.target.value.replace(/\D/g, '');
+                            // Only allow digits, max 10
+                            const numericValue = e.target.value.replace(/\D/g, '').slice(0, 10);
                             setEditFormData({...editFormData, phone: numericValue});
                           }}
                           required
-                          pattern="\d+"
-                          title="Please enter only digits"
+                          pattern="\d{10}"
+                          title="Please enter a valid 10-digit mobile number"
                         />
                       </div>
+                      {editFormData.phone.length > 0 && editFormData.phone.length !== 10 && (
+                        <p className="text-red-500 text-xs mt-1">Mobile number must be exactly 10 digits ({editFormData.phone.length}/10)</p>
+                      )}
                     </div>
                     <div className="space-y-2 flex-1">
                       <Label htmlFor="altPhone">Alternative Phone Number</Label>

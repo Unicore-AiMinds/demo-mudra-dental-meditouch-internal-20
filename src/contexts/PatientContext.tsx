@@ -196,6 +196,20 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
         throw new Error('Phone number is required');
       }
 
+      // Check for duplicate patient (same name, phone, gender, and clinic)
+      const duplicatePatient = patients.find(existing =>
+        existing.name.trim().toLowerCase() === patient.name.trim().toLowerCase() &&
+        existing.phone.trim() === patient.phone.trim() &&
+        existing.gender.toLowerCase() === gender &&
+        existing.clinic.toLowerCase() === clinic
+      );
+
+      if (duplicatePatient) {
+        throw new Error(
+          `A patient with the same name, phone, gender, and clinic already exists: ${duplicatePatient.name} (${duplicatePatient.patient_code || duplicatePatient.id})`
+        );
+      }
+
       // Get the current timestamp for consistent use
       const now = new Date().toISOString();
 
