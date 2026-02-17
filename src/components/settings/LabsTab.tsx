@@ -121,6 +121,16 @@ const LabsTab: React.FC = () => {
       return;
     }
 
+    // Validate mobile number is exactly 10 digits
+    if (!/^\d{10}$/.test(contact)) {
+      toast({
+        title: 'Invalid Mobile Number',
+        description: 'Mobile number should be exactly 10 digits.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       // Format the contact number with country code
       const formattedContact = `${contactCountryCode} ${contact.trim()}`;
@@ -147,6 +157,16 @@ const LabsTab: React.FC = () => {
       toast({
         title: 'Validation Error',
         description: 'Name and contact are required fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate mobile number is exactly 10 digits
+    if (!/^\d{10}$/.test(contact)) {
+      toast({
+        title: 'Invalid Mobile Number',
+        description: 'Mobile number should be exactly 10 digits.',
         variant: 'destructive',
       });
       return;
@@ -312,17 +332,21 @@ const LabsTab: React.FC = () => {
                       id="contact"
                       className="rounded-l-none"
                       value={contact}
+                      maxLength={10}
                       onChange={(e) => {
-                        // Only allow digits
-                        const numericValue = e.target.value.replace(/\D/g, '');
+                        // Only allow digits, max 10
+                        const numericValue = e.target.value.replace(/\D/g, '').slice(0, 10);
                         setContact(numericValue);
                       }}
                       placeholder="Contact Number"
                       required
-                      pattern="\d+"
-                      title="Please enter only digits"
+                      pattern="\d{10}"
+                      title="Please enter a valid 10-digit mobile number"
                     />
                   </div>
+                  {contact.length > 0 && contact.length !== 10 && (
+                    <p className="text-red-500 text-xs mt-1">Mobile number must be exactly 10 digits ({contact.length}/10)</p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
@@ -422,17 +446,21 @@ const LabsTab: React.FC = () => {
                       id="edit-contact"
                       className="rounded-l-none"
                       value={contact}
+                      maxLength={10}
                       onChange={(e) => {
-                        // Only allow digits
-                        const numericValue = e.target.value.replace(/\D/g, '');
+                        // Only allow digits, max 10
+                        const numericValue = e.target.value.replace(/\D/g, '').slice(0, 10);
                         setContact(numericValue);
                       }}
                       placeholder="Contact Number"
                       required
-                      pattern="\d+"
-                      title="Please enter only digits"
+                      pattern="\d{10}"
+                      title="Please enter a valid 10-digit mobile number"
                     />
                   </div>
+                  {contact.length > 0 && contact.length !== 10 && (
+                    <p className="text-red-500 text-xs mt-1">Mobile number must be exactly 10 digits ({contact.length}/10)</p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">

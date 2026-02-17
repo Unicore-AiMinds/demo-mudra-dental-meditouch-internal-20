@@ -113,11 +113,11 @@ const DealersTab: React.FC = () => {
       }
     }
 
-    // Validate contact number (only digits)
-    if (!/^\d+$/.test(newDealerContact.trim())) {
+    // Validate mobile number is exactly 10 digits
+    if (!/^\d{10}$/.test(newDealerContact.trim())) {
       toast({
-        title: "Validation Error",
-        description: "Contact number should contain only digits.",
+        title: "Invalid Mobile Number",
+        description: "Mobile number should be exactly 10 digits.",
         variant: "destructive"
       });
       return;
@@ -201,11 +201,11 @@ const DealersTab: React.FC = () => {
       }
     }
 
-    // Validate contact number (only digits)
-    if (!/^\d+$/.test(newDealerContact.trim())) {
+    // Validate mobile number is exactly 10 digits
+    if (!/^\d{10}$/.test(newDealerContact.trim())) {
       toast({
-        title: "Validation Error",
-        description: "Contact number should contain only digits.",
+        title: "Invalid Mobile Number",
+        description: "Mobile number should be exactly 10 digits.",
         variant: "destructive"
       });
       return;
@@ -390,13 +390,21 @@ const DealersTab: React.FC = () => {
                 <Input
                   id="contact"
                   value={newDealerContact}
-                  onChange={(e) => setNewDealerContact(e.target.value)}
+                  maxLength={10}
+                  onChange={(e) => {
+                    // Only allow digits, max 10
+                    const numericValue = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setNewDealerContact(numericValue);
+                  }}
                   className="flex-1"
                   placeholder="Contact Number"
-                  pattern="\d+"
-                  title="Please enter only digits"
+                  pattern="\d{10}"
+                  title="Please enter a valid 10-digit mobile number"
                 />
               </div>
+              {newDealerContact.length > 0 && newDealerContact.length !== 10 && (
+                <p className="text-red-500 text-xs mt-1 col-span-3 col-start-2">Mobile number must be exactly 10 digits ({newDealerContact.length}/10)</p>
+              )}
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="address" className="text-right">
@@ -516,13 +524,21 @@ const DealersTab: React.FC = () => {
                 <Input
                   id="edit-contact"
                   value={newDealerContact}
-                  onChange={(e) => setNewDealerContact(e.target.value)}
+                  maxLength={10}
+                  onChange={(e) => {
+                    // Only allow digits, max 10
+                    const numericValue = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setNewDealerContact(numericValue);
+                  }}
                   className="flex-1"
                   placeholder="Contact Number"
-                  pattern="\d+"
-                  title="Please enter only digits"
+                  pattern="\d{10}"
+                  title="Please enter a valid 10-digit mobile number"
                 />
               </div>
+              {newDealerContact.length > 0 && newDealerContact.length !== 10 && (
+                <p className="text-red-500 text-xs mt-1 col-span-3 col-start-2">Mobile number must be exactly 10 digits ({newDealerContact.length}/10)</p>
+              )}
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-address" className="text-right">

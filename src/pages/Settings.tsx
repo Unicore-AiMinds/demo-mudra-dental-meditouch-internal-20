@@ -2136,12 +2136,16 @@ const Settings = () => {
                           className="rounded-l-none"
                           placeholder="Contact Number"
                           required
-                          pattern="\d+"
-                          title="Please enter only digits"
+                          maxLength={10}
+                          pattern="\d{10}"
+                          title="Please enter a valid 10-digit mobile number"
                           value={newDoctorPhone}
-                          onChange={(e) => setNewDoctorPhone(e.target.value.replace(/\D/g, ''))}
+                          onChange={(e) => setNewDoctorPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                         />
                       </div>
+                      {newDoctorPhone.length > 0 && newDoctorPhone.length !== 10 && (
+                        <p className="text-red-500 text-xs mt-1">Mobile number must be exactly 10 digits ({newDoctorPhone.length}/10)</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="doctorClinic" className="flex items-center">
@@ -2211,8 +2215,8 @@ const Settings = () => {
                       const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
                       const isEmailValid = emailRegex.test(newDoctorEmail);
 
-                      // Validate phone number (only digits allowed)
-                      const phoneRegex = /^\d+$/;
+                      // Validate phone number (exactly 10 digits)
+                      const phoneRegex = /^\d{10}$/;
                       const isPhoneValid = phoneRegex.test(newDoctorPhone);
 
                       if (!isEmailValid) {
@@ -2226,8 +2230,8 @@ const Settings = () => {
 
                       if (!isPhoneValid) {
                         toast({
-                          title: "Invalid Phone Number",
-                          description: "Phone number should contain only digits.",
+                          title: "Invalid Mobile Number",
+                          description: "Mobile number should be exactly 10 digits.",
                           variant: "destructive"
                         });
                         return;
