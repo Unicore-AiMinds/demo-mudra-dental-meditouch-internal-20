@@ -5,6 +5,7 @@ import { useAuditLog } from './AuditLogContext';
 import { AuditLogTemplates } from '@/utils/auditLogger';
 import { v4 as uuidv4 } from 'uuid';
 import { handleDatabaseError } from '@/utils/error-handler';
+import { capitalizeWords } from '@/utils/string-utils';
 
 export interface Patient {
   id: string;
@@ -220,13 +221,13 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
         gender,
         clinic,
         // Ensure all required fields are present and properly formatted
-        name: patient.name.trim(),
+        name: capitalizeWords(patient.name.trim()),
         phone: patient.phone.trim(),
         // Set optional fields to null if they're empty strings
         email: patient.email && patient.email.trim() !== '' ? patient.email.trim() : null,
         alt_phone: patient.alt_phone && patient.alt_phone.trim() !== '' ? patient.alt_phone.trim() : null,
         address: patient.address && patient.address.trim() !== '' ? patient.address.trim() : null,
-        city: patient.city && patient.city.trim() !== '' ? patient.city.trim() : null,
+        city: patient.city && patient.city.trim() !== '' ? capitalizeWords(patient.city.trim()) : null,
         pincode: patient.pincode && patient.pincode.trim() !== '' ? patient.pincode.trim() : null,
         blood_group: patient.blood_group && patient.blood_group.trim() !== '' ? patient.blood_group.trim() : null,
         referred_by: patient.referred_by && patient.referred_by.trim() !== '' ? patient.referred_by.trim() : null,
@@ -437,13 +438,13 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
         // Ensure all fields are properly formatted
         gender: gender,
         clinic: clinic,
-        name: patient.name ? patient.name.trim() : currentPatient.name,
+        name: patient.name ? capitalizeWords(patient.name.trim()) : currentPatient.name,
         phone: patient.phone ? patient.phone.trim() : currentPatient.phone,
         // Format optional fields
         email: patient.email && patient.email.trim() !== '' ? patient.email.trim() : (patient.email === '' ? null : currentPatient.email),
         alt_phone: patient.alt_phone && patient.alt_phone.trim() !== '' ? patient.alt_phone.trim() : (patient.alt_phone === '' ? null : currentPatient.alt_phone),
         address: patient.address && patient.address.trim() !== '' ? patient.address.trim() : (patient.address === '' ? null : currentPatient.address),
-        city: patient.city && patient.city.trim() !== '' ? patient.city.trim() : (patient.city === '' ? null : currentPatient.city),
+        city: patient.city && patient.city.trim() !== '' ? capitalizeWords(patient.city.trim()) : (patient.city === '' ? null : currentPatient.city),
         pincode: patient.pincode && patient.pincode.trim() !== '' ? patient.pincode.trim() : (patient.pincode === '' ? null : currentPatient.pincode),
         blood_group: patient.blood_group && patient.blood_group.trim() !== '' ? patient.blood_group.trim() : (patient.blood_group === '' ? null : currentPatient.blood_group),
         referred_by: patient.referred_by && patient.referred_by.trim() !== '' ? patient.referred_by.trim() : (patient.referred_by === '' ? null : currentPatient.referred_by),

@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useClinic } from '@/contexts/ClinicContext';
+import { capitalizeWords } from '@/utils/string-utils';
 import { usePatients, Patient } from '@/contexts/PatientContext';
 import { usePermissions } from '@/contexts/PermissionContext';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
@@ -580,7 +581,7 @@ const Patients = () => {
         alt_phone: editFormData.altPhone && editFormData.altPhone.trim() !== '' ? editFormData.altPhone.trim() : null,
         has_whatsapp: editFormData.hasWhatsApp || false,
         address: editFormData.address && editFormData.address.trim() !== '' ? editFormData.address.trim() : null,
-        city: editFormData.city && editFormData.city.trim() !== '' ? editFormData.city.trim() : null,
+        city: editFormData.city && editFormData.city.trim() !== '' ? capitalizeWords(editFormData.city.trim()) : null,
         pincode: editFormData.pincode && editFormData.pincode.trim() !== '' ? editFormData.pincode.trim() : null,
         blood_group: editFormData.bloodGroup && editFormData.bloodGroup.trim() !== '' ? editFormData.bloodGroup.trim() : null,
         referred_by: editFormData.referredBy && editFormData.referredBy.trim() !== '' ? editFormData.referredBy.trim() : null,
@@ -803,7 +804,7 @@ const Patients = () => {
         alt_phone: formData.altPhone || null,
         has_whatsapp: formData.hasWhatsApp || false,
         address: formData.address || null,
-        city: formData.city || null,
+        city: formData.city ? capitalizeWords(formData.city.trim()) : null,
         pincode: formData.pincode || null,
         blood_group: formData.bloodGroup || null,
         referred_by: formData.referredBy || null,
