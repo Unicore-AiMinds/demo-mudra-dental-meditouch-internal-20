@@ -499,8 +499,8 @@ const Settings = () => {
       const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
       const isEmailValid = emailRegex.test(updatedEmail.value);
 
-      // Validate phone number (only digits allowed)
-      const phoneRegex = /^\d+$/;
+      // Validate phone number (exactly 10 digits, only digits allowed)
+      const phoneRegex = /^\d{10}$/;
       const isPhoneValid = phoneRegex.test(updatedPhone.value);
 
       if (!isEmailValid) {
@@ -514,8 +514,8 @@ const Settings = () => {
 
       if (!isPhoneValid) {
         toast({
-          title: "Invalid Phone Number",
-          description: "Phone number should contain only digits.",
+          title: "Invalid Mobile Number",
+          description: "Mobile number should be exactly 10 digits and contain only numbers.",
           variant: "destructive"
         });
         return;
