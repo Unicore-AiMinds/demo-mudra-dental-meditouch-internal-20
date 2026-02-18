@@ -3,7 +3,7 @@ import { useSupabase } from '@/contexts/SupabaseContext';
 import { useToast } from '@/components/ui/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { handleDatabaseError } from '@/utils/error-handler';
-import { capitalizeFirstLetter } from '@/utils/string-utils';
+import { capitalizeFirstLetter, capitalizeWords } from '@/utils/string-utils';
 import { useAuditLog } from '@/contexts/AuditLogContext';
 import { AuditLogTemplates } from '@/utils/auditLogger';
 
@@ -83,7 +83,7 @@ export const DentalLabsProvider: React.FC<{ children: ReactNode }> = ({ children
       const processedLab = {
         ...lab,
         name: capitalizeFirstLetter(lab.name),
-        city: lab.city ? capitalizeFirstLetter(lab.city) : lab.city,
+        city: lab.city ? capitalizeWords(lab.city) : lab.city,
         address: lab.address ? capitalizeFirstLetter(lab.address) : lab.address,
       };
 
@@ -149,7 +149,7 @@ export const DentalLabsProvider: React.FC<{ children: ReactNode }> = ({ children
       const processedLab = {
         ...lab,
         name: lab.name ? capitalizeFirstLetter(lab.name) : lab.name,
-        city: lab.city ? capitalizeFirstLetter(lab.city) : lab.city,
+        city: lab.city ? capitalizeWords(lab.city) : lab.city,
         address: lab.address ? capitalizeFirstLetter(lab.address) : lab.address,
       };
 
