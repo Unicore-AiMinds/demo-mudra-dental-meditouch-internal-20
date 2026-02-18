@@ -4,6 +4,7 @@ import { useSupabase } from '@/contexts/SupabaseContext';
 import { useAuditLog } from '@/contexts/AuditLogContext';
 import { AuditLogTemplates } from '@/utils/auditLogger';
 import { useToast } from '@/hooks/use-toast';
+import { capitalizeFirstLetter } from '@/utils/string-utils';
 
 // Define the context type
 interface MedicineContextType {
@@ -47,7 +48,12 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setMedicines([]);
           } else {
             console.log("Using existing medicines from database");
-            setMedicines(fetchedMedicines);
+            // Apply capitalization to existing medicine names
+            const processedMedicines = fetchedMedicines.map(med => ({
+              ...med,
+              name: capitalizeFirstLetter(med.name.trim()),
+            }));
+            setMedicines(processedMedicines);
           }
         } catch (tableError) {
           console.error("Error accessing medicines table:", tableError);
@@ -83,10 +89,16 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Add a new medicine
   const addMedicine = async (medicine: Omit<Medicine, 'id' | 'created_at' | 'updated_at'>): Promise<Medicine> => {
     try {
-      console.log('Adding medicine to database:', medicine);
+      // Capitalize medicine name before saving
+      const processedMedicine = {
+        ...medicine,
+        name: capitalizeFirstLetter(medicine.name.trim()),
+      };
+
+      console.log('Adding medicine to database:', processedMedicine);
 
       // Add medicine to Supabase
-      const newMedicine = await supabase.from<Medicine>('medicines').insert(medicine);
+      const newMedicine = await supabase.from<Medicine>('medicines').insert(processedMedicine);
 
       console.log('Medicine added to database, response:', newMedicine);
 
@@ -106,9 +118,9 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       try {
         await logAction(AuditLogTemplates.medicine.create(
           newMedicine.id,
-          medicine.name,
-          medicine.dosage,
-          medicine.description
+          processedMedicine.name,
+          processedMedicine.dosage,
+          processedMedicine.description
         ));
       } catch (auditError) {
         console.error('Failed to log medicine creation audit:', auditError);
@@ -116,7 +128,7 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       toast({
         title: 'Success',
-        description: `${medicine.name} (${medicine.dosage}) added successfully.`,
+        description: `${processedMedicine.name} (${processedMedicine.dosage}) added successfully.`,
       });
 
       return newMedicine;
@@ -142,8 +154,14 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         throw new Error('Medicine not found');
       }
 
+      // Capitalize medicine name if it's being updated
+      const processedUpdates = {
+        ...updates,
+        ...(updates.name ? { name: capitalizeFirstLetter(updates.name.trim()) } : {}),
+      };
+
       // Update medicine in Supabase
-      const updatedMedicine = await supabase.from<Medicine>('medicines').update(id, updates);
+      const updatedMedicine = await supabase.from<Medicine>('medicines').update(id, processedUpdates);
 
       console.log('Medicine updated in database, response:', updatedMedicine);
 

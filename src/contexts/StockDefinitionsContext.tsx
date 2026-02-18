@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuditLog } from '@/contexts/AuditLogContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { AuditLogTemplates } from '@/utils/auditLogger';
+import { capitalizeWords } from '@/utils/string-utils';
 
 export interface StockDefinition {
   id: string;
@@ -65,7 +66,13 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
         order: { column: 'name', ascending: true }
       });
 
-      setAllStockDefinitions(data || []);
+      // Apply capitalization to existing stock item names
+      const processedData = (data || []).map((item: StockDefinition) => ({
+        ...item,
+        name: capitalizeWords(item.name.trim()),
+        sub_item: item.sub_item ? capitalizeWords(item.sub_item.trim()) : item.sub_item,
+      }));
+      setAllStockDefinitions(processedData);
     } catch (error) {
       console.error('Error fetching stock definitions:', error);
       toast({
@@ -107,10 +114,17 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
         );
       }
 
+      // Capitalize name and sub_item before saving
+      const processedDefinition = {
+        ...definition,
+        name: capitalizeWords(definition.name.trim()),
+        sub_item: definition.sub_item ? capitalizeWords(definition.sub_item.trim()) : definition.sub_item,
+      };
+
       // First insert the data
       const { error: insertError } = await supabase
         .from('stock_item_definitions')
-        .insert(definition);
+        .insert(processedDefinition);
 
       if (insertError) {
         throw insertError;
@@ -118,7 +132,7 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
 
       // Then fetch the newly inserted data using custom getAll method
       const fetchedData = await supabase.from('stock_item_definitions').getAll({
-        filters: { name: definition.name },
+        filters: { name: processedDefinition.name },
         order: { column: 'created_at', ascending: false },
         limit: 1
       });
@@ -181,10 +195,17 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
         throw new Error('Stock definition not found');
       }
 
+      // Capitalize name and sub_item if provided
+      const processedDefinition = {
+        ...definition,
+        ...(definition.name ? { name: capitalizeWords(definition.name.trim()) } : {}),
+        ...(definition.sub_item ? { sub_item: capitalizeWords(definition.sub_item.trim()) } : {}),
+      };
+
       // For older Supabase versions, we need to use update with id as first parameter
       const updatedData = await supabase
         .from('stock_item_definitions')
-        .update(id, { ...definition, updated_at: new Date().toISOString() });
+        .update(id, { ...processedDefinition, updated_at: new Date().toISOString() });
 
       // In older Supabase versions, update returns the updated data directly
       // If it's an array with data, use the first item
@@ -206,7 +227,7 @@ export const StockDefinitionsProvider: React.FC<{ children: ReactNode }> = ({ ch
       }
 
       // Create the updated definition object for comparison
-      const updatedDefinition = { ...existingDefinition, ...definition };
+      const updatedDefinition = { ...existingDefinition, ...processedDefinition };
 
       // Update local state
       setAllStockDefinitions(prev =>
