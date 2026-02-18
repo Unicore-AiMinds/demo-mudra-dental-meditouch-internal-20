@@ -2248,29 +2248,34 @@ const Settings = () => {
                           clinic_type: newDoctorClinic // Set clinic type based on user selection
                         };
 
-                        // Pass the doctor data and files to the addDoctor function
-                        await addDoctor(newDoctor, aadharFile || undefined, panFile || undefined);
+                        try {
+                          // Pass the doctor data and files to the addDoctor function
+                          await addDoctor(newDoctor, aadharFile || undefined, panFile || undefined);
 
-                        // Reset form fields
-                        setNewDoctorName('');
-                        setNewDoctorSpecialization('');
-                        setNewDoctorEmail('');
-                        setNewDoctorPhone('');
-                        setNewDoctorClinic('dental');
-                        setAadharFile(null);
-                        setPanFile(null);
+                          // Reset form fields
+                          setNewDoctorName('');
+                          setNewDoctorSpecialization('');
+                          setNewDoctorEmail('');
+                          setNewDoctorPhone('');
+                          setNewDoctorClinic('dental');
+                          setAadharFile(null);
+                          setPanFile(null);
 
-                        // Reset file input elements
-                        const aadharInput = document.getElementById('aadharUpload') as HTMLInputElement;
-                        const panInput = document.getElementById('panUpload') as HTMLInputElement;
-                        if (aadharInput) aadharInput.value = '';
-                        if (panInput) panInput.value = '';
+                          // Reset file input elements
+                          const aadharInput = document.getElementById('aadharUpload') as HTMLInputElement;
+                          const panInput = document.getElementById('panUpload') as HTMLInputElement;
+                          if (aadharInput) aadharInput.value = '';
+                          if (panInput) panInput.value = '';
 
-                        toast({
-                          title: "Doctor Added",
-                          description: "The new doctor has been successfully added.",
-                        });
-                        setIsAddDoctorDialogOpen(false);
+                          toast({
+                            title: "Doctor Added",
+                            description: "The new doctor has been successfully added.",
+                          });
+                          setIsAddDoctorDialogOpen(false);
+                        } catch (error) {
+                          // Error toast is already shown by DoctorContext, just keep dialog open
+                          console.error('Error adding doctor:', error);
+                        }
                       } else {
                         toast({
                           title: "Missing Information",

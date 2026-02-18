@@ -6,6 +6,7 @@ import { useAuditLog } from '@/contexts/AuditLogContext';
 import { AuditLogTemplates } from '@/utils/auditLogger';
 import { uploadFile, deleteFile, checkStorageAccess } from '@/lib/supabase-storage';
 import { supabaseClient } from '@/lib/supabase-config';
+import { capitalizeWords } from '@/utils/string-utils';
 
 // Define the Doctor type
 export interface Doctor {
@@ -112,7 +113,13 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           setAllDoctors([]);
         } else {
           console.log('Setting doctors state with fetched doctors:', fetchedDoctors);
-          setAllDoctors(fetchedDoctors);
+          // Apply capitalization to existing doctor names and specializations
+          const processedDoctors = fetchedDoctors.map((doc: Doctor) => ({
+            ...doc,
+            name: capitalizeWords(doc.name.trim()),
+            specialization: doc.specialization ? capitalizeWords(doc.specialization.trim()) : doc.specialization,
+          }));
+          setAllDoctors(processedDoctors);
         }
       } catch (error) {
         console.error('Error fetching doctors:', error);
@@ -147,11 +154,40 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
       }
 
+      // Capitalize name and specialization
+      const capitalizedDoctor = {
+        ...doctor,
+        name: capitalizeWords(doctor.name.trim()),
+        specialization: doctor.specialization ? capitalizeWords(doctor.specialization.trim()) : doctor.specialization,
+      };
+
+      // Check for duplicate doctor (same name, phone, and clinic type)
+      const clinicType = capitalizedDoctor.clinic_type || activeClinic;
+      const duplicateDoctor = allDoctors.find(existing => {
+        const nameMatch = existing.name.trim().toLowerCase() === capitalizedDoctor.name.toLowerCase();
+        const phoneMatch = existing.phone.trim() === capitalizedDoctor.phone.trim();
+        // Check clinic_type overlap: either one is 'both', or they match
+        const clinicOverlap =
+          existing.clinic_type === 'both' ||
+          clinicType === 'both' ||
+          existing.clinic_type === clinicType;
+        return nameMatch && phoneMatch && clinicOverlap;
+      });
+
+      if (duplicateDoctor) {
+        toast({
+          title: 'Duplicate Doctor',
+          description: `Doctor details already exist: ${duplicateDoctor.name} (${duplicateDoctor.specialization || ''})`,
+          variant: 'destructive',
+        });
+        throw new Error('Doctor details already exist');
+      }
+
       // Generate a random color if not provided and add clinic type
       const doctorWithColor = {
-        ...doctor,
-        color: doctor.color || getRandomDentalColor(),
-        clinic_type: doctor.clinic_type || activeClinic // Use current active clinic if not specified
+        ...capitalizedDoctor,
+        color: capitalizedDoctor.color || getRandomDentalColor(),
+        clinic_type: clinicType // Use current active clinic if not specified
       };
 
       console.log('Adding new doctor with data:', doctorWithColor);
@@ -315,11 +351,14 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return newDoctor;
     } catch (error) {
       console.error('Error adding doctor:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add doctor. Please try again.',
-        variant: 'destructive',
-      });
+      // Don't show generic toast if it's a duplicate error (already shown above)
+      if (!(error instanceof Error && error.message === 'Doctor details already exist')) {
+        toast({
+          title: 'Error',
+          description: 'Failed to add doctor. Please try again.',
+          variant: 'destructive',
+        });
+      }
       throw error;
     }
   };
@@ -338,8 +377,12 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
       }
 
-      // Create a copy of the doctor data for updates
-      const doctorUpdate = { ...doctor };
+      // Capitalize name and specialization if provided
+      const doctorUpdate = {
+        ...doctor,
+        ...(doctor.name ? { name: capitalizeWords(doctor.name.trim()) } : {}),
+        ...(doctor.specialization ? { specialization: capitalizeWords(doctor.specialization.trim()) } : {}),
+      };
 
       // Upload Aadhar document if provided and storage is accessible
       if (aadharFile && isStorageAccessible) {
