@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { usePatients } from '@/contexts/PatientContext';
 import { useToast } from '@/hooks/use-toast';
+import { capitalizeWords } from '@/utils/string-utils';
 import {
   Dialog,
   DialogContent,
@@ -62,7 +63,7 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
   onPatientAdded
 }) => {
   const { activeClinic } = useClinic();
-  const { patients } = usePatients();
+  const { patients, addPatient } = usePatients();
   const { toast } = useToast();
   const [isConfirmAddOpen, setIsConfirmAddOpen] = useState(false);
   const [useAgeInput, setUseAgeInput] = useState(true);
@@ -198,56 +199,121 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
   };
 
   // Function to confirm adding a new patient
-  const confirmAddPatient = () => {
-    // Calculate age from DOB if DOB is used
-    let calculatedAge = Number(formData.age);
+  const confirmAddPatient = async () => {
+    try {
+      // Calculate age from DOB if DOB is used
+      let calculatedAge = Number(formData.age);
 
-    if (!useAgeInput && formData.dateOfBirth) {
-      const birthDate = new Date(formData.dateOfBirth);
-      const today = new Date();
-      calculatedAge = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (!useAgeInput && formData.dateOfBirth) {
+        const birthDate = new Date(formData.dateOfBirth);
+        const today = new Date();
+        calculatedAge = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
 
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        calculatedAge--;
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          calculatedAge--;
+        }
+      }
+
+      // Validate phone number
+      if (!formData.phone || formData.phone.trim() === '') {
+        throw new Error('Phone number is required');
+      }
+
+      // Ensure phone number is properly formatted
+      const phoneNumber = formData.phone.trim();
+
+      // Ensure gender and clinic are lowercase and match the allowed values
+      const gender = formData.gender.toLowerCase();
+      const clinic = formData.clinic.toLowerCase();
+
+      // Validate gender
+      if (!['male', 'female', 'other'].includes(gender)) {
+        throw new Error('Gender must be one of: male, female, other');
+      }
+
+      // Validate clinic
+      if (!['dental', 'meditouch', 'both'].includes(clinic)) {
+        throw new Error('Clinic must be one of: dental, meditouch, both');
+      }
+
+      // Create new patient object with proper formatting
+      const newPatient = {
+        name: capitalizeWords(formData.name.trim()),
+        gender: gender as 'male' | 'female' | 'other',
+        age: calculatedAge,
+        date_of_birth: !useAgeInput && formData.dateOfBirth ? formData.dateOfBirth : null,
+        email: formData.email && formData.email.trim() !== '' ? formData.email.trim() : null,
+        phone: phoneNumber,
+        alt_phone: formData.altPhone && formData.altPhone.trim() !== '' ? formData.altPhone.trim() : null,
+        has_whatsapp: false, // Default to false for now
+        address: formData.address && formData.address.trim() !== '' ? formData.address.trim() : null,
+        city: formData.city && formData.city.trim() !== '' ? capitalizeWords(formData.city.trim()) : null,
+        pincode: formData.pincode && formData.pincode.trim() !== '' ? formData.pincode.trim() : null,
+        blood_group: formData.bloodGroup && formData.bloodGroup.trim() !== '' ? formData.bloodGroup.trim() : null,
+        referred_by: formData.referredBy && formData.referredBy.trim() !== '' ? formData.referredBy.trim() : null,
+        clinic: clinic as 'dental' | 'meditouch' | 'both',
+        last_visit: formData.lastVisit && formData.lastVisit.trim() !== '' ? formData.lastVisit.trim() : ''
+      };
+
+      // Add patient to database using PatientContext
+      const createdPatient = await addPatient(newPatient);
+
+      // Close dialogs
+      setIsConfirmAddOpen(false);
+      onClose();
+
+      toast({
+        title: "Patient Added",
+        description: `${formData.name} has been added to the patient registry.`,
+      });
+
+      // Call the callback if provided - AFTER successful database insert
+      // Convert the created patient to match the parent component's expected format
+      if (onPatientAdded) {
+        const patientForCallback = {
+          id: createdPatient.id,
+          name: createdPatient.name,
+          gender: createdPatient.gender,
+          age: createdPatient.age,
+          dateOfBirth: createdPatient.date_of_birth,
+          email: createdPatient.email,
+          phone: createdPatient.phone,
+          altPhone: createdPatient.alt_phone,
+          address: createdPatient.address,
+          city: createdPatient.city,
+          pincode: createdPatient.pincode,
+          bloodGroup: createdPatient.blood_group,
+          referredBy: createdPatient.referred_by,
+          clinic: createdPatient.clinic,
+          lastVisit: createdPatient.last_visit
+        };
+        onPatientAdded(patientForCallback);
+      }
+
+      // Reset the form
+      resetFormData();
+    } catch (error) {
+      console.error('Error adding patient in AddPatientDialog:', error);
+
+      // Close confirmation dialog but keep the form open so user can fix issues
+      setIsConfirmAddOpen(false);
+
+      // Check if the error is a specific type
+      if (error instanceof Error) {
+        toast({
+          title: "Error",
+          description: `Failed to add patient: ${error.message}`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to add patient. Please try again.",
+          variant: "destructive",
+        });
       }
     }
-
-    // Create new patient object
-    const newPatient = {
-      id: `PT${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-      name: formData.name,
-      gender: formData.gender as 'male' | 'female' | 'other',
-      age: calculatedAge,
-      dateOfBirth: !useAgeInput ? formData.dateOfBirth : undefined,
-      email: formData.email || null,
-      phone: formData.phone,
-      altPhone: formData.altPhone || null,
-      address: formData.address,
-      city: formData.city,
-      pincode: formData.pincode,
-      bloodGroup: formData.bloodGroup,
-      referredBy: formData.referredBy,
-      clinic: formData.clinic as 'dental' | 'meditouch' | 'both',
-      lastVisit: formData.lastVisit || ''
-    };
-
-    // Close dialogs and show success message
-    setIsConfirmAddOpen(false);
-    onClose();
-
-    toast({
-      title: "Patient Added",
-      description: `${formData.name} has been added to the patient registry.`,
-    });
-
-    // Call the callback if provided
-    if (onPatientAdded) {
-      onPatientAdded(newPatient);
-    }
-
-    // Reset the form
-    resetFormData();
   };
 
   return (
