@@ -87,13 +87,17 @@ CREATE TABLE appointments (
   status TEXT NOT NULL CHECK (status IN ('confirmed', 'arrived', 'completed', 'cancelled')),
   payment_status TEXT CHECK (payment_status IN ('paid', 'unpaid')),
   based_on_follow_up_id UUID,
+  follow_up_id UUID, -- Links appointment to a follow-up entry from recall list
   related_to_charting_entry_id UUID,
   notes TEXT,
   clinic_type TEXT NOT NULL CHECK (clinic_type IN ('dental', 'meditouch')),
   doctor TEXT, -- For dental appointments
+  doctor_id UUID, -- References users(id) for the doctor
   second_patient TEXT, -- For dental appointments
   treatment_type TEXT, -- Different for dental and meditouch
   therapist TEXT, -- For meditouch appointments
+  charting_entry_id UUID, -- Links appointment to a dental charting entry
+  duration_minutes INTEGER, -- Duration in minutes
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

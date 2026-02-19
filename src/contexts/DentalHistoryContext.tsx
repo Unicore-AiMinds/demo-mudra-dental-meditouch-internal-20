@@ -7,7 +7,7 @@ import {
   defaultFollowUps,
   defaultServiceWithFollowUp
 } from '../types/dental-history';
-import { addDays, format } from 'date-fns';
+import { addDays, format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useClinic } from '@/contexts/ClinicContext';
@@ -29,7 +29,8 @@ interface DentalHistoryContextType {
     service: string,
     doctor: string,
     date: string,
-    clinicType?: 'dental' | 'meditouch'
+    clinicType?: 'dental' | 'meditouch',
+    followUpId?: string
   ) => Promise<void>;
   updateFollowUpStatus: (followUpId: string, status: TentativeFollowUp['status']) => Promise<void>;
   updatePaymentStatus: (patientId: string, appointmentId: string, status: 'paid' | 'unpaid') => Promise<void>;
@@ -327,11 +328,13 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
     service: string,
     doctor: string,
     date: string,
-    clinicType?: 'dental' | 'meditouch'
+    clinicType?: 'dental' | 'meditouch',
+    followUpId?: string
   ): Promise<void> => {
     try {
       console.log(`=== MARKING APPOINTMENT COMPLETED ===`);
       console.log(`Patient: ${patientName}, Service: ${service}, Date: ${date}`);
+      console.log(`Follow-up ID: ${followUpId || 'None'}`);
 
       // Find the service configuration - try exact match first, then case-insensitive
       let serviceConfig = servicesWithFollowUp.find(s => s.name === service);
@@ -384,6 +387,126 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
 
       // CRITICAL FIX: Only use database rules - no hardcoded service filtering
       console.log(`Checking if follow-up rules exist for service: "${service}"`);
+
+      // CRITICAL FIX: If this appointment was created from a follow-up, handle sequence advancement
+      if (followUpId) {
+        console.log(`🔗 This appointment was created from follow-up ID: ${followUpId}`);
+        console.log(`🔄 Advancing follow-up sequence instead of creating new follow-ups`);
+
+        // Find the follow-up entry
+        const completedFollowUp = tentativeFollowUps.find(fu => fu.id === followUpId);
+
+        if (completedFollowUp) {
+          console.log(`Found follow-up:`, completedFollowUp);
+
+          // Find the next step in the sequence
+          if (completedFollowUp.sequence_group_id &&
+              completedFollowUp.follow_up_sequence < completedFollowUp.total_steps_in_sequence) {
+
+            const nextStepSequence = completedFollowUp.follow_up_sequence + 1;
+            console.log(`Looking for next step: ${nextStepSequence}/${completedFollowUp.total_steps_in_sequence}`);
+
+            // Find the next waiting step
+            const nextStepFollowUps = tentativeFollowUps.filter(fu =>
+              fu.sequence_group_id === completedFollowUp.sequence_group_id &&
+              fu.follow_up_sequence === nextStepSequence &&
+              fu.status === 'Waiting'
+            );
+
+            if (nextStepFollowUps.length > 0) {
+              const nextStep = nextStepFollowUps[0];
+              console.log(`✅ Found next step (${nextStep.follow_up_sequence}/${nextStep.total_steps_in_sequence}), activating it...`);
+
+              // Calculate the date offset between actual completion and original tentative date
+              const actualCompletionDate = parseISO(date);
+              const originalTentativeDate = parseISO(completedFollowUp.tentative_date);
+              const offsetDays = differenceInCalendarDays(actualCompletionDate, originalTentativeDate);
+              console.log(`📅 Date offset: actual completion (${date}) - original tentative (${completedFollowUp.tentative_date}) = ${offsetDays} days`);
+
+              // Find ALL remaining steps in the sequence (next step + any further waiting steps)
+              const allRemainingSteps = tentativeFollowUps.filter(fu =>
+                fu.sequence_group_id === completedFollowUp.sequence_group_id &&
+                fu.follow_up_sequence >= nextStepSequence &&
+                (fu.status === 'Waiting' || fu.id === nextStep.id)
+              );
+
+              console.log(`Found ${allRemainingSteps.length} remaining steps to update dates for`);
+
+              // Update tentative dates for all remaining steps if there's an offset
+              for (const step of allRemainingSteps) {
+                const originalStepDate = parseISO(step.tentative_date);
+                const newStepDate = addDays(originalStepDate, offsetDays);
+                const newTentativeDate = format(newStepDate, 'yyyy-MM-dd');
+
+                const updatePayload: Partial<TentativeFollowUp> = {
+                  tentative_date: newTentativeDate
+                };
+
+                // The next immediate step also gets status changed to Pending
+                if (step.id === nextStep.id) {
+                  updatePayload.status = 'Pending';
+                }
+
+                console.log(`📅 Step ${step.follow_up_sequence}: ${step.tentative_date} → ${newTentativeDate} (offset: ${offsetDays} days)${step.id === nextStep.id ? ' [status → Pending]' : ''}`);
+
+                // Update in Supabase
+                await supabase.from<TentativeFollowUp>('follow_ups').update(step.id, updatePayload);
+              }
+
+              // Update local state for all remaining steps
+              setTentativeFollowUps(prev =>
+                prev.map(fu => {
+                  const remainingStep = allRemainingSteps.find(rs => rs.id === fu.id);
+                  if (remainingStep) {
+                    const originalStepDate = parseISO(fu.tentative_date);
+                    const newStepDate = addDays(originalStepDate, offsetDays);
+                    const newTentativeDate = format(newStepDate, 'yyyy-MM-dd');
+                    return {
+                      ...fu,
+                      tentative_date: newTentativeDate,
+                      ...(fu.id === nextStep.id ? { status: 'Pending' as const } : {})
+                    };
+                  }
+                  return fu;
+                })
+              );
+
+              // Delete the completed follow-up
+              await supabase.from<TentativeFollowUp>('follow_ups').delete(completedFollowUp.id);
+              setTentativeFollowUps(prev => prev.filter(fu => fu.id !== completedFollowUp.id));
+
+              toast({
+                title: "Follow-up Sequence Advanced",
+                description: `Step ${nextStep.follow_up_sequence} is now pending for ${patientName}.${offsetDays !== 0 ? ` Tentative dates adjusted by ${offsetDays > 0 ? '+' : ''}${offsetDays} days.` : ''}`,
+              });
+
+              console.log(`✅ Successfully advanced sequence: Step ${nextStep.follow_up_sequence} is now Pending${offsetDays !== 0 ? ` (dates shifted by ${offsetDays} days)` : ''}`);
+            } else {
+              console.log(`⚠️ No waiting step found for sequence ${nextStepSequence}`);
+            }
+          } else {
+            console.log(`✅ This was the last step in the sequence, deleting completed follow-up`);
+
+            // Delete the completed follow-up since it was the last step
+            await supabase.from<TentativeFollowUp>('follow_ups').delete(completedFollowUp.id);
+            setTentativeFollowUps(prev => prev.filter(fu => fu.id !== completedFollowUp.id));
+
+            toast({
+              title: "Follow-up Sequence Completed",
+              description: `All follow-up steps completed for ${patientName}.`,
+            });
+          }
+
+          // Dispatch refresh event
+          const refreshEvent = new CustomEvent('refresh-follow-ups');
+          document.dispatchEvent(refreshEvent);
+
+          // Exit early - don't create new follow-ups
+          return;
+        } else {
+          console.log(`⚠️ Follow-up ID ${followUpId} not found in tentativeFollowUps`);
+        }
+      }
 
       // CRITICAL FIX: Check if follow-up already exists for this appointment
       const existingFollowUp = tentativeFollowUps.find(fu =>

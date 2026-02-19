@@ -22,6 +22,7 @@ export interface Appointment {
   status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
   payment_status?: 'paid' | 'unpaid';
   based_on_follow_up_id?: string;
+  follow_up_id?: string;
   notes?: string;
   clinic_type: 'dental' | 'meditouch';
   doctor?: string;

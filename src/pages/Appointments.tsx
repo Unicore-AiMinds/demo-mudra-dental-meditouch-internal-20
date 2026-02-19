@@ -440,6 +440,7 @@ const Appointments = () => {
   const [appointmentNotes, setAppointmentNotes] = useState("");
   const [appointmentDate, setAppointmentDate] = useState<Date | undefined>(undefined);
   const [pendingChartingEntryId, setPendingChartingEntryId] = useState<string | undefined>(undefined);
+  const [pendingFollowUpId, setPendingFollowUpId] = useState<string | undefined>(undefined);
 
   // State for expanded days in weekly and monthly views
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
@@ -1328,7 +1329,8 @@ const Appointments = () => {
         appointment.service,
         doctorOrTherapist,
         appointment.date || format(new Date(), 'yyyy-MM-dd'),
-        isDental ? 'dental' : 'meditouch' // Pass the clinic type
+        isDental ? 'dental' : 'meditouch', // Pass the clinic type
+        appointment.follow_up_id // Pass the follow-up ID
       );
       console.log('Appointment added to dental history');
 
@@ -1856,6 +1858,8 @@ const Appointments = () => {
           clinic_type: 'dental' as const,
           // If this appointment is for a planned treatment, link it to the charting entry
           charting_entry_id: pendingChartingEntryId,
+          // If this appointment is for a follow-up, link it to the follow-up entry
+          follow_up_id: pendingFollowUpId,
           notes: pendingAppointment.notes || '',
           duration_minutes: pendingAppointment.duration_minutes // Include the calculated duration
         };
@@ -1880,6 +1884,8 @@ const Appointments = () => {
           payment_status: 'unpaid' as const,
           clinic_type: 'meditouch' as const,
           therapist: appointmentDoctor || pendingAppointment.doctor || '', // Use doctor field for therapist
+          // If this appointment is for a follow-up, link it to the follow-up entry
+          follow_up_id: pendingFollowUpId,
           notes: pendingAppointment.notes || '',
           duration_minutes: pendingAppointment.duration_minutes // Include the calculated duration
         };
@@ -1927,6 +1933,7 @@ const Appointments = () => {
       setIsConfirmCreateOpen(false);
       setPendingAppointment(null);
       setPendingChartingEntryId(undefined);
+      setPendingFollowUpId(undefined);
       resetAppointmentForm();
 
       // Update the UI date to match the appointment date
@@ -1966,6 +1973,7 @@ const Appointments = () => {
     setAppointmentNotes("");
     setAppointmentDate(undefined);
     setPendingChartingEntryId(undefined);
+    setPendingFollowUpId(undefined);
   }, []);
 
   const goToNewAppointment = () => {
@@ -2144,6 +2152,12 @@ const Appointments = () => {
       if (chartingEntryId) {
         console.log('Setting pending charting entry ID:', chartingEntryId);
         setPendingChartingEntryId(chartingEntryId);
+      }
+
+      // Store the followUpId if provided
+      if (followUpId) {
+        console.log('Setting pending follow-up ID:', followUpId);
+        setPendingFollowUpId(followUpId);
       }
 
       // Parse the date if provided
