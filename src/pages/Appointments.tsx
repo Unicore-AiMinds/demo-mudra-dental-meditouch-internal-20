@@ -3334,7 +3334,7 @@ const Appointments = () => {
           }
         }}
       >
-        <DialogContent className={`${isMobile ? 'max-w-[95vw]' : 'sm:max-w-[500px]'} max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
+        <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] overflow-y-auto' : 'sm:max-w-[500px]'}`}>
           <DialogHeader>
             <DialogTitle>Edit Appointment</DialogTitle>
             <DialogDescription>
@@ -3701,6 +3701,11 @@ const Appointments = () => {
                     </span>
                   )}
                 </p>
+                {appointmentFollowUpService && (
+                  <p className="text-sm">
+                    <span className="font-semibold">Follow-up Service:</span> {appointmentFollowUpService}
+                  </p>
+                )}
                 <p className="text-sm">
                   <span className="font-semibold">Date:</span> {pendingAppointment.date ? format(pendingAppointment.date, 'PP') : ''}
                 </p>
