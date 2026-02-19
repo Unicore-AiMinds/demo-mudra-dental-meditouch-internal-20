@@ -441,6 +441,7 @@ const Appointments = () => {
   const [appointmentDate, setAppointmentDate] = useState<Date | undefined>(undefined);
   const [pendingChartingEntryId, setPendingChartingEntryId] = useState<string | undefined>(undefined);
   const [pendingFollowUpId, setPendingFollowUpId] = useState<string | undefined>(undefined);
+  const [appointmentFollowUpService, setAppointmentFollowUpService] = useState("");
 
   // State for expanded days in weekly and monthly views
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
@@ -1974,6 +1975,7 @@ const Appointments = () => {
     setAppointmentDate(undefined);
     setPendingChartingEntryId(undefined);
     setPendingFollowUpId(undefined);
+    setAppointmentFollowUpService("");
   }, []);
 
   const goToNewAppointment = () => {
@@ -2118,6 +2120,7 @@ const Appointments = () => {
         patientName: string;
         patientId: string;
         serviceName: string;
+        suggestedServiceName?: string;
         doctorName?: string;
         date?: string;
         followUpId?: string;
@@ -2127,7 +2130,7 @@ const Appointments = () => {
       }>;
 
       // Get the data from the event
-      const { patientName, patientId, serviceName, doctorName, date, followUpId, chartingEntryId, teeth, notes } = customEvent.detail;
+      const { patientName, patientId, serviceName, suggestedServiceName, doctorName, date, followUpId, chartingEntryId, teeth, notes } = customEvent.detail;
 
       console.log('🎯 Received openNewAppointmentFormWithData event with data:', customEvent.detail);
 
@@ -2137,6 +2140,11 @@ const Appointments = () => {
       // Set the form fields with the data from the event
       setAppointmentPatient(patientName);
       setAppointmentService(serviceName);
+
+      // Set the follow-up service name if provided (only for recall list appointments)
+      if (suggestedServiceName) {
+        setAppointmentFollowUpService(suggestedServiceName);
+      }
 
       // Set the doctor if provided
       if (doctorName) {
@@ -3027,17 +3035,17 @@ const Appointments = () => {
           }
         }}
       >
-        <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] overflow-y-auto' : 'sm:max-w-[500px]'}`}>
+        <DialogContent className={`${isMobile ? 'max-w-[95vw]' : 'sm:max-w-[500px]'} max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
           <DialogHeader>
             <DialogTitle>Create New Appointment</DialogTitle>
             <DialogDescription>
               Add a new appointment for a registered patient.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-4">
-                <div className="space-y-2">
+          <div className="grid gap-3 py-2">
+            <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-3">
+                <div className="space-y-1">
                   <Label htmlFor="patient">Patient</Label>
                   <Select
                     value={appointmentPatient}
@@ -3142,43 +3150,55 @@ const Appointments = () => {
                 </Button>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="service">Service</Label>
-                <Select value={appointmentService} onValueChange={setAppointmentService}>
-                  <SelectTrigger id="service">
-                    <SelectValue placeholder="Select service" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isDental ? (
-                      dentalServices.length > 0 ? (
-                        dentalServices.map(service => (
-                          <SelectItem key={service.id} value={service.name}>
-                            {service.name}
-                          </SelectItem>
-                        ))
+              <div className={appointmentFollowUpService ? "grid grid-cols-2 gap-3" : ""}>
+                <div className="space-y-1">
+                  <Label htmlFor="service">Service</Label>
+                  <Select value={appointmentService} onValueChange={setAppointmentService}>
+                    <SelectTrigger id="service">
+                      <SelectValue placeholder="Select service" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isDental ? (
+                        dentalServices.length > 0 ? (
+                          dentalServices.map(service => (
+                            <SelectItem key={service.id} value={service.name}>
+                              {service.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                            No services found. Please add services in Settings.
+                          </div>
+                        )
                       ) : (
-                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                          No services found. Please add services in Settings.
-                        </div>
-                      )
-                    ) : (
-                      meditouchServices.length > 0 ? (
-                        meditouchServices.map(service => (
-                          <SelectItem key={service.id} value={service.name}>
-                            {service.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                          No services found. Please add services in Settings.
-                        </div>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
+                        meditouchServices.length > 0 ? (
+                          meditouchServices.map(service => (
+                            <SelectItem key={service.id} value={service.name}>
+                              {service.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                            No services found. Please add services in Settings.
+                          </div>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {appointmentFollowUpService && (
+                  <div className="space-y-1">
+                    <Label htmlFor="follow-up-service">Follow-up Service</Label>
+                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground">
+                      {appointmentFollowUpService}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
                 <Label>Appointment Date</Label>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -3206,7 +3226,7 @@ const Appointments = () => {
                 </Popover>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="time">Time Slot</Label>
                 <Select
                   value={appointmentTime}
@@ -3240,8 +3260,9 @@ const Appointments = () => {
                   </SelectContent>
                 </Select>
               </div>
+              </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="doctor">Doctor</Label>
                 <Select
                   value={appointmentDoctor}
@@ -3267,14 +3288,14 @@ const Appointments = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
                   id="notes"
                   placeholder="Add any special requirements or information"
                   value={appointmentNotes}
                   onChange={(e) => setAppointmentNotes(e.target.value)}
-                  rows={3}
+                  rows={2}
                 />
               </div>
             </div>
@@ -3313,7 +3334,7 @@ const Appointments = () => {
           }
         }}
       >
-        <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] overflow-y-auto' : 'sm:max-w-[500px]'}`}>
+        <DialogContent className={`${isMobile ? 'max-w-[95vw]' : 'sm:max-w-[500px]'} max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
           <DialogHeader>
             <DialogTitle>Edit Appointment</DialogTitle>
             <DialogDescription>

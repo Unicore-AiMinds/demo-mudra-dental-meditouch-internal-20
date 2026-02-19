@@ -803,7 +803,8 @@ const RecallList = () => {
       const eventData = {
         patientName: followUp.patient_name,
         patientId: followUp.patient_id,
-        serviceName: followUp.suggested_service_name,
+        serviceName: followUp.original_service,
+        suggestedServiceName: followUp.suggested_service_name,
         doctorName: followUp.original_doctor,
         date: followUp.tentative_date,
         followUpId: followUp.id,
