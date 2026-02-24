@@ -3,8 +3,8 @@ import { format, parseISO, isToday, isTomorrow, isThisWeek, isThisMonth, addDays
 import { useAppointments } from '@/contexts/AppointmentContext';
 import { usePatients } from '@/contexts/PatientContext';
 import { useClinic } from '@/contexts/ClinicContext';
+import { useDoctors } from '@/contexts/DoctorContext';
 import { Phone, Calendar, Download, Filter, CalendarIcon } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Appointment } from '@/types/appointment';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ export const AppointmentList = () => {
   const { dentalAppointments, meditouchAppointments } = useAppointments();
   const { patients } = usePatients();
   const { activeClinic } = useClinic();
+  const { doctors } = useDoctors();
   const [appointmentList, setAppointmentList] = useState<(Appointment & { phone?: string })[]>([]);
   const [filteredAppointmentList, setFilteredAppointmentList] = useState<(Appointment & { phone?: string })[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -34,6 +35,7 @@ export const AppointmentList = () => {
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
   const [isCustomRangeOpen, setIsCustomRangeOpen] = useState(false);
   const [phoneListOnly, setPhoneListOnly] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<string>('all');
 
   // Find all appointments for patients without WhatsApp (excluding completed/cancelled)
   useEffect(() => {
@@ -137,6 +139,11 @@ export const AppointmentList = () => {
           break;
       }
 
+      // Apply doctor filter
+      if (selectedDoctor !== 'all') {
+        filtered = filtered.filter(app => app.doctor === selectedDoctor);
+      }
+
       // Apply phone list filter (only patients without WhatsApp)
       if (phoneListOnly) {
         filtered = filtered.filter(app => {
@@ -149,12 +156,12 @@ export const AppointmentList = () => {
     };
 
     applyFilters();
-  }, [appointmentList, dateFilter, customStartDate, customEndDate, phoneListOnly, patients]);
+  }, [appointmentList, dateFilter, customStartDate, customEndDate, phoneListOnly, selectedDoctor, patients]);
 
   // Export appointments to CSV
   const exportToCSV = () => {
     // Create CSV content from the filtered appointment list data
-    const headers = ['Date', 'Time', 'Patient', 'Phone Number', 'Service', 'Status', 'Clinic Type'];
+    const headers = ['Date', 'Time', 'Patient', 'Phone Number', 'Service', 'Doctor', 'Clinic Type'];
     
     const csvContent = [
       headers.join(','),
@@ -165,7 +172,7 @@ export const AppointmentList = () => {
           `"${app.patient_name || ''}"`,
           `"${app.phone || ''}"`,
           `"${app.service || ''}"`,
-          `"${app.status || ''}"`,
+          `"${app.doctor || ''}"`,
           `"${app.clinic_type || ''}"`,
         ].join(',');
       })
@@ -242,6 +249,20 @@ export const AppointmentList = () => {
                     <SelectItem value="next7Days">Next 7 Days</SelectItem>
                     <SelectItem value="thisMonth">This Month</SelectItem>
                     <SelectItem value="customRange">Custom Range</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select Doctor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Doctors</SelectItem>
+                    {doctors.map(doctor => (
+                      <SelectItem key={doctor.id} value={doctor.name}>
+                        {doctor.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
@@ -333,9 +354,9 @@ export const AppointmentList = () => {
                       <th className="text-left py-2 px-3">Date</th>
                       <th className="text-left py-2 px-3">Time</th>
                       <th className="text-left py-2 px-3">Patient</th>
-                      <th className="text-left py-2 px-3">Phone Number</th>
+                      <th className="text-left py-2 px-3">Doctor</th>
                       <th className="text-left py-2 px-3">Service</th>
-                      <th className="text-left py-2 px-3">Status</th>
+                      <th className="text-left py-2 px-3">Phone Number</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -347,10 +368,12 @@ export const AppointmentList = () => {
                         <td className="py-2 px-3">{format(parseISO(app.date), 'MMM d, yyyy')}</td>
                         <td className="py-2 px-3">{app.time}</td>
                         <td className="py-2 px-3">{app.patient_name}</td>
+                        <td className="py-2 px-3">{app.doctor || '-'}</td>
+                        <td className="py-2 px-3">{app.service}</td>
                         <td className="py-2 px-3">
                           {app.phone ? (
-                            <a 
-                              href={`tel:${app.phone}`} 
+                            <a
+                              href={`tel:${app.phone}`}
                               className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
                             >
                               <Phone className="h-4 w-4" />
@@ -359,12 +382,6 @@ export const AppointmentList = () => {
                           ) : (
                             <span className="text-gray-400">No phone</span>
                           )}
-                        </td>
-                        <td className="py-2 px-3">{app.service}</td>
-                        <td className="py-2 px-3">
-                          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                            {app.status}
-                          </Badge>
                         </td>
                       </tr>
                     ))}
