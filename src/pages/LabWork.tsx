@@ -829,13 +829,13 @@ const LabWork = () => {
           <DialogHeader>
             <DialogTitle>Create New Lab Entry</DialogTitle>
             <DialogDescription>
-              Enter the details for the new lab work order. Fields marked with * are required.
+              Enter the details for the new lab work order. Fields marked with <span className="text-red-500">*</span> are required.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="patient">Patient Name *</Label>
+                <Label htmlFor="patient">Patient Name <span className="text-red-500 ml-1">*</span></Label>
                 <Select
                   value={newPatient}
                   onValueChange={(value) => {
@@ -867,7 +867,7 @@ const LabWork = () => {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="service">Service *</Label>
+                <Label htmlFor="service">Service <span className="text-red-500 ml-1">*</span></Label>
                 <Select value={newService} onValueChange={setNewService}>
                   <SelectTrigger id="service">
                     <SelectValue placeholder="Select Service" />
@@ -882,7 +882,7 @@ const LabWork = () => {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="labWorkType">Lab Work Type *</Label>
+                <Label htmlFor="labWorkType">Lab Work Type <span className="text-red-500 ml-1">*</span></Label>
                 <Select
                   value={newLabWorkType}
                   onValueChange={(value) => {
@@ -915,7 +915,7 @@ const LabWork = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="assignedLab">Assigned Lab *</Label>
+                <Label htmlFor="assignedLab">Assigned Lab <span className="text-red-500 ml-1">*</span></Label>
                 <Select
                   value={newAssignedLab}
                   onValueChange={(value) => {
@@ -948,7 +948,7 @@ const LabWork = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dateSent" className="flex items-center">
-                  Date Sent *
+                  Date Sent <span className="text-red-500 ml-1">*</span>
                   {selectedLabWorkType && (
                     <span className="ml-2 text-sm text-muted-foreground">
                       (Turnaround: {selectedLabWorkType.turnaround_duration} {selectedLabWorkType.turnaround_unit})
@@ -973,7 +973,7 @@ const LabWork = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="expectedDelivery" className="flex items-center">
-                  Expected Delivery *
+                  Expected Delivery <span className="text-red-500 ml-1">*</span>
                 </Label>
                 <Input
                   type="date"
@@ -1176,14 +1176,14 @@ const LabWork = () => {
           <DialogHeader>
             <DialogTitle>Edit Lab Entry</DialogTitle>
             <DialogDescription>
-              Update the details for this lab work order. Fields marked with * are required.
+              Update the details for this lab work order. Fields marked with <span className="text-red-500">*</span> are required.
             </DialogDescription>
           </DialogHeader>
           {editingJob && (
             <div className="grid gap-3 py-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="edit-patient">Patient Name *</Label>
+                  <Label htmlFor="edit-patient">Patient Name <span className="text-red-500 ml-1">*</span></Label>
                   <Select
                     value={editPatient}
                     onValueChange={(value) => {
@@ -1215,7 +1215,7 @@ const LabWork = () => {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="edit-service">Service *</Label>
+                  <Label htmlFor="edit-service">Service <span className="text-red-500 ml-1">*</span></Label>
                   <Select value={editService} onValueChange={setEditService}>
                     <SelectTrigger id="edit-service">
                       <SelectValue placeholder="Select Service" />
@@ -1230,7 +1230,7 @@ const LabWork = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-labWorkType">Lab Work Type *</Label>
+                  <Label htmlFor="edit-labWorkType">Lab Work Type <span className="text-red-500 ml-1">*</span></Label>
                   <Select
                     value={editLabWorkType}
                     onValueChange={(value) => {
@@ -1263,7 +1263,7 @@ const LabWork = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-assignedLab">Assigned Lab *</Label>
+                  <Label htmlFor="edit-assignedLab">Assigned Lab <span className="text-red-500 ml-1">*</span></Label>
                   <Select
                     value={editAssignedLab}
                     onValueChange={(value) => {
@@ -1296,7 +1296,7 @@ const LabWork = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-dateSent" className="flex items-center">
-                    Date Sent *
+                    Date Sent <span className="text-red-500 ml-1">*</span>
                     {selectedEditLabWorkType && (
                       <span className="ml-2 text-sm text-muted-foreground">
                         (Turnaround: {selectedEditLabWorkType.turnaround_duration} {selectedEditLabWorkType.turnaround_unit})
@@ -1321,7 +1321,7 @@ const LabWork = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-expectedDelivery" className="flex items-center">
-                    Expected Delivery *
+                    Expected Delivery <span className="text-red-500 ml-1">*</span>
                   </Label>
                   <Input
                     type="date"
