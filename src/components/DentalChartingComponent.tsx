@@ -326,7 +326,7 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
 
           {/* Tooth Selection */}
           <div className="space-y-2">
-            <Label className="font-medium">Tooth Selection *</Label>
+            <Label className="font-medium">Tooth Selection <span className="text-red-500 ml-1">*</span></Label>
 
             <Tabs defaultValue="visual" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
@@ -438,7 +438,7 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
 
           {/* Status Selection */}
           <div className="space-y-2">
-            <Label htmlFor="status" className="font-medium">Status *</Label>
+            <Label htmlFor="status" className="font-medium">Status <span className="text-red-500 ml-1">*</span></Label>
             <Select
               value={selectedStatus}
               onValueChange={(value: 'Existing' | 'Planned' | 'Completed') => setSelectedStatus(value)}
@@ -459,7 +459,7 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
           {/* Finding Input - Only shown for Existing status */}
           {selectedStatus === 'Existing' && (
             <div className="space-y-2">
-              <Label htmlFor="finding" className="font-medium">Finding/Condition *</Label>
+              <Label htmlFor="finding" className="font-medium">Finding/Condition <span className="text-red-500 ml-1">*</span></Label>
               <input
                 id="finding"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -474,7 +474,7 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
           {(selectedStatus === 'Planned' || selectedStatus === 'Completed') && (
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <Label htmlFor="service" className="font-medium">Service *</Label>
+                <Label htmlFor="service" className="font-medium">Service <span className="text-red-500 ml-1">*</span></Label>
                 {isServicesLoading && (
                   <span className="text-xs text-muted-foreground">Loading services...</span>
                 )}

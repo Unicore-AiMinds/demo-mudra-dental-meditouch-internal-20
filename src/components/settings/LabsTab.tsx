@@ -297,7 +297,7 @@ const LabsTab: React.FC = () => {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Lab Name*</Label>
+                  <Label htmlFor="name">Lab Name <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="name"
                     value={name}
@@ -412,7 +412,7 @@ const LabsTab: React.FC = () => {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-name">Lab Name*</Label>
+                  <Label htmlFor="edit-name">Lab Name <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="edit-name"
                     value={name}

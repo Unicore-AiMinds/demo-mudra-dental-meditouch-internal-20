@@ -425,7 +425,7 @@ export const RoleDialog: React.FC<RoleDialogProps> = ({
           {/* Basic Information */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="display_name">Display Name*</Label>
+              <Label htmlFor="display_name">Display Name <span className="text-red-500 ml-1">*</span></Label>
               <Input
                 id="display_name"
                 value={formData.display_name}
@@ -434,7 +434,7 @@ export const RoleDialog: React.FC<RoleDialogProps> = ({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="name">Role Name*</Label>
+              <Label htmlFor="name">Role Name <span className="text-red-500 ml-1">*</span></Label>
               <Input
                 id="name"
                 value={formData.name}

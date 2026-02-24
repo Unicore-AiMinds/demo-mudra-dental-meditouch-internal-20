@@ -1276,7 +1276,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
               {/* Prescription Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="space-y-2">
-                  <Label htmlFor="diagnosis">Diagnosis *</Label>
+                  <Label htmlFor="diagnosis">Diagnosis <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="diagnosis"
                     name="diagnosis"
@@ -1287,7 +1287,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="prescribedBy">Prescribed By *</Label>
+                  <Label htmlFor="prescribedBy">Prescribed By <span className="text-red-500 ml-1">*</span></Label>
                   <select
                     id="prescribed_by"
                     name="prescribed_by"
@@ -1305,7 +1305,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="status">Status *</Label>
+                  <Label htmlFor="status">Status <span className="text-red-500 ml-1">*</span></Label>
                   <select
                     id="status"
                     name="status"
@@ -1345,7 +1345,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
 
               {/* Medications Section */}
               <div className="mb-6">
-                <h4 className="text-md font-medium mb-2">Medications *</h4>
+                <h4 className="text-md font-medium mb-2">Medications <span className="text-red-500 ml-1">*</span></h4>
 
                 {/* Current Medications List */}
                 {newMedications.length > 0 && (
@@ -1403,7 +1403,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {/* Medicine Name */}
                     <div>
-                      <Label htmlFor="medicineName" className="text-xs font-medium mb-1 block">Name *</Label>
+                      <Label htmlFor="medicineName" className="text-xs font-medium mb-1 block">Name <span className="text-red-500 ml-1">*</span></Label>
                       <Combobox
                         options={getUniqueMedicineNames(medicines).map(name => ({
                           value: name,
@@ -1418,7 +1418,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
 
                     {/* Dosage */}
                     <div>
-                      <Label htmlFor="dosage" className="text-xs font-medium mb-1 block">Dosage *</Label>
+                      <Label htmlFor="dosage" className="text-xs font-medium mb-1 block">Dosage <span className="text-red-500 ml-1">*</span></Label>
                       <Combobox
                         options={availableDosages.map(dosage => ({
                           value: dosage,
@@ -1437,7 +1437,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {/* Timing Checkboxes */}
                     <div>
-                      <Label className="text-xs font-medium mb-1 block">Timing *</Label>
+                      <Label className="text-xs font-medium mb-1 block">Timing <span className="text-red-500 ml-1">*</span></Label>
                       <div className="flex space-x-4 border rounded-md p-2 bg-gray-50">
                         <div className="flex items-center">
                           <input
@@ -1494,7 +1494,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {/* Duration */}
                     <div>
-                      <Label htmlFor="duration" className="text-xs font-medium mb-1 block">Duration *</Label>
+                      <Label htmlFor="duration" className="text-xs font-medium mb-1 block">Duration <span className="text-red-500 ml-1">*</span></Label>
                       <Input
                         id="duration"
                         name="duration"
@@ -1507,7 +1507,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
 
                     {/* Dispense Quantity */}
                     <div>
-                      <Label htmlFor="dispenseQuantity" className="text-xs font-medium mb-1 block">Dispense Qty *</Label>
+                      <Label htmlFor="dispenseQuantity" className="text-xs font-medium mb-1 block">Dispense Qty <span className="text-red-500 ml-1">*</span></Label>
                       <Input
                         id="dispenseQuantity"
                         name="dispenseQuantity"

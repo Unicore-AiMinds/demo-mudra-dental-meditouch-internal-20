@@ -3022,7 +3022,7 @@ const Settings = () => {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="triggeringService">Triggering Service *</Label>
+                    <Label htmlFor="triggeringService">Triggering Service <span className="text-red-500 ml-1">*</span></Label>
                     <Select
                       value={newTriggeringService}
                       onValueChange={setNewTriggeringService}
@@ -3071,7 +3071,7 @@ const Settings = () => {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor={`interval-${index}`}>Interval (days) *</Label>
+                          <Label htmlFor={`interval-${index}`}>Interval (days) <span className="text-red-500 ml-1">*</span></Label>
                           <Input
                             id={`interval-${index}`}
                             type="number"
@@ -3083,7 +3083,7 @@ const Settings = () => {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor={`followup-name-${index}`}>Follow-up Name *</Label>
+                          <Label htmlFor={`followup-name-${index}`}>Follow-up Name <span className="text-red-500 ml-1">*</span></Label>
                           <Input
                             id={`followup-name-${index}`}
                             value={step.suggested_service_name || ''}
@@ -3137,7 +3137,7 @@ const Settings = () => {
                 {currentFollowUpRule && (
                   <div className="grid gap-4 py-4">
                     <div className="space-y-2">
-                      <Label htmlFor="editTriggeringService">Triggering Service *</Label>
+                      <Label htmlFor="editTriggeringService">Triggering Service <span className="text-red-500 ml-1">*</span></Label>
                       <Select
                         value={newTriggeringService}
                         onValueChange={setNewTriggeringService}
@@ -3186,7 +3186,7 @@ const Settings = () => {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor={`edit-interval-${index}`}>Interval (days) *</Label>
+                            <Label htmlFor={`edit-interval-${index}`}>Interval (days) <span className="text-red-500 ml-1">*</span></Label>
                             <Input
                               id={`edit-interval-${index}`}
                               type="number"
@@ -3198,7 +3198,7 @@ const Settings = () => {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor={`edit-followup-name-${index}`}>Follow-up Name *</Label>
+                            <Label htmlFor={`edit-followup-name-${index}`}>Follow-up Name <span className="text-red-500 ml-1">*</span></Label>
                             <Input
                               id={`edit-followup-name-${index}`}
                               value={step.suggested_service_name || ''}

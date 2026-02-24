@@ -592,12 +592,12 @@ const StockTracker = () => {
             <DialogHeader>
               <DialogTitle>Add New Inventory Item</DialogTitle>
               <DialogDescription>
-                Enter details for the new inventory item. Fields marked with * are required.
+                Enter details for the new inventory item. Fields marked with <span className="text-red-500">*</span> are required.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-2 py-2">
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="itemName" className="text-right text-xs">Name *</Label>
+                <Label htmlFor="itemName" className="text-right text-xs">Name <span className="text-red-500 ml-1">*</span></Label>
                 <div className="col-span-3">
                   <Select
                     value={newItem.name || undefined}
@@ -717,7 +717,7 @@ const StockTracker = () => {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="itemType" className="text-right text-xs">Item Type *</Label>
+                <Label htmlFor="itemType" className="text-right text-xs">Item Type <span className="text-red-500 ml-1">*</span></Label>
                 <div className="col-span-3 flex gap-4">
                   <div className="flex items-center">
                     <input
@@ -746,7 +746,7 @@ const StockTracker = () => {
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="quantity" className="text-right text-xs">Quantity *</Label>
+                <Label htmlFor="quantity" className="text-right text-xs">Quantity <span className="text-red-500 ml-1">*</span></Label>
                 <Input
                   id="quantity"
                   type="text"
@@ -768,7 +768,7 @@ const StockTracker = () => {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="unit" className="text-right text-xs">Unit *</Label>
+                <Label htmlFor="unit" className="text-right text-xs">Unit <span className="text-red-500 ml-1">*</span></Label>
                 <Input
                   id="unit"
                   value={newItem.unit}
@@ -787,7 +787,7 @@ const StockTracker = () => {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="threshold" className="text-right text-xs">Min. Threshold *</Label>
+                <Label htmlFor="threshold" className="text-right text-xs">Min. Threshold <span className="text-red-500 ml-1">*</span></Label>
                 <Input
                   id="threshold"
                   type="text"
@@ -812,7 +812,7 @@ const StockTracker = () => {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="dealer" className="text-right text-xs">Dealer *</Label>
+                <Label htmlFor="dealer" className="text-right text-xs">Dealer <span className="text-red-500 ml-1">*</span></Label>
                 <div className="col-span-3">
                   <Select
                     value={newItem.dealer || undefined}
@@ -837,7 +837,7 @@ const StockTracker = () => {
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="rate" className="text-right text-xs">Rate (₹) *</Label>
+                <Label htmlFor="rate" className="text-right text-xs">Rate (₹) <span className="text-red-500 ml-1">*</span></Label>
                 <Input
                   id="rate"
                   type="text"
@@ -860,7 +860,7 @@ const StockTracker = () => {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="expiry" className="text-right text-xs">Expiry Date *</Label>
+                <Label htmlFor="expiry" className="text-right text-xs">Expiry Date <span className="text-red-500 ml-1">*</span></Label>
                 <Input
                   id="expiry"
                   type="date"
@@ -884,13 +884,13 @@ const StockTracker = () => {
             <DialogHeader>
               <DialogTitle>Edit Inventory Item</DialogTitle>
               <DialogDescription>
-                Update details for the inventory item. Fields marked with * are required.
+                Update details for the inventory item. Fields marked with <span className="text-red-500">*</span> are required.
               </DialogDescription>
             </DialogHeader>
             {currentEditItem && (
               <div className="grid gap-2 py-2">
                 <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editItemName" className="text-right text-xs">Name *</Label>
+                  <Label htmlFor="editItemName" className="text-right text-xs">Name <span className="text-red-500 ml-1">*</span></Label>
                   <div className="col-span-3">
                     <Select
                       value={currentEditItem.name || undefined}
@@ -1010,7 +1010,7 @@ const StockTracker = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editItemType" className="text-right text-xs">Item Type *</Label>
+                  <Label htmlFor="editItemType" className="text-right text-xs">Item Type <span className="text-red-500 ml-1">*</span></Label>
                   <div className="col-span-3 flex gap-4">
                     <div className="flex items-center">
                       <input
@@ -1039,7 +1039,7 @@ const StockTracker = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editQuantity" className="text-right text-xs">Quantity *</Label>
+                  <Label htmlFor="editQuantity" className="text-right text-xs">Quantity <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="editQuantity"
                     type="text"
@@ -1061,7 +1061,7 @@ const StockTracker = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editUnit" className="text-right text-xs">Unit *</Label>
+                  <Label htmlFor="editUnit" className="text-right text-xs">Unit <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="editUnit"
                     value={currentEditItem.unit}
@@ -1080,7 +1080,7 @@ const StockTracker = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editThreshold" className="text-right text-xs">Min. Threshold *</Label>
+                  <Label htmlFor="editThreshold" className="text-right text-xs">Min. Threshold <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="editThreshold"
                     type="text"
@@ -1105,7 +1105,7 @@ const StockTracker = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editDealer" className="text-right text-xs">Dealer *</Label>
+                  <Label htmlFor="editDealer" className="text-right text-xs">Dealer <span className="text-red-500 ml-1">*</span></Label>
                   <div className="col-span-3">
                     <Select
                       value={currentEditItem.dealer || undefined}
@@ -1130,7 +1130,7 @@ const StockTracker = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editRate" className="text-right text-xs">Rate (₹) *</Label>
+                  <Label htmlFor="editRate" className="text-right text-xs">Rate (₹) <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="editRate"
                     type="text"
@@ -1153,7 +1153,7 @@ const StockTracker = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editExpiry" className="text-right text-xs">Expiry Date *</Label>
+                  <Label htmlFor="editExpiry" className="text-right text-xs">Expiry Date <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="editExpiry"
                     type="date"

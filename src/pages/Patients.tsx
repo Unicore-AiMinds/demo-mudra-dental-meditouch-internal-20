@@ -1296,14 +1296,14 @@ const Patients = () => {
           <DialogHeader>
             <DialogTitle>Add New Patient</DialogTitle>
             <DialogDescription>
-              Enter the patient details below. Fields marked with * are required.
+              Enter the patient details below. Fields marked with <span className="text-red-500">*</span> are required.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddPatient}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
+                  <Label htmlFor="name">Full Name <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="name"
                     placeholder="Enter patient's full name"
@@ -1314,7 +1314,7 @@ const Patients = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="gender">Gender *</Label>
+                  <Label htmlFor="gender">Gender <span className="text-red-500 ml-1">*</span></Label>
                   <select
                     id="gender"
                     className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1330,7 +1330,7 @@ const Patients = () => {
                 </div>
                 <div className="md:col-span-2 flex flex-col gap-4">
                   <div className="flex items-center space-x-4">
-                    <Label>Age/DOB *</Label>
+                    <Label>Age/DOB <span className="text-red-500 ml-1">*</span></Label>
                     <div className="flex items-center space-x-2">
                       <input
                         type="radio"
@@ -1359,7 +1359,7 @@ const Patients = () => {
                     <div className="space-y-2 flex-1">
                       {useAgeInput ? (
                         <>
-                          <Label htmlFor="age">Age *</Label>
+                          <Label htmlFor="age">Age <span className="text-red-500 ml-1">*</span></Label>
                           <Input
                             id="age"
                             type="number"
@@ -1372,7 +1372,7 @@ const Patients = () => {
                         </>
                       ) : (
                         <>
-                          <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                          <Label htmlFor="dateOfBirth">Date of Birth <span className="text-red-500 ml-1">*</span></Label>
                           <Input
                             id="dateOfBirth"
                             type="date"
@@ -1401,7 +1401,7 @@ const Patients = () => {
                 <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
                   <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-3">
-                      <Label htmlFor="phone">Phone Number *</Label>
+                      <Label htmlFor="phone">Phone Number <span className="text-red-500 ml-1">*</span></Label>
                       <div className="flex items-center space-x-2">
                         <Checkbox 
                           id="whatsapp"
@@ -1497,7 +1497,7 @@ const Patients = () => {
                   </div>
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="address">Address *</Label>
+                  <Label htmlFor="address">Address <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="address"
                     placeholder="Enter patient's address"
@@ -1508,7 +1508,7 @@ const Patients = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="city">City *</Label>
+                  <Label htmlFor="city">City <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="city"
                     placeholder="Enter city"
@@ -1519,7 +1519,7 @@ const Patients = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="pincode">Pincode *</Label>
+                  <Label htmlFor="pincode">Pincode <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="pincode"
                     placeholder="Enter pincode"
@@ -1559,7 +1559,7 @@ const Patients = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="clinic">Registered For *</Label>
+                  <Label htmlFor="clinic">Registered For <span className="text-red-500 ml-1">*</span></Label>
                   <select
                     id="clinic"
                     className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1610,7 +1610,7 @@ const Patients = () => {
           <DialogHeader>
             <DialogTitle>Edit Patient</DialogTitle>
             <DialogDescription>
-              Update the patient details below. Fields marked with * are required.
+              Update the patient details below. Fields marked with <span className="text-red-500">*</span> are required.
             </DialogDescription>
           </DialogHeader>
           {currentEditPatient && (
@@ -1618,7 +1618,7 @@ const Patients = () => {
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name *</Label>
+                    <Label htmlFor="name">Full Name <span className="text-red-500 ml-1">*</span></Label>
                     <Input
                       id="name"
                       placeholder="Enter patient's full name"
@@ -1629,7 +1629,7 @@ const Patients = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="gender">Gender *</Label>
+                    <Label htmlFor="gender">Gender <span className="text-red-500 ml-1">*</span></Label>
                     <select
                       id="gender"
                       className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1645,7 +1645,7 @@ const Patients = () => {
                   </div>
                   <div className="md:col-span-2 flex flex-col gap-4">
                     <div className="flex items-center space-x-4">
-                      <Label>Age/DOB *</Label>
+                      <Label>Age/DOB <span className="text-red-500 ml-1">*</span></Label>
                       <div className="flex items-center space-x-2">
                         <input
                           type="radio"
@@ -1674,7 +1674,7 @@ const Patients = () => {
                       <div className="space-y-2 flex-1">
                         {editUseAgeInput ? (
                           <>
-                            <Label htmlFor="age">Age *</Label>
+                            <Label htmlFor="age">Age <span className="text-red-500 ml-1">*</span></Label>
                             <Input
                               id="age"
                               type="number"
@@ -1687,7 +1687,7 @@ const Patients = () => {
                           </>
                         ) : (
                           <>
-                            <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                            <Label htmlFor="dateOfBirth">Date of Birth <span className="text-red-500 ml-1">*</span></Label>
                             <Input
                               id="dateOfBirth"
                               type="date"
@@ -1716,7 +1716,7 @@ const Patients = () => {
                   <div className="md:col-span-2 flex flex-col md:flex-row gap-4">
                     <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-3">
-                        <Label htmlFor="phone">Phone Number *</Label>
+                        <Label htmlFor="phone">Phone Number <span className="text-red-500 ml-1">*</span></Label>
                         <div className="flex items-center space-x-2">
                           <Checkbox 
                             id="editWhatsapp"
@@ -1806,7 +1806,7 @@ const Patients = () => {
                     </div>
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="address">Address *</Label>
+                    <Label htmlFor="address">Address <span className="text-red-500 ml-1">*</span></Label>
                     <Input
                       id="address"
                       placeholder="Enter patient's address"
@@ -1817,7 +1817,7 @@ const Patients = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="city">City *</Label>
+                    <Label htmlFor="city">City <span className="text-red-500 ml-1">*</span></Label>
                     <Input
                       id="city"
                       placeholder="Enter city"
@@ -1828,7 +1828,7 @@ const Patients = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="pincode">Pincode *</Label>
+                    <Label htmlFor="pincode">Pincode <span className="text-red-500 ml-1">*</span></Label>
                     <Input
                       id="pincode"
                       placeholder="Enter pincode"
@@ -1868,7 +1868,7 @@ const Patients = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="clinic">Registered For *</Label>
+                    <Label htmlFor="clinic">Registered For <span className="text-red-500 ml-1">*</span></Label>
                     <select
                       id="clinic"
                       className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"

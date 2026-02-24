@@ -679,7 +679,7 @@ const UserManagementTab: React.FC = () => {
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="name" className="text-right">
-              Name*
+              Name <span className="text-red-500 ml-1">*</span>
             </Label>
             <Input
               id="name"
@@ -691,7 +691,7 @@ const UserManagementTab: React.FC = () => {
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="email" className="text-right">
-              Email*
+              Email <span className="text-red-500 ml-1">*</span>
             </Label>
             <div className="col-span-3 space-y-1">
               <Input
@@ -709,7 +709,7 @@ const UserManagementTab: React.FC = () => {
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="role" className="text-right">
-              Role*
+              Role <span className="text-red-500 ml-1">*</span>
             </Label>
             <Select
               value={formData.role}
@@ -768,7 +768,7 @@ const UserManagementTab: React.FC = () => {
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="password" className="text-right">
-              Password*
+              Password <span className="text-red-500 ml-1">*</span>
             </Label>
             <Input
               id="password"
@@ -803,7 +803,7 @@ const UserManagementTab: React.FC = () => {
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="edit-name" className="text-right">
-              Name*
+              Name <span className="text-red-500 ml-1">*</span>
             </Label>
             <Input
               id="edit-name"
@@ -814,7 +814,7 @@ const UserManagementTab: React.FC = () => {
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="edit-email" className="text-right">
-              Email*
+              Email <span className="text-red-500 ml-1">*</span>
             </Label>
             <div className="col-span-3 space-y-1">
               <Input
@@ -831,7 +831,7 @@ const UserManagementTab: React.FC = () => {
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="edit-role" className="text-right">
-              Role*
+              Role <span className="text-red-500 ml-1">*</span>
             </Label>
             <Select
               value={formData.role}
@@ -974,7 +974,7 @@ const UserManagementTab: React.FC = () => {
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="new-password" className="text-right">
-              New Password*
+              New Password <span className="text-red-500 ml-1">*</span>
             </Label>
             <Input
               id="new-password"
@@ -987,7 +987,7 @@ const UserManagementTab: React.FC = () => {
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="confirm-password" className="text-right">
-              Confirm Password*
+              Confirm Password <span className="text-red-500 ml-1">*</span>
             </Label>
             <Input
               id="confirm-password"
