@@ -1,0 +1,197 @@
+================================================================================
+  DENTALMETRIX — WHATSAPP NOTIFICATION SYSTEM
+  Architecture, Journey & Problem-Solution Diagram
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 1 — WHAT WE WANTED TO BUILD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Automatically send a WhatsApp message to a patient's phone number when:
+    1. An appointment is SCHEDULED
+    2. An appointment is RESCHEDULED (date or time changed)
+    3. An appointment is CANCELLED
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 2 — THE JOURNEY (PROBLEMS WE FACED AND HOW WE SOLVED THEM)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  ATTEMPT 1 — Direct REST API Call from App to OpenClaw                 │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  App (port 8080) ──── POST /api/sendMessage ───► OpenClaw (port 18789)
+                                                          │
+                                        ❌ BLOCKED — CORS Policy
+                                        Browser refuses cross-origin
+                                        requests (8080 → 18789)
+
+  ROOT CAUSE:
+    The browser enforces CORS. Since OpenClaw doesn't send
+    "Access-Control-Allow-Origin" headers, the browser blocks
+    every direct call from the app to OpenClaw.
+
+  SOLUTION:
+    Add a Vite proxy so the request stays on the same origin.
+
+  ──────────────────────────────────────────────────────────────────────────
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  ATTEMPT 2 — Vite Proxy to OpenClaw (port 18789)                       │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  App ──► Vite Proxy (/openclaw/*) ──► OpenClaw port 18789
+                                              │
+                          ❌ BLOCKED — 405 Method Not Allowed
+
+  ROOT CAUSE:
+    Port 18789 only serves the OpenClaw dashboard HTML (a web UI).
+    It is NOT a REST API. Sending POST requests to it returns 405.
+
+  SOLUTION:
+    Create a tiny local proxy script (whatsapp-proxy.mjs) that
+    accepts REST calls and internally runs the OpenClaw CLI command.
+
+  ──────────────────────────────────────────────────────────────────────────
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  ATTEMPT 3 — Proxy Script calling OpenClaw CLI                         │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  App ──► Vite Proxy ──► whatsapp-proxy.mjs (port 18790)
+                                 │
+                    Runs: openclaw message send --target ...
+                                 │
+                   ❌ BLOCKED — "pairing required" (Error 1008)
+
+  ROOT CAUSE (Layer 1):
+    The CLI tried to connect to ws://127.0.0.1:18789 (the dashboard
+    port). The dashboard HTML server doesn't handle WebSocket.
+    Result: ECONNREFUSED.
+
+  ROOT CAUSE (Layer 2 — deeper issue):
+    OpenClaw has TWO security layers:
+      Layer 1 — Gateway Token:  shared secret in openclaw.json
+      Layer 2 — Device Pairing: each client device must be individually
+                                approved and granted scopes
+
+    The CLI device was registered automatically with only:
+      scope: "operator.read"
+
+    But the "send" method requires:
+      scope: "operator.write"
+
+    So even after the device connected, it was rejected because
+    it didn't have permission to call the send method.
+    OpenClaw reports this as "pairing required".
+
+  SOLUTION:
+    Manually update the device scopes in two files:
+      ~/.openclaw/devices/paired.json     ← gateway's device registry
+      ~/.openclaw/identity/device-auth.json ← CLI's own auth token
+
+    Changed scopes from: ["operator.read"]
+    Changed scopes to:   ["operator.admin", "operator.write",
+                          "operator.read", "operator.approvals",
+                          "operator.pairing"]
+
+    Then restart the gateway to reload the updated scopes.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 3 — CURRENT WORKING ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                     FULL MESSAGE FLOW (WORKING)                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  [1] APPOINTMENT EVENT OCCURS
+      (scheduled / rescheduled / cancelled)
+             │
+             ▼
+  [2] AppointmentContext.tsx
+      - Detects what changed
+      - Fetches patient's phone number from database
+             │
+             ▼
+  [3] whatsapp-service.ts
+      - Normalizes phone: 10 digits → +91XXXXXXXXXX
+      - Calls: POST /openclaw/api/sendMessage
+               Body: { phone, message }
+             │
+             ▼  (same origin request — no CORS)
+  [4] Vite Dev Server (localhost:8080)
+      - Intercepts /openclaw/* routes
+      - Proxies to localhost:18790
+             │
+             ▼  (server-to-server — no CORS)
+  [5] whatsapp-proxy.mjs (localhost:18790)
+      - Receives { phone, message }
+      - Runs CLI command:
+        openclaw message send
+          --target "+91XXXXXXXXXX"
+          --message "Hello Adwait, your appointment..."
+             │
+             ▼
+  [6] OpenClaw CLI
+      - Reads device identity from:
+        ~/.openclaw/identity/device.json
+      - Reads auth token from:
+        ~/.openclaw/identity/device-auth.json
+      - Connects to gateway: ws://127.0.0.1:18789
+      - Authenticates with device token + admin scopes
+             │
+             ▼
+  [7] OpenClaw Gateway (ws://127.0.0.1:18789)
+      - Validates device identity ✅
+      - Validates scopes (operator.write required) ✅
+      - Calls WhatsApp Web session
+             │
+             ▼
+  [8] WhatsApp Web Session
+      (linked to clinic's WhatsApp number)
+             │
+             ▼
+  [9] 📱 Patient's WhatsApp
+      Receives message!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 4 — FILES INVOLVED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  PROJECT FILES (DentalMetrix):
+  ┌─────────────────────────────────────────────────┬──────────────────────┐
+  │ File                                            │ Purpose              │
+  ├─────────────────────────────────────────────────┼──────────────────────┤
+  │ src/services/whatsapp-service.ts                │ Message functions    │
+  │ src/contexts/AppointmentContext.tsx             │ Triggers messages    │
+  │ whatsapp-proxy.mjs                              │ Local proxy server   │
+  │ vite.config.ts                                  │ Proxy config         │
+  └─────────────────────────────────────────────────┴──────────────────────┘
+
+  OPENCLAW FILES (system-level):
+  ┌─────────────────────────────────────────────────┬──────────────────────┐
+  │ File                                            │ Purpose              │
+  ├─────────────────────────────────────────────────┼──────────────────────┤
+  │ ~/.openclaw/openclaw.json                       │ Gateway config+token │
+  │ ~/.openclaw/devices/paired.json                 │ Approved devices     │
+  │ ~/.openclaw/identity/device.json                │ CLI device identity  │
+  │ ~/.openclaw/identity/device-auth.json           │ CLI auth token+scope │
+  │ ~/.openclaw/credentials/whatsapp/default/       │ WhatsApp session     │
+  └─────────────────────────────────────────────────┴──────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 5 — PORTS REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  8080  — DentalMetrix app (Vite dev server)
+  18789 — OpenClaw gateway (WebSocket + dashboard UI)
+  18790 — whatsapp-proxy.mjs (local REST bridge)
+
+
+================================================================================
