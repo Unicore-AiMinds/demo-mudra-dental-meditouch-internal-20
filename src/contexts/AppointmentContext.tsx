@@ -199,6 +199,7 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
     initializeAppointments();
   }, [supabase, toast]);
 
+  // Fetch patient phone for WhatsApp notifications
   // Add a new appointment
   const addAppointment = async (
     appointment: Omit<Appointment, 'id' | 'appointment_code' | 'created_at' | 'updated_at'>

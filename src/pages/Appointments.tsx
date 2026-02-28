@@ -58,6 +58,11 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import AddPatientDialog from '@/components/AddPatientDialog';
 import AppointmentList from '@/components/AppointmentList';
+import {
+  sendAppointmentScheduledMessage,
+  sendAppointmentRescheduledMessage,
+  sendAppointmentCancelledMessage,
+} from '@/services/whatsapp-service';
 
 // Patients will be fetched from PatientContext
 
@@ -442,6 +447,19 @@ const Appointments = () => {
   const [pendingChartingEntryId, setPendingChartingEntryId] = useState<string | undefined>(undefined);
   const [pendingFollowUpId, setPendingFollowUpId] = useState<string | undefined>(undefined);
   const [appointmentFollowUpService, setAppointmentFollowUpService] = useState("");
+
+  // State for WhatsApp confirmation popup
+  const [isWhatsAppConfirmOpen, setIsWhatsAppConfirmOpen] = useState(false);
+  const [whatsAppConfirmData, setWhatsAppConfirmData] = useState<{
+    phone: string;
+    patientName: string;
+    doctor: string;
+    date: string;
+    time: string;
+    service: string;
+    followUpService?: string;
+    actionType: 'scheduled' | 'rescheduled' | 'cancelled';
+  } | null>(null);
 
   // State for expanded days in weekly and monthly views
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
@@ -1106,6 +1124,18 @@ const Appointments = () => {
           description: `${editingAppointment.patient_name}'s appointment has been rescheduled to ${format(appointmentDate || new Date(), 'PP')} at ${appointmentTime}`
         });
 
+        // Show WhatsApp confirmation popup
+        const updatedDate = appointmentDate ? format(appointmentDate, 'yyyy-MM-dd') : editingAppointment.date;
+        openWhatsAppConfirm({
+          patientId: editingAppointment.patient_id,
+          patientName: editingAppointment.patient_name || 'Patient',
+          doctor: appointmentDoctor || editingAppointment.doctor || editingAppointment.therapist || '',
+          date: updatedDate,
+          time: appointmentTime,
+          service: appointmentService,
+          actionType: 'rescheduled',
+        });
+
         setIsConfirmUpdateOpen(false);
         setEditingAppointment(null);
       } catch (error) {
@@ -1145,6 +1175,17 @@ const Appointments = () => {
           description: `${editingAppointment.patient_name}'s appointment has been cancelled`
         });
 
+        // Show WhatsApp confirmation popup
+        openWhatsAppConfirm({
+          patientId: editingAppointment.patient_id,
+          patientName: editingAppointment.patient_name || 'Patient',
+          doctor: editingAppointment.doctor || editingAppointment.therapist || '',
+          date: editingAppointment.date,
+          time: editingAppointment.time,
+          service: editingAppointment.service,
+          actionType: 'cancelled',
+        });
+
         setIsConfirmCancelOpen(false);
         setEditingAppointment(null);
       } catch (error) {
@@ -1161,6 +1202,69 @@ const Appointments = () => {
   const cancelCancel = () => {
     setIsConfirmCancelOpen(false);
     setIsEditAppointmentOpen(true); // Go back to edit dialog
+  };
+
+  // Open WhatsApp confirmation popup
+  const openWhatsAppConfirm = (data: {
+    patientId: string;
+    patientName: string;
+    doctor: string;
+    date: string;
+    time: string;
+    service: string;
+    followUpService?: string;
+    actionType: 'scheduled' | 'rescheduled' | 'cancelled';
+  }) => {
+    const patient = patients.find(p => p.id === data.patientId);
+    // Only show WhatsApp popup if patient has WhatsApp enabled
+    if (!patient?.has_whatsapp) return;
+    const phone = patient?.phone || '';
+    if (!phone) {
+      console.warn('No phone number found for patient:', data.patientName);
+      return;
+    }
+    setWhatsAppConfirmData({
+      phone,
+      patientName: data.patientName,
+      doctor: data.doctor,
+      date: data.date,
+      time: data.time,
+      service: data.service,
+      followUpService: data.followUpService,
+      actionType: data.actionType,
+    });
+    setIsWhatsAppConfirmOpen(true);
+  };
+
+  // Handle WhatsApp send
+  const handleWhatsAppSend = async () => {
+    if (!whatsAppConfirmData) return;
+    const { phone, patientName, date, time, service, followUpService, actionType } = whatsAppConfirmData;
+    // Close dialog immediately
+    setIsWhatsAppConfirmOpen(false);
+    setWhatsAppConfirmData(null);
+    try {
+      let result;
+      switch (actionType) {
+        case 'scheduled':
+          result = await sendAppointmentScheduledMessage(phone, patientName, date, time, service, followUpService);
+          break;
+        case 'rescheduled':
+          result = await sendAppointmentRescheduledMessage(phone, patientName, date, time, service);
+          break;
+        case 'cancelled':
+          result = await sendAppointmentCancelledMessage(phone, patientName, date, service);
+          break;
+      }
+      if (result?.success) {
+        toast({ title: 'WhatsApp Message Sent', description: `Message sent to ${phone}` });
+      } else {
+        toast({ title: 'WhatsApp Failed', description: result?.error || 'Failed to send message', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('WhatsApp send error:', error);
+      toast({ title: 'Error', description: 'Failed to send WhatsApp message', variant: 'destructive' });
+    }
   };
 
   // Handle warning dialog confirmation
@@ -1929,6 +2033,18 @@ const Appointments = () => {
           description: "The planned treatment has been linked to this appointment."
         });
       }
+
+      // Show WhatsApp confirmation popup
+      openWhatsAppConfirm({
+        patientId: patientId,
+        patientName: pendingAppointment.patient_name || pendingAppointment.patient || 'Patient',
+        doctor: pendingAppointment.doctor || appointmentDoctor || '',
+        date: formattedDate,
+        time: pendingAppointment.time,
+        service: pendingAppointment.service,
+        followUpService: appointmentFollowUpService || undefined,
+        actionType: 'scheduled',
+      });
 
       // Close the confirmation dialog and reset form
       setIsConfirmCreateOpen(false);
@@ -3774,6 +3890,61 @@ const Appointments = () => {
               className="bg-orange-500 hover:bg-orange-600 text-white"
             >
               Continue Anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* WhatsApp Confirmation Dialog */}
+      <Dialog open={isWhatsAppConfirmOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsWhatsAppConfirmOpen(false);
+          setWhatsAppConfirmData(null);
+        }
+      }}>
+        <DialogContent className={`${isMobile ? 'max-w-[90vw] max-h-[80vh]' : 'sm:max-w-[425px]'}`}>
+          <DialogHeader>
+            <DialogTitle>Send WhatsApp Message</DialogTitle>
+            <DialogDescription>
+              Do you want to send a WhatsApp message to this patient?
+            </DialogDescription>
+          </DialogHeader>
+          {whatsAppConfirmData && (
+            <div className="py-4 space-y-2">
+              <p className="text-sm">
+                <span className="font-semibold">Phone Number:</span> {whatsAppConfirmData.phone}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Doctor:</span> {whatsAppConfirmData.doctor || '-'}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Date:</span> {whatsAppConfirmData.date}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Time:</span> {whatsAppConfirmData.time}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Service:</span> {whatsAppConfirmData.service}
+              </p>
+              {whatsAppConfirmData.followUpService && (
+                <p className="text-sm">
+                  <span className="font-semibold">Follow-up Service:</span> {whatsAppConfirmData.followUpService}
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsWhatsAppConfirmOpen(false);
+              setWhatsAppConfirmData(null);
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleWhatsAppSend}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Send
             </Button>
           </DialogFooter>
         </DialogContent>
