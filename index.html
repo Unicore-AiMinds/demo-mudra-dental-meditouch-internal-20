@@ -23,5 +23,21 @@
     <div id="root"></div>
 
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Heartbeat: reload page when the server goes down so the browser shows "can't connect"
+      (function() {
+        var failures = 0;
+        setInterval(function() {
+          fetch('/api/health', { method: 'GET' })
+            .then(function(r) {
+              if (r.ok) { failures = 0; } else { failures++; if (failures >= 2) location.reload(); }
+            })
+            .catch(function() {
+              failures++;
+              if (failures >= 2) location.reload();
+            });
+        }, 3000);
+      })();
+    </script>
   </body>
 </html>
