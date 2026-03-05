@@ -44,7 +44,6 @@ const server = createServer((req, res) => {
         exec(cmd, {
           env: {
             ...process.env,
-            OPENCLAW_GATEWAY_TOKEN: 'b5f287d57ab859d94e98047a97a0b40ecf0cdfa36e1aed91'
           }
         }, (error, stdout, stderr) => {
           if (error) {
