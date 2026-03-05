@@ -2,6 +2,7 @@
  * Mudra Clinic — Restore Backup Script
  *
  * Restores Supabase tables from a dated backup zip file.
+ * Performs a CLEAN restore: deletes all existing rows first, then inserts backup data.
  * Handles table order to respect foreign key constraints.
  *
  * Usage:  node restore.mjs 2026-02-25
@@ -15,14 +16,33 @@ import { execSync } from 'child_process';
 import https from 'https';
 
 // ── Config ──────────────────────────────────────────────────────────────────
-const SUPABASE_URL = 'https://pwijqupjtminhcmtbxta.supabase.co';
-const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3aWpxdXBqdG1pbmhjbXRieHRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1OTM1NTgsImV4cCI6MjA4NjE2OTU1OH0.x3Xn3_JC2crG7yuB02xeR0bTF773aqNSHMMZgT1shLU';
-
-const BATCH_SIZE = 500;
-
 const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
 const APP_DIR = join(SCRIPTS_DIR, '..');
+
+// Load .env file
+const envPath = join(APP_DIR, '.env');
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, 'utf-8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const idx = trimmed.indexOf('=');
+    if (idx > 0) {
+      const key = trimmed.slice(0, idx).trim();
+      const val = trimmed.slice(idx + 1).trim();
+      if (!process.env[key]) process.env[key] = val;
+    }
+  }
+}
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('ERROR: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set in .env');
+  process.exit(1);
+}
+
+const BATCH_SIZE = 500;
 const BACKUP_ROOT = join(APP_DIR, 'backup');
 
 // ── Restore order (parent tables first, respects foreign keys) ──────────
@@ -118,6 +138,31 @@ function httpsRequest(url, method, headers, body) {
   });
 }
 
+async function deleteAllRows(table) {
+  // First, null out the circular FK in appointments before deleting follow_ups
+  if (table === 'follow_ups') {
+    const nullUrl = `${SUPABASE_URL}/rest/v1/appointments?${APPOINTMENT_FOLLOW_UP_FK}=not.is.null`;
+    await httpsRequest(nullUrl, 'PATCH', {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Prefer: 'return=minimal',
+    }, JSON.stringify({ [APPOINTMENT_FOLLOW_UP_FK]: null }));
+  }
+
+  // Delete all rows — Supabase REST requires a filter, so we use id=not.is.null
+  // which matches every row that has an id (i.e. all rows)
+  const url = `${SUPABASE_URL}/rest/v1/${table}?id=not.is.null`;
+  const res = await httpsRequest(url, 'DELETE', {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    Prefer: 'return=minimal',
+  });
+
+  if (res.statusCode < 200 || res.statusCode >= 300) {
+    throw new Error(`DELETE ${table}: HTTP ${res.statusCode}: ${res.body}`);
+  }
+}
+
 async function upsertRows(table, rows) {
   if (!rows || rows.length === 0) return 0;
 
@@ -175,7 +220,7 @@ function findLatestBackup() {
   if (!existsSync(BACKUP_ROOT)) return null;
 
   const zips = readdirSync(BACKUP_ROOT)
-    .filter((f) => /^\d{4}-\d{2}-\d{2}\.zip$/.test(f))
+    .filter((f) => /^\d{4}-\d{2}-\d{2}(_\d{2}-\d{2})?\.zip$/.test(f))
     .sort()
     .reverse();
 
@@ -232,11 +277,26 @@ async function main() {
 async function restoreFromFolder(folder, date) {
   log(`=== Restore started from backup ${date} ===`);
 
+  // ── Phase 1: Delete all existing rows (reverse order — children first) ──
+  log('--- Phase 1: Clearing existing data ---');
+  const deleteOrder = [...RESTORE_ORDER].reverse();
+  for (const table of deleteOrder) {
+    try {
+      await deleteAllRows(table);
+      log(`  DEL   ${table} — cleared`);
+    } catch (err) {
+      log(`  WARN  ${table} — delete failed: ${err.message}`);
+    }
+  }
+
+  // ── Phase 2: Insert backup data (forward order — parents first) ──
+  log('--- Phase 2: Restoring backup data ---');
+
   let success = 0;
   let skipped = 0;
   let failed = 0;
 
-  // Store appointments data for the circular FK fix (pass 2)
+  // Store appointments data for the circular FK fix (pass 3)
   let appointmentsRawData = null;
 
   for (const table of RESTORE_ORDER) {
@@ -266,7 +326,7 @@ async function restoreFromFolder(folder, date) {
       }
 
       const count = await upsertRows(table, rows);
-      log(`  OK    ${table} — ${count} rows upserted`);
+      log(`  OK    ${table} — ${count} rows inserted`);
       success++;
     } catch (err) {
       log(`  FAIL  ${table} — ${err.message}`);
