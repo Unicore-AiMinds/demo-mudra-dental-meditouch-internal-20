@@ -18,7 +18,6 @@ import DealersTab from '@/components/settings/DealersTab';
 import UserManagementTab from '@/components/settings/UserManagementTab';
 import { RolesTab } from '@/components/settings/RolesTab';
 import { initializeSystem } from '@/utils/initializeSystem';
-import { sendTestWhatsAppMessage } from '@/services/whatsapp-service';
 
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
 import { demoFollowUpRules } from '@/data/demo-dental-history';
@@ -83,8 +82,7 @@ import {
   Microscope,
   RefreshCw,
   Package,
-  Loader2,
-  MessageSquare
+  Loader2
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -1796,7 +1794,6 @@ const Settings = () => {
           {/* <TabsTrigger value="notifications">Notifications</TabsTrigger> */}
           {hasPermission('settings.view_roles') && <TabsTrigger value="roles">Roles & Permissions</TabsTrigger>}
           {hasPermission('settings.view_user_management') && <TabsTrigger value="users">User Management</TabsTrigger>}
-          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
         </TabsList>
 
         {/* COMMENTED OUT: Clinic Details tab content as requested by user */}
@@ -3680,73 +3677,9 @@ const Settings = () => {
           <UserManagementTab />
         </TabsContent>
 
-        <TabsContent value="whatsapp" className="space-y-6">
-          <WhatsAppSettingsTab activeClinic={activeClinic} />
-        </TabsContent>
-
       </Tabs>
     </div>
   );
 };
-
-function WhatsAppSettingsTab({ activeClinic }: { activeClinic: string }) {
-  const [phone, setPhone] = useState('');
-  const [sending, setSending] = useState(false);
-
-  const primaryColor = activeClinic === 'dental'
-    ? 'bg-dental-primary hover:bg-dental-dark'
-    : 'bg-meditouch-primary hover:bg-meditouch-dark';
-
-  const handleSendTest = async () => {
-    if (!phone.trim()) {
-      toast({ title: 'Phone number required', description: 'Enter a phone number to send the test message.', variant: 'destructive' });
-      return;
-    }
-    setSending(true);
-    const { sendTestWhatsAppMessage } = await import('@/services/whatsapp-service');
-    const result = await sendTestWhatsAppMessage(phone.trim());
-    setSending(false);
-    if (result.success) {
-      toast({ title: 'Message Sent', description: `Test WhatsApp message sent to ${phone}.` });
-    } else {
-      toast({ title: 'Failed to Send', description: result.error ?? 'Unknown error', variant: 'destructive' });
-    }
-  };
-
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
-          WhatsApp Notifications
-        </CardTitle>
-        <CardDescription>
-          Test the connection to your local OpenClaw WhatsApp service.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2 max-w-sm">
-          <Label htmlFor="whatsapp-phone">Phone Number</Label>
-          <Input
-            id="whatsapp-phone"
-            placeholder="+918975522308"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Include country code, e.g. +91 for India.</p>
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Button className={primaryColor} onClick={handleSendTest} disabled={sending}>
-          {sending
-            ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            : <MessageSquare className="mr-2 h-4 w-4" />}
-          {sending ? 'Sending...' : 'Send Test Message'}
-        </Button>
-      </CardFooter>
-    </Card>
-  );
-}
 
 export default Settings;
