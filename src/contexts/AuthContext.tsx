@@ -369,6 +369,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('✅ Database login successful for user:', foundUser.name);
 
+      // Notify server of logged-in user (used by tray backup)
+      try { fetch('/api/auth/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_name: foundUser.name }) }); } catch {}
+
       // Log successful login audit entry
       try {
         const auditEntry = {
@@ -412,7 +415,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (user) {
         console.log('👋 Logout for user:', user.name);
-        
+
+        // Notify server of logout (clear session for tray backup)
+        try { fetch('/api/auth/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_name: null }) }); } catch {}
+
         // Log logout audit entry
         try {
           const auditEntry = {

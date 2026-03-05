@@ -71,22 +71,17 @@ $menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator)) | Out-Null
 # "Backup Now" menu item
 $backupItem = New-Object System.Windows.Forms.ToolStripMenuItem("Backup Now")
 $backupItem.Add_Click({
-    $backupScript = Join-Path $script:appDir "scripts\backup.mjs"
-    if (Test-Path $backupScript) {
-        Start-Process -FilePath $script:nodeExe -ArgumentList "`"$backupScript`"" -WindowStyle Hidden
-        $script:notifyIcon.ShowBalloonTip(
-            3000,
-            "Mudra Clinic",
-            "Backup started... Check backup folder for results.",
-            [System.Windows.Forms.ToolTipIcon]::Info
-        )
-    } else {
-        $script:notifyIcon.ShowBalloonTip(
-            3000,
-            "Mudra Clinic",
-            "Backup script not found.",
-            [System.Windows.Forms.ToolTipIcon]::Warning
-        )
+    try {
+        $session = Invoke-RestMethod -Uri "http://localhost:8080/api/auth/session" -Method GET -ErrorAction Stop
+        if ($session.user_name) {
+            $body = @{ user_name = $session.user_name } | ConvertTo-Json
+            Invoke-RestMethod -Uri "http://localhost:8080/api/backup/trigger" -Method POST -Body $body -ContentType "application/json" -ErrorAction Stop
+            $script:notifyIcon.ShowBalloonTip(3000, "Mudra Clinic", "Backup started by $($session.user_name).", [System.Windows.Forms.ToolTipIcon]::Info)
+        } else {
+            $script:notifyIcon.ShowBalloonTip(5000, "Mudra Clinic", "Please log in to the application first and then take backup.", [System.Windows.Forms.ToolTipIcon]::Warning)
+        }
+    } catch {
+        $script:notifyIcon.ShowBalloonTip(5000, "Mudra Clinic", "Please log in to the application first and then take backup.", [System.Windows.Forms.ToolTipIcon]::Warning)
     }
 })
 $menu.Items.Add($backupItem) | Out-Null
