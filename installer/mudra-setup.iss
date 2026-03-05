@@ -8,7 +8,7 @@
 
 [Setup]
 AppName=Mudra Clinic
-AppVersion=1.0.0
+AppVersion=v1.01.02
 AppPublisher=Mudra Clinic
 AppPublisherURL=https://mudraclinic.com
 DefaultDirName=C:\Mudra-app
@@ -71,8 +71,7 @@ Filename: "schtasks"; Parameters: "/delete /tn ""MudraClinicBackup"" /f"; Flags:
 [UninstallDelete]
 ; Clean up startup shortcut
 Type: files; Name: "{userstartup}\Mudra Clinic.lnk"
-; Clean up backup folder
-Type: filesandordirs; Name: "{app}\backup"
+; NOTE: backup folder is intentionally kept so it can be reused after reinstall
 
 [Messages]
 WelcomeLabel2=This will install Mudra Clinic on your computer.%n%nThe application runs as a local server accessible from any device on your network (LAN).
@@ -126,13 +125,19 @@ begin
 
     if AutoBackupCheckbox.Checked then
     begin
-      // Create scheduled task for daily backup at 2:00 AM
+      // Create scheduled task for daily backup at 2:00 AM via PowerShell
+      // PowerShell allows setting working directory and hidden window
       Exec(
-        'schtasks',
-        '/create /tn "MudraClinicBackup" /tr "\"'
-          + ExpandConstant('{app}') + '\node.exe\" \"'
-          + ExpandConstant('{app}') + '\scripts\backup.mjs\"" '
-          + '/sc daily /st 02:00 /f /rl LIMITED',
+        'powershell.exe',
+        '-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command "' +
+          'Unregister-ScheduledTask -TaskName ''MudraClinicBackup'' -Confirm:$false -ErrorAction SilentlyContinue; ' +
+          '$action = New-ScheduledTaskAction -Execute ''' + ExpandConstant('{app}') + '\node.exe'' ' +
+            '-Argument ''\"' + ExpandConstant('{app}') + '\scripts\backup.mjs\"'' ' +
+            '-WorkingDirectory ''' + ExpandConstant('{app}') + '''; ' +
+          '$trigger = New-ScheduledTaskTrigger -Daily -At ''2:00AM''; ' +
+          '$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable; ' +
+          'Register-ScheduledTask -TaskName ''MudraClinicBackup'' -Action $action -Trigger $trigger -Settings $settings ' +
+            '-Description ''Daily backup of Mudra Clinic data''"',
         '', SW_HIDE, ewWaitUntilTerminated, ResultCode
       );
     end;
@@ -175,6 +180,8 @@ begin
 end;
 
 function InitializeUninstall(): Boolean;
+var
+  ResultCode: Integer;
 begin
   Result := True;
 
@@ -189,6 +196,20 @@ begin
     begin
       // User chose to continue — auto-kill all app processes first
       KillAppProcesses();
+
+      // Refresh the browser so user sees "site can't be reached"
+      Exec('powershell.exe',
+        '-ExecutionPolicy Bypass -WindowStyle Hidden -Command "' +
+        '$wshell = New-Object -ComObject WScript.Shell; ' +
+        'Get-Process chrome, msedge, firefox -EA SilentlyContinue | ForEach-Object { ' +
+        '  if ($_.MainWindowTitle -imatch ''Mudra|localhost'') { ' +
+        '    $wshell.AppActivate($_.Id); Start-Sleep -Milliseconds 300; $wshell.SendKeys(''{F5}'') ' +
+        '  } ' +
+        '}"',
+        '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+      // Wait so user can see the browser showing "site can't be reached"
+      Sleep(3000);
 
       // Verify processes are terminated before proceeding
       if IsAppRunning() then
