@@ -8,22 +8,41 @@
  * Runs via Windows Task Scheduler daily at 2:00 AM.
  */
 
-import { writeFileSync, mkdirSync, appendFileSync, readdirSync, rmSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, appendFileSync, readdirSync, rmSync, existsSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import https from 'https';
 
 // ── Config ──────────────────────────────────────────────────────────────────
-const SUPABASE_URL = 'https://pwijqupjtminhcmtbxta.supabase.co';
-const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3aWpxdXBqdG1pbmhjbXRieHRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1OTM1NTgsImV4cCI6MjA4NjE2OTU1OH0.x3Xn3_JC2crG7yuB02xeR0bTF773aqNSHMMZgT1shLU';
+const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
+const APP_DIR = join(SCRIPTS_DIR, '..');
+
+// Load .env file
+const envPath = join(APP_DIR, '.env');
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, 'utf-8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const idx = trimmed.indexOf('=');
+    if (idx > 0) {
+      const key = trimmed.slice(0, idx).trim();
+      const val = trimmed.slice(idx + 1).trim();
+      if (!process.env[key]) process.env[key] = val;
+    }
+  }
+}
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('ERROR: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set in .env');
+  process.exit(1);
+}
 
 const RETENTION_DAYS = 7;
 const PAGE_SIZE = 1000;
-
-const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
-const APP_DIR = join(SCRIPTS_DIR, '..');
 const BACKUP_ROOT = join(APP_DIR, 'backup');
 const LOG_FILE = join(BACKUP_ROOT, 'backup.log');
 
@@ -83,7 +102,9 @@ function log(message) {
 
 function todayString() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const time = `${String(d.getHours()).padStart(2, '0')}-${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${date}_${time}`;
 }
 
 function httpsGet(url, headers) {
@@ -94,6 +115,26 @@ function httpsGet(url, headers) {
       res.on('end', () => resolve({ statusCode: res.statusCode, body }));
     });
     req.on('error', reject);
+  });
+}
+
+function httpsPost(url, headers, body) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => resolve({ statusCode: res.statusCode, body: data }));
+    });
+    req.on('error', reject);
+    if (body) req.write(body);
+    req.end();
   });
 }
 
@@ -137,8 +178,8 @@ function deleteOldBackups() {
   cutoff.setDate(cutoff.getDate() - RETENTION_DAYS);
 
   for (const name of readdirSync(BACKUP_ROOT)) {
-    // Process both zip files (YYYY-MM-DD.zip) and legacy directories (YYYY-MM-DD)
-    const match = name.match(/^(\d{4}-\d{2}-\d{2})(\.zip)?$/);
+    // Match: YYYY-MM-DD_HH-MM.zip, YYYY-MM-DD.zip, or YYYY-MM-DD (legacy)
+    const match = name.match(/^(\d{4}-\d{2}-\d{2})(_\d{2}-\d{2})?(\.zip)?$/);
     if (!match) continue;
 
     const folderDate = new Date(match[1] + 'T00:00:00');
@@ -150,12 +191,56 @@ function deleteOldBackups() {
   }
 }
 
+// ── Parse CLI arguments ─────────────────────────────────────────────────────
+function getArg(name) {
+  const idx = process.argv.indexOf(name);
+  return idx !== -1 && idx + 1 < process.argv.length ? process.argv[idx + 1] : null;
+}
+
+const BACKUP_USER = getArg('--user');        // e.g. "Dr. Smith"
+const BACKUP_TYPE = BACKUP_USER ? 'manual' : 'auto';
+
+// ── Audit log helper ────────────────────────────────────────────────────────
+async function writeAuditLog(details) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    user_name: BACKUP_USER || 'System (Auto)',
+    user_role: BACKUP_USER ? 'user' : 'system',
+    action_category: 'settings',
+    action_type: BACKUP_TYPE === 'auto' ? 'autobackup' : 'backup',
+    target_entity: 'database',
+    details,
+  };
+
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/audit_logs`;
+    const res = await httpsPost(url, {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Prefer: 'return=minimal',
+    }, JSON.stringify(entry));
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      log(`  AUDIT  ${BACKUP_TYPE} backup logged`);
+    } else {
+      log(`  WARN   Audit log failed: HTTP ${res.statusCode} — ${res.body}`);
+    }
+  } catch (err) {
+    log(`  WARN   Audit log failed: ${err.message}`);
+  }
+}
+
 // ── Main ────────────────────────────────────────────────────────────────────
+const LOCK_FILE = join(BACKUP_ROOT, '.backup-in-progress');
+
 async function main() {
   const date = todayString();
   const backupDir = join(BACKUP_ROOT, date);
 
   mkdirSync(backupDir, { recursive: true });
+
+  // Create lock file so the frontend knows backup is in progress
+  writeFileSync(LOCK_FILE, date);
 
   log(`=== Backup started for ${date} ===`);
 
@@ -196,8 +281,14 @@ async function main() {
 
   log(`=== Backup complete: ${success} saved, ${skipped} skipped, ${failed} failed ===\n`);
 
+  // Write audit log entry
+  const auditDetails = failed === 0
+    ? `${BACKUP_TYPE === 'auto' ? 'Auto' : 'Manual'} backup completed: ${success} tables backed up successfully.`
+    : `${BACKUP_TYPE === 'auto' ? 'Auto' : 'Manual'} backup completed with errors: ${success} saved, ${skipped} skipped, ${failed} failed.`;
+  await writeAuditLog(auditDetails);
+
   // Show Windows notification
-  const title = failed === 0 ? 'Backup Successful' : 'Backup Completed with Errors';
+  const title = failed === 0 ? 'Backup taken successfully' : 'Backup Completed with Errors';
   const msg = failed === 0
     ? `${success} tables backed up successfully.`
     : `${success} saved, ${skipped} skipped, ${failed} failed.`;
@@ -209,7 +300,11 @@ async function main() {
   } catch { /* ignore notification failure */ }
 }
 
-main().catch((err) => {
-  log(`FATAL: ${err.message}`);
-  process.exit(1);
-});
+main()
+  .catch((err) => {
+    log(`FATAL: ${err.message}`);
+  })
+  .finally(() => {
+    // Always remove lock file so the frontend is unblocked
+    try { unlinkSync(LOCK_FILE); } catch {}
+  });
