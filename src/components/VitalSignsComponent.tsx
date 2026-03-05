@@ -332,7 +332,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Weight (kg) *</Label>
+                  <Label htmlFor="weight">Weight (kg) <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="weight"
                     name="weight"
@@ -343,7 +343,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="blood_pressure">Blood Pressure (mmHg) *</Label>
+                  <Label htmlFor="blood_pressure">Blood Pressure (mmHg) <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="blood_pressure"
                     name="blood_pressure"
@@ -354,7 +354,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="pulse">Pulse (bpm) *</Label>
+                  <Label htmlFor="pulse">Pulse (bpm) <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="pulse"
                     name="pulse"
@@ -365,7 +365,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="temperature">Temperature (°C) *</Label>
+                  <Label htmlFor="temperature">Temperature (°C) <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="temperature"
                     name="temperature"
@@ -376,7 +376,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="respiratory_rate">Respiratory Rate (breaths/min) *</Label>
+                  <Label htmlFor="respiratory_rate">Respiratory Rate (breaths/min) <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="respiratory_rate"
                     name="respiratory_rate"

@@ -345,7 +345,7 @@ const DealersTab: React.FC = () => {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="name" className="text-right">
-                Name*
+                Name <span className="text-red-500 ml-1">*</span>
               </Label>
               <Input
                 id="name"
@@ -368,7 +368,7 @@ const DealersTab: React.FC = () => {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="contact" className="text-right">
-                Contact*
+                Contact <span className="text-red-500 ml-1">*</span>
               </Label>
               <div className="col-span-3 flex gap-2">
                 <Select
@@ -441,7 +441,7 @@ const DealersTab: React.FC = () => {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="clinic-type" className="text-right">
-                Clinic*
+                Clinic <span className="text-red-500 ml-1">*</span>
               </Label>
               <Select
                 value={newDealerClinicType}
@@ -479,7 +479,7 @@ const DealersTab: React.FC = () => {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-name" className="text-right">
-                Name*
+                Name <span className="text-red-500 ml-1">*</span>
               </Label>
               <Input
                 id="edit-name"
@@ -502,7 +502,7 @@ const DealersTab: React.FC = () => {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-contact" className="text-right">
-                Contact*
+                Contact <span className="text-red-500 ml-1">*</span>
               </Label>
               <div className="col-span-3 flex gap-2">
                 <Select
@@ -575,7 +575,7 @@ const DealersTab: React.FC = () => {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-clinic-type" className="text-right">
-                Clinic*
+                Clinic <span className="text-red-500 ml-1">*</span>
               </Label>
               <Select
                 value={newDealerClinicType}

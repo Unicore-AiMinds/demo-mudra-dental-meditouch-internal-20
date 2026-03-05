@@ -239,7 +239,7 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-2">
               <Label htmlFor="quantity" className="text-right text-xs">
-                Quantity Used *
+                Quantity Used <span className="text-red-500 ml-1">*</span>
               </Label>
               <div className="col-span-3 flex items-center gap-2">
                 <Input
@@ -288,7 +288,7 @@ const ConsumeStockDialog: React.FC<ConsumeStockDialogProps> = ({
 
             <div className="grid grid-cols-4 items-center gap-2">
               <Label htmlFor="transaction_date" className="text-right text-xs">
-                Date Used *
+                Date Used <span className="text-red-500 ml-1">*</span>
               </Label>
               <div className="col-span-3">
                 <Input

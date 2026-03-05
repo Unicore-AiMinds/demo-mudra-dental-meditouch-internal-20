@@ -163,7 +163,7 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-2">
               <Label htmlFor="quantity_received" className="text-right text-xs">
-                Quantity Received *
+                Quantity Received <span className="text-red-500 ml-1">*</span>
               </Label>
               <div className="col-span-3 flex items-center gap-2">
                 <Input
@@ -198,7 +198,7 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
 
             <div className="grid grid-cols-4 items-center gap-2">
               <Label htmlFor="expiry_date" className="text-right text-xs">
-                Expiry Date *
+                Expiry Date <span className="text-red-500 ml-1">*</span>
               </Label>
               <div className="col-span-3">
                 <Input
@@ -213,7 +213,7 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
 
             <div className="grid grid-cols-4 items-center gap-2">
               <Label htmlFor="received_date" className="text-right text-xs">
-                Received Date *
+                Received Date <span className="text-red-500 ml-1">*</span>
               </Label>
               <div className="col-span-3">
                 <Input
