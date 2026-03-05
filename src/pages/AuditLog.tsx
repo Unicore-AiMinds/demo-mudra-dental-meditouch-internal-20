@@ -232,7 +232,8 @@ const AuditLog = () => {
       log.details.toLowerCase().includes(searchTerm.toLowerCase());
 
     // Fixed filtering logic - when "all" is selected or nothing is selected, show all items
-    const matchesCategory = !selectedCategory || selectedCategory === "all" || log.action_category === selectedCategory;
+    const matchesCategory = !selectedCategory || selectedCategory === "all"
+      || (selectedCategory === "backup" || selectedCategory === "autobackup" ? log.action_type === selectedCategory : log.action_category === selectedCategory);
     const matchesUser = !selectedUser || selectedUser === "all" || log.user_name === selectedUser;
 
     // Date range filtering
@@ -413,6 +414,8 @@ const AuditLog = () => {
                 <SelectItem value="dental_history">Dental History</SelectItem>
                 <SelectItem value="dental_charting">Dental Charting</SelectItem>
                 <SelectItem value="vital_signs">Vital Signs</SelectItem>
+                <SelectItem value="backup">Backup</SelectItem>
+                <SelectItem value="autobackup">Auto Backup</SelectItem>
               </SelectContent>
             </Select>
 
@@ -422,7 +425,7 @@ const AuditLog = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Users</SelectItem>
-                {uniqueUsers.map((user) => (
+                {uniqueUsers.filter((user) => user).map((user) => (
                   <SelectItem key={user} value={user}>{user}</SelectItem>
                 ))}
               </SelectContent>

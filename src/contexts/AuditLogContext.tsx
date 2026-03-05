@@ -11,7 +11,7 @@ export interface AuditLog {
   user_id?: string;
   user_name: string;
   user_role: string;
-  action_category: 'auth' | 'appointment' | 'stock' | 'lab' | 'patient' | 'user' | 'settings' | 'doctor' | 'service' | 'prescription' | 'dental_history' | 'dental_charting' | 'vital_signs' | 'role' | 'permission';
+  action_category: 'auth' | 'appointment' | 'stock' | 'lab' | 'patient' | 'user' | 'settings' | 'doctor' | 'service' | 'prescription' | 'dental_history' | 'dental_charting' | 'vital_signs' | 'role' | 'permission' | 'backup';
   action_type: string;
   target_entity: string;
   target_id?: string;
@@ -103,9 +103,10 @@ export const AuditLogProvider: React.FC<{ children: ReactNode }> = ({ children }
         .limit(1000); // Limit to last 1000 entries for performance
 
       // Filter by clinic type if active clinic is set
+      // Also include entries with no clinic_type (e.g. backup logs)
       if (activeClinic && ['dental', 'meditouch'].includes(activeClinic)) {
         console.log(`Filtering audit logs for clinic: ${activeClinic}`);
-        query = query.eq('clinic_type', activeClinic);
+        query = query.or(`clinic_type.eq.${activeClinic},clinic_type.is.null`);
       }
 
       const { data: fetchedLogs, error } = await query;
@@ -171,7 +172,7 @@ export const AuditLogProvider: React.FC<{ children: ReactNode }> = ({ children }
       const validCategories = [
         'auth', 'appointment', 'stock', 'lab', 'patient', 'user',
         'settings', 'doctor', 'service', 'prescription', 'dental_history',
-        'dental_charting', 'vital_signs', 'role', 'permission'
+        'dental_charting', 'vital_signs', 'role', 'permission', 'backup'
       ];
 
       if (!validCategories.includes(action.action_category)) {
