@@ -49,6 +49,9 @@ Source: "..\scripts\backup.mjs"; DestDir: "{app}\scripts"; Flags: ignoreversion
 ; Restore script
 Source: "..\scripts\restore.mjs"; DestDir: "{app}\scripts"; Flags: ignoreversion
 
+; WhatsApp proxy server
+Source: "..\whatsapp-proxy.mjs"; DestDir: "{app}"; Flags: ignoreversion
+
 [Icons]
 ; Desktop shortcut
 Name: "{autodesktop}\Mudra Clinic"; Filename: "{app}\launcher.vbs"; Comment: "Launch Mudra Clinic"
@@ -67,6 +70,8 @@ Filename: "{app}\launcher.vbs"; Description: "Launch Mudra Clinic now"; Flags: p
 [UninstallRun]
 ; Remove the scheduled backup task on uninstall
 Filename: "schtasks"; Parameters: "/delete /tn ""MudraClinicBackup"" /f"; Flags: runhidden; RunOnceId: "RemoveBackupTask"
+; Remove the WhatsApp proxy scheduled task on uninstall
+Filename: "schtasks"; Parameters: "/delete /tn ""MudraWhatsAppProxy"" /f"; Flags: runhidden; RunOnceId: "RemoveWhatsAppTask"
 
 [UninstallDelete]
 ; Clean up startup shortcut
@@ -143,6 +148,21 @@ begin
         '', SW_HIDE, ewWaitUntilTerminated, ResultCode
       );
     end;
+
+    // Create scheduled task for WhatsApp proxy to run at user logon
+    Exec(
+      'powershell.exe',
+      '-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command "' +
+        'Unregister-ScheduledTask -TaskName ''MudraWhatsAppProxy'' -Confirm:$false -ErrorAction SilentlyContinue; ' +
+        '$action = New-ScheduledTaskAction -Execute ''' + ExpandConstant('{app}') + '\node.exe'' ' +
+          '-Argument ''\"' + ExpandConstant('{app}') + '\whatsapp-proxy.mjs\"'' ' +
+          '-WorkingDirectory ''' + ExpandConstant('{app}') + '''; ' +
+        '$trigger = New-ScheduledTaskTrigger -AtLogOn; ' +
+        '$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Days 9999); ' +
+        'Register-ScheduledTask -TaskName ''MudraWhatsAppProxy'' -Action $action -Trigger $trigger -Settings $settings ' +
+          '-Description ''WhatsApp proxy server for Mudra Clinic notifications''"',
+      '', SW_HIDE, ewWaitUntilTerminated, ResultCode
+    );
   end;
 
 end;
