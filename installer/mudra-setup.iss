@@ -71,7 +71,9 @@ Filename: "schtasks"; Parameters: "/delete /tn ""MudraClinicBackup"" /f"; Flags:
 [UninstallDelete]
 ; Clean up startup shortcut
 Type: files; Name: "{userstartup}\Mudra Clinic.lnk"
-; NOTE: backup folder is intentionally kept so it can be reused after reinstall
+; Clean up dist folder (rebuilt on every install)
+Type: filesandordirs; Name: "{app}\dist"
+; NOTE: backup folder and .env are intentionally kept so they can be reused after reinstall
 
 [Messages]
 WelcomeLabel2=This will install Mudra Clinic on your computer.%n%nThe application runs as a local server accessible from any device on your network (LAN).
