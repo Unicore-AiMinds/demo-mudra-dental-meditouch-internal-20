@@ -114,9 +114,9 @@ begin
   BackupInfoLabel.WordWrap := True;
   BackupInfoLabel.AutoSize := True;
   BackupInfoLabel.Caption :=
-    'A daily backup will be taken automatically at 2:00 AM.' + #13#10 + #13#10 +
+    'A daily backup will be taken automatically at 2:00 PM.' + #13#10 + #13#10 +
     'Please ensure the following for a smooth backup process:' + #13#10 +
-    '  - The computer must be powered on at 2:00 AM' + #13#10 +
+    '  - The computer must be powered on at 2:00 PM' + #13#10 +
     '  - A proper internet connection is required';
 end;
 
@@ -141,7 +141,7 @@ begin
           '$action = New-ScheduledTaskAction -Execute ''' + ExpandConstant('{app}') + '\node.exe'' ' +
             '-Argument ''\"' + ExpandConstant('{app}') + '\scripts\backup.mjs\"'' ' +
             '-WorkingDirectory ''' + ExpandConstant('{app}') + '''; ' +
-          '$trigger = New-ScheduledTaskTrigger -Daily -At ''2:00AM''; ' +
+          '$trigger = New-ScheduledTaskTrigger -Daily -At ''2:00PM''; ' +
           '$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable; ' +
           'Register-ScheduledTask -TaskName ''MudraClinicBackup'' -Action $action -Trigger $trigger -Settings $settings ' +
             '-Description ''Daily backup of Mudra Clinic data''"',
