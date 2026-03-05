@@ -15,12 +15,28 @@
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { networkInterfaces } from 'node:os';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const DIST_DIR = join(__dirname, '..', 'dist');
+const ROOT_DIR = join(__dirname, '..');
+const DIST_DIR = join(ROOT_DIR, 'dist');
+
+// Load .env file from project root if it exists
+const envPath = join(ROOT_DIR, '.env');
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, 'utf-8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx === -1) continue;
+    const key = trimmed.slice(0, eqIdx).trim();
+    const val = trimmed.slice(eqIdx + 1).trim();
+    if (!process.env[key]) process.env[key] = val;
+  }
+}
+
 const PORT = parseInt(process.env.MUDRA_PORT || '8080', 10);
 
 const MIME_TYPES = {
@@ -146,6 +162,79 @@ const server = createServer((req, res) => {
   if (req.method === 'GET' && req.url === '/api/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end('{"status":"ok"}');
+    return;
+  }
+
+  // API route: Set/get current logged-in user (used by tray for backup)
+  if (req.method === 'POST' && req.url === '/api/auth/session') {
+    let body = '';
+    req.on('data', chunk => (body += chunk));
+    req.on('end', () => {
+      try {
+        const { user_name } = JSON.parse(body);
+        server._loggedInUser = user_name || null;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/api/auth/session') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ user_name: server._loggedInUser || null }));
+    return;
+  }
+
+  // API route: Trigger manual backup
+  if (req.method === 'POST' && req.url === '/api/backup/trigger') {
+    let body = '';
+    req.on('data', chunk => (body += chunk));
+    req.on('end', () => {
+      try {
+        const { user_name } = JSON.parse(body);
+        if (!user_name) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'user_name is required' }));
+          return;
+        }
+
+        const backupScript = join(ROOT_DIR, 'scripts', 'backup.mjs');
+        if (!existsSync(backupScript)) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Backup script not found' }));
+          return;
+        }
+
+        // Run backup in background with user name
+        const nodeExe = join(ROOT_DIR, 'node.exe');
+        const exe = existsSync(nodeExe) ? nodeExe : 'node';
+        spawn(exe, [backupScript, '--user', user_name], {
+          cwd: ROOT_DIR,
+          detached: true,
+          stdio: 'ignore',
+        }).unref();
+
+        console.log(`[api] Manual backup triggered by ${user_name}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+      }
+    });
+    return;
+  }
+
+  // API route: Backup status
+  if (req.method === 'GET' && req.url === '/api/backup/status') {
+    const lockFile = join(ROOT_DIR, 'backup', '.backup-in-progress');
+    const inProgress = existsSync(lockFile);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ inProgress }));
     return;
   }
 

@@ -34,6 +34,7 @@ import { UserManagementProvider } from "@/contexts/UserManagementContext";
 import { ReportsAnalyticsProvider } from "@/contexts/ReportsAnalyticsContext";
 import { SessionTimeoutProvider } from "@/contexts/SessionTimeoutContext";
 import SessionTimeoutModal from "@/components/SessionTimeoutModal";
+import BackupOverlay from "@/components/BackupOverlay";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Login from "@/pages/Login";
@@ -214,6 +215,7 @@ const App = () => (
   </ClinicInfoProvider>
 </ClinicProvider>
                 <SessionTimeoutModal />
+                <BackupOverlay />
               </SessionTimeoutProvider>
             </PermissionProvider>
           </AuthProvider>
