@@ -95,7 +95,9 @@ function handleSendMessage(req, res) {
         const npmDir = join(process.env.APPDATA || '', 'npm');
         const openclawScript = join(npmDir, 'node_modules', 'openclaw', 'openclaw.mjs');
         if (existsSync(openclawScript)) {
-          file = process.execPath; // node.exe
+          // openclaw requires Node >=22.12 — use system Node, not bundled v20
+          const systemNode = 'C:\\Program Files\\nodejs\\node.exe';
+          file = existsSync(systemNode) ? systemNode : process.execPath;
           finalArgs = ['--disable-warning=ExperimentalWarning', openclawScript, ...args];
         } else {
           // Fallback to cmd.exe if script not found

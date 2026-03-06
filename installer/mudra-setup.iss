@@ -148,7 +148,7 @@ begin
     end;
 
     // Create scheduled task for OpenClaw WhatsApp gateway (runs at logon, hidden)
-    // Uses cmd.exe /c so that openclaw.cmd (npm global) is found via PATH
+    // Requires openclaw to be installed globally: npm install -g openclaw
     Exec(
       'powershell.exe',
       '-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command "' +
