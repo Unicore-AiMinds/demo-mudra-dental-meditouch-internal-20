@@ -82,10 +82,32 @@ function handleSendMessage(req, res) {
         env.OPENCLAW_GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN;
       }
 
-      // Use execFile (no shell) to prevent command injection
-      execFile('openclaw', ['message', 'send', '--target', phone, '--message', message], {
-        env,
-      }, (error, stdout, stderr) => {
+      // Run openclaw CLI
+      // On Windows, .cmd wrappers go through cmd.exe which breaks multiline
+      // messages. Bypass cmd.exe by calling node.exe with the openclaw script
+      // directly so newlines in the message argument are preserved.
+      const openclawExe = process.env.OPENCLAW_PATH || 'openclaw';
+      const args = ['message', 'send', '--target', phone, '--message', message];
+
+      let file, finalArgs;
+      if (process.platform === 'win32') {
+        // Resolve the .cmd wrapper to the actual JS entry point
+        const npmDir = join(process.env.APPDATA || '', 'npm');
+        const openclawScript = join(npmDir, 'node_modules', 'openclaw', 'openclaw.mjs');
+        if (existsSync(openclawScript)) {
+          file = process.execPath; // node.exe
+          finalArgs = ['--disable-warning=ExperimentalWarning', openclawScript, ...args];
+        } else {
+          // Fallback to cmd.exe if script not found
+          file = process.env.comspec || 'cmd.exe';
+          finalArgs = ['/c', openclawExe, ...args];
+        }
+      } else {
+        file = openclawExe;
+        finalArgs = args;
+      }
+
+      execFile(file, finalArgs, { env }, (error, stdout, stderr) => {
         if (error) {
           console.error(`[api] Error: ${stderr || error.message}`);
           res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -166,13 +188,21 @@ const server = createServer((req, res) => {
   }
 
   // API route: Set/get current logged-in user (used by tray for backup)
+  // Per-device tracking using client IP so one device logging out doesn't affect others
   if (req.method === 'POST' && req.url === '/api/auth/session') {
     let body = '';
     req.on('data', chunk => (body += chunk));
     req.on('end', () => {
       try {
         const { user_name } = JSON.parse(body);
-        server._loggedInUser = user_name || null;
+        const clientIp = req.socket.remoteAddress || 'unknown';
+        if (!server._sessions) server._sessions = new Map();
+        if (user_name) {
+          server._sessions.set(clientIp, user_name);
+        } else {
+          server._sessions.delete(clientIp);
+        }
+        console.log(`[auth] ${user_name ? 'Login' : 'Logout'} from ${clientIp} — active sessions: ${server._sessions.size}`);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
       } catch {
@@ -184,8 +214,11 @@ const server = createServer((req, res) => {
   }
 
   if (req.method === 'GET' && req.url === '/api/auth/session') {
+    const sessions = server._sessions || new Map();
+    // Return the first active user — tray backup just needs any logged-in user
+    const activeUser = sessions.size > 0 ? [...sessions.values()][0] : null;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ user_name: server._loggedInUser || null }));
+    res.end(JSON.stringify({ user_name: activeUser }));
     return;
   }
 
