@@ -16,6 +16,10 @@ dist-ssr
 .env
 .env.*
 
+# Installer build outputs and binaries
+installer/Output/
+installer/node.exe
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
