@@ -18,7 +18,7 @@ if (Test-Path $iconPath) {
     $notifyIcon.Icon = [System.Drawing.SystemIcons]::Application
 }
 
-$notifyIcon.Text = "Mudra Clinic - Running on port 8080"
+$notifyIcon.Text = "Mudra Clinic"
 $notifyIcon.Visible = $true
 
 # Create context menu
