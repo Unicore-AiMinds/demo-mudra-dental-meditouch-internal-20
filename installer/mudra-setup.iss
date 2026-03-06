@@ -20,8 +20,8 @@ SolidCompression=yes
 ; Allow user to choose install directory (browse button)
 DisableDirPage=no
 DisableProgramGroupPage=yes
-; No admin required — installs to user-accessible path
-PrivilegesRequired=lowest
+; Admin required for scheduled task creation and process management
+PrivilegesRequired=admin
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -49,9 +49,6 @@ Source: "..\scripts\backup.mjs"; DestDir: "{app}\scripts"; Flags: ignoreversion
 ; Restore script
 Source: "..\scripts\restore.mjs"; DestDir: "{app}\scripts"; Flags: ignoreversion
 
-; WhatsApp proxy server
-Source: "..\whatsapp-proxy.mjs"; DestDir: "{app}"; Flags: ignoreversion
-
 [Icons]
 ; Desktop shortcut
 Name: "{autodesktop}\Mudra Clinic"; Filename: "{app}\launcher.vbs"; Comment: "Launch Mudra Clinic"
@@ -70,8 +67,9 @@ Filename: "{app}\launcher.vbs"; Description: "Launch Mudra Clinic now"; Flags: p
 [UninstallRun]
 ; Remove the scheduled backup task on uninstall
 Filename: "schtasks"; Parameters: "/delete /tn ""MudraClinicBackup"" /f"; Flags: runhidden; RunOnceId: "RemoveBackupTask"
-; Remove the WhatsApp proxy scheduled task on uninstall
-Filename: "schtasks"; Parameters: "/delete /tn ""MudraWhatsAppProxy"" /f"; Flags: runhidden; RunOnceId: "RemoveWhatsAppTask"
+; Stop and remove the OpenClaw gateway task on uninstall
+Filename: "schtasks"; Parameters: "/end /tn ""MudraOpenClawGateway"""; Flags: runhidden; RunOnceId: "StopGatewayTask"
+Filename: "schtasks"; Parameters: "/delete /tn ""MudraOpenClawGateway"" /f"; Flags: runhidden; RunOnceId: "RemoveGatewayTask"
 
 [UninstallDelete]
 ; Clean up startup shortcut
@@ -138,8 +136,8 @@ begin
         'powershell.exe',
         '-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command "' +
           'Unregister-ScheduledTask -TaskName ''MudraClinicBackup'' -Confirm:$false -ErrorAction SilentlyContinue; ' +
-          '$action = New-ScheduledTaskAction -Execute ''' + ExpandConstant('{app}') + '\node.exe'' ' +
-            '-Argument ''\"' + ExpandConstant('{app}') + '\scripts\backup.mjs\"'' ' +
+          '$action = New-ScheduledTaskAction -Execute ''powershell.exe'' ' +
+            '-Argument ''-ExecutionPolicy Bypass -WindowStyle Hidden -Command "& ''''' + ExpandConstant('{app}') + '\node.exe'''' ''''' + ExpandConstant('{app}') + '\scripts\backup.mjs''''"'' ' +
             '-WorkingDirectory ''' + ExpandConstant('{app}') + '''; ' +
           '$trigger = New-ScheduledTaskTrigger -Daily -At ''2:00PM''; ' +
           '$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable; ' +
@@ -149,20 +147,29 @@ begin
       );
     end;
 
-    // Create scheduled task for WhatsApp proxy to run at user logon
+    // Create scheduled task for OpenClaw WhatsApp gateway (runs at logon, hidden)
+    // Uses cmd.exe /c so that openclaw.cmd (npm global) is found via PATH
     Exec(
       'powershell.exe',
       '-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command "' +
-        'Unregister-ScheduledTask -TaskName ''MudraWhatsAppProxy'' -Confirm:$false -ErrorAction SilentlyContinue; ' +
-        '$action = New-ScheduledTaskAction -Execute ''' + ExpandConstant('{app}') + '\node.exe'' ' +
-          '-Argument ''\"' + ExpandConstant('{app}') + '\whatsapp-proxy.mjs\"'' ' +
-          '-WorkingDirectory ''' + ExpandConstant('{app}') + '''; ' +
-        '$trigger = New-ScheduledTaskTrigger -AtLogOn; ' +
-        '$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Days 9999); ' +
-        'Register-ScheduledTask -TaskName ''MudraWhatsAppProxy'' -Action $action -Trigger $trigger -Settings $settings ' +
-          '-Description ''WhatsApp proxy server for Mudra Clinic notifications''"',
+        'Unregister-ScheduledTask -TaskName ''MudraOpenClawGateway'' -Confirm:$false -ErrorAction SilentlyContinue; ' +
+        '$action = New-ScheduledTaskAction -Execute ''powershell.exe'' ' +
+          '-Argument ''-ExecutionPolicy Bypass -WindowStyle Hidden -Command openclaw gateway run''; ' +
+        '$trigger = New-ScheduledTaskTrigger -AtLogon; ' +
+        '$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries ' +
+          '-ExecutionTimeLimit (New-TimeSpan -Days 365) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1); ' +
+        'Register-ScheduledTask -TaskName ''MudraOpenClawGateway'' -Action $action -Trigger $trigger -Settings $settings ' +
+          '-Description ''OpenClaw WhatsApp gateway for Mudra Clinic'' -RunLevel Highest"',
       '', SW_HIDE, ewWaitUntilTerminated, ResultCode
     );
+
+    // Start the gateway immediately (don't wait for next logon)
+    Exec(
+      'schtasks',
+      '/run /tn "MudraOpenClawGateway"',
+      '', SW_HIDE, ewWaitUntilTerminated, ResultCode
+    );
+
   end;
 
 end;
@@ -195,6 +202,10 @@ begin
   // Kill the tray PowerShell process that was launched from our app directory
   Exec('powershell.exe',
     '-ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process -Filter \"Name=''powershell.exe''\" -EA SilentlyContinue | Where-Object { $_.CommandLine -imatch [regex]::Escape(''' + AppPath + '\tray.ps1'') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -EA SilentlyContinue }"',
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+  // Stop the OpenClaw gateway scheduled task
+  Exec('schtasks', '/end /tn "MudraOpenClawGateway"',
     '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 
   // Wait for file handles to release
