@@ -394,6 +394,7 @@ const Appointments = () => {
     markAppointmentCompleted
   } = useAppointments(); // Get appointments from context
   const { dentalServices, meditouchServices } = useServices(); // Get services from context
+  const { supabase: mainSupabase } = useSupabase();
 
   // Local loading state for UI operations
   const [isLoading, setIsLoading] = useState(false);
@@ -992,7 +993,7 @@ const Appointments = () => {
     }, 50);
   };
 
-  const handleEditAppointment = (appointment: AppointmentType) => {
+  const handleEditAppointment = async (appointment: AppointmentType) => {
     console.log('Editing appointment:', appointment);
 
     // Close the new appointment form if it's open
@@ -1015,6 +1016,23 @@ const Appointments = () => {
       setAppointmentDoctor((appointment as DentalAppointment).doctor);
     } else if (!isDental && 'therapist' in appointment && appointment.therapist) {
       setAppointmentDoctor(appointment.therapist);
+    }
+
+    // If appointment was scheduled from recall list, resolve follow-up service name
+    if (appointment.follow_up_id) {
+      try {
+        const followUp = await mainSupabase.from('follow_ups').getById(appointment.follow_up_id);
+        if (followUp && followUp.suggested_service_name) {
+          setAppointmentFollowUpService(followUp.suggested_service_name);
+        } else {
+          setAppointmentFollowUpService("");
+        }
+      } catch (err) {
+        console.error('Error fetching follow-up:', err);
+        setAppointmentFollowUpService("");
+      }
+    } else {
+      setAppointmentFollowUpService("");
     }
 
     // Reset filtered patients list for the search - only show patients for current clinic
@@ -1133,6 +1151,7 @@ const Appointments = () => {
           date: updatedDate,
           time: appointmentTime,
           service: appointmentService,
+          followUpService: appointmentFollowUpService || undefined,
           actionType: 'rescheduled',
         });
 
@@ -1183,6 +1202,7 @@ const Appointments = () => {
           date: editingAppointment.date,
           time: editingAppointment.time,
           service: editingAppointment.service,
+          followUpService: appointmentFollowUpService || undefined,
           actionType: 'cancelled',
         });
 
@@ -1239,7 +1259,8 @@ const Appointments = () => {
   // Handle WhatsApp send
   const handleWhatsAppSend = async () => {
     if (!whatsAppConfirmData) return;
-    const { phone, patientName, date, time, service, followUpService, actionType } = whatsAppConfirmData;
+    const { phone, patientName, doctor, date, time, service, followUpService, actionType } = whatsAppConfirmData;
+    const clinicType = activeClinic;
     // Close dialog immediately
     setIsWhatsAppConfirmOpen(false);
     setWhatsAppConfirmData(null);
@@ -1247,13 +1268,13 @@ const Appointments = () => {
       let result;
       switch (actionType) {
         case 'scheduled':
-          result = await sendAppointmentScheduledMessage(phone, patientName, date, time, service, followUpService);
+          result = await sendAppointmentScheduledMessage(phone, patientName, date, time, service, doctor, clinicType, followUpService);
           break;
         case 'rescheduled':
-          result = await sendAppointmentRescheduledMessage(phone, patientName, date, time, service);
+          result = await sendAppointmentRescheduledMessage(phone, patientName, date, time, service, doctor, clinicType, followUpService);
           break;
         case 'cancelled':
-          result = await sendAppointmentCancelledMessage(phone, patientName, date, service);
+          result = await sendAppointmentCancelledMessage(phone, patientName, date, time, doctor);
           break;
       }
       if (result?.success) {
@@ -3541,44 +3562,55 @@ const Appointments = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit-service">Service</Label>
-                <Select
-                  value={appointmentService || ''}
-                  onValueChange={setAppointmentService}
-                  defaultValue={appointmentService || ''}
-                >
-                  <SelectTrigger id="edit-service">
-                    <SelectValue placeholder="Select service" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isDental ? (
-                      dentalServices.length > 0 ? (
-                        dentalServices.map(service => (
-                          <SelectItem key={service.id} value={service.name}>
-                            {service.name}
-                          </SelectItem>
-                        ))
+              <div className={appointmentFollowUpService ? "grid grid-cols-2 gap-3" : ""}>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-service">Service</Label>
+                  <Select
+                    value={appointmentService || ''}
+                    onValueChange={setAppointmentService}
+                    defaultValue={appointmentService || ''}
+                  >
+                    <SelectTrigger id="edit-service">
+                      <SelectValue placeholder="Select service" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isDental ? (
+                        dentalServices.length > 0 ? (
+                          dentalServices.map(service => (
+                            <SelectItem key={service.id} value={service.name}>
+                              {service.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                            No services found. Please add services in Settings.
+                          </div>
+                        )
                       ) : (
-                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                          No services found. Please add services in Settings.
-                        </div>
-                      )
-                    ) : (
-                      meditouchServices.length > 0 ? (
-                        meditouchServices.map(service => (
-                          <SelectItem key={service.id} value={service.name}>
-                            {service.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                          No services found. Please add services in Settings.
-                        </div>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
+                        meditouchServices.length > 0 ? (
+                          meditouchServices.map(service => (
+                            <SelectItem key={service.id} value={service.name}>
+                              {service.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-2 text-center text-sm text-muted-foreground">
+                            No services found. Please add services in Settings.
+                          </div>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {appointmentFollowUpService && (
+                  <div className="space-y-1">
+                    <Label htmlFor="edit-followup-service">Follow-up Service</Label>
+                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground">
+                      {appointmentFollowUpService}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
