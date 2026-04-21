@@ -1,23 +1,23 @@
 /**
  * Mudra Clinic — Combined Server
  *
- * Serves the built React app (dist/) and handles WhatsApp proxy API.
+ * Serves the built React app (dist/) and handles WhatsApp messaging via Baileys.
  * Binds to 0.0.0.0 for LAN access.
  *
  * Usage:
  *   node server/mudra-server.mjs
  *
  * Environment variables:
- *   OPENCLAW_GATEWAY_TOKEN  — OpenClaw gateway token (optional, falls back to openclaw config)
  *   MUDRA_PORT              — Server port (default: 8080)
  */
 
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
-import { execFile, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { networkInterfaces } from 'node:os';
+import { initWhatsApp, sendWhatsAppMessage, getWhatsAppStatus, logoutWhatsApp } from './whatsapp-baileys.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT_DIR = join(__dirname, '..');
@@ -62,12 +62,12 @@ const MIME_TYPES = {
   '.txt':   'text/plain',
 };
 
-// ── WhatsApp proxy handler ──────────────────────────────────────────────────
+// ── WhatsApp message handler ────────────────────────────────────────────────
 
 function handleSendMessage(req, res) {
   let body = '';
   req.on('data', chunk => (body += chunk));
-  req.on('end', () => {
+  req.on('end', async () => {
     try {
       const { phone, message } = JSON.parse(body);
 
@@ -77,52 +77,14 @@ function handleSendMessage(req, res) {
         return;
       }
 
-      const env = { ...process.env };
-      if (process.env.OPENCLAW_GATEWAY_TOKEN) {
-        env.OPENCLAW_GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN;
-      }
-
-      // Run openclaw CLI
-      // On Windows, .cmd wrappers go through cmd.exe which breaks multiline
-      // messages. Bypass cmd.exe by calling node.exe with the openclaw script
-      // directly so newlines in the message argument are preserved.
-      const openclawExe = process.env.OPENCLAW_PATH || 'openclaw';
-      const args = ['message', 'send', '--target', phone, '--message', message];
-
-      let file, finalArgs;
-      if (process.platform === 'win32') {
-        // Resolve the .cmd wrapper to the actual JS entry point
-        const npmDir = join(process.env.APPDATA || '', 'npm');
-        const openclawScript = join(npmDir, 'node_modules', 'openclaw', 'openclaw.mjs');
-        if (existsSync(openclawScript)) {
-          // openclaw requires Node >=22.12 — use system Node, not bundled v20
-          const systemNode = 'C:\\Program Files\\nodejs\\node.exe';
-          file = existsSync(systemNode) ? systemNode : process.execPath;
-          finalArgs = ['--disable-warning=ExperimentalWarning', openclawScript, ...args];
-        } else {
-          // Fallback to cmd.exe if script not found
-          file = process.env.comspec || 'cmd.exe';
-          finalArgs = ['/c', openclawExe, ...args];
-        }
-      } else {
-        file = openclawExe;
-        finalArgs = args;
-      }
-
-      execFile(file, finalArgs, { env }, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`[api] Error: ${stderr || error.message}`);
-          res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: stderr || error.message }));
-          return;
-        }
-        console.log(`[api] Message sent to ${phone}`);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, output: stdout }));
-      });
-    } catch (e) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+      const result = await sendWhatsAppMessage(phone, message);
+      console.log(`[api] Message sent to ${phone}`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err) {
+      console.error(`[api] Error: ${err.message}`);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
     }
   });
 }
@@ -170,7 +132,7 @@ function serveStatic(req, res) {
 
 // ── Main server ─────────────────────────────────────────────────────────────
 
-const server = createServer((req, res) => {
+const server = createServer(async (req, res) => {
   // CORS headers for LAN access
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -273,14 +235,71 @@ const server = createServer((req, res) => {
     return;
   }
 
-  // API route: WhatsApp proxy
+  // API route: WhatsApp send message
   if (req.method === 'POST' && req.url === '/api/sendMessage') {
     handleSendMessage(req, res);
     return;
   }
 
+  // API route: WhatsApp connection status
+  if (req.method === 'GET' && req.url === '/api/whatsapp/status') {
+    try {
+      const status = await getWhatsAppStatus();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(status));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // API route: WhatsApp QR code page (for easy scanning in browser)
+  if (req.method === 'GET' && req.url === '/api/whatsapp/qr') {
+    try {
+      const status = await getWhatsAppStatus();
+      if (status.status === 'connected') {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end('<html><body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif"><h1>WhatsApp Connected</h1></body></html>');
+      } else if (status.qr) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(`<html><body style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;font-family:sans-serif">
+          <h2>Scan QR Code with WhatsApp</h2>
+          <img src="${status.qr}" style="width:300px;height:300px" />
+          <p>Open WhatsApp > Settings > Linked Devices > Link a Device</p>
+          <script>setTimeout(() => location.reload(), 15000)</script>
+        </body></html>`);
+      } else {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end('<html><body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif"><h2>Waiting for QR code... <script>setTimeout(() => location.reload(), 3000)</script></h2></body></html>');
+      }
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // API route: WhatsApp logout
+  if (req.method === 'POST' && req.url === '/api/whatsapp/logout') {
+    try {
+      await logoutWhatsApp();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // Everything else: serve static files
   serveStatic(req, res);
+});
+
+// Initialize WhatsApp connection before starting HTTP server
+initWhatsApp().catch(err => {
+  console.error('[whatsapp] Failed to initialize:', err.message);
 });
 
 server.listen(PORT, '0.0.0.0', () => {

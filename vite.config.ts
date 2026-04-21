@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     proxy: {
-      '/api/sendMessage': {
+      '/api': {
         target: 'http://localhost:18790',
         changeOrigin: true,
       },

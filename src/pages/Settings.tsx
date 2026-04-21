@@ -17,6 +17,7 @@ import StockItemsTab from '@/components/settings/StockItemsTab';
 import DealersTab from '@/components/settings/DealersTab';
 import UserManagementTab from '@/components/settings/UserManagementTab';
 import { RolesTab } from '@/components/settings/RolesTab';
+import WhatsAppTab from '@/components/settings/WhatsAppTab';
 import { initializeSystem } from '@/utils/initializeSystem';
 
 import { ServiceFollowUpRule, FollowUpStep } from '@/types/dental-history';
@@ -1794,6 +1795,7 @@ const Settings = () => {
           {/* <TabsTrigger value="notifications">Notifications</TabsTrigger> */}
           {hasPermission('settings.view_roles') && <TabsTrigger value="roles">Roles & Permissions</TabsTrigger>}
           {hasPermission('settings.view_user_management') && <TabsTrigger value="users">User Management</TabsTrigger>}
+          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
         </TabsList>
 
         {/* COMMENTED OUT: Clinic Details tab content as requested by user */}
@@ -3675,6 +3677,10 @@ const Settings = () => {
 
         <TabsContent value="users" className="space-y-6">
           <UserManagementTab />
+        </TabsContent>
+
+        <TabsContent value="whatsapp" className="space-y-6">
+          <WhatsAppTab />
         </TabsContent>
 
       </Tabs>

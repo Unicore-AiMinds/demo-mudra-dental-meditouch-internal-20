@@ -30,3 +30,6 @@ installer/node.exe
 *.njsproj
 *.sln
 *.sw?
+
+# WhatsApp Baileys session credentials
+whatsapp-auth/
