@@ -13,8 +13,8 @@ AppPublisher=Mudra Clinic
 AppPublisherURL=https://mudraclinic.com
 DefaultDirName=C:\Mudra-app
 DefaultGroupName=Mudra Clinic
-OutputBaseFilename=MudraClinicSetup
-OutputDir=E:\DentalMetrix Project\installer\Output\MudraClinicSetup.exe
+OutputBaseFilename=MudraClinicSetup{#SetupSetting("AppVersion")}
+OutputDir=E:\DentalMetrix Project\installer\Output
 Compression=lzma2/ultra64
 SolidCompression=yes
 ; Allow user to choose install directory (browse button)
@@ -35,6 +35,7 @@ Source: "node.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Combined server script
 Source: "..\server\mudra-server.mjs"; DestDir: "{app}\server"; Flags: ignoreversion
+Source: "..\server\whatsapp-baileys.mjs"; DestDir: "{app}\server"; Flags: ignoreversion
 
 ; Built React app (entire dist/ folder)
 Source: "..\dist\*"; DestDir: "{app}\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -48,6 +49,9 @@ Source: "..\scripts\backup.mjs"; DestDir: "{app}\scripts"; Flags: ignoreversion
 
 ; Restore script
 Source: "..\scripts\restore.mjs"; DestDir: "{app}\scripts"; Flags: ignoreversion
+
+; Server runtime dependencies (only Baileys, QRCode, and their transitive deps)
+Source: "..\server\node_modules\*"; DestDir: "{app}\node_modules"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 ; Desktop shortcut
@@ -67,9 +71,6 @@ Filename: "{app}\launcher.vbs"; Description: "Launch Mudra Clinic now"; Flags: p
 [UninstallRun]
 ; Remove the scheduled backup task on uninstall
 Filename: "schtasks"; Parameters: "/delete /tn ""MudraClinicBackup"" /f"; Flags: runhidden; RunOnceId: "RemoveBackupTask"
-; Stop and remove the OpenClaw gateway task on uninstall
-Filename: "schtasks"; Parameters: "/end /tn ""MudraOpenClawGateway"""; Flags: runhidden; RunOnceId: "StopGatewayTask"
-Filename: "schtasks"; Parameters: "/delete /tn ""MudraOpenClawGateway"" /f"; Flags: runhidden; RunOnceId: "RemoveGatewayTask"
 
 [UninstallDelete]
 ; Clean up startup shortcut
@@ -147,29 +148,6 @@ begin
       );
     end;
 
-    // Create scheduled task for OpenClaw WhatsApp gateway (runs at logon, hidden)
-    // Requires openclaw to be installed globally: npm install -g openclaw
-    Exec(
-      'powershell.exe',
-      '-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command "' +
-        'Unregister-ScheduledTask -TaskName ''MudraOpenClawGateway'' -Confirm:$false -ErrorAction SilentlyContinue; ' +
-        '$action = New-ScheduledTaskAction -Execute ''powershell.exe'' ' +
-          '-Argument ''-ExecutionPolicy Bypass -WindowStyle Hidden -Command openclaw gateway run''; ' +
-        '$trigger = New-ScheduledTaskTrigger -AtLogon; ' +
-        '$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries ' +
-          '-ExecutionTimeLimit (New-TimeSpan -Days 365) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1); ' +
-        'Register-ScheduledTask -TaskName ''MudraOpenClawGateway'' -Action $action -Trigger $trigger -Settings $settings ' +
-          '-Description ''OpenClaw WhatsApp gateway for Mudra Clinic'' -RunLevel Highest"',
-      '', SW_HIDE, ewWaitUntilTerminated, ResultCode
-    );
-
-    // Start the gateway immediately (don't wait for next logon)
-    Exec(
-      'schtasks',
-      '/run /tn "MudraOpenClawGateway"',
-      '', SW_HIDE, ewWaitUntilTerminated, ResultCode
-    );
-
   end;
 
 end;
@@ -202,10 +180,6 @@ begin
   // Kill the tray PowerShell process that was launched from our app directory
   Exec('powershell.exe',
     '-ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process -Filter \"Name=''powershell.exe''\" -EA SilentlyContinue | Where-Object { $_.CommandLine -imatch [regex]::Escape(''' + AppPath + '\tray.ps1'') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -EA SilentlyContinue }"',
-    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-
-  // Stop the OpenClaw gateway scheduled task
-  Exec('schtasks', '/end /tn "MudraOpenClawGateway"',
     '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 
   // Wait for file handles to release
