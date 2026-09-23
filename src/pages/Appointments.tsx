@@ -1951,15 +1951,11 @@ const Appointments = () => {
       // Update the UI date to match the appointment date
       setDate(pendingAppointment.date);
     } catch (error) {
+      // AppointmentContext.addAppointment already shows the correct toast for
+      // each failure ("Already Scheduled" for a true duplicate, "Database Error"
+      // for a failed insert). Don't add a second, misleading toast here that
+      // wrongly blamed every failure on a duplicate.
       console.error('Error creating appointment:', error);
-      const isDuplicate = error instanceof Error && error.message.includes('already scheduled');
-      if (!isDuplicate) {
-        toast({
-          title: 'Error',
-          description: 'Failed to schedule appointment. An appointment with the same details already exists.',
-          variant: 'destructive',
-        });
-      }
     } finally {
       setIsLoading(false);
     }
