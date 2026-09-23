@@ -84,7 +84,7 @@ CREATE TABLE appointments (
   time TEXT NOT NULL,
   service TEXT NOT NULL,
   date DATE NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('confirmed', 'arrived', 'completed', 'cancelled')),
+  status TEXT NOT NULL CHECK (status IN ('booked', 'confirmed', 'arrived', 'completed', 'cancelled')),
   payment_status TEXT CHECK (payment_status IN ('paid', 'unpaid')),
   based_on_follow_up_id UUID,
   follow_up_id UUID, -- Links appointment to a follow-up entry from recall list

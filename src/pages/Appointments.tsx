@@ -114,7 +114,7 @@ const AppointmentCard = ({
   patient_name: string;
   service: string;
   doctor?: string;
-  status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
+  status: 'booked' | 'confirmed' | 'arrived' | 'completed' | 'cancelled';
   second_patient_name?: string | null;
   isDental?: boolean;
   onEdit: () => void;
@@ -255,6 +255,9 @@ const CalendarAppointmentItem = ({
           <div className="text-xs truncate">{appointment.patient_name}</div>
         </>
       )}
+      {appointment.status === 'booked' && (
+        <div className="text-[10px] font-semibold" style={{ color: '#B45309' }}>● Booked</div>
+      )}
     </div>
   );
 
@@ -348,6 +351,13 @@ const TimeSlotAppointment = ({
         <div className="text-white/90 text-[10px] font-medium truncate">{providerName}</div>
       )}
 
+      {/* Book-to-Confirm: flag appointments that still need confirming */}
+      {appointment.status === 'booked' && (
+        <div className="absolute top-0.5 right-0.5 bg-amber-400 text-amber-900 text-[8px] font-bold px-1 rounded">
+          BOOKED
+        </div>
+      )}
+
       {/* Show continuation indicator for multi-slot appointments */}
       {isMultiSlot && (
         <div className="absolute bottom-0 right-0 left-0 flex justify-center">
@@ -386,7 +396,8 @@ const Appointments = () => {
     addAppointment,
     updateAppointment,
     deleteAppointment,
-    markAppointmentCompleted
+    markAppointmentCompleted,
+    confirmAppointment
   } = useAppointments(); // Get appointments from context
   const { dentalServices, meditouchServices } = useServices(); // Get services from context
 
@@ -1854,7 +1865,7 @@ const Appointments = () => {
           doctor: pendingAppointment.doctor || 'Dr. Khanna',
           doctor_id: doctorId,
           date: formattedDate,
-          status: 'confirmed' as const,
+          status: 'booked' as const,
           payment_status: 'unpaid' as const,
           clinic_type: 'dental' as const,
           // If this appointment is for a planned treatment, link it to the charting entry
@@ -1881,7 +1892,7 @@ const Appointments = () => {
           patient_id: patientId,
           service: pendingAppointment.service || 'General Consultation',
           date: formattedDate,
-          status: 'confirmed' as const,
+          status: 'booked' as const,
           payment_status: 'unpaid' as const,
           clinic_type: 'meditouch' as const,
           therapist: appointmentDoctor || pendingAppointment.doctor || '', // Use doctor field for therapist
@@ -3590,7 +3601,28 @@ const Appointments = () => {
                   Update
                 </Button>
               )}
-              {editingAppointment && editingAppointment.status !== 'completed' && hasPermission('appointments.edit') && (
+              {editingAppointment && editingAppointment.status === 'booked' && hasPermission('appointments.edit') && (
+                <Button
+                  variant="outline"
+                  className="text-green-600 border-green-600 hover:bg-green-50"
+                  onClick={async () => {
+                    if (editingAppointment) {
+                      console.log("Confirm Appointment button clicked in edit dialog");
+                      try {
+                        await confirmAppointment(editingAppointment.id || editingAppointment.appointment_id);
+                        toast({ title: 'Appointment Confirmed', description: 'The appointment has been confirmed.' });
+                      } catch (err) {
+                        console.error('Failed to confirm appointment:', err);
+                        toast({ title: 'Error', description: 'Failed to confirm appointment.', variant: 'destructive' });
+                      }
+                      setIsEditAppointmentOpen(false);
+                    }
+                  }}
+                >
+                  Confirm Appointment
+                </Button>
+              )}
+              {editingAppointment && editingAppointment.status === 'confirmed' && hasPermission('appointments.edit') && (
                 <Button
                   variant="outline"
                   className="text-green-600 border-green-600 hover:bg-green-50"

@@ -19,7 +19,7 @@ export interface Appointment {
   time: string;
   service: string;
   date: string;
-  status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
+  status: 'booked' | 'confirmed' | 'arrived' | 'completed' | 'cancelled';
   payment_status?: 'paid' | 'unpaid';
   based_on_follow_up_id?: string;
   follow_up_id?: string;
@@ -60,6 +60,7 @@ interface AppointmentContextType {
   getPatientAppointments: (patientId: string, clinic: 'dental' | 'meditouch' | 'both') => Promise<Appointment[]>;
   getUpcomingAppointments: (clinic: 'dental' | 'meditouch') => Promise<Appointment[]>;
   markAppointmentCompleted: (appointmentId: string) => Promise<void>;
+  confirmAppointment: (appointmentId: string) => Promise<void>;
   getAvailableTimeSlots: (date: Date, clinic: 'dental' | 'meditouch') => Promise<string[]>;
 }
 
@@ -310,7 +311,7 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         duration_minutes: appointment.duration_minutes,
-        status: 'confirmed' as const
+        status: 'booked' as const
       };
 
       // Note: patient_name will be added back for UI display after Supabase insert
@@ -809,6 +810,13 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   // Mark an appointment as completed
+  const confirmAppointment = async (appointmentId: string): Promise<void> => {
+    console.log(`Confirming appointment ${appointmentId}`);
+    // Book-to-Confirm: move a 'booked' appointment to 'confirmed' after staff
+    // has spoken to the patient. Persists via the shared update path.
+    await updateAppointment(appointmentId, { status: 'confirmed' });
+  };
+
   const markAppointmentCompleted = async (appointmentId: string): Promise<void> => {
     try {
       console.log(`Marking appointment ${appointmentId} as completed`);
@@ -987,6 +995,7 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
         getPatientAppointments,
         getUpcomingAppointments,
         markAppointmentCompleted,
+        confirmAppointment,
         getAvailableTimeSlots
       }}
     >

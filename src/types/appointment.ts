@@ -7,7 +7,7 @@ export interface BaseAppointment {
   patientId: string; // Reference to patient ID
   service: string;
   date?: string;
-  status: 'confirmed' | 'arrived' | 'completed' | 'cancelled';
+  status: 'booked' | 'confirmed' | 'arrived' | 'completed' | 'cancelled';
   paymentStatus?: 'paid' | 'unpaid';
   // Reference to follow-up that generated this appointment
   basedOnFollowUpId?: string;
