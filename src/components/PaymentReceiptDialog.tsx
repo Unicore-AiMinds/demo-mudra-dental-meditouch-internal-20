@@ -161,7 +161,10 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
     doc.text('Dr. Bhargavi Railkar - Kolhapure', right, 190, { align: 'right' });
 
     const safeName = (receivedFrom || 'receipt').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-');
-    doc.save(`Receipt-${safeName || 'receipt'}.pdf`);
+    // Download date + time in the filename: sorts chronologically and avoids
+    // collisions when several receipts are downloaded for the same patient/day.
+    const stamp = format(new Date(), 'yyyy-MM-dd-HH-mm');
+    doc.save(`Receipt-${safeName || 'receipt'}-${stamp}.pdf`);
   };
 
   return (
