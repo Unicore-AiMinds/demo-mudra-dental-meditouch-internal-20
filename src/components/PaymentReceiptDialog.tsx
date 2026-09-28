@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
+import { format } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Download } from 'lucide-react';
 
 export interface ReceiptPrefill {
@@ -61,7 +63,7 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
   const [receivedFrom, setReceivedFrom] = useState('');
   const [amount, setAmount] = useState('');
   const [ddNo, setDdNo] = useState('');
-  const [dated, setDated] = useState('');
+  const [dated, setDated] = useState<Date | undefined>(undefined);
   const [treatment, setTreatment] = useState('');
 
   // Prefill each time the dialog is opened for an appointment
@@ -72,80 +74,73 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
       setReceivedFrom(prefill.patientName || '');
       setAmount('');
       setDdNo('');
-      setDated('');
+      setDated(undefined);
       setTreatment(prefill.service || '');
     }
   }, [open, prefill]);
 
-  const amountWords = rupeesToWords(amount);
+  const words = rupeesToWords(amount);
+  const amountWords = words ? `${words} Only` : '';           // e.g. "One Thousand Five Hundred Only"
+  const amountFigure = amount && amount.trim() ? `${amount.trim()}/-` : ''; // e.g. "1500/-"
 
-  /** Build a compact A6-landscape receipt PDF and download it (no browser print chrome). */
+  /** Build a WIDE A4-landscape receipt PDF (to match the paper) and download it. */
   const handleDownload = () => {
-    // 148mm x 105mm (A6 landscape) - a compact receipt slip, no wasted margins
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a6' });
-    const W = 148;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const W = 297;
     const cx = W / 2;
-    const left = 12;
-    const right = W - 12;
+    const left = 22;
+    const right = W - 22;
+    const blank = '__________________';
+
+    // Draw "label  value(bold)" starting at x; returns x after the value
+    const field = (label: string, value: string, x: number, y: number, gap = 3) => {
+      doc.setFont('times', 'normal');
+      doc.text(label, x, y);
+      const lw = doc.getTextWidth(label);
+      doc.setFont('times', 'bold');
+      doc.text(value || blank, x + lw + gap, y);
+      const vw = doc.getTextWidth(value || blank);
+      doc.setFont('times', 'normal');
+      return x + lw + gap + vw;
+    };
 
     // Header
     doc.setFont('times', 'bold');
-    doc.setFontSize(14);
-    doc.text('Dr. Bhargavi Railkar - Kolhapure', cx, 13, { align: 'center' });
+    doc.setFontSize(20);
+    doc.text('Dr. Bhargavi Railkar - Kolhapure', cx, 24, { align: 'center' });
     doc.setFont('times', 'normal');
-    doc.setFontSize(8);
-    doc.text('BDS, MDS  |  Prosthodontist & Implantologist  |  Regd. No.: A-14618', cx, 18, { align: 'center' });
-    doc.setFontSize(7.5);
-    doc.text('1495, Sadashiv Peth, Sahitya Samrat Apartment, Pratima Silk Lane, Off. Tilak Road, Pune 411 030.', cx, 22.5, { align: 'center' });
-    doc.text('Tel : +91 20 2447 2227', cx, 26, { align: 'center' });
-    doc.setLineWidth(0.4);
-    doc.line(left, 29, right, 29);
+    doc.setFontSize(11);
+    doc.text('BDS, MDS   |   Prosthodontist & Implantologist   |   Regd. No.: A-14618', cx, 32, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('1495, Sadashiv Peth, Sahitya Samrat Apartment, Pratima Silk Lane, Off. Tilak Road, Pune 411 030.', cx, 39, { align: 'center' });
+    doc.text('Tel : +91 20 2447 2227', cx, 45, { align: 'center' });
+    doc.setLineWidth(0.5);
+    doc.line(left, 50, right, 50);
 
     // Body
-    doc.setFontSize(10);
-    const val = (s: string) => (s && s.trim() ? s : '____________');
+    doc.setFontSize(13);
+    field('Sr. No.:', srNo, left, 68);
+    field('Date :', date, right - 60, 68);
+
+    field('Received with thanks from', receivedFrom, left, 88);
+
+    let x = field('the Sum of Rs.', amountFigure, left, 108);
+    doc.setFont('times', 'normal');
+    doc.text(`( Rupees ${amountWords || blank} )`, x + 8, 108);
+
+    x = field('by Cash / Cheque / D. D. No.', ddNo, left, 128);
+    field('dated', dated ? format(dated, 'dd/MM/yyyy') : '', x + 8, 128);
 
     doc.setFont('times', 'normal');
-    doc.text('Sr. No.:', left, 38);
+    doc.text('for the Treatment', left, 148);
+    const tlw = doc.getTextWidth('for the Treatment');
     doc.setFont('times', 'bold');
-    doc.text(val(srNo), left + 16, 38);
-    doc.setFont('times', 'normal');
-    doc.text('Date :', right - 32, 38);
-    doc.setFont('times', 'bold');
-    doc.text(val(date), right - 22, 38);
-
-    doc.setFont('times', 'normal');
-    doc.text('Received with thanks from', left, 47);
-    doc.setFont('times', 'bold');
-    doc.text(val(receivedFrom), left + 47, 47);
-
-    doc.setFont('times', 'normal');
-    doc.text('the Sum of Rs.', left, 56);
-    doc.setFont('times', 'bold');
-    doc.text(val(amount), left + 27, 56);
-    doc.setFont('times', 'normal');
-    const rupeesLabel = `( Rupees ${amountWords || '____________'} )`;
-    doc.text(rupeesLabel, left + 45, 56);
-
-    doc.setFont('times', 'normal');
-    doc.text('by Cash / Cheque / D. D. No.', left, 65);
-    doc.setFont('times', 'bold');
-    doc.text(val(ddNo), left + 52, 65);
-    doc.setFont('times', 'normal');
-    doc.text('dated', left + 72, 65);
-    doc.setFont('times', 'bold');
-    doc.text(val(dated), left + 84, 65);
-
-    doc.setFont('times', 'normal');
-    doc.text('for the Treatment', left, 74);
-    doc.setFont('times', 'bold');
-    const treatmentLines = doc.splitTextToSize(val(treatment), right - (left + 32));
-    doc.text(treatmentLines, left + 32, 74);
+    doc.text(doc.splitTextToSize(treatment || blank, right - (left + tlw + 4)), left + tlw + 4, 148);
 
     // Signature
     doc.setFont('times', 'bold');
-    doc.setFontSize(9);
-    doc.text('Dr. Bhargavi Railkar - Kolhapure', right, 96, { align: 'right' });
+    doc.setFontSize(13);
+    doc.text('Dr. Bhargavi Railkar - Kolhapure', right, 190, { align: 'right' });
 
     const safeName = (receivedFrom || 'receipt').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-');
     doc.save(`Receipt-${safeName || 'receipt'}.pdf`);
@@ -192,8 +187,8 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
               <Input id="receipt-dd" value={ddNo} onChange={(e) => setDdNo(e.target.value)} placeholder="Cash" />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="receipt-dated">dated</Label>
-              <Input id="receipt-dated" value={dated} onChange={(e) => setDated(e.target.value)} />
+              <Label>dated</Label>
+              <DatePicker date={dated} setDate={setDated} />
             </div>
           </div>
 
