@@ -97,7 +97,9 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
   const instrumentLabel = paymentMode === 'DD' ? 'D.D. No.' : paymentMode === 'Cheque' ? 'Cheque No.' : 'Cheque / D.D. No.';
 
   const handleDownload = () => {
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    // Wide, short slip (297 x 150 mm) - matches the paper receipt and keeps
+    // the lines compact & proportional with no wasted space top-to-bottom.
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [297, 150] });
     const W = 297;
     const cx = W / 2;
     const left = 22;
@@ -118,47 +120,47 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
 
     // Header
     doc.setFont('times', 'bold');
-    doc.setFontSize(20);
-    doc.text('Dr. Bhargavi Railkar - Kolhapure', cx, 24, { align: 'center' });
+    doc.setFontSize(18);
+    doc.text('Dr. Bhargavi Railkar - Kolhapure', cx, 16, { align: 'center' });
     doc.setFont('times', 'normal');
-    doc.setFontSize(11);
-    doc.text('BDS, MDS   |   Prosthodontist & Implantologist   |   Regd. No.: A-14618', cx, 32, { align: 'center' });
     doc.setFontSize(10);
-    doc.text('1495, Sadashiv Peth, Sahitya Samrat Apartment, Pratima Silk Lane, Off. Tilak Road, Pune 411 030.', cx, 39, { align: 'center' });
-    doc.text('Tel : +91 20 2447 2227', cx, 45, { align: 'center' });
+    doc.text('BDS, MDS   |   Prosthodontist & Implantologist   |   Regd. No.: A-14618', cx, 23, { align: 'center' });
+    doc.setFontSize(9);
+    doc.text('1495, Sadashiv Peth, Sahitya Samrat Apartment, Pratima Silk Lane, Off. Tilak Road, Pune 411 030.', cx, 29, { align: 'center' });
+    doc.text('Tel : +91 20 2447 2227', cx, 34, { align: 'center' });
     doc.setLineWidth(0.5);
-    doc.line(left, 50, right, 50);
+    doc.line(left, 39, right, 39);
 
-    // Body
-    doc.setFontSize(13);
-    field('Sr. No.:', srNo, left, 68);
-    field('Date :', receiptDate ? format(receiptDate, 'dd/MM/yyyy') : '', right - 60, 68);
+    // Body - compact, even ~13 mm spacing
+    doc.setFontSize(12);
+    field('Sr. No.:', srNo, left, 54);
+    field('Date :', receiptDate ? format(receiptDate, 'dd/MM/yyyy') : '', right - 60, 54);
 
-    field('Received with thanks from', receivedFrom, left, 88);
+    field('Received with thanks from', receivedFrom, left, 67);
 
-    let x = field('the Sum of Rs.', amountFigure, left, 108);
+    let x = field('the Sum of Rs.', amountFigure, left, 80);
     doc.setFont('times', 'normal');
-    doc.text(`( Rupees ${amountWords || blank} )`, x + 8, 108);
+    doc.text(`( Rupees ${amountWords || blank} )`, x + 8, 80);
 
     // Payment line (adaptive - Option B): prints only what was actually paid
     if (isCash) {
-      field('by', 'Cash', left, 128);
+      field('by', 'Cash', left, 93);
     } else {
       const label = paymentMode === 'DD' ? 'by D.D. No.' : 'by Cheque No.';
-      const nx = field(label, instrumentNo, left, 128);
-      field('dated', instrumentDate ? format(instrumentDate, 'dd/MM/yyyy') : '', nx + 8, 128);
+      const nx = field(label, instrumentNo, left, 93);
+      field('dated', instrumentDate ? format(instrumentDate, 'dd/MM/yyyy') : '', nx + 8, 93);
     }
 
     doc.setFont('times', 'normal');
-    doc.text('for the Treatment', left, 148);
+    doc.text('for the Treatment', left, 106);
     const tlw = doc.getTextWidth('for the Treatment');
     doc.setFont('times', 'bold');
-    doc.text(doc.splitTextToSize(treatment || blank, right - (left + tlw + 4)), left + tlw + 4, 148);
+    doc.text(doc.splitTextToSize(treatment || blank, right - (left + tlw + 4)), left + tlw + 4, 106);
 
     // Signature
     doc.setFont('times', 'bold');
-    doc.setFontSize(13);
-    doc.text('Dr. Bhargavi Railkar - Kolhapure', right, 190, { align: 'right' });
+    doc.setFontSize(12);
+    doc.text('Dr. Bhargavi Railkar - Kolhapure', right, 130, { align: 'right' });
 
     const safeName = (receivedFrom || 'receipt').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-');
     // Download date + time in the filename: sorts chronologically and avoids
