@@ -12,12 +12,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Download } from 'lucide-react';
 
 export interface ReceiptPrefill {
   patientName: string;
   service: string;
-  date: string; // dd/MM/yyyy
+  date: string; // dd/MM/yyyy (unused for the picker; receipt date defaults to today)
 }
 
 interface PaymentReceiptDialogProps {
@@ -25,6 +32,8 @@ interface PaymentReceiptDialogProps {
   onOpenChange: (open: boolean) => void;
   prefill: ReceiptPrefill | null;
 }
+
+type PaymentMode = 'Cash' | 'Cheque' | 'DD';
 
 /** Convert a whole rupee amount to Indian-English words (e.g. 1250 -> "One Thousand Two Hundred Fifty"). */
 function rupeesToWords(input: string): string {
@@ -59,31 +68,34 @@ function rupeesToWords(input: string): string {
 
 const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDialogProps) => {
   const [srNo, setSrNo] = useState('');
-  const [date, setDate] = useState('');
+  const [receiptDate, setReceiptDate] = useState<Date | undefined>(undefined);
   const [receivedFrom, setReceivedFrom] = useState('');
   const [amount, setAmount] = useState('');
-  const [ddNo, setDdNo] = useState('');
-  const [dated, setDated] = useState<Date | undefined>(undefined);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('Cash');
+  const [instrumentNo, setInstrumentNo] = useState('');   // cheque / DD number
+  const [instrumentDate, setInstrumentDate] = useState<Date | undefined>(undefined); // cheque / DD date
   const [treatment, setTreatment] = useState('');
 
   // Prefill each time the dialog is opened for an appointment
   useEffect(() => {
     if (open && prefill) {
       setSrNo('');
-      setDate(prefill.date || '');
+      setReceiptDate(new Date());
       setReceivedFrom(prefill.patientName || '');
       setAmount('');
-      setDdNo('');
-      setDated(undefined);
+      setPaymentMode('Cash');
+      setInstrumentNo('');
+      setInstrumentDate(undefined);
       setTreatment(prefill.service || '');
     }
   }, [open, prefill]);
 
+  const isCash = paymentMode === 'Cash';
   const words = rupeesToWords(amount);
-  const amountWords = words ? `${words} Only` : '';           // e.g. "One Thousand Five Hundred Only"
-  const amountFigure = amount && amount.trim() ? `${amount.trim()}/-` : ''; // e.g. "1500/-"
+  const amountWords = words ? `${words} Only` : '';               // "One Thousand Five Hundred Only"
+  const amountFigure = amount && amount.trim() ? `${amount.trim()}/-` : '';  // "1500/-"
+  const instrumentLabel = paymentMode === 'DD' ? 'D.D. No.' : paymentMode === 'Cheque' ? 'Cheque No.' : 'Cheque / D.D. No.';
 
-  /** Build a WIDE A4-landscape receipt PDF (to match the paper) and download it. */
   const handleDownload = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const W = 297;
@@ -92,7 +104,7 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
     const right = W - 22;
     const blank = '__________________';
 
-    // Draw "label  value(bold)" starting at x; returns x after the value
+    // "label  value(bold)" starting at x; returns x after the value
     const field = (label: string, value: string, x: number, y: number, gap = 3) => {
       doc.setFont('times', 'normal');
       doc.text(label, x, y);
@@ -120,7 +132,7 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
     // Body
     doc.setFontSize(13);
     field('Sr. No.:', srNo, left, 68);
-    field('Date :', date, right - 60, 68);
+    field('Date :', receiptDate ? format(receiptDate, 'dd/MM/yyyy') : '', right - 60, 68);
 
     field('Received with thanks from', receivedFrom, left, 88);
 
@@ -128,8 +140,14 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
     doc.setFont('times', 'normal');
     doc.text(`( Rupees ${amountWords || blank} )`, x + 8, 108);
 
-    x = field('by Cash / Cheque / D. D. No.', ddNo, left, 128);
-    field('dated', dated ? format(dated, 'dd/MM/yyyy') : '', x + 8, 128);
+    // Payment line (adaptive - Option B): prints only what was actually paid
+    if (isCash) {
+      field('by', 'Cash', left, 128);
+    } else {
+      const label = paymentMode === 'DD' ? 'by D.D. No.' : 'by Cheque No.';
+      const nx = field(label, instrumentNo, left, 128);
+      field('dated', instrumentDate ? format(instrumentDate, 'dd/MM/yyyy') : '', nx + 8, 128);
+    }
 
     doc.setFont('times', 'normal');
     doc.text('for the Treatment', left, 148);
@@ -160,8 +178,8 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
               <Input id="receipt-srno" value={srNo} onChange={(e) => setSrNo(e.target.value)} placeholder="e.g. 361" />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="receipt-date">Date</Label>
-              <Input id="receipt-date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Label>Receipt Date</Label>
+              <DatePicker date={receiptDate} setDate={setReceiptDate} />
             </div>
           </div>
 
@@ -181,14 +199,34 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
             </div>
           </div>
 
+          <div className="grid gap-1.5">
+            <Label>Payment Mode</Label>
+            <Select value={paymentMode} onValueChange={(v) => setPaymentMode(v as PaymentMode)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Cash">Cash</SelectItem>
+                <SelectItem value="Cheque">Cheque</SelectItem>
+                <SelectItem value="DD">Demand Draft (DD)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="receipt-dd">Cash / Cheque / D.D. No.</Label>
-              <Input id="receipt-dd" value={ddNo} onChange={(e) => setDdNo(e.target.value)} placeholder="Cash" />
+              <Label htmlFor="receipt-instrument">{instrumentLabel}</Label>
+              <Input
+                id="receipt-instrument"
+                value={instrumentNo}
+                onChange={(e) => setInstrumentNo(e.target.value)}
+                disabled={isCash}
+                placeholder={isCash ? 'Not needed for cash' : 'e.g. 123456'}
+              />
             </div>
             <div className="grid gap-1.5">
-              <Label>dated</Label>
-              <DatePicker date={dated} setDate={setDated} />
+              <Label>Cheque / DD Date</Label>
+              <DatePicker date={instrumentDate} setDate={setInstrumentDate} isDisabled={isCash} />
             </div>
           </div>
 
