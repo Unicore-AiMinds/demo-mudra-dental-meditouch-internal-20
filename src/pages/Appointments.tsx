@@ -58,6 +58,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import AddPatientDialog from '@/components/AddPatientDialog';
 import AppointmentList from '@/components/AppointmentList';
+import PaymentReceiptDialog, { ReceiptPrefill } from '@/components/PaymentReceiptDialog';
 
 // Patients will be fetched from PatientContext
 
@@ -1313,6 +1314,9 @@ const Appointments = () => {
   const { updateChartingEntryStatus } = useDentalCharting();
   const { supabase } = useSupabase();
   const [completedAppointment, setCompletedAppointment] = useState<AppointmentType | null>(null);
+  // Payment receipt: opens (prefilled) when an appointment is marked Paid
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [receiptPrefill, setReceiptPrefill] = useState<ReceiptPrefill | null>(null);
   const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
 
   const handleCompleteAppointment = async (appointment: AppointmentType) => {
@@ -1605,6 +1609,16 @@ const Appointments = () => {
         title: `Payment Status: ${status === 'paid' ? 'Paid' : 'Unpaid'}`,
         description: `The appointment payment status has been updated to ${status}.`
       });
+
+      // On marking Paid, open a prefilled (editable) payment receipt to print
+      if (status === 'paid') {
+        setReceiptPrefill({
+          patientName: currentAppointment?.patient_name || '',
+          service: currentAppointment?.service || '',
+          date: format(new Date(), 'dd/MM/yyyy'),
+        });
+        setIsReceiptOpen(true);
+      }
     } catch (error) {
       console.error('Error updating payment status:', error);
       toast({
@@ -3645,6 +3659,13 @@ const Appointments = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Payment Receipt (opens prefilled when an appointment is marked Paid) */}
+      <PaymentReceiptDialog
+        open={isReceiptOpen}
+        onOpenChange={setIsReceiptOpen}
+        prefill={receiptPrefill}
+      />
 
       {/* Update Confirmation Dialog */}
       <Dialog open={isConfirmUpdateOpen} onOpenChange={setIsConfirmUpdateOpen}>
