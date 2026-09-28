@@ -97,13 +97,15 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
   const instrumentLabel = paymentMode === 'DD' ? 'D.D. No.' : paymentMode === 'Cheque' ? 'Cheque No.' : 'Cheque / D.D. No.';
 
   const handleDownload = () => {
-    // Wide, short slip (297 x 150 mm) - matches the paper receipt and keeps
-    // the lines compact & proportional with no wasted space top-to-bottom.
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [297, 150] });
-    const W = 297;
+    // Full A4 PORTRAIT (210 x 297 mm). The receipt is a compact block pinned to
+    // the TOP of the page (~95 mm tall); the rest stays blank. Prints 1:1 (no
+    // printer re-centering, so no top gap) and lets staff cut off the receipt
+    // and re-feed the leftover paper to print the next one - ~3 per A4 sheet.
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [210, 297] });
+    const W = 210;
     const cx = W / 2;
-    const left = 22;
-    const right = W - 22;
+    const left = 14;
+    const right = W - 14;
     const blank = '__________________';
 
     // "label  value(bold)" starting at x; returns x after the value
@@ -120,47 +122,53 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
 
     // Header
     doc.setFont('times', 'bold');
-    doc.setFontSize(18);
-    doc.text('Dr. Bhargavi Railkar - Kolhapure', cx, 16, { align: 'center' });
+    doc.setFontSize(15);
+    doc.text('Dr. Bhargavi Railkar - Kolhapure', cx, 11, { align: 'center' });
     doc.setFont('times', 'normal');
+    doc.setFontSize(8.5);
+    doc.text('BDS, MDS  |  Prosthodontist & Implantologist  |  Regd. No.: A-14618', cx, 16.5, { align: 'center' });
+    doc.setFontSize(7.5);
+    doc.text('1495, Sadashiv Peth, Sahitya Samrat Apartment, Pratima Silk Lane, Off. Tilak Road, Pune 411 030.', cx, 21, { align: 'center' });
+    doc.text('Tel : +91 20 2447 2227', cx, 25, { align: 'center' });
+    doc.setLineWidth(0.4);
+    doc.line(left, 28.5, right, 28.5);
+
+    // Body - compact block pinned to the top (~95 mm tall)
     doc.setFontSize(10);
-    doc.text('BDS, MDS   |   Prosthodontist & Implantologist   |   Regd. No.: A-14618', cx, 23, { align: 'center' });
-    doc.setFontSize(9);
-    doc.text('1495, Sadashiv Peth, Sahitya Samrat Apartment, Pratima Silk Lane, Off. Tilak Road, Pune 411 030.', cx, 29, { align: 'center' });
-    doc.text('Tel : +91 20 2447 2227', cx, 34, { align: 'center' });
-    doc.setLineWidth(0.5);
-    doc.line(left, 39, right, 39);
+    field('Sr. No.:', srNo, left, 38);
+    field('Date :', receiptDate ? format(receiptDate, 'dd/MM/yyyy') : '', right - 48, 38);
 
-    // Body - compact, even ~13 mm spacing
-    doc.setFontSize(12);
-    field('Sr. No.:', srNo, left, 54);
-    field('Date :', receiptDate ? format(receiptDate, 'dd/MM/yyyy') : '', right - 60, 54);
+    field('Received with thanks from', receivedFrom, left, 48);
 
-    field('Received with thanks from', receivedFrom, left, 67);
-
-    let x = field('the Sum of Rs.', amountFigure, left, 80);
+    let x = field('the Sum of Rs.', amountFigure, left, 58);
     doc.setFont('times', 'normal');
-    doc.text(`( Rupees ${amountWords || blank} )`, x + 8, 80);
+    doc.text(`( Rupees ${amountWords || blank} )`, x + 6, 58);
 
     // Payment line (adaptive - Option B): prints only what was actually paid
     if (isCash) {
-      field('by', 'Cash', left, 93);
+      field('by', 'Cash', left, 68);
     } else {
       const label = paymentMode === 'DD' ? 'by D.D. No.' : 'by Cheque No.';
-      const nx = field(label, instrumentNo, left, 93);
-      field('dated', instrumentDate ? format(instrumentDate, 'dd/MM/yyyy') : '', nx + 8, 93);
+      const nx = field(label, instrumentNo, left, 68);
+      field('dated', instrumentDate ? format(instrumentDate, 'dd/MM/yyyy') : '', nx + 6, 68);
     }
 
     doc.setFont('times', 'normal');
-    doc.text('for the Treatment', left, 106);
+    doc.text('for the Treatment', left, 78);
     const tlw = doc.getTextWidth('for the Treatment');
     doc.setFont('times', 'bold');
-    doc.text(doc.splitTextToSize(treatment || blank, right - (left + tlw + 4)), left + tlw + 4, 106);
+    doc.text(doc.splitTextToSize(treatment || blank, right - (left + tlw + 4)), left + tlw + 4, 78);
 
     // Signature
     doc.setFont('times', 'bold');
-    doc.setFontSize(12);
-    doc.text('Dr. Bhargavi Railkar - Kolhapure', right, 130, { align: 'right' });
+    doc.setFontSize(10);
+    doc.text('Dr. Bhargavi Railkar - Kolhapure', right, 88, { align: 'right' });
+
+    // Faint "cut here" guide below the receipt, so the leftover sheet can be
+    // re-fed to print the next receipt at the top (~3 receipts per A4 sheet)
+    doc.setFontSize(6.5);
+    doc.setFont('times', 'italic');
+    doc.text('- - - - - - - - - - - - - - - - - -  cut here  - - - - - - - - - - - - - - - - - -', cx, 95, { align: 'center' });
 
     const safeName = (receivedFrom || 'receipt').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-');
     // Download date + time in the filename: sorts chronologically and avoids
