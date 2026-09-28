@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { jsPDF } from 'jspdf';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Printer } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 export interface ReceiptPrefill {
   patientName: string;
@@ -78,86 +79,76 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
 
   const amountWords = rupeesToWords(amount);
 
-  const handlePrint = () => {
-    const esc = (s: string) =>
-      String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  /** Build a compact A6-landscape receipt PDF and download it (no browser print chrome). */
+  const handleDownload = () => {
+    // 148mm x 105mm (A6 landscape) - a compact receipt slip, no wasted margins
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a6' });
+    const W = 148;
+    const cx = W / 2;
+    const left = 12;
+    const right = W - 12;
 
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.top = '-9999px';
-    iframe.style.left = '-9999px';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    document.body.appendChild(iframe);
+    // Header
+    doc.setFont('times', 'bold');
+    doc.setFontSize(14);
+    doc.text('Dr. Bhargavi Railkar - Kolhapure', cx, 13, { align: 'center' });
+    doc.setFont('times', 'normal');
+    doc.setFontSize(8);
+    doc.text('BDS, MDS  |  Prosthodontist & Implantologist  |  Regd. No.: A-14618', cx, 18, { align: 'center' });
+    doc.setFontSize(7.5);
+    doc.text('1495, Sadashiv Peth, Sahitya Samrat Apartment, Pratima Silk Lane, Off. Tilak Road, Pune 411 030.', cx, 22.5, { align: 'center' });
+    doc.text('Tel : +91 20 2447 2227', cx, 26, { align: 'center' });
+    doc.setLineWidth(0.4);
+    doc.line(left, 29, right, 29);
 
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) {
-      document.body.removeChild(iframe);
-      return;
-    }
+    // Body
+    doc.setFontSize(10);
+    const val = (s: string) => (s && s.trim() ? s : '____________');
 
-    doc.open();
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Payment Receipt${receivedFrom ? ' - ' + esc(receivedFrom) : ''}</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            @page { size: A5 landscape; margin: 0; }
-            html, body { margin: 0 !important; padding: 0 !important; }
-            body { font-family: 'Times New Roman', Georgia, serif; color: #111; }
-            .receipt { width: 210mm; max-width: 210mm; padding: 16mm 18mm; }
-            .head { text-align: center; border-bottom: 1.5px solid #111; padding-bottom: 8px; margin-bottom: 18px; }
-            .name { font-size: 22px; font-weight: bold; letter-spacing: .3px; }
-            .quals { font-size: 12px; margin-top: 2px; }
-            .addr { font-size: 12px; margin-top: 6px; line-height: 1.4; }
-            .row { display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 16px; }
-            .line { font-size: 15px; margin-bottom: 16px; line-height: 1.8; }
-            .fill { display: inline-block; border-bottom: 1px dotted #111; min-width: 60px; padding: 0 6px; font-weight: 600; }
-            .fill.wide { min-width: 320px; }
-            .fill.full { min-width: 100%; display: block; margin-top: 4px; }
-            .sign { margin-top: 42px; text-align: right; font-weight: bold; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="receipt">
-            <div class="head">
-              <div class="name">Dr. Bhargavi Railkar - Kolhapure</div>
-              <div class="quals">BDS, MDS &nbsp;|&nbsp; Prosthodontist &amp; Implantologist &nbsp;|&nbsp; Regd. No.: A-14618</div>
-              <div class="addr">1495, Sadashiv Peth, Sahitya Samrat Apartment, Pratima Silk Lane, Off. Tilak Road, Pune 411 030.<br/>Tel : +91 20 2447 2227</div>
-            </div>
+    doc.setFont('times', 'normal');
+    doc.text('Sr. No.:', left, 38);
+    doc.setFont('times', 'bold');
+    doc.text(val(srNo), left + 16, 38);
+    doc.setFont('times', 'normal');
+    doc.text('Date :', right - 32, 38);
+    doc.setFont('times', 'bold');
+    doc.text(val(date), right - 22, 38);
 
-            <div class="row">
-              <div>Sr. No.: <span class="fill">${esc(srNo)}</span></div>
-              <div>Date : <span class="fill">${esc(date)}</span></div>
-            </div>
+    doc.setFont('times', 'normal');
+    doc.text('Received with thanks from', left, 47);
+    doc.setFont('times', 'bold');
+    doc.text(val(receivedFrom), left + 47, 47);
 
-            <div class="line">Received with thanks from <span class="fill wide">${esc(receivedFrom)}</span></div>
+    doc.setFont('times', 'normal');
+    doc.text('the Sum of Rs.', left, 56);
+    doc.setFont('times', 'bold');
+    doc.text(val(amount), left + 27, 56);
+    doc.setFont('times', 'normal');
+    const rupeesLabel = `( Rupees ${amountWords || '____________'} )`;
+    doc.text(rupeesLabel, left + 45, 56);
 
-            <div class="line">the Sum of Rs. <span class="fill">${esc(amount)}</span> ( Rupees <span class="fill wide">${esc(amountWords)}</span> )</div>
+    doc.setFont('times', 'normal');
+    doc.text('by Cash / Cheque / D. D. No.', left, 65);
+    doc.setFont('times', 'bold');
+    doc.text(val(ddNo), left + 52, 65);
+    doc.setFont('times', 'normal');
+    doc.text('dated', left + 72, 65);
+    doc.setFont('times', 'bold');
+    doc.text(val(dated), left + 84, 65);
 
-            <div class="line">by Cash / Cheque / D. D. No. <span class="fill">${esc(ddNo)}</span> dated <span class="fill">${esc(dated)}</span></div>
+    doc.setFont('times', 'normal');
+    doc.text('for the Treatment', left, 74);
+    doc.setFont('times', 'bold');
+    const treatmentLines = doc.splitTextToSize(val(treatment), right - (left + 32));
+    doc.text(treatmentLines, left + 32, 74);
 
-            <div class="line">for the Treatment <span class="fill full">${esc(treatment)}</span></div>
+    // Signature
+    doc.setFont('times', 'bold');
+    doc.setFontSize(9);
+    doc.text('Dr. Bhargavi Railkar - Kolhapure', right, 96, { align: 'right' });
 
-            <div class="sign">Dr. Bhargavi Railkar - Kolhapure</div>
-          </div>
-        </body>
-      </html>
-    `);
-    doc.close();
-
-    setTimeout(() => {
-      try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      } finally {
-        setTimeout(() => {
-          if (iframe.parentNode) document.body.removeChild(iframe);
-        }, 1000);
-      }
-    }, 250);
+    const safeName = (receivedFrom || 'receipt').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-');
+    doc.save(`Receipt-${safeName || 'receipt'}.pdf`);
   };
 
   return (
@@ -214,8 +205,8 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-          <Button onClick={handlePrint} className="bg-dental-primary hover:bg-dental-dark">
-            <Printer className="h-4 w-4 mr-2" /> Print Receipt
+          <Button onClick={handleDownload} className="bg-dental-primary hover:bg-dental-dark">
+            <Download className="h-4 w-4 mr-2" /> Download Receipt
           </Button>
         </DialogFooter>
       </DialogContent>
