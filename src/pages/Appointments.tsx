@@ -34,6 +34,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
@@ -2373,23 +2374,15 @@ const Appointments = () => {
                         </div>
                         <div className="flex items-center gap-4 pl-4">
                           <div className="w-48">
-                            <Select
+                            <Combobox
+                              options={[{ value: 'all', label: 'All Doctors' }, ...doctors.map(doctor => ({ value: doctor.name, label: doctor.name }))]}
                               value={selectedDoctor || 'all'}
-                              onValueChange={(value) => {
+                              onChange={(value) => {
                                 console.log('Doctor selection changed to:', value);
                                 setSelectedDoctor(value);
                               }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="All Doctors" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All Doctors</SelectItem>
-                                {doctors.map(doctor => (
-                                  <SelectItem key={doctor.id} value={doctor.name}>{doctor.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              placeholder="All Doctors"
+                            />
                           </div>
                           <div className="w-48 relative">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -2663,23 +2656,15 @@ const Appointments = () => {
                         </div>
                         <div className="flex items-center gap-4 pl-4">
                           <div className="w-48">
-                            <Select
+                            <Combobox
+                              options={[{ value: 'all', label: 'All Doctors' }, ...doctors.map(doctor => ({ value: doctor.name, label: doctor.name }))]}
                               value={selectedDoctor || 'all'}
-                              onValueChange={(value) => {
+                              onChange={(value) => {
                                 console.log('Doctor selection changed to:', value);
                                 setSelectedDoctor(value);
                               }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="All Doctors" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All Doctors</SelectItem>
-                                {doctors.map(doctor => (
-                                  <SelectItem key={doctor.id} value={doctor.name}>{doctor.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              placeholder="All Doctors"
+                            />
                           </div>
                           <div className="w-48 relative">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -2843,23 +2828,15 @@ const Appointments = () => {
                         </div>
                         <div className="flex items-center gap-4 pl-4">
                           <div className="w-48">
-                            <Select
+                            <Combobox
+                              options={[{ value: 'all', label: 'All Doctors' }, ...doctors.map(doctor => ({ value: doctor.name, label: doctor.name }))]}
                               value={selectedDoctor || 'all'}
-                              onValueChange={(value) => {
+                              onChange={(value) => {
                                 console.log('Doctor selection changed to:', value);
                                 setSelectedDoctor(value);
                               }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="All Doctors" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All Doctors</SelectItem>
-                                {doctors.map(doctor => (
-                                  <SelectItem key={doctor.id} value={doctor.name}>{doctor.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              placeholder="All Doctors"
+                            />
                           </div>
                           <div className="w-48 relative">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -3054,93 +3031,13 @@ const Appointments = () => {
               <div className="space-y-3">
                 <div className="space-y-1">
                   <Label htmlFor="patient">Patient</Label>
-                  <Select
+                  <Combobox
+                    options={filteredPatients.map(patient => ({ value: patient.name, label: patient.name }))}
                     value={appointmentPatient}
-                    onValueChange={setAppointmentPatient}
-                    // Keep the dropdown open when clicking inside it
-                    onOpenChange={(open) => {
-                      if (open) {
-                        // When opening, reset the filtered patients - only show patients for current clinic
-                        const clinicPatients = patients.filter(p =>
-                          p.clinic === activeClinic || p.clinic === 'both'
-                        );
-                        setFilteredPatients(clinicPatients.map(p => ({ id: p.id, name: p.name })));
-                      }
-                    }}
-                  >
-                    <SelectTrigger id="patient">
-                      <SelectValue placeholder="Select patient" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <div className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
-                        <div className="relative">
-                          <Input
-                            placeholder="Search patients..."
-                            className="mb-2 pr-8"
-                            onChange={(e) => {
-                              // Immediately filter as the user types
-                              const value = e.target.value;
-                              console.log('Searching for:', value);
-                              handlePatientSearch(value);
-                            }}
-                            // Add autofocus to automatically focus the search input when dropdown opens
-                            autoFocus
-                            id="patient-search"
-                            // Prevent the dropdown from closing when typing
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => {
-                              // Prevent the dropdown from closing when pressing keys
-                              e.stopPropagation();
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3"
-                            onClick={(e) => {
-                              // Prevent the dropdown from closing
-                              e.stopPropagation();
-
-                              // Clear the search input
-                              const input = document.getElementById('patient-search') as HTMLInputElement;
-                              if (input) {
-                                input.value = '';
-                                handlePatientSearch('');
-                                // Re-focus the input after clearing
-                                input.focus();
-                              }
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      {filteredPatients.length === 0 ? (
-                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                          No patient found
-                        </div>
-                      ) : (
-                        // Wrap in a div to prevent event propagation issues
-                        <div onClick={(e) => e.stopPropagation()}>
-                          {filteredPatients.map(patient => (
-                            <SelectItem
-                              key={patient.id}
-                              value={patient.name}
-                              // Prevent the dropdown from closing immediately
-                              onSelect={(e) => {
-                                // This ensures the value is set but the dropdown doesn't close immediately
-                                e.preventDefault();
-                                setAppointmentPatient(patient.name);
-                              }}
-                            >
-                              {patient.name}
-                            </SelectItem>
-                          ))}
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
+                    onChange={setAppointmentPatient}
+                    placeholder="Select patient"
+                    emptyMessage="No patient found"
+                  />
                 </div>
 
                 <Button
@@ -3160,38 +3057,13 @@ const Appointments = () => {
               <div className={appointmentFollowUpService ? "grid grid-cols-2 gap-3" : ""}>
                 <div className="space-y-1">
                   <Label htmlFor="service">Service</Label>
-                  <Select value={appointmentService} onValueChange={setAppointmentService}>
-                    <SelectTrigger id="service">
-                      <SelectValue placeholder="Select service" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isDental ? (
-                        dentalServices.length > 0 ? (
-                          dentalServices.map(service => (
-                            <SelectItem key={service.id} value={service.name}>
-                              {service.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                            No services found. Please add services in Settings.
-                          </div>
-                        )
-                      ) : (
-                        meditouchServices.length > 0 ? (
-                          meditouchServices.map(service => (
-                            <SelectItem key={service.id} value={service.name}>
-                              {service.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                            No services found. Please add services in Settings.
-                          </div>
-                        )
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Combobox
+                    options={(isDental ? dentalServices : meditouchServices).map(service => ({ value: service.name, label: service.name }))}
+                    value={appointmentService}
+                    onChange={setAppointmentService}
+                    placeholder="Select service"
+                    emptyMessage="No services found. Please add services in Settings."
+                  />
                 </div>
 
                 {appointmentFollowUpService && (
@@ -3271,9 +3143,10 @@ const Appointments = () => {
 
               <div className="space-y-1">
                 <Label htmlFor="doctor">Doctor</Label>
-                <Select
+                <Combobox
+                  options={doctors.map(doctor => ({ value: doctor.name, label: doctor.name }))}
                   value={appointmentDoctor}
-                  onValueChange={(value) => {
+                  onChange={(value) => {
                     setAppointmentDoctor(value);
 
                     // Check if this doctor is already booked in the other clinic type
@@ -3281,18 +3154,9 @@ const Appointments = () => {
                       handleDoctorDoubleBookingWarning(value, appointmentTime);
                     }
                   }}
-                >
-                  <SelectTrigger id="doctor">
-                    <SelectValue placeholder="Select doctor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {doctors.map(doctor => (
-                      <SelectItem key={doctor.id} value={doctor.name}>
-                        {doctor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select doctor"
+                  emptyMessage="No doctors found"
+                />
               </div>
 
               <div className="space-y-1">
@@ -3352,124 +3216,24 @@ const Appointments = () => {
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-patient">Patient</Label>
-                <Select
+                <Combobox
+                  options={filteredPatients.map(patient => ({ value: patient.name, label: patient.name }))}
                   value={appointmentPatient || ''}
-                  onValueChange={setAppointmentPatient}
-                  defaultValue={appointmentPatient || ''}
-                >
-                  <SelectTrigger id="edit-patient">
-                    <SelectValue placeholder="Select patient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <div className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
-                      <div className="relative">
-                        <Input
-                          placeholder="Search patients..."
-                          className="mb-2 pr-8"
-                          onChange={(e) => {
-                            // Immediately filter as the user types
-                            const value = e.target.value;
-                            console.log('Searching for:', value);
-                            handlePatientSearch(value);
-                          }}
-                          // Add autofocus to automatically focus the search input when dropdown opens
-                          autoFocus
-                          id="edit-patient-search"
-                          // Prevent the dropdown from closing when typing
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => {
-                            // Prevent the dropdown from closing when pressing keys
-                            e.stopPropagation();
-                          }}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3"
-                          onClick={(e) => {
-                            // Prevent the dropdown from closing
-                            e.stopPropagation();
-
-                            // Clear the search input
-                            const input = document.getElementById('edit-patient-search') as HTMLInputElement;
-                            if (input) {
-                              input.value = '';
-                              handlePatientSearch('');
-                              // Re-focus the input after clearing
-                              input.focus();
-                            }
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    {filteredPatients.length === 0 ? (
-                      <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                        No patient found
-                      </div>
-                    ) : (
-                      // Wrap in a div to prevent event propagation issues
-                      <div onClick={(e) => e.stopPropagation()}>
-                        {filteredPatients.map(patient => (
-                          <SelectItem
-                            key={patient.id}
-                            value={patient.name}
-                            // Prevent the dropdown from closing immediately
-                            onSelect={(e) => {
-                              // This ensures the value is set but the dropdown doesn't close immediately
-                              e.preventDefault();
-                              setAppointmentPatient(patient.name);
-                            }}
-                          >
-                            {patient.name}
-                          </SelectItem>
-                        ))}
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
+                  onChange={setAppointmentPatient}
+                  placeholder="Select patient"
+                  emptyMessage="No patient found"
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="edit-service">Service</Label>
-                <Select
+                <Combobox
+                  options={(isDental ? dentalServices : meditouchServices).map(service => ({ value: service.name, label: service.name }))}
                   value={appointmentService || ''}
-                  onValueChange={setAppointmentService}
-                  defaultValue={appointmentService || ''}
-                >
-                  <SelectTrigger id="edit-service">
-                    <SelectValue placeholder="Select service" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isDental ? (
-                      dentalServices.length > 0 ? (
-                        dentalServices.map(service => (
-                          <SelectItem key={service.id} value={service.name}>
-                            {service.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                          No services found. Please add services in Settings.
-                        </div>
-                      )
-                    ) : (
-                      meditouchServices.length > 0 ? (
-                        meditouchServices.map(service => (
-                          <SelectItem key={service.id} value={service.name}>
-                            {service.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                          No services found. Please add services in Settings.
-                        </div>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
+                  onChange={setAppointmentService}
+                  placeholder="Select service"
+                  emptyMessage="No services found. Please add services in Settings."
+                />
               </div>
 
               <div className="space-y-2">
@@ -3550,9 +3314,10 @@ const Appointments = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="edit-doctor">Doctor</Label>
-                <Select
+                <Combobox
+                  options={doctors.map(doctor => ({ value: doctor.name, label: doctor.name }))}
                   value={appointmentDoctor || ''}
-                  onValueChange={(value) => {
+                  onChange={(value) => {
                     setAppointmentDoctor(value);
 
                     // Check if this doctor is already booked in the other clinic type
@@ -3560,19 +3325,9 @@ const Appointments = () => {
                       handleDoctorDoubleBookingWarning(value, appointmentTime);
                     }
                   }}
-                  defaultValue={appointmentDoctor || ''}
-                >
-                  <SelectTrigger id="edit-doctor">
-                    <SelectValue placeholder="Select doctor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {doctors.map(doctor => (
-                      <SelectItem key={doctor.id} value={doctor.name}>
-                        {doctor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select doctor"
+                  emptyMessage="No doctors found"
+                />
               </div>
 
               <div className="space-y-2">

@@ -40,6 +40,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { formatDateForExport, formatDateForFilename } from '@/utils/dateFormatter';
 
 interface StockItem {
@@ -599,9 +600,11 @@ const StockTracker = () => {
               <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="itemName" className="text-right text-xs">Name <span className="text-red-500 ml-1">*</span></Label>
                 <div className="col-span-3">
-                  <Select
-                    value={newItem.name || undefined}
-                    onValueChange={(value) => {
+                  <Combobox
+                    className="h-8"
+                    options={stockItemsList.map((item) => ({ value: item.name, label: item.name }))}
+                    value={newItem.name || ""}
+                    onChange={(value) => {
                       // Find the selected stock definition
                       const selectedItem = stockItemsList.find(item => item.name === value);
                       if (selectedItem) {
@@ -634,18 +637,9 @@ const StockTracker = () => {
                         });
                       }
                     }}
-                  >
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder="Select an item" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stockItemsList.map((item) => (
-                        <SelectItem key={item.id} value={item.name}>
-                          {item.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select an item"
+                    emptyMessage="No items found"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
@@ -814,26 +808,19 @@ const StockTracker = () => {
               <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="dealer" className="text-right text-xs">Dealer <span className="text-red-500 ml-1">*</span></Label>
                 <div className="col-span-3">
-                  <Select
-                    value={newItem.dealer || undefined}
-                    onValueChange={(value) => {
+                  <Combobox
+                    className="h-8"
+                    options={dealersList.map((dealer) => ({ value: dealer.name, label: `${dealer.name} (${dealer.city})` }))}
+                    value={newItem.dealer || ""}
+                    onChange={(value) => {
                       setNewItem({
                         ...newItem,
                         dealer: value
                       });
                     }}
-                  >
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder="Select a dealer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dealersList.map((dealer) => (
-                        <SelectItem key={dealer.id} value={dealer.name}>
-                          {dealer.name} ({dealer.city})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select a dealer"
+                    emptyMessage="No dealers found"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
@@ -892,9 +879,11 @@ const StockTracker = () => {
                 <div className="grid grid-cols-4 items-center gap-2">
                   <Label htmlFor="editItemName" className="text-right text-xs">Name <span className="text-red-500 ml-1">*</span></Label>
                   <div className="col-span-3">
-                    <Select
-                      value={currentEditItem.name || undefined}
-                      onValueChange={(value) => {
+                    <Combobox
+                      className="h-8"
+                      options={stockItemsList.map((item) => ({ value: item.name, label: item.name }))}
+                      value={currentEditItem.name || ""}
+                      onChange={(value) => {
                         // Find the selected stock definition
                         const selectedItem = stockItemsList.find(item => item.name === value);
                         if (selectedItem) {
@@ -927,18 +916,9 @@ const StockTracker = () => {
                           });
                         }
                       }}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Select an item" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stockItemsList.map((item) => (
-                          <SelectItem key={item.id} value={item.name}>
-                            {item.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Select an item"
+                      emptyMessage="No items found"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
@@ -1107,26 +1087,19 @@ const StockTracker = () => {
                 <div className="grid grid-cols-4 items-center gap-2">
                   <Label htmlFor="editDealer" className="text-right text-xs">Dealer <span className="text-red-500 ml-1">*</span></Label>
                   <div className="col-span-3">
-                    <Select
-                      value={currentEditItem.dealer || undefined}
-                      onValueChange={(value) => {
+                    <Combobox
+                      className="h-8"
+                      options={dealersList.map((dealer) => ({ value: dealer.name, label: `${dealer.name} (${dealer.city})` }))}
+                      value={currentEditItem.dealer || ""}
+                      onChange={(value) => {
                         setCurrentEditItem({
                           ...currentEditItem,
                           dealer: value
                         });
                       }}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Select a dealer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dealersList.map((dealer) => (
-                          <SelectItem key={dealer.id} value={dealer.name}>
-                            {dealer.name} ({dealer.city})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Select a dealer"
+                      emptyMessage="No dealers found"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">

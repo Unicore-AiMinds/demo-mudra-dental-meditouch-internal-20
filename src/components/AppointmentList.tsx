@@ -9,6 +9,7 @@ import { Appointment } from '@/types/appointment';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -252,19 +253,15 @@ export const AppointmentList = () => {
                   </SelectContent>
                 </Select>
 
-                <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Select Doctor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Doctors</SelectItem>
-                    {doctors.map(doctor => (
-                      <SelectItem key={doctor.id} value={doctor.name}>
-                        {doctor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="w-48">
+                  <Combobox
+                    options={[{ value: 'all', label: 'All Doctors' }, ...doctors.map(doctor => ({ value: doctor.name, label: doctor.name }))]}
+                    value={selectedDoctor}
+                    onChange={setSelectedDoctor}
+                    placeholder="Select Doctor"
+                    emptyMessage="No doctors found"
+                  />
+                </div>
 
                 {dateFilter === 'customRange' && (
                 <div className="flex items-center gap-2">
