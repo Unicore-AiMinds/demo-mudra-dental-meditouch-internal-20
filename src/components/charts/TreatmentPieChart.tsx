@@ -17,7 +17,12 @@ interface TreatmentPieChartProps {
   insight: string;
   total: number;
   isLoading?: boolean;
+  /** Called with the treatment/service name, or '__OTHERS__' for the aggregated slice. */
+  onSegmentClick?: (key: string) => void;
 }
+
+// Sentinel key emitted when the aggregated "Others" slice is clicked.
+export const TREATMENT_OTHERS_KEY = '__OTHERS__';
 
 // Color palette for pie chart
 const COLORS = [
@@ -35,7 +40,8 @@ const TreatmentPieChart: React.FC<TreatmentPieChartProps> = ({
   data,
   insight,
   total,
-  isLoading
+  isLoading,
+  onSegmentClick
 }) => {
   const { activeClinic } = useClinic();
 
@@ -50,6 +56,7 @@ const TreatmentPieChart: React.FC<TreatmentPieChartProps> = ({
   const chartData = topTreatments.map(([treatment, count], index) => ({
     name: treatment.length > 20 ? `${treatment.substring(0, 20)}...` : treatment,
     fullName: treatment,
+    key: treatment,
     value: count,
     percentage: calculatePercentage(count, total),
     fill: COLORS[index % COLORS.length]
@@ -60,6 +67,7 @@ const TreatmentPieChart: React.FC<TreatmentPieChartProps> = ({
     chartData.push({
       name: "Others",
       fullName: `Others (${otherTreatments.length} treatments)`,
+      key: TREATMENT_OTHERS_KEY,
       value: othersCount,
       percentage: calculatePercentage(othersCount, total),
       fill: COLORS[6 % COLORS.length] // Use next color
@@ -149,6 +157,11 @@ const TreatmentPieChart: React.FC<TreatmentPieChartProps> = ({
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
+                  cursor={onSegmentClick ? 'pointer' : undefined}
+                  onClick={onSegmentClick ? (_: any, index: number) => {
+                    const key = chartData[index]?.key;
+                    if (key) onSegmentClick(key);
+                  } : undefined}
                 >
                   {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />

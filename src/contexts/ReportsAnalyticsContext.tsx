@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
-import { usePatients } from './PatientContext';
-import { useAppointments } from './AppointmentContext';
+import { usePatients, type Patient } from './PatientContext';
+import { useAppointments, type Appointment } from './AppointmentContext';
 import { useLabWork } from './LabWorkContext';
 import { useClinic } from './ClinicContext';
 import {
@@ -81,6 +81,10 @@ export interface ReportsAnalyticsData {
   growth: GrowthData;
   labWork: LabWorkData;
   isLoading: boolean;
+  // Raw (clinic-filtered) source records, exposed for report drill-downs
+  filteredPatients: Patient[];
+  allAppointments: Appointment[];
+  completedAppointments: Appointment[];
 }
 
 const ReportsAnalyticsContext = createContext<ReportsAnalyticsData | undefined>(undefined);
@@ -355,7 +359,10 @@ export const ReportsAnalyticsProvider: React.FC<{ children: React.ReactNode }> =
     doctors,
     growth,
     labWork,
-    isLoading
+    isLoading,
+    filteredPatients,
+    allAppointments,
+    completedAppointments
   };
 
   return (

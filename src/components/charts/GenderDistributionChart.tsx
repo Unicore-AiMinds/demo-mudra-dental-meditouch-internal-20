@@ -14,12 +14,14 @@ interface GenderDistributionChartProps {
   data: Record<string, number>;
   insight: string;
   isLoading?: boolean;
+  onSegmentClick?: (key: string) => void;
 }
 
 const GenderDistributionChart: React.FC<GenderDistributionChartProps> = ({
   data,
   insight,
-  isLoading
+  isLoading,
+  onSegmentClick
 }) => {
   const { activeClinic } = useClinic();
 
@@ -131,6 +133,11 @@ const GenderDistributionChart: React.FC<GenderDistributionChartProps> = ({
               outerRadius={120}
               fill="#8884d8"
               dataKey="value"
+              cursor={onSegmentClick ? 'pointer' : undefined}
+              onClick={onSegmentClick ? (_: any, index: number) => {
+                const key = chartData[index]?.name;
+                if (key) onSegmentClick(key);
+              } : undefined}
             >
               {chartData.map((entry, index) => (
                 <Cell

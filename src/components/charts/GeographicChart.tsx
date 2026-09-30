@@ -17,9 +17,10 @@ interface GeographicChartProps {
   data: Record<string, number>;
   insight: string;
   isLoading?: boolean;
+  onSegmentClick?: (key: string) => void;
 }
 
-const GeographicChart: React.FC<GeographicChartProps> = ({ data, insight, isLoading }) => {
+const GeographicChart: React.FC<GeographicChartProps> = ({ data, insight, isLoading, onSegmentClick }) => {
   const { activeClinic } = useClinic();
 
   // Convert data to chart format and sort by count
@@ -115,6 +116,11 @@ const GeographicChart: React.FC<GeographicChartProps> = ({ data, insight, isLoad
               dataKey="count"
               fill={activeClinic === 'dental' ? '#4A90E2' : '#6CBFBF'}
               radius={[4, 4, 0, 0]}
+              cursor={onSegmentClick ? 'pointer' : undefined}
+              onClick={onSegmentClick ? (entry: any) => {
+                const key = entry?.fullArea ?? entry?.payload?.fullArea;
+                if (key) onSegmentClick(key);
+              } : undefined}
             />
           </BarChart>
         </ResponsiveContainer>
