@@ -972,6 +972,40 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 font-size: 12px;
               }
 
+              /* Patient-friendly medicine table - borderless, premium */
+              .med-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+                color: #263238;
+              }
+              .med-table thead tr {
+                border-bottom: 2px solid #1565C0;
+              }
+              .med-table th {
+                padding: 0 8px 9px;
+                text-align: left;
+                font-size: 10px;
+                font-weight: bold;
+                letter-spacing: 0.8px;
+                text-transform: uppercase;
+                color: #1565C0;
+              }
+              .med-table td {
+                padding: 12px 8px;
+                vertical-align: middle;
+              }
+              .med-table tbody tr {
+                border-bottom: 1px solid #ECEFF1;
+              }
+              .med-table th.c, .med-table td.c {
+                text-align: center;
+              }
+              .med-table td.num { text-align: center; color: #78909C; }
+              .med-table td.name { font-weight: bold; }
+              .med-table td.on { text-align: center; font-weight: bold; color: #00838F; }
+              .med-table td.off { text-align: center; font-weight: bold; color: #CFD8DC; }
+
               .notes-section {
                 margin-top: 20px;
                 padding: 15px;
@@ -1122,31 +1156,36 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
               <!-- Rx Symbol -->
               <div class="rx-symbol">℞</div>
 
-              <!-- Medications -->
+              <!-- Medications (patient-friendly table) -->
               ${prescription.medications && prescription.medications.length > 0 ? `
-                <ol class="medications">
-                  ${prescription.medications.map(med => `
-                    <li class="medication">
-                      <div class="medication-name">${med.name} - ${med.dosage}</div>
-                      <div class="medication-details">
-                        Duration: ${med.duration}${
-                          med.timing && (med.timing.morning || med.timing.afternoon || med.timing.night)
-                            ? `<br>Timing: ${[
-                                med.timing.morning ? 'Morning' : '',
-                                med.timing.afternoon ? 'Afternoon' : '',
-                                med.timing.night ? 'Night' : ''
-                              ].filter(Boolean).join(', ')}`
-                            : ''
-                        }${med.food_instructions ? `<br>Instructions: ${med.food_instructions}` : ''}${
-                          med.instructions ? `<br>Notes: ${med.instructions}` : ''
-                        }
-                      </div>
-                      <div class="medication-details dispense">
-                        Dispense: ${med.dispense_quantity}
-                      </div>
-                    </li>
-                  `).join('')}
-                </ol>
+                <table class="med-table">
+                  <thead>
+                    <tr>
+                      <th class="c">#</th>
+                      <th>Medicine</th>
+                      <th>Dose</th>
+                      <th class="c">Morning</th>
+                      <th class="c">Afternoon</th>
+                      <th class="c">Evening</th>
+                      <th>Food</th>
+                      <th>Duration</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${prescription.medications.map((med, i) => `
+                      <tr>
+                        <td class="num">${i + 1}</td>
+                        <td class="name">${med.name}</td>
+                        <td>${med.dosage}</td>
+                        <td class="${med.timing && med.timing.morning ? 'on' : 'off'}">${med.timing && med.timing.morning ? '1' : '0'}</td>
+                        <td class="${med.timing && med.timing.afternoon ? 'on' : 'off'}">${med.timing && med.timing.afternoon ? '1' : '0'}</td>
+                        <td class="${med.timing && med.timing.night ? 'on' : 'off'}">${med.timing && med.timing.night ? '1' : '0'}</td>
+                        <td>${med.food_instructions || '-'}</td>
+                        <td>${med.duration}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
               ` : `
                 <p>No medications prescribed</p>
               `}
@@ -1673,31 +1712,39 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 <span className="text-xl font-serif">Rx</span>
               </div>
 
-              {/* Medications */}
+              {/* Medications (borderless premium table - matches the printed layout) */}
               <div className="mb-4">
                 {selectedPrescription.medications && selectedPrescription.medications.length > 0 ? (
-                  <ul className="list-decimal pl-5 space-y-2">
-                    {selectedPrescription.medications.map(med => (
-                      <li key={med.id} className="pl-2">
-                        <p className="font-medium text-sm">{med.name} - {med.dosage}</p>
-                        <p className="text-xs pl-2">
-                          For {med.duration}
-                          {med.timing && (med.timing.morning || med.timing.afternoon || med.timing.night) &&
-                            ` - Timing: ${[
-                              med.timing.morning ? 'Morning' : '',
-                              med.timing.afternoon ? 'Afternoon' : '',
-                              med.timing.night ? 'Night' : ''
-                            ].filter(Boolean).join(', ')}`
-                          }
-                          {med.food_instructions && ` - ${med.food_instructions}`}
-                          {med.instructions && ` - Notes: ${med.instructions}`}
-                        </p>
-                        <p className="text-xs pl-2 font-medium">
-                          Dispense: {med.dispense_quantity}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #1565C0' }}>
+                          <th className="px-2 pb-2 text-center" style={{ color: '#1565C0', fontSize: '10px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>#</th>
+                          <th className="px-2 pb-2 text-left" style={{ color: '#1565C0', fontSize: '10px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Medicine</th>
+                          <th className="px-2 pb-2 text-left" style={{ color: '#1565C0', fontSize: '10px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Dose</th>
+                          <th className="px-2 pb-2 text-center" style={{ color: '#1565C0', fontSize: '10px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Morning</th>
+                          <th className="px-2 pb-2 text-center" style={{ color: '#1565C0', fontSize: '10px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Afternoon</th>
+                          <th className="px-2 pb-2 text-center" style={{ color: '#1565C0', fontSize: '10px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Evening</th>
+                          <th className="px-2 pb-2 text-left" style={{ color: '#1565C0', fontSize: '10px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Food</th>
+                          <th className="px-2 pb-2 text-left" style={{ color: '#1565C0', fontSize: '10px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Duration</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedPrescription.medications.map((med, i) => (
+                          <tr key={med.id} style={{ borderBottom: '1px solid #ECEFF1' }}>
+                            <td className="px-2 py-2.5 text-center" style={{ color: '#78909C' }}>{i + 1}</td>
+                            <td className="px-2 py-2.5 font-bold" style={{ color: '#263238' }}>{med.name}</td>
+                            <td className="px-2 py-2.5" style={{ color: '#263238' }}>{med.dosage}</td>
+                            <td className="px-2 py-2.5 text-center font-bold" style={{ color: med.timing && med.timing.morning ? '#00838F' : '#CFD8DC' }}>{med.timing && med.timing.morning ? '1' : '0'}</td>
+                            <td className="px-2 py-2.5 text-center font-bold" style={{ color: med.timing && med.timing.afternoon ? '#00838F' : '#CFD8DC' }}>{med.timing && med.timing.afternoon ? '1' : '0'}</td>
+                            <td className="px-2 py-2.5 text-center font-bold" style={{ color: med.timing && med.timing.night ? '#00838F' : '#CFD8DC' }}>{med.timing && med.timing.night ? '1' : '0'}</td>
+                            <td className="px-2 py-2.5" style={{ color: '#263238' }}>{med.food_instructions || '-'}</td>
+                            <td className="px-2 py-2.5" style={{ color: '#263238' }}>{med.duration}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <p className="text-sm italic">No medications added to this prescription.</p>
                 )}
