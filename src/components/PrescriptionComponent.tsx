@@ -860,9 +860,9 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 30px 40px 20px 40px;
+                padding: 20px 40px 12px 40px;
                 background: white;
-                min-height: 150px;
+                min-height: 100px;
               }
 
               /* Left Block: Doctor's Credentials */
@@ -887,8 +887,8 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
               }
 
               .logo-container {
-                width: 300px;
-                height: 180px;
+                width: 200px;
+                height: 110px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -897,8 +897,8 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
               .dental-metrix-logo {
                 width: 100%;
                 height: auto;
-                max-width: 300px;
-                max-height: 180px;
+                max-width: 200px;
+                max-height: 110px;
               }
 
               /* Main Content Area */
@@ -1134,10 +1134,10 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
             <!-- Header Section -->
             <div class="header">
               <div class="doctor-info">
-                <div style="font-size: 24px; font-weight: bold; margin-bottom: 12px; white-space: nowrap;">Dr. Bhargavi Railkar - Kolhapure</div>
-                <div style="font-size: 16px; margin-bottom: 6px;">MDS Prosthodontics & Implantology</div>
-                <div style="font-size: 16px; margin-bottom: 6px;">Certification in Maxillofacial Prosthodontics</div>
-                <div style="font-size: 16px;">Reg. No.: A 14618</div>
+                <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px; white-space: nowrap;">Dr. Bhargavi Railkar - Kolhapure</div>
+                <div style="font-size: 13px; margin-bottom: 4px;">MDS Prosthodontics & Implantology</div>
+                <div style="font-size: 13px; margin-bottom: 4px;">Certification in Maxillofacial Prosthodontics</div>
+                <div style="font-size: 13px;">Reg. No.: A 14618</div>
               </div>
               <div class="clinic-branding">
                 <div class="logo-container">
