@@ -1006,6 +1006,8 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
               .med-table td.name { font-weight: bold; }
               .med-table td.on { text-align: center; font-weight: bold; color: #00838F; }
               .med-table td.off { text-align: center; font-weight: bold; color: #CFD8DC; }
+              .med-notes { font-size: 11.5px; color: #455A64; margin-top: 12px; line-height: 1.5; }
+              .med-notes-title { font-weight: bold; color: #263238; margin-bottom: 2px; }
 
               .notes-section {
                 margin-top: 20px;
@@ -1149,7 +1151,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
               <!-- Patient Info -->
               <div class="patient-info">
                 <div><strong>Patient:</strong> ${patientName}</div>
-                <div><strong>Age:</strong> ${getPatientAgeOrDOB()}</div>
+                <div><strong>${patientDOB ? 'DOB:' : 'Age:'}</strong> ${getPatientAgeOrDOB()}</div>
                 <div><strong>Date:</strong> ${format(new Date(prescription.date), 'dd/MM/yyyy')}</div>
                 ${prescription.diagnosis ? `<div><strong>Diagnosis:</strong> ${prescription.diagnosis}</div>` : ''}
               </div>
@@ -1182,11 +1184,17 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                         <td class="${med.timing && med.timing.afternoon ? 'on' : 'off'}">${med.timing && med.timing.afternoon ? '1' : '0'}</td>
                         <td class="${med.timing && med.timing.night ? 'on' : 'off'}">${med.timing && med.timing.night ? '1' : '0'}</td>
                         <td>${med.food_instructions || '-'}</td>
-                        <td>${med.duration}</td>
+                        <td>${fmtDuration(med.duration)}</td>
                       </tr>
                     `).join('')}
                   </tbody>
                 </table>
+                ${prescription.medications.some(m => m.instructions && m.instructions.trim()) ? `
+                  <div class="med-notes">
+                    <div class="med-notes-title">Notes:</div>
+                    ${prescription.medications.filter(m => m.instructions && m.instructions.trim()).map(m => `<div>&bull; <strong>${m.name}</strong> &mdash; ${m.instructions}</div>`).join('')}
+                  </div>
+                ` : ''}
               ` : `
                 <p>No medications prescribed</p>
               `}
@@ -1275,19 +1283,27 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   };
 
   // Get patient age or DOB for the prescription receipt
+  // Returns just the value (no "Age:"/"DOB:" prefix - the label is added by the caller)
   const getPatientAgeOrDOB = () => {
     try {
       if (patientDOB) {
-        return `DOB: ${formatDate(new Date(patientDOB), 'dd/MM/yyyy')}`;
+        return formatDate(new Date(patientDOB), 'dd/MM/yyyy');
       } else if (patientAge) {
-        return `Age: ${patientAge} years`;
+        return `${patientAge} years`;
       } else {
-        return "Age/DOB: Not available";
+        return "Not available";
       }
     } catch (error) {
       console.error('Error formatting patient age/DOB:', error);
-      return "Age/DOB: Not available";
+      return "Not available";
     }
+  };
+
+  // Always show a duration unit: if a legacy value is a bare number, treat it as days
+  const fmtDuration = (d?: string) => {
+    const s = (d || '').trim();
+    if (!s) return '-';
+    return /[a-zA-Z]/.test(s) ? s : `${s} days`;
   };
 
   return (
@@ -1546,7 +1562,13 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                             const num = e.target.value.replace(/[^0-9]/g, '');
                             const unit = /week/i.test(newMedication.duration || '') ? 'weeks'
                               : /month/i.test(newMedication.duration || '') ? 'months' : 'days';
-                            setNewMedication(prev => ({ ...prev, duration: num ? `${num} ${unit}` : '' }));
+                            setNewMedication(prev => {
+                              const duration = num ? `${num} ${unit}` : '';
+                              const dnum = num ? parseInt(num, 10) : 0;
+                              const freq = (prev.timing.morning ? 1 : 0) + (prev.timing.afternoon ? 1 : 0) + (prev.timing.night ? 1 : 0);
+                              const dispense_quantity = (dnum > 0 && freq > 0) ? `${freq * dnum} tablets` : prev.dispense_quantity;
+                              return { ...prev, duration, dispense_quantity };
+                            });
                           }}
                           className="h-9 text-sm focus:ring-1 focus:ring-blue-500"
                         />
@@ -1554,8 +1576,14 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                           value={/week/i.test(newMedication.duration || '') ? 'weeks'
                             : /month/i.test(newMedication.duration || '') ? 'months' : 'days'}
                           onValueChange={(unit) => {
-                            const num = (newMedication.duration || '').match(/\d+/)?.[0] || '';
-                            setNewMedication(prev => ({ ...prev, duration: num ? `${num} ${unit}` : '' }));
+                            setNewMedication(prev => {
+                              const num = (prev.duration || '').match(/\d+/)?.[0] || '';
+                              const duration = num ? `${num} ${unit}` : '';
+                              const dnum = num ? parseInt(num, 10) : 0;
+                              const freq = (prev.timing.morning ? 1 : 0) + (prev.timing.afternoon ? 1 : 0) + (prev.timing.night ? 1 : 0);
+                              const dispense_quantity = (dnum > 0 && freq > 0) ? `${freq * dnum} tablets` : prev.dispense_quantity;
+                              return { ...prev, duration, dispense_quantity };
+                            });
                           }}
                         >
                           <SelectTrigger className="h-9 w-[112px] text-sm"><SelectValue /></SelectTrigger>
@@ -1721,7 +1749,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
               <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
                 <div>
                   <p><strong>Patient:</strong> {patientName}</p>
-                  <p><strong>Age/DOB:</strong> {getPatientAgeOrDOB()}</p>
+                  <p><strong>{patientDOB ? 'DOB:' : 'Age:'}</strong> {getPatientAgeOrDOB()}</p>
                   <p><strong>Date:</strong> {format(new Date(selectedPrescription.date), 'dd/MM/yyyy')}</p>
                 </div>
                 <div className="text-right">
@@ -1763,11 +1791,19 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                             <td className="px-2 py-2.5 text-center font-bold" style={{ color: med.timing && med.timing.afternoon ? '#00838F' : '#CFD8DC' }}>{med.timing && med.timing.afternoon ? '1' : '0'}</td>
                             <td className="px-2 py-2.5 text-center font-bold" style={{ color: med.timing && med.timing.night ? '#00838F' : '#CFD8DC' }}>{med.timing && med.timing.night ? '1' : '0'}</td>
                             <td className="px-2 py-2.5" style={{ color: '#263238' }}>{med.food_instructions || '-'}</td>
-                            <td className="px-2 py-2.5" style={{ color: '#263238' }}>{med.duration}</td>
+                            <td className="px-2 py-2.5" style={{ color: '#263238' }}>{fmtDuration(med.duration)}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                    {selectedPrescription.medications.some(m => m.instructions && m.instructions.trim()) && (
+                      <div className="mt-3 text-xs" style={{ color: '#455A64' }}>
+                        <div className="font-bold" style={{ color: '#263238' }}>Notes:</div>
+                        {selectedPrescription.medications.filter(m => m.instructions && m.instructions.trim()).map(m => (
+                          <div key={m.id}>&bull; <strong>{m.name}</strong> &mdash; {m.instructions}</div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className="text-sm italic">No medications added to this prescription.</p>
