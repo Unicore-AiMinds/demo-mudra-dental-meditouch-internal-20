@@ -855,13 +855,18 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
         throw new Error('Could not access iframe document');
       }
 
+      // Default Save-as-PDF filename: Prescription-<Name>-<PatientID>-<YYYY-MM-DD>
+      const safeName = (patientName || 'patient').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-');
+      const rxDate = format(new Date(prescription.date), 'yyyy-MM-dd');
+      const docTitle = `Prescription-${safeName}${patientCode ? `-${patientCode}` : ''}-${rxDate}`;
+
       // Write the prescription content with exact letterhead recreation
       doc.open();
       doc.write(`
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Prescription - ${patientName}</title>
+            <title>${docTitle}</title>
             <style>
               * {
                 margin: 0;
