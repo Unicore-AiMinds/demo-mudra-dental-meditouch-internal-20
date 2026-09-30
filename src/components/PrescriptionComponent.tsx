@@ -943,10 +943,13 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 margin-bottom: 4px;
               }
 
-              .pi-row {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 28px;
+              .pi-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                column-gap: 40px;
+              }
+              .pi-diagnosis {
+                margin-top: 4px;
               }
 
               .rx-symbol {
@@ -1178,17 +1181,19 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
             <div class="main-content">
               <!-- Patient Info -->
               <div class="patient-info">
-                <div class="pi-row">
-                  <span><strong>Patient:</strong> ${patientName}</span>
-                  ${sexDisplay ? `<span><strong>Sex:</strong> ${sexDisplay}</span>` : ''}
-                  <span><strong>${patientDOB ? 'DOB:' : 'Age:'}</strong> ${getPatientAgeOrDOB()}</span>
+                <div class="pi-grid">
+                  <div class="pi-col">
+                    <div><strong>Patient:</strong> ${patientName}</div>
+                    ${sexDisplay ? `<div><strong>Sex:</strong> ${sexDisplay}</div>` : ''}
+                    <div><strong>${patientDOB ? 'DOB:' : 'Age:'}</strong> ${getPatientAgeOrDOB()}</div>
+                  </div>
+                  <div class="pi-col">
+                    ${patientCode ? `<div><strong>Patient ID:</strong> ${patientCode}</div>` : ''}
+                    ${weightDisplay ? `<div><strong>Weight:</strong> ${weightDisplay}</div>` : ''}
+                    <div><strong>Date:</strong> ${format(new Date(prescription.date), 'dd/MM/yyyy')}</div>
+                  </div>
                 </div>
-                <div class="pi-row">
-                  ${patientCode ? `<span><strong>Patient ID:</strong> ${patientCode}</span>` : ''}
-                  ${weightDisplay ? `<span><strong>Weight:</strong> ${weightDisplay}</span>` : ''}
-                  <span><strong>Date:</strong> ${format(new Date(prescription.date), 'dd/MM/yyyy')}</span>
-                </div>
-                ${prescription.diagnosis ? `<div><strong>Diagnosis:</strong> ${prescription.diagnosis}</div>` : ''}
+                ${prescription.diagnosis ? `<div class="pi-diagnosis"><strong>Diagnosis:</strong> ${prescription.diagnosis}</div>` : ''}
               </div>
 
               <!-- Rx Symbol -->
