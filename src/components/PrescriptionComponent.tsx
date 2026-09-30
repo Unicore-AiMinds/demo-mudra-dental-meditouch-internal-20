@@ -945,8 +945,9 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
 
               .pi-grid {
                 display: grid;
-                grid-template-columns: 1fr 1fr;
-                column-gap: 40px;
+                grid-template-columns: max-content max-content;
+                column-gap: 64px;
+                justify-content: start;
               }
               .pi-diagnosis {
                 margin-top: 4px;
