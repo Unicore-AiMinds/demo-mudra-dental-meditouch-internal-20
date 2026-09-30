@@ -17,6 +17,7 @@ import { useDoctors } from '@/contexts/DoctorContext';
 import { useMedicines } from '@/contexts/MedicineContext';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { usePermissions } from '@/contexts/PermissionContext';
+import { useVitalSigns } from '@/contexts/VitalSignsContext';
 import { Medicine, getUniqueMedicineNames, getDosagesForMedicine } from '@/types/medicines';
 import { format as formatDate } from 'date-fns';
 import { Combobox } from '@/components/ui/combobox';
@@ -36,9 +37,11 @@ interface PrescriptionComponentProps {
   patientName: string;
   patientAge?: number;
   patientDOB?: string;
+  patientGender?: string;
+  patientCode?: string;
 }
 
-const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId, patientName, patientAge, patientDOB }) => {
+const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId, patientName, patientAge, patientDOB, patientGender, patientCode }) => {
   const {
     getPatientPrescriptions,
     addPrescription,
@@ -123,6 +126,25 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
 
     fetchPrescriptions();
   }, [patientId, getPatientPrescriptions, toast]);
+
+  // Latest recorded weight (for the prescription patient block) - omitted if none
+  const { getLatestVitalSign } = useVitalSigns();
+  const [patientWeight, setPatientWeight] = useState('');
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const v = await getLatestVitalSign(patientId);
+        if (active) setPatientWeight(v?.weight || '');
+      } catch {
+        if (active) setPatientWeight('');
+      }
+    })();
+    return () => { active = false; };
+  }, [patientId, getLatestVitalSign]);
+
+  const sexDisplay = patientGender ? patientGender.charAt(0).toUpperCase() + patientGender.slice(1) : '';
+  const weightDisplay = patientWeight ? (/[a-zA-Z]/.test(patientWeight) ? patientWeight : `${patientWeight} kg`) : '';
 
   // Filter prescriptions based on active tab
   const filteredPrescriptions = prescriptions.filter(prescription => {
@@ -921,6 +943,12 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 margin-bottom: 4px;
               }
 
+              .pi-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 28px;
+              }
+
               .rx-symbol {
                 font-size: 32px;
                 font-family: serif;
@@ -1150,9 +1178,16 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
             <div class="main-content">
               <!-- Patient Info -->
               <div class="patient-info">
-                <div><strong>Patient:</strong> ${patientName}</div>
-                <div><strong>${patientDOB ? 'DOB:' : 'Age:'}</strong> ${getPatientAgeOrDOB()}</div>
-                <div><strong>Date:</strong> ${format(new Date(prescription.date), 'dd/MM/yyyy')}</div>
+                <div class="pi-row">
+                  <span><strong>Patient:</strong> ${patientName}</span>
+                  ${sexDisplay ? `<span><strong>Sex:</strong> ${sexDisplay}</span>` : ''}
+                  <span><strong>${patientDOB ? 'DOB:' : 'Age:'}</strong> ${getPatientAgeOrDOB()}</span>
+                </div>
+                <div class="pi-row">
+                  ${patientCode ? `<span><strong>Patient ID:</strong> ${patientCode}</span>` : ''}
+                  ${weightDisplay ? `<span><strong>Weight:</strong> ${weightDisplay}</span>` : ''}
+                  <span><strong>Date:</strong> ${format(new Date(prescription.date), 'dd/MM/yyyy')}</span>
+                </div>
                 ${prescription.diagnosis ? `<div><strong>Diagnosis:</strong> ${prescription.diagnosis}</div>` : ''}
               </div>
 
@@ -1749,7 +1784,10 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
               <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
                 <div>
                   <p><strong>Patient:</strong> {patientName}</p>
+                  {sexDisplay && <p><strong>Sex:</strong> {sexDisplay}</p>}
                   <p><strong>{patientDOB ? 'DOB:' : 'Age:'}</strong> {getPatientAgeOrDOB()}</p>
+                  {patientCode && <p><strong>Patient ID:</strong> {patientCode}</p>}
+                  {weightDisplay && <p><strong>Weight:</strong> {weightDisplay}</p>}
                   <p><strong>Date:</strong> {format(new Date(selectedPrescription.date), 'dd/MM/yyyy')}</p>
                 </div>
                 <div className="text-right">

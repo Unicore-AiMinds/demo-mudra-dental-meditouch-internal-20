@@ -479,6 +479,8 @@ const PatientDetails = () => {
               patientName={patient.name}
               patientAge={patient.age}
               patientDOB={patient.dateOfBirth}
+              patientGender={patient.gender}
+              patientCode={patient.patient_code}
             />
           </TabsContent>
         )}
