@@ -690,14 +690,16 @@ export const AppointmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       console.log(`Fetching ${clinic} appointments from ${startDateString} to ${endDateString}`);
 
-      // EMERGENCY FIX: Use a simpler approach - fetch all appointments and filter in JavaScript
-      // This is more reliable than complex date range filters
+      // Fetch appointments and filter the date range in JavaScript.
+      // Order NEWEST-first so current periods (today/this week/this month) are
+      // always inside the fetched window - ascending order dropped recent
+      // appointments once a clinic had more rows than the limit.
       const appointments = await supabase.from<Appointment>('appointments').getAll({
         filters: {
           clinic_type: clinic
         },
-        order: { column: 'date', ascending: true },
-        limit: 200  // EMERGENCY FIX: Reduced pagination limit to prevent massive data fetching
+        order: { column: 'date', ascending: false },
+        limit: 500
       });
 
       // Filter appointments within the date range in JavaScript
