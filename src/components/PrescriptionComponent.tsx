@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
 import { Edit, Plus, Save, X, Trash, FileText, Printer } from 'lucide-react';
@@ -1531,17 +1532,40 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
 
                   {/* Third row - Duration and Dispense Quantity */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    {/* Duration */}
+                    {/* Duration - number + unit (Days / Weeks / Months) */}
                     <div>
                       <Label htmlFor="duration" className="text-xs font-medium mb-1 block">Duration <span className="text-red-500 ml-1">*</span></Label>
-                      <Input
-                        id="duration"
-                        name="duration"
-                        placeholder="e.g., 7 days"
-                        value={newMedication.duration}
-                        onChange={handleMedicationChange}
-                        className="h-9 text-sm focus:ring-1 focus:ring-blue-500"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="duration"
+                          type="number"
+                          min="1"
+                          placeholder="e.g., 5"
+                          value={(newMedication.duration || '').match(/\d+/)?.[0] || ''}
+                          onChange={(e) => {
+                            const num = e.target.value.replace(/[^0-9]/g, '');
+                            const unit = /week/i.test(newMedication.duration || '') ? 'weeks'
+                              : /month/i.test(newMedication.duration || '') ? 'months' : 'days';
+                            setNewMedication(prev => ({ ...prev, duration: num ? `${num} ${unit}` : '' }));
+                          }}
+                          className="h-9 text-sm focus:ring-1 focus:ring-blue-500"
+                        />
+                        <Select
+                          value={/week/i.test(newMedication.duration || '') ? 'weeks'
+                            : /month/i.test(newMedication.duration || '') ? 'months' : 'days'}
+                          onValueChange={(unit) => {
+                            const num = (newMedication.duration || '').match(/\d+/)?.[0] || '';
+                            setNewMedication(prev => ({ ...prev, duration: num ? `${num} ${unit}` : '' }));
+                          }}
+                        >
+                          <SelectTrigger className="h-9 w-[112px] text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="days">Days</SelectItem>
+                            <SelectItem value="weeks">Weeks</SelectItem>
+                            <SelectItem value="months">Months</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
                     {/* Dispense Quantity */}
