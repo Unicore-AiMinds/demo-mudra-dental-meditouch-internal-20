@@ -15,15 +15,18 @@ interface DatePickerProps {
   setDate: (date: Date | undefined) => void;
   className?: string;
   disabled?: (date: Date) => boolean;
+  /** Disable the whole control (greyed-out, not clickable). */
+  isDisabled?: boolean;
 }
 
-export function DatePicker({ date, setDate, className, disabled }: DatePickerProps) {
+export function DatePicker({ date, setDate, className, disabled, isDisabled }: DatePickerProps) {
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
+            disabled={isDisabled}
             className={cn(
               "w-full justify-start text-left font-normal",
               !date && "text-muted-foreground"
