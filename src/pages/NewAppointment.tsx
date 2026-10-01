@@ -13,6 +13,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
@@ -636,29 +637,14 @@ const NewAppointment = () => {
                   </span>
                 )}
               </div>
-              <Select
+              <Combobox
+                options={services.map(s => ({ value: s, label: s }))}
                 value={service}
-                onValueChange={setService}
-                required
+                onChange={setService}
+                placeholder={servicesLoading ? "Loading services..." : "Select service"}
+                emptyMessage="No services found. Please add services in the Settings → Services tab."
                 disabled={servicesLoading}
-              >
-                <SelectTrigger id="service">
-                  <SelectValue placeholder={servicesLoading ? "Loading services..." : "Select service"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {services.length > 0 ? (
-                    services.map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))
-                  ) : (
-                    <div className="px-2 py-4 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        No services found. Please add services in the Settings → Services tab.
-                      </p>
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
+              />
               {!servicesLoading && services.length === 0 && (
                 <p className="text-xs text-amber-600 mt-1">
                   To add appointments, first add services in Settings → Services tab.
@@ -669,9 +655,10 @@ const NewAppointment = () => {
             {isDental && (
               <div className="space-y-2">
                 <Label htmlFor="doctor">Doctor</Label>
-                <Select
+                <Combobox
+                  options={availableDoctors.map(d => ({ value: d.name, label: d.name }))}
                   value={doctor}
-                  onValueChange={(value) => {
+                  onChange={(value) => {
                     setDoctor(value);
 
                     // Check if this doctor is already booked in the other clinic type
@@ -679,17 +666,9 @@ const NewAppointment = () => {
                       handleDoctorDoubleBookingWarning(value, time);
                     }
                   }}
-                  required
-                >
-                  <SelectTrigger id="doctor">
-                    <SelectValue placeholder="Select doctor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableDoctors.map(d => (
-                      <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select doctor"
+                  emptyMessage="No doctors found"
+                />
               </div>
             )}
 

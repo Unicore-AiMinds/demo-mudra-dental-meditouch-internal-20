@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from '@/components/ui/combobox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -672,17 +673,15 @@ const LabWork = () => {
             </SelectContent>
           </Select>
 
-          <Select value={selectedLab} onValueChange={setSelectedLab}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Filter by Lab" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Labs</SelectItem>
-              {uniqueLabs.map((lab) => (
-                <SelectItem key={lab} value={lab}>{lab}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[160px]">
+            <Combobox
+              options={[{ value: 'all', label: 'All Labs' }, ...uniqueLabs.map((lab) => ({ value: lab, label: lab }))]}
+              value={selectedLab}
+              onChange={setSelectedLab}
+              placeholder="Filter by Lab"
+              emptyMessage="No labs found"
+            />
+          </div>
 
           <Select value={selectedPaymentStatus} onValueChange={setSelectedPaymentStatus}>
             <SelectTrigger className="w-[160px]">
@@ -836,9 +835,10 @@ const LabWork = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="patient">Patient Name <span className="text-red-500 ml-1">*</span></Label>
-                <Select
+                <Combobox
+                  options={patients.map((patient) => ({ value: patient.name, label: patient.name }))}
                   value={newPatient}
-                  onValueChange={(value) => {
+                  onChange={(value) => {
                     setNewPatient(value);
                     // Find the patient by name to get the ID
                     const selectedPatient = patients.find(p => p.name === value);
@@ -849,43 +849,26 @@ const LabWork = () => {
                       setNewPatientId("");
                     }
                   }}
-                >
-                  <SelectTrigger id="patient">
-                    <SelectValue placeholder="Select Patient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {patients.length > 0 ? (
-                      patients.map((patient) => (
-                        <SelectItem key={patient.id} value={patient.name}>
-                          {patient.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-patients-found" disabled>No patients found</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select Patient"
+                  emptyMessage="No patients found"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="service">Service <span className="text-red-500 ml-1">*</span></Label>
-                <Select value={newService} onValueChange={setNewService}>
-                  <SelectTrigger id="service">
-                    <SelectValue placeholder="Select Service" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {services.map((service) => (
-                      <SelectItem key={service} value={service}>
-                        {service}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  options={services.map((service) => ({ value: service, label: service }))}
+                  value={newService}
+                  onChange={setNewService}
+                  placeholder="Select Service"
+                  emptyMessage="No services found"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="labWorkType">Lab Work Type <span className="text-red-500 ml-1">*</span></Label>
-                <Select
+                <Combobox
+                  options={labWorkTypes.map((type) => ({ value: type.name, label: type.name }))}
                   value={newLabWorkType}
-                  onValueChange={(value) => {
+                  onChange={(value) => {
                     setNewLabWorkType(value);
                     // Find the lab work type by name
                     const selectedType = labWorkTypes.find(type => type.name === value);
@@ -897,28 +880,16 @@ const LabWork = () => {
                       setNewExpectedDelivery(calculatedDate);
                     }
                   }}
-                >
-                  <SelectTrigger id="labWorkType">
-                    <SelectValue placeholder="Select Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {labWorkTypes.length > 0 ? (
-                      labWorkTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.name}>
-                          {type.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-lab-work-types" disabled>No lab work types found</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select Type"
+                  emptyMessage="No lab work types found"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="assignedLab">Assigned Lab <span className="text-red-500 ml-1">*</span></Label>
-                <Select
+                <Combobox
+                  options={dentalLabs.map((lab) => ({ value: lab.name, label: lab.name }))}
                   value={newAssignedLab}
-                  onValueChange={(value) => {
+                  onChange={(value) => {
                     setNewAssignedLab(value);
                     // Find the lab by name to get the ID
                     const selectedLab = dentalLabs.find(lab => lab.name === value);
@@ -929,22 +900,9 @@ const LabWork = () => {
                       setNewLabId("");
                     }
                   }}
-                >
-                  <SelectTrigger id="assignedLab">
-                    <SelectValue placeholder="Select Lab" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dentalLabs.length > 0 ? (
-                      dentalLabs.map((lab) => (
-                        <SelectItem key={lab.id} value={lab.name}>
-                          {lab.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-labs-found" disabled>No labs found</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select Lab"
+                  emptyMessage="No labs found"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dateSent" className="flex items-center">
@@ -1184,9 +1142,10 @@ const LabWork = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label htmlFor="edit-patient">Patient Name <span className="text-red-500 ml-1">*</span></Label>
-                  <Select
+                  <Combobox
+                    options={patients.map((patient) => ({ value: patient.name, label: patient.name }))}
                     value={editPatient}
-                    onValueChange={(value) => {
+                    onChange={(value) => {
                       setEditPatient(value);
                       // Find the patient by name to get the ID
                       const selectedPatient = patients.find(p => p.name === value);
@@ -1197,43 +1156,26 @@ const LabWork = () => {
                         setEditPatientId("");
                       }
                     }}
-                  >
-                    <SelectTrigger id="edit-patient">
-                      <SelectValue placeholder="Select Patient" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {patients.length > 0 ? (
-                        patients.map((patient) => (
-                          <SelectItem key={patient.id} value={patient.name}>
-                            {patient.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="no-patients-found" disabled>No patients found</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select Patient"
+                    emptyMessage="No patients found"
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="edit-service">Service <span className="text-red-500 ml-1">*</span></Label>
-                  <Select value={editService} onValueChange={setEditService}>
-                    <SelectTrigger id="edit-service">
-                      <SelectValue placeholder="Select Service" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services.map((service) => (
-                        <SelectItem key={service} value={service}>
-                          {service}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Combobox
+                    options={services.map((service) => ({ value: service, label: service }))}
+                    value={editService}
+                    onChange={setEditService}
+                    placeholder="Select Service"
+                    emptyMessage="No services found"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-labWorkType">Lab Work Type <span className="text-red-500 ml-1">*</span></Label>
-                  <Select
+                  <Combobox
+                    options={labWorkTypes.map((type) => ({ value: type.name, label: type.name }))}
                     value={editLabWorkType}
-                    onValueChange={(value) => {
+                    onChange={(value) => {
                       setEditLabWorkType(value);
                       // Find the lab work type by name
                       const selectedType = labWorkTypes.find(type => type.name === value);
@@ -1245,28 +1187,16 @@ const LabWork = () => {
                         setEditExpectedDelivery(calculatedDate);
                       }
                     }}
-                  >
-                    <SelectTrigger id="edit-labWorkType">
-                      <SelectValue placeholder="Select Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {labWorkTypes.length > 0 ? (
-                        labWorkTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.name}>
-                            {type.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="no-lab-work-types" disabled>No lab work types found</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select Type"
+                    emptyMessage="No lab work types found"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-assignedLab">Assigned Lab <span className="text-red-500 ml-1">*</span></Label>
-                  <Select
+                  <Combobox
+                    options={dentalLabs.map((lab) => ({ value: lab.name, label: lab.name }))}
                     value={editAssignedLab}
-                    onValueChange={(value) => {
+                    onChange={(value) => {
                       setEditAssignedLab(value);
                       // Find the lab by name to get the ID
                       const selectedLab = dentalLabs.find(lab => lab.name === value);
@@ -1277,22 +1207,9 @@ const LabWork = () => {
                         setEditLabId("");
                       }
                     }}
-                  >
-                    <SelectTrigger id="edit-assignedLab">
-                      <SelectValue placeholder="Select Lab" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dentalLabs.length > 0 ? (
-                        dentalLabs.map((lab) => (
-                          <SelectItem key={lab.id} value={lab.name}>
-                            {lab.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="no-labs-found" disabled>No labs found</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select Lab"
+                    emptyMessage="No labs found"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-dateSent" className="flex items-center">
