@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatDateForFilename } from '@/utils/dateFormatter';
 
 export interface DrillDownColumn<T> {
   key: string;
@@ -126,12 +127,17 @@ function DrillDownDialog<T>({
       .map((row) => columns.map((col) => esc(cellText(row, col))).join(','))
       .join('\r\n');
     const csv = '﻿' + header + '\r\n' + body;
-    const safeName = exportFileName.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'drilldown';
+    // Match the app's export naming: reports_<segment>_<date>.csv (lowercase, underscores)
+    const segment = (exportFileName || 'export')
+      .toLowerCase()
+      .replace(/[^\w\s-]+/g, '')
+      .trim()
+      .replace(/\s+/g, '_') || 'export';
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${safeName}.csv`;
+    a.download = `reports_${segment}_${formatDateForFilename()}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
