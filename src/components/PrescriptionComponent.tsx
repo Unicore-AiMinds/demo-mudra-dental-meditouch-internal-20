@@ -1282,18 +1282,29 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
 
       // Wait for the content to load
       setTimeout(() => {
+        // Chrome/Edge use the TOP page's document.title (not the iframe's) as the
+        // default "Save as PDF" filename. So temporarily swap the page title to the
+        // prescription filename while printing, then restore it afterwards.
+        const originalTitle = document.title;
+        const restoreTitle = () => { document.title = originalTitle; };
         try {
+          document.title = docTitle;
+          window.addEventListener('afterprint', restoreTitle, { once: true });
+
           // Print the iframe content
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
 
-          // Remove the iframe after printing (or after a timeout)
+          // Remove the iframe after printing (or after a timeout).
+          // Also restore the title here as a fallback in case 'afterprint' never fires.
           setTimeout(() => {
-            document.body.removeChild(iframe);
+            restoreTitle();
+            if (iframe.parentNode) document.body.removeChild(iframe);
           }, 1000);
         } catch (error) {
           console.error('Error during print:', error);
-          document.body.removeChild(iframe);
+          restoreTitle();
+          if (iframe.parentNode) document.body.removeChild(iframe);
           alert('There was an error while printing. Please try again.');
         }
       }, 500);
