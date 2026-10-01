@@ -43,6 +43,7 @@ const patientColumns: DrillDownColumn<Patient>[] = [
   { key: 'name', header: 'Name' },
   { key: 'age', header: 'Age' },
   { key: 'gender', header: 'Gender' },
+  { key: 'area', header: 'Area', render: (p) => getAreaFromPincode(p.pincode || ''), csv: (p) => getAreaFromPincode(p.pincode || '') },
   { key: 'city', header: 'City', render: (p) => p.city || '-', csv: (p) => p.city || '' },
   { key: 'phone', header: 'Phone' },
   { key: 'blood_group', header: 'Blood Group', render: (p) => p.blood_group || '-', csv: (p) => p.blood_group || '' },
