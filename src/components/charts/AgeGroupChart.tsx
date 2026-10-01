@@ -18,13 +18,15 @@ interface AgeGroupChartProps {
   insight: string;
   total: number;
   isLoading?: boolean;
+  onSegmentClick?: (key: string) => void;
 }
 
 const AgeGroupChart: React.FC<AgeGroupChartProps> = ({
   data,
   insight,
   total,
-  isLoading
+  isLoading,
+  onSegmentClick
 }) => {
   const { activeClinic } = useClinic();
 
@@ -119,6 +121,11 @@ const AgeGroupChart: React.FC<AgeGroupChartProps> = ({
               dataKey="count"
               fill={activeClinic === 'dental' ? '#4A90E2' : '#6CBFBF'}
               radius={[4, 4, 0, 0]}
+              cursor={onSegmentClick ? 'pointer' : undefined}
+              onClick={onSegmentClick ? (entry: any) => {
+                const key = entry?.ageGroup ?? entry?.payload?.ageGroup;
+                if (key) onSegmentClick(key);
+              } : undefined}
             />
           </BarChart>
         </ResponsiveContainer>

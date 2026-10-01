@@ -16,12 +16,14 @@ interface WeeklyChartProps {
   data: Record<string, number>;
   insight: string;
   isLoading?: boolean;
+  onSegmentClick?: (key: string) => void;
 }
 
 const WeeklyChart: React.FC<WeeklyChartProps> = ({
   data,
   insight,
-  isLoading
+  isLoading,
+  onSegmentClick
 }) => {
   const { activeClinic } = useClinic();
 
@@ -118,6 +120,11 @@ const WeeklyChart: React.FC<WeeklyChartProps> = ({
               dataKey="appointments"
               fill={activeClinic === 'dental' ? '#4A90E2' : '#6CBFBF'}
               radius={[4, 4, 0, 0]}
+              cursor={onSegmentClick ? 'pointer' : undefined}
+              onClick={onSegmentClick ? (entry: any) => {
+                const key = entry?.fullDay ?? entry?.payload?.fullDay;
+                if (key) onSegmentClick(key);
+              } : undefined}
             />
           </BarChart>
         </ResponsiveContainer>

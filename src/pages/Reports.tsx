@@ -1,8 +1,17 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReportsAnalytics } from '@/contexts/ReportsAnalyticsContext';
+import type { Patient } from '@/contexts/PatientContext';
+import type { Appointment } from '@/contexts/AppointmentContext';
 import { useToast } from '@/hooks/use-toast';
+import {
+  getAreaFromPincode,
+  groupByAgeRange,
+  getDayName,
+  sortByValue,
+} from '@/utils/reportsUtils';
 import {
   Card,
   CardContent,
@@ -22,23 +31,117 @@ import {
 
 // Import chart components
 import GeographicChart from '@/components/charts/GeographicChart';
-import TreatmentPieChart from '@/components/charts/TreatmentPieChart';
+import TreatmentPieChart, { TREATMENT_OTHERS_KEY } from '@/components/charts/TreatmentPieChart';
 import AgeGroupChart from '@/components/charts/AgeGroupChart';
 import GenderDistributionChart from '@/components/charts/GenderDistributionChart';
 import WeeklyChart from '@/components/charts/WeeklyChart';
+import DrillDownDialog, { type DrillDownColumn } from '@/components/reports/DrillDownDialog';
+
+// Column definitions for the drill-down tables
+const patientColumns: DrillDownColumn<Patient>[] = [
+  { key: 'patient_code', header: 'Patient ID', render: (p) => p.patient_code || '-', csv: (p) => p.patient_code || '' },
+  { key: 'name', header: 'Name' },
+  { key: 'age', header: 'Age' },
+  { key: 'gender', header: 'Gender' },
+  { key: 'area', header: 'Area', render: (p) => getAreaFromPincode(p.pincode || ''), csv: (p) => getAreaFromPincode(p.pincode || '') },
+  { key: 'city', header: 'City', render: (p) => p.city || '-', csv: (p) => p.city || '' },
+  { key: 'phone', header: 'Phone' },
+  { key: 'blood_group', header: 'Blood Group', render: (p) => p.blood_group || '-', csv: (p) => p.blood_group || '' },
+  { key: 'clinic', header: 'Clinic' },
+];
 
 const Reports = () => {
   const { activeClinic, isDental } = useClinic();
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const {
     geographic,
     treatments,
     ageGroups,
     genders,
     weekly,
-    isLoading
+    isLoading,
+    filteredPatients,
+    allAppointments,
+    completedAppointments,
   } = useReportsAnalytics();
+
+  // Drill-down dialog state
+  const [drillOpen, setDrillOpen] = useState(false);
+  const [drillTitle, setDrillTitle] = useState('');
+  const [drillMode, setDrillMode] = useState<'patient' | 'appointment'>('patient');
+  const [patientRows, setPatientRows] = useState<Patient[]>([]);
+  const [appointmentRows, setAppointmentRows] = useState<Appointment[]>([]);
+
+  // Map patient id -> name to resolve appointment patient labels
+  const patientNameById = new Map(filteredPatients.map((p) => [p.id, p.name]));
+
+  const appointmentColumns: DrillDownColumn<Appointment>[] = [
+    {
+      key: 'patient',
+      header: 'Patient',
+      render: (a) => a.patient_name || patientNameById.get(a.patient_id) || a.patient_id || '-',
+      csv: (a) => a.patient_name || patientNameById.get(a.patient_id) || a.patient_id || '',
+    },
+    { key: 'date', header: 'Date' },
+    { key: 'time', header: 'Time', render: (a) => a.time || '-', csv: (a) => a.time || '' },
+    { key: 'service', header: 'Service', render: (a) => a.service || 'Unknown Service', csv: (a) => a.service || 'Unknown Service' },
+    { key: 'doctor', header: 'Doctor', render: (a) => a.doctor || '-', csv: (a) => a.doctor || '' },
+    { key: 'status', header: 'Status' },
+    { key: 'payment_status', header: 'Payment', render: (a) => a.payment_status || '-', csv: (a) => a.payment_status || '' },
+  ];
+
+  const openPatientDrill = (title: string, rows: Patient[]) => {
+    setDrillMode('patient');
+    setDrillTitle(title);
+    setPatientRows(rows);
+    setDrillOpen(true);
+  };
+
+  const openAppointmentDrill = (title: string, rows: Appointment[]) => {
+    setDrillMode('appointment');
+    setDrillTitle(title);
+    setAppointmentRows(rows);
+    setDrillOpen(true);
+  };
+
+  // Patient-based chart drill-downs
+  const handleGeographicClick = (key: string) => {
+    const rows = filteredPatients.filter((p) => getAreaFromPincode(p.pincode || '') === key);
+    openPatientDrill(`Patients in ${key}`, rows);
+  };
+
+  const handleAgeClick = (key: string) => {
+    const rows = filteredPatients.filter((p) => groupByAgeRange(p.age || 0) === key);
+    openPatientDrill(`Patients aged ${key}`, rows);
+  };
+
+  const handleGenderClick = (key: string) => {
+    const rows = filteredPatients.filter((p) => (p.gender || 'Not Specified') === key);
+    openPatientDrill(`${key} patients`, rows);
+  };
+
+  // Appointment-based chart drill-downs
+  const handleTreatmentClick = (key: string) => {
+    if (key === TREATMENT_OTHERS_KEY) {
+      const top6 = new Set(
+        sortByValue(treatments.treatments).slice(0, 6).map(([name]) => name)
+      );
+      const rows = completedAppointments.filter(
+        (a) => !top6.has(a.service || 'Unknown Service')
+      );
+      openAppointmentDrill('Treatment: Others', rows);
+    } else {
+      const rows = completedAppointments.filter((a) => (a.service || 'Unknown Service') === key);
+      openAppointmentDrill(`Treatment: ${key}`, rows);
+    }
+  };
+
+  const handleWeeklyClick = (key: string) => {
+    const rows = allAppointments.filter((a) => getDayName(a.date) === key);
+    openAppointmentDrill(`Appointments on ${key}`, rows);
+  };
 
 
   // Restrict access to admin and super_admin only
@@ -99,6 +202,7 @@ const Reports = () => {
             data={geographic.areas}
             insight={geographic.insight}
             isLoading={isLoading}
+            onSegmentClick={handleGeographicClick}
           />
         </TabsContent>
 
@@ -112,6 +216,7 @@ const Reports = () => {
             insight={treatments.insight}
             total={treatments.total}
             isLoading={isLoading}
+            onSegmentClick={handleTreatmentClick}
           />
         </TabsContent>
 
@@ -126,11 +231,13 @@ const Reports = () => {
               insight={ageGroups.insight}
               total={ageGroups.total}
               isLoading={isLoading}
+              onSegmentClick={handleAgeClick}
             />
             <GenderDistributionChart
               data={genders.genders}
               insight={genders.insight}
               isLoading={isLoading}
+              onSegmentClick={handleGenderClick}
             />
           </div>
         </TabsContent>
@@ -145,11 +252,43 @@ const Reports = () => {
             data={weekly.days}
             insight={weekly.insight}
             isLoading={isLoading}
+            onSegmentClick={handleWeeklyClick}
           />
         </TabsContent>
 
 
       </Tabs>
+
+      {/* Drill-down detail dialog */}
+      {drillMode === 'patient' ? (
+        <DrillDownDialog<Patient>
+          open={drillOpen}
+          onOpenChange={setDrillOpen}
+          title={drillTitle}
+          description={`${patientRows.length} patient${patientRows.length !== 1 ? 's' : ''} - click a row to view the patient`}
+          columns={patientColumns}
+          rows={patientRows}
+          onRowClick={(p) => {
+            setDrillOpen(false);
+            navigate(`/patients/${p.id}`);
+          }}
+          emptyMessage="No patients found for this selection."
+          exportFileName={drillTitle}
+        />
+      ) : (
+        <DrillDownDialog<Appointment>
+          open={drillOpen}
+          onOpenChange={setDrillOpen}
+          title={drillTitle}
+          description={`${appointmentRows.length} appointment${appointmentRows.length !== 1 ? 's' : ''}`}
+          columns={appointmentColumns}
+          rows={appointmentRows}
+          emptyMessage="No appointments found for this selection."
+          filterKey="status"
+          filterLabel="Status"
+          exportFileName={drillTitle}
+        />
+      )}
     </div>
   );
 };
