@@ -39,11 +39,13 @@ import DrillDownDialog, { type DrillDownColumn } from '@/components/reports/Dril
 
 // Column definitions for the drill-down tables
 const patientColumns: DrillDownColumn<Patient>[] = [
+  { key: 'patient_code', header: 'Patient ID', render: (p) => p.patient_code || '-', csv: (p) => p.patient_code || '' },
   { key: 'name', header: 'Name' },
   { key: 'age', header: 'Age' },
   { key: 'gender', header: 'Gender' },
-  { key: 'city', header: 'City', render: (p) => p.city || '-' },
+  { key: 'city', header: 'City', render: (p) => p.city || '-', csv: (p) => p.city || '' },
   { key: 'phone', header: 'Phone' },
+  { key: 'blood_group', header: 'Blood Group', render: (p) => p.blood_group || '-', csv: (p) => p.blood_group || '' },
   { key: 'clinic', header: 'Clinic' },
 ];
 
@@ -79,11 +81,14 @@ const Reports = () => {
       key: 'patient',
       header: 'Patient',
       render: (a) => a.patient_name || patientNameById.get(a.patient_id) || a.patient_id || '-',
+      csv: (a) => a.patient_name || patientNameById.get(a.patient_id) || a.patient_id || '',
     },
     { key: 'date', header: 'Date' },
-    { key: 'service', header: 'Service', render: (a) => a.service || 'Unknown Service' },
-    { key: 'doctor', header: 'Doctor', render: (a) => a.doctor || '-' },
+    { key: 'time', header: 'Time', render: (a) => a.time || '-', csv: (a) => a.time || '' },
+    { key: 'service', header: 'Service', render: (a) => a.service || 'Unknown Service', csv: (a) => a.service || 'Unknown Service' },
+    { key: 'doctor', header: 'Doctor', render: (a) => a.doctor || '-', csv: (a) => a.doctor || '' },
     { key: 'status', header: 'Status' },
+    { key: 'payment_status', header: 'Payment', render: (a) => a.payment_status || '-', csv: (a) => a.payment_status || '' },
   ];
 
   const openPatientDrill = (title: string, rows: Patient[]) => {
@@ -267,6 +272,7 @@ const Reports = () => {
             navigate(`/patients/${p.id}`);
           }}
           emptyMessage="No patients found for this selection."
+          exportFileName={drillTitle}
         />
       ) : (
         <DrillDownDialog<Appointment>
@@ -277,6 +283,9 @@ const Reports = () => {
           columns={appointmentColumns}
           rows={appointmentRows}
           emptyMessage="No appointments found for this selection."
+          filterKey="status"
+          filterLabel="Status"
+          exportFileName={drillTitle}
         />
       )}
     </div>
