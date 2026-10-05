@@ -45,6 +45,7 @@ import LabWork from "@/pages/LabWork";
 import Patients from "@/pages/Patients";
 import PatientDetails from "@/pages/PatientDetails";
 import Reports from "@/pages/Reports";
+import Enquiries from "@/pages/Enquiries";
 import AuditLog from "@/pages/AuditLog";
 import Settings from "@/pages/Settings";
 import RecallList from "@/pages/RecallList";
@@ -150,6 +151,14 @@ const App = () => (
                                                     element={
                                                       <ProtectedRoute requiredPermissions={['reports.view']}>
                                                         <Reports />
+                                                      </ProtectedRoute>
+                                                    }
+                                                  />
+                                                  <Route
+                                                    path="/enquiries"
+                                                    element={
+                                                      <ProtectedRoute requiredPermissions={['enquiries.view']}>
+                                                        <Enquiries />
                                                       </ProtectedRoute>
                                                     }
                                                   />

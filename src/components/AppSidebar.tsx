@@ -28,7 +28,8 @@ import {
   Settings,
   AlertCircle,
   LogOut,
-  Clock
+  Clock,
+  Inbox
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DentalMetrixLogo, MeditouchLogo } from '@/assets/logos';
@@ -89,6 +90,12 @@ const navItems: NavItem[] = [
     icon: FileText,
     path: '/reports',
     permissions: ['reports.view'],
+  },
+  {
+    title: 'Enquiries',
+    icon: Inbox,
+    path: '/enquiries',
+    permissions: ['enquiries.view'],
   },
   {
     title: 'Audit Log',
