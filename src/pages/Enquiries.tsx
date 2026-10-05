@@ -46,6 +46,9 @@ import {
   Trash2,
   RefreshCw,
   Inbox,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 
 // A website contact-form submission ("enquiry").
@@ -105,6 +108,9 @@ const Enquiries = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<'submitted_at' | 'name' | 'service_inquiry' | 'status'>('submitted_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [pageSize, setPageSize] = useState(15);
   const [page, setPage] = useState(1);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
@@ -139,19 +145,71 @@ const Enquiries = () => {
   // Reset to first page when filters / data change.
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, pageSize, enquiries]);
+  }, [search, statusFilter, dateFilter, sortField, sortDirection, pageSize, enquiries]);
 
   const filteredEnquiries = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return enquiries.filter((e) => {
+    const now = Date.now();
+    // Date-range cutoff (matches the website admin: Today / Last 7 Days / Last 30 Days).
+    let cutoff = 0;
+    if (dateFilter === 'today') {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      cutoff = d.getTime();
+    } else if (dateFilter === 'week') {
+      cutoff = now - 7 * 24 * 60 * 60 * 1000;
+    } else if (dateFilter === 'month') {
+      cutoff = now - 30 * 24 * 60 * 60 * 1000;
+    }
+
+    const rows = enquiries.filter((e) => {
       if (statusFilter !== 'all' && e.status !== statusFilter) return false;
+      if (dateFilter !== 'all') {
+        const t = new Date(e.submitted_at).getTime();
+        if (isNaN(t) || t < cutoff) return false;
+      }
       if (!q) return true;
       return [e.name, e.email, e.phone, e.service_inquiry, e.message || '']
         .join(' ')
         .toLowerCase()
         .includes(q);
     });
-  }, [enquiries, search, statusFilter]);
+
+    // Sort (default: newest first by submitted_at).
+    const sorted = [...rows].sort((a, b) => {
+      let av: string | number;
+      let bv: string | number;
+      if (sortField === 'submitted_at') {
+        av = new Date(a.submitted_at).getTime();
+        bv = new Date(b.submitted_at).getTime();
+      } else {
+        av = String(a[sortField] ?? '').toLowerCase();
+        bv = String(b[sortField] ?? '').toLowerCase();
+      }
+      if (av < bv) return sortDirection === 'asc' ? -1 : 1;
+      if (av > bv) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [enquiries, search, statusFilter, dateFilter, sortField, sortDirection]);
+
+  const handleSort = (field: typeof sortField) => {
+    if (field === sortField) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (field: typeof sortField) => {
+    if (field !== sortField) return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/60" />;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3.5 w-3.5" />
+    ) : (
+      <ArrowDown className="h-3.5 w-3.5" />
+    );
+  };
 
   const totalPages = Math.max(1, Math.ceil(filteredEnquiries.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -298,7 +356,7 @@ const Enquiries = () => {
               className="h-9 w-full sm:w-72"
             />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 w-[160px]">
+              <SelectTrigger className="h-9 w-[150px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -308,6 +366,17 @@ const Enquiries = () => {
                     {STATUS_LABEL[s]}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="h-9 w-[150px]">
+                <SelectValue placeholder="Date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="week">Last 7 Days</SelectItem>
+                <SelectItem value="month">Last 30 Days</SelectItem>
               </SelectContent>
             </Select>
             <div className="ml-auto flex items-center gap-2">
@@ -341,13 +410,33 @@ const Enquiries = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">Date</TableHead>
-                    <TableHead>Name</TableHead>
+                    <TableHead
+                      className="whitespace-nowrap cursor-pointer select-none hover:text-foreground"
+                      onClick={() => handleSort('submitted_at')}
+                    >
+                      <span className="inline-flex items-center gap-1">Date {getSortIcon('submitted_at')}</span>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none hover:text-foreground"
+                      onClick={() => handleSort('name')}
+                    >
+                      <span className="inline-flex items-center gap-1">Name {getSortIcon('name')}</span>
+                    </TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Service</TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none hover:text-foreground"
+                      onClick={() => handleSort('service_inquiry')}
+                    >
+                      <span className="inline-flex items-center gap-1">Service {getSortIcon('service_inquiry')}</span>
+                    </TableHead>
                     <TableHead>Message</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none hover:text-foreground"
+                      onClick={() => handleSort('status')}
+                    >
+                      <span className="inline-flex items-center gap-1">Status {getSortIcon('status')}</span>
+                    </TableHead>
                     {canDelete && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
