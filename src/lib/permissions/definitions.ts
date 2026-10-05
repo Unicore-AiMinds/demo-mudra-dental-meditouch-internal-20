@@ -288,6 +288,32 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     description: 'Download audit log data'
   },
 
+  // Enquiries (website contact-form submissions)
+  {
+    module: 'enquiries',
+    action: 'view',
+    display_name: 'View Enquiries',
+    description: 'Access website contact-form submissions'
+  },
+  {
+    module: 'enquiries',
+    action: 'change_status',
+    display_name: 'Change Enquiry Status',
+    description: 'Update the status of website enquiries'
+  },
+  {
+    module: 'enquiries',
+    action: 'export',
+    display_name: 'Export Enquiries',
+    description: 'Download enquiry data to CSV/Excel'
+  },
+  {
+    module: 'enquiries',
+    action: 'delete',
+    display_name: 'Delete Enquiries',
+    description: 'Remove website enquiries'
+  },
+
   // Settings
   {
     module: 'settings',
@@ -374,6 +400,7 @@ export const PERMISSION_MODULES = {
   lab_work: 'Lab Work',
   stock: 'Stock Management',
   reports: 'Reports',
+  enquiries: 'Enquiries',
   audit_logs: 'Audit Logs',
   settings: 'Settings'
 };

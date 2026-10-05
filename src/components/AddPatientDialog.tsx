@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { usePatients } from '@/contexts/PatientContext';
 import { useToast } from '@/hooks/use-toast';
@@ -56,12 +56,15 @@ interface AddPatientDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onPatientAdded?: (patient: Patient) => void;
+  /** Optional starting values (e.g. when converting a website enquiry). */
+  prefill?: { name?: string; email?: string; phone?: string };
 }
 
 const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
   isOpen,
   onClose,
-  onPatientAdded
+  onPatientAdded,
+  prefill
 }) => {
   const { activeClinic } = useClinic();
   const { patients, addPatient } = usePatients();
@@ -109,6 +112,21 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
     });
     setUseAgeInput(true);
   };
+
+  // Apply optional pre-filled values when the dialog opens (e.g. converting an enquiry).
+  // Only fills name / email / phone; all other fields stay empty for staff to complete.
+  useEffect(() => {
+    if (isOpen && prefill) {
+      setFormData(prev => ({
+        ...prev,
+        name: prefill.name ?? prev.name,
+        email: prefill.email ?? prev.email,
+        // Patient form expects a 10-digit number: strip country code / spaces.
+        phone: prefill.phone ? prefill.phone.replace(/\D/g, '').slice(-10) : prev.phone,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Handle form change
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
