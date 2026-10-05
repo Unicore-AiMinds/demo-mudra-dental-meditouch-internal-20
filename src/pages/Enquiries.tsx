@@ -49,7 +49,9 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  UserPlus,
 } from 'lucide-react';
+import AddPatientDialog from '@/components/AddPatientDialog';
 
 // A website contact-form submission ("enquiry").
 interface Enquiry {
@@ -99,6 +101,7 @@ const Enquiries = () => {
   const canChangeStatus = hasPermission('enquiries.change_status');
   const canExport = hasPermission('enquiries.export');
   const canDelete = hasPermission('enquiries.delete');
+  const canConvert = hasPermission('patients.create');
 
   // The contact form stores the dental brand as 'dental_metrix'.
   const clinicValue: Enquiry['clinic'] =
@@ -115,6 +118,7 @@ const Enquiries = () => {
   const [page, setPage] = useState(1);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [enquiryToDelete, setEnquiryToDelete] = useState<Enquiry | null>(null);
+  const [enquiryToConvert, setEnquiryToConvert] = useState<Enquiry | null>(null);
 
   const loadEnquiries = useCallback(async () => {
     setIsLoading(true);
@@ -268,6 +272,28 @@ const Enquiries = () => {
         description: 'Could not delete the enquiry. Please try again.',
         variant: 'destructive',
       });
+    }
+  };
+
+  // After a patient is created from an enquiry: advance "new" -> "contacted"
+  // (never downgrade a lead that's already further along).
+  const handlePatientCreated = async () => {
+    const enquiry = enquiryToConvert;
+    setEnquiryToConvert(null);
+    if (!enquiry || enquiry.status !== 'new') return;
+    setEnquiries((prev) =>
+      prev.map((e) => (e.id === enquiry.id ? { ...e, status: 'contacted' } : e))
+    );
+    try {
+      await supabase.from<Enquiry>('contact_submissions').update(enquiry.id, {
+        status: 'contacted',
+      });
+    } catch (error) {
+      console.error('Error advancing enquiry status after convert:', error);
+      // Roll back the status change only (patient was still created successfully).
+      setEnquiries((prev) =>
+        prev.map((e) => (e.id === enquiry.id ? { ...e, status: 'new' } : e))
+      );
     }
   };
 
@@ -437,7 +463,7 @@ const Enquiries = () => {
                     >
                       <span className="inline-flex items-center gap-1">Status {getSortIcon('status')}</span>
                     </TableHead>
-                    {canDelete && <TableHead className="text-right">Actions</TableHead>}
+                    {(canConvert || canDelete) && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -479,17 +505,33 @@ const Enquiries = () => {
                           </Badge>
                         )}
                       </TableCell>
-                      {canDelete && (
+                      {(canConvert || canDelete) && (
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => setEnquiryToDelete(e)}
-                            title="Delete enquiry"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            {canConvert && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8"
+                                onClick={() => setEnquiryToConvert(e)}
+                                title="Create a patient from this enquiry"
+                              >
+                                <UserPlus className="h-4 w-4 mr-1" />
+                                Convert
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => setEnquiryToDelete(e)}
+                                title="Delete enquiry"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
@@ -568,6 +610,24 @@ const Enquiries = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Convert enquiry -> patient (reuses the existing Add Patient form, pre-filled) */}
+      {canConvert && (
+        <AddPatientDialog
+          isOpen={enquiryToConvert !== null}
+          onClose={() => setEnquiryToConvert(null)}
+          prefill={
+            enquiryToConvert
+              ? {
+                  name: enquiryToConvert.name,
+                  email: enquiryToConvert.email || '',
+                  phone: enquiryToConvert.phone,
+                }
+              : undefined
+          }
+          onPatientAdded={handlePatientCreated}
+        />
+      )}
     </div>
   );
 };
