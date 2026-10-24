@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { format, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { timeToMinutes } from './sortByTime';
 import type { AppointmentType, DoctorOption, SlotAppointmentComponent } from './types';
 
 interface CompactDailyViewProps {
@@ -15,16 +16,6 @@ interface CompactDailyViewProps {
   onEditAppointment: (appointment: AppointmentType) => void;
   SlotAppointment: SlotAppointmentComponent;
 }
-
-// "9:15 AM" -> minutes since midnight
-const slotMinutes = (slot: string) => {
-  const [time, modifier] = slot.split(' ');
-  let hours = parseInt(time.split(':')[0]);
-  const minutes = parseInt(time.split(':')[1]);
-  if (modifier === 'PM' && hours < 12) hours += 12;
-  if (modifier === 'AM' && hours === 12) hours = 0;
-  return hours * 60 + minutes;
-};
 
 // Daily view for phones/tablets: every 15-minute slot as a thin row under its hour.
 // Booking rules (full slots, past times, double booking) come from onSlotTap, which is the
@@ -48,7 +39,7 @@ const CompactDailyView = ({
   // When looking at today, start scrolled to the current time
   const allSlots = Object.values(hourlyTimeSlots).flat();
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
-  const nowSlot = isToday(date) ? [...allSlots].reverse().find(s => slotMinutes(s) <= nowMinutes) : undefined;
+  const nowSlot = isToday(date) ? [...allSlots].reverse().find(s => timeToMinutes(s) <= nowMinutes) : undefined;
 
   useEffect(() => {
     if (nowRef.current) nowRef.current.scrollIntoView({ block: 'center' });

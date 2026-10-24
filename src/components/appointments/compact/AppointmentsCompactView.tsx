@@ -12,6 +12,8 @@ import AppointmentList from '@/components/AppointmentList';
 import PendingTreatmentsView from '@/components/PendingTreatmentsView';
 import { DentalChartingProvider } from '@/contexts/DentalChartingContext';
 import CompactDailyView from './CompactDailyView';
+import CompactWeeklyView from './CompactWeeklyView';
+import CompactMonthlyView from './CompactMonthlyView';
 import type { AppointmentType, CalendarItemComponent, DoctorOption, SlotAppointmentComponent } from './types';
 
 export interface AppointmentsCompactViewProps {
@@ -149,7 +151,32 @@ const AppointmentsCompactView = (props: AppointmentsCompactViewProps) => {
                 SlotAppointment={props.SlotAppointment}
               />
             )}
-            {/* WEEKLY_MONTHLY: added in the next step */}
+            {view === 'weekly' && (
+              <CompactWeeklyView
+                isDental={isDental}
+                date={date}
+                weekDates={props.weekDates}
+                doctors={doctors}
+                getAppointmentsForDate={props.getAppointmentsForDate}
+                getServiceDuration={props.getServiceDuration}
+                onOpenDay={(day) => { setDate(day); onViewChange('daily'); }}
+                onEditAppointment={props.onEditAppointment}
+                CalendarItem={props.CalendarItem}
+              />
+            )}
+            {view === 'monthly' && (
+              <CompactMonthlyView
+                isDental={isDental}
+                date={date}
+                monthDates={props.monthDates}
+                doctors={doctors}
+                getAppointmentsForDate={props.getAppointmentsForDate}
+                getServiceDuration={props.getServiceDuration}
+                onOpenDay={(day) => { setDate(day); onViewChange('daily'); }}
+                onEditAppointment={props.onEditAppointment}
+                CalendarItem={props.CalendarItem}
+              />
+            )}
             {view === 'pending' && isDental && (
               <DentalChartingProvider>
                 <PendingTreatmentsView />
