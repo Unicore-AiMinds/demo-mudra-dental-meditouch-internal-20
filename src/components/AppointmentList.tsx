@@ -16,6 +16,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
 import { formatDateForExport, formatDateForFilename } from '@/utils/dateFormatter';
+import { useIsCompact } from '@/hooks/use-compact';
+import { cn } from '@/lib/utils';
+import { COMPACT_FULLSCREEN_DIALOG, COMPACT_STICKY_FOOTER } from '@/lib/compact';
 
 /**
  * Component that displays all created appointments
@@ -37,6 +40,7 @@ export const AppointmentList = () => {
   const [isCustomRangeOpen, setIsCustomRangeOpen] = useState(false);
   const [phoneListOnly, setPhoneListOnly] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState<string>('all');
+  const isCompact = useIsCompact();
 
   // Find all appointments for patients without WhatsApp (excluding completed/cancelled)
   useEffect(() => {
@@ -217,8 +221,8 @@ export const AppointmentList = () => {
 
       {/* Dialog to show appointment list */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className={isCompact ? cn(COMPACT_FULLSCREEN_DIALOG, "overflow-y-auto px-4 pt-4") : "max-w-4xl max-h-[80vh] overflow-y-auto"}>
+          <DialogHeader className={isCompact ? "text-left" : undefined}>
             <DialogTitle className="flex items-center gap-2">
               <Phone className="h-5 w-5" />
               Appointment List
@@ -229,17 +233,17 @@ export const AppointmentList = () => {
           </DialogHeader>
 
           {/* Filter Controls */}
-          <div className="mb-4 space-y-3">
+          <div className={isCompact ? "my-3 space-y-3" : "mb-4 space-y-3"}>
             {/* Date Filter and Export Button Row */}
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-4">
+              <div className={isCompact ? "grid w-full grid-cols-1 gap-2" : "flex flex-wrap items-center gap-4"}>
                 <div className="flex items-center gap-2">
                   <Filter className="h-4 w-4" />
                   <span className="text-sm font-medium">Filter by Date:</span>
                 </div>
                 
                 <Select value={dateFilter} onValueChange={(value: DateFilter) => setDateFilter(value)}>
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger className={isCompact ? "w-full" : "w-48"}>
                     <SelectValue placeholder="Select date filter" />
                   </SelectTrigger>
                   <SelectContent>
@@ -253,7 +257,7 @@ export const AppointmentList = () => {
                   </SelectContent>
                 </Select>
 
-                <div className="w-48">
+                <div className={isCompact ? "w-full" : "w-48"}>
                   <Combobox
                     options={[{ value: 'all', label: 'All Doctors' }, ...doctors.map(doctor => ({ value: doctor.name, label: doctor.name }))]}
                     value={selectedDoctor}
@@ -264,20 +268,20 @@ export const AppointmentList = () => {
                 </div>
 
                 {dateFilter === 'customRange' && (
-                <div className="flex items-center gap-2">
+                <div className={isCompact ? "flex w-full items-center gap-2" : "flex items-center gap-2"}>
                   <Popover open={isCustomRangeOpen} onOpenChange={setIsCustomRangeOpen}>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="justify-start text-left font-normal">
+                      <Button variant="outline" className={isCompact ? "w-full justify-start text-left font-normal" : "justify-start text-left font-normal"}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {customStartDate && customEndDate
                           ? `${format(customStartDate, 'MMM d')} - ${format(customEndDate, 'MMM d, yyyy')}`
                           : 'Select date range'}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className={isCompact ? "w-auto p-0 max-h-[var(--radix-popover-content-available-height)] overflow-y-auto" : "w-auto p-0"} align="start">
                       <div className="p-4">
                         <div className="space-y-4">
-                          <div className="flex gap-4">
+                          <div className={isCompact ? "flex flex-col gap-4" : "flex gap-4"}>
                             <div>
                               <label className="text-sm font-medium">Start Date</label>
                               <CalendarComponent
@@ -315,6 +319,7 @@ export const AppointmentList = () => {
               {/* Export Button */}
               <Button
                 variant="outline"
+                className={isCompact ? "w-full" : undefined}
                 onClick={exportToCSV}
                 title="Export Appointments to CSV"
               >
@@ -345,6 +350,34 @@ export const AppointmentList = () => {
             ) : (
               <>
 
+                {isCompact ? (
+                  <div className="space-y-2">
+                    {filteredAppointmentList.map((app) => (
+                      <div key={app.id} className="overflow-hidden rounded-lg border border-gray-200">
+                        <div className="flex justify-between border-b border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-800">
+                          <span>{format(parseISO(app.date), 'MMM d, yyyy')}</span>
+                          <span>{app.time}</span>
+                        </div>
+                        <div className="space-y-1 px-3 py-2 text-sm">
+                          <div><span className="inline-block w-16 text-muted-foreground">Patient</span><span className="font-medium">{app.patient_name}</span></div>
+                          <div><span className="inline-block w-16 text-muted-foreground">Doctor</span>{app.doctor || '-'}</div>
+                          <div><span className="inline-block w-16 text-muted-foreground">Service</span>{app.service}</div>
+                          <div className="flex">
+                            <span className="inline-block w-16 flex-shrink-0 text-muted-foreground">Phone</span>
+                            {app.phone ? (
+                              <a href={`tel:${app.phone}`} className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
+                                <Phone className="h-4 w-4" />
+                                {app.phone}
+                              </a>
+                            ) : (
+                              <span className="text-gray-400">No phone</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-blue-50 text-blue-800 border-b border-blue-200">
@@ -384,11 +417,12 @@ export const AppointmentList = () => {
                     ))}
                   </tbody>
                 </table>
+                )}
               </>
             )}
           </div>
 
-          <div className="flex justify-end mt-4">
+          <div className={isCompact ? cn(COMPACT_STICKY_FOOTER, "-mx-4 mt-auto") : "flex justify-end mt-4"}>
             <Button
               onClick={() => setIsDialogOpen(false)}
               variant="outline"
