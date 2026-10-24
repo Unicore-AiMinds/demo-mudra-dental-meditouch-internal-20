@@ -57,6 +57,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsCompact } from '@/hooks/use-compact';
+import AppointmentsCompactView from '@/components/appointments/compact/AppointmentsCompactView';
 import AddPatientDialog from '@/components/AddPatientDialog';
 import AppointmentList from '@/components/AppointmentList';
 import PaymentReceiptDialog, { ReceiptPrefill } from '@/components/PaymentReceiptDialog';
@@ -444,6 +446,7 @@ const Appointments = () => {
   const [editingAppointment, setEditingAppointment] = useState<AppointmentType | null>(null);
   const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
 
   const [appointmentPatient, setAppointmentPatient] = useState("");
   const [filteredPatients, setFilteredPatients] = useState<{id: string, name: string}[]>([]);
@@ -985,6 +988,35 @@ const Appointments = () => {
       setIsNewAppointmentOpen(true);
       console.log('Opening new appointment form with reset fields');
     }, 50);
+  };
+
+  // Compact (phone/tablet) slot tap. Deliberately mirrors the desktop slot onClick in the
+  // daily grid statement for statement, so the desktop JSX stays untouched.
+  const handleSlotTap = (slot: string) => {
+    const slotCounts = getBookedTimeSlots();
+    const currentCount = slotCounts[slot] || 0;
+    const maxAllowed = isDental ? 2 : 1;
+    const isFullyBooked = currentCount >= maxAllowed;
+
+    setAppointmentTime(slot);
+
+    if (isFullyBooked) {
+      setWarningMessage(`This time slot already has ${currentCount} appointment(s). Adding more may cause scheduling conflicts. Do you want to continue?`);
+      setIsWarningDialogOpen(true);
+      return;
+    }
+
+    if (selectedDoctor && selectedDoctor !== 'all') {
+      const defaultService = isDental ? 'Dental Checkup' : 'General Consultation';
+      const serviceToCheck = appointmentService || defaultService;
+
+      if (isDoctorBookedInOtherClinic(selectedDoctor, slot, serviceToCheck)) {
+        handleDoctorDoubleBookingWarning(selectedDoctor, slot);
+        return;
+      }
+    }
+
+    handleNewAppointmentForTimeSlot(slot);
   };
 
   const handleEditAppointment = (appointment: AppointmentType) => {
@@ -2310,6 +2342,45 @@ const Appointments = () => {
 
   return (
     <div className="space-y-6">
+      {isCompact ? (
+        <AppointmentsCompactView
+          isDental={isDental}
+          view={view}
+          onViewChange={(newView) => {
+            resetExpandedStates();
+            setView(newView);
+            setSearchParams(prev => {
+              const newParams = new URLSearchParams(prev);
+              newParams.set('view', newView);
+              return newParams;
+            }, { replace: true });
+          }}
+          date={date}
+          setDate={setDate}
+          popoverOpen={popoverOpen}
+          setPopoverOpen={setPopoverOpen}
+          onPrev={handlePreviousClick}
+          onNext={handleNextClick}
+          doctors={doctors}
+          selectedDoctor={selectedDoctor}
+          setSelectedDoctor={setSelectedDoctor}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          hourlyTimeSlots={hourlyTimeSlots}
+          getAppointmentsForTimeSlot={getAppointmentsForTimeSlot}
+          getBookedTimeSlots={getBookedTimeSlots}
+          getSlotsOccupied={getSlotsOccupied}
+          onSlotTap={handleSlotTap}
+          onEditAppointment={handleEditAppointment}
+          weekDates={weekDates}
+          monthDates={monthDates}
+          getAppointmentsForDate={getAppointmentsForDate}
+          getServiceDuration={getServiceDuration}
+          SlotAppointment={TimeSlotAppointment}
+          CalendarItem={CalendarAppointmentItem}
+        />
+      ) : (
+      <>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold tracking-tight">Appointments</h1>
@@ -3017,6 +3088,8 @@ const Appointments = () => {
           </Card>
         </div>
       </div>
+      </>
+      )}
 
       <Dialog
         open={isNewAppointmentOpen}
