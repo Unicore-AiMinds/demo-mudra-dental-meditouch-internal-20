@@ -6,11 +6,13 @@ import AppHeader from './AppHeader';
 import AppSidebar from './AppSidebar';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsCompact } from '@/hooks/use-compact';
 
 const AppLayout = () => {
   const { activeClinic } = useClinic();
   const location = useLocation();
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
 
   // Set page title based on current route and active clinic
   useEffect(() => {
@@ -27,7 +29,8 @@ const AppLayout = () => {
     <SidebarProvider defaultOpen={!isMobile}>
       <div className="min-h-screen flex w-full overflow-hidden">
         <AppSidebar />
-        <div className="flex flex-1 flex-col min-h-screen">
+        {/* On phones/tablets, min-w-0 keeps wide page content from stretching the top bar off-screen */}
+        <div className={isCompact ? "flex flex-1 flex-col min-h-screen min-w-0" : "flex flex-1 flex-col min-h-screen"}>
           <AppHeader />
           <main className="flex-1 bg-gray-50 overflow-auto">
             <div className="container mx-auto p-2 sm:p-4 md:p-6">
