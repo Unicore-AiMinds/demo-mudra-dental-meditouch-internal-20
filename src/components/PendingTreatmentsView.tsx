@@ -34,6 +34,8 @@ import { useDentalCharting } from '@/contexts/DentalChartingContext';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { handleDatabaseError } from '@/utils/error-handler';
+import { useIsCompact } from '@/hooks/use-compact';
+import TapNote from '@/components/compact/TapNote';
 
 // Helper component to render patient name asynchronously
 const PatientName: React.FC<{ patientId: string }> = ({ patientId }) => {
@@ -85,6 +87,7 @@ const PendingTreatmentsView: React.FC = () => {
   const [snoozeDate, setSnoozeDate] = useState<Date | undefined>(undefined);
   const [snoozeNotes, setSnoozeNotes] = useState('');
   const [activeTab, setActiveTab] = useState<'pending' | 'snoozed'>('pending');
+  const isCompact = useIsCompact();
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc'); // Default to alphabetical order
 
   // State to store planned charting entries
@@ -443,7 +446,7 @@ const PendingTreatmentsView: React.FC = () => {
     <>
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex justify-between items-center">
+          <div className={isCompact ? "flex flex-col items-start gap-3" : "flex justify-between items-center"}>
             <div>
               <CardTitle>Planned Treatments</CardTitle>
               <CardDescription>
@@ -506,6 +509,65 @@ const PendingTreatmentsView: React.FC = () => {
               <p className="text-muted-foreground mt-2">
                 Please refresh the page or try again later.
               </p>
+            </div>
+          ) : filteredAndSortedEntries.length > 0 && isCompact ? (
+            /* Phones/tablets: one card per treatment, same details and buttons as the table */
+            <div className="space-y-2">
+              <Button
+                variant="ghost"
+                onClick={toggleSort}
+                className="flex items-center p-0 h-auto font-medium"
+              >
+                Patient
+                <ArrowUpDown className="ml-2 h-4 w-4" />
+              </Button>
+              {filteredAndSortedEntries.map((entry) => {
+                const entryId = entry.entry_id || '';
+                const toothNumbers = entry.tooth_numbers || [];
+                const teethString = Array.isArray(toothNumbers) ? toothNumbers.join(', ') : String(toothNumbers || '');
+                return (
+                  <div key={entryId} className="rounded-md border p-3 text-sm space-y-1">
+                    <div className="font-medium"><PatientName patientId={entry.patient_id || ''} /></div>
+                    <div><span className="inline-block w-16 text-muted-foreground">Teeth</span>{teethString}</div>
+                    <div><span className="inline-block w-16 text-muted-foreground">Service</span>{entry.service || ''}</div>
+                    <div className="flex"><span className="inline-block w-16 flex-shrink-0 text-muted-foreground">Notes</span><TapNote text={entry.notes || ''} fallback="-" /></div>
+                    <div className="flex gap-2 pt-2">
+                      {activeTab === 'pending' ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-dental-primary hover:bg-dental-50 hover:text-dental-dark"
+                            onClick={() => handleScheduleAppointment(entry as ChartingEntry)}
+                          >
+                            <Clock className="mr-2 h-4 w-4" />
+                            Schedule
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleSnoozeEntry(entry as ChartingEntry)}
+                          >
+                            <AlarmClock className="mr-2 h-4 w-4" />
+                            Snooze
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleUnsnoozeTreatment(entry as ChartingEntry)}
+                        >
+                          <Clock className="mr-2 h-4 w-4" />
+                          Activate
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : filteredAndSortedEntries.length > 0 ? (
             /* Table of treatments */
