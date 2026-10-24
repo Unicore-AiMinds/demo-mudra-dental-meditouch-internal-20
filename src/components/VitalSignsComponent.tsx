@@ -11,6 +11,8 @@ import { Edit, Plus, Save, X, Trash } from 'lucide-react';
 import { VitalSign } from '@/types/vital-signs';
 import { useVitalSigns } from '@/contexts/VitalSignsContext';
 import { usePermissions } from '@/contexts/PermissionContext';
+import { useIsCompact } from '@/hooks/use-compact';
+import TapNote from '@/components/compact/TapNote';
 import {
   Tooltip,
   TooltipContent,
@@ -52,6 +54,7 @@ interface VitalSignsComponentProps {
 const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, patientName }) => {
   const { getPatientVitalSigns, addVitalSign, updateVitalSign, deleteVitalSign } = useVitalSigns();
   const { hasPermission } = usePermissions();
+  const isCompact = useIsCompact();
   const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([]);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
@@ -311,7 +314,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardHeader className={isCompact ? "flex flex-row flex-wrap items-center justify-between gap-2 pb-2" : "flex flex-row items-center justify-between pb-2"}>
           <CardTitle>Vital Signs</CardTitle>
           {!isAddingNew && !isEditing && hasPermission('patients.create_vital_signs') && (
             <Button
@@ -330,7 +333,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
               <h3 className="text-lg font-medium mb-4">
                 {isEditing ? "Edit Vital Signs" : "Record New Vital Signs"}
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+              <div className={isCompact ? "grid grid-cols-2 grid-flow-row-dense gap-4 mb-4" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4"}>
                 <div className="space-y-2">
                   <Label htmlFor="weight">Weight (kg) <span className="text-red-500 ml-1">*</span></Label>
                   <Input
@@ -342,7 +345,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
                     required
                   />
                 </div>
-                <div className="space-y-2">
+                <div className={isCompact ? "space-y-2 col-span-2" : "space-y-2"}>
                   <Label htmlFor="blood_pressure">Blood Pressure (mmHg) <span className="text-red-500 ml-1">*</span></Label>
                   <Input
                     id="blood_pressure"
@@ -387,7 +390,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
                   />
                 </div>
                 {/* Removed Recorded By field */}
-                <div className="space-y-2 md:col-span-2 lg:col-span-3">
+                <div className={isCompact ? "space-y-2 col-span-2" : "space-y-2 md:col-span-2 lg:col-span-3"}>
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea
                     id="notes"
@@ -414,7 +417,58 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
           )}
 
           {/* Table of vital signs */}
-          {vitalSigns.length > 0 ? (
+          {vitalSigns.length > 0 && isCompact ? (
+            /* Phones/tablets: one card per record with the same readings and actions */
+            <div className="space-y-2">
+              {vitalSigns.map((vs) => (
+                <div key={vs.id} className="overflow-hidden rounded-md border text-sm">
+                  <div className="flex items-center justify-between border-b bg-gray-50 px-3 py-1.5 font-medium">
+                    <span>
+                      {vs.date && !isNaN(new Date(vs.date).getTime())
+                        ? format(new Date(vs.date), 'dd/MM/yyyy HH:mm')
+                        : 'Invalid date'}
+                    </span>
+                    <div className="flex space-x-1">
+                      {hasPermission('patients.edit_vital_signs') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditVitalSign(vs.id)}
+                          disabled={isAddingNew || isEditing !== null}
+                          title="Edit"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {hasPermission('patients.delete_vital_signs') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteVitalSign(vs.id)}
+                          disabled={isAddingNew || isEditing !== null}
+                          title="Delete"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 px-3 py-2">
+                    <div><span className="text-muted-foreground">Weight </span>{vs.weight} kg</div>
+                    <div><span className="text-muted-foreground">BP </span>{vs.blood_pressure}</div>
+                    <div><span className="text-muted-foreground">Pulse </span>{vs.pulse} bpm</div>
+                    <div><span className="text-muted-foreground">Temp </span>{vs.temperature} °C</div>
+                    <div><span className="text-muted-foreground">Resp </span>{vs.respiratory_rate} /min</div>
+                  </div>
+                  <div className="flex gap-2 px-3 pb-2">
+                    <span className="text-muted-foreground">Notes</span>
+                    <TapNote text={vs.notes || ''} fallback="-" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : vitalSigns.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
