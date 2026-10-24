@@ -9,6 +9,8 @@ import { AlertCircle, Calendar, ArrowRight, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Appointment } from '@/types/appointment';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useIsCompact } from '@/hooks/use-compact';
+import { COMPACT_FULLSCREEN_DIALOG, COMPACT_DIALOG_BODY, COMPACT_STICKY_FOOTER } from '@/lib/compact';
 
 interface UnresolvedAppointmentsAlertProps {
   patientId?: string; // Optional - if provided, only show unresolved appointments for this patient
@@ -24,6 +26,7 @@ export const UnresolvedAppointmentsAlert = ({ patientId, clinicType }: Unresolve
   const [unresolvedAppointments, setUnresolvedAppointments] = useState<Appointment[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const navigate = useNavigate();
+  const isCompact = useIsCompact();
 
   // Determine which clinic type to use
   const effectiveClinicType = clinicType || activeClinic || 'both';
@@ -104,6 +107,70 @@ export const UnresolvedAppointmentsAlert = ({ patientId, clinicType }: Unresolve
   // If no unresolved appointments, don't render anything
   if (unresolvedAppointments.length === 0) {
     return null;
+  }
+
+  // Phones/tablets: a one-line bar that opens the same list as full-screen cards
+  if (isCompact) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setIsDialogOpen(true)}
+          className="mb-4 flex w-full items-center justify-between gap-2 rounded-lg border border-amber-500 bg-amber-50 px-3 py-2 text-left text-sm font-medium text-amber-800"
+        >
+          <span className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0 text-amber-600" />
+            {unresolvedAppointments.length} Past {unresolvedAppointments.length === 1 ? 'Appointment' : 'Appointments'} Need Attention
+          </span>
+          <ArrowRight className="h-4 w-4 flex-shrink-0 text-amber-600" />
+        </button>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className={COMPACT_FULLSCREEN_DIALOG}>
+            <DialogHeader className="px-4 pt-4 text-left">
+              <DialogTitle>Unresolved Past Appointments</DialogTitle>
+              <DialogDescription>
+                These appointments need to be marked as completed, cancelled, or rescheduled.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className={`${COMPACT_DIALOG_BODY} space-y-2`}>
+              {unresolvedAppointments.map((app) => (
+                <div
+                  key={app.id}
+                  className="cursor-pointer overflow-hidden rounded-lg border border-gray-200"
+                  onClick={() => {
+                    setIsDialogOpen(false);
+                    navigate('/appointments');
+                  }}
+                >
+                  <div className="flex justify-between border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800">
+                    <span>{format(parseISO(app.date), 'MMM d, yyyy')}</span>
+                    <span>{app.time}</span>
+                  </div>
+                  <div className="space-y-1 px-3 py-2 text-sm">
+                    <div><span className="inline-block w-16 text-muted-foreground">Patient</span><span className="font-medium">{app.patient_name}</span></div>
+                    <div><span className="inline-block w-16 text-muted-foreground">Service</span>{app.service}</div>
+                    <div>
+                      <span className="inline-block w-16 text-muted-foreground">Status</span>
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                        {app.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className={COMPACT_STICKY_FOOTER}>
+              <Button onClick={() => setIsDialogOpen(false)} variant="outline">
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
   }
 
   return (
