@@ -59,6 +59,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useIsCompact } from '@/hooks/use-compact';
 import AppointmentsCompactView from '@/components/appointments/compact/AppointmentsCompactView';
+import { COMPACT_FULLSCREEN_DIALOG, COMPACT_DIALOG_BODY, COMPACT_STICKY_FOOTER } from '@/lib/compact';
 import AddPatientDialog from '@/components/AddPatientDialog';
 import AppointmentList from '@/components/AppointmentList';
 import PaymentReceiptDialog, { ReceiptPrefill } from '@/components/PaymentReceiptDialog';
@@ -3106,14 +3107,14 @@ const Appointments = () => {
           }
         }}
       >
-        <DialogContent className={`${isMobile ? 'max-w-[95vw]' : 'sm:max-w-[500px]'} max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
-          <DialogHeader>
+        <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : `${isMobile ? 'max-w-[95vw]' : 'sm:max-w-[500px]'} max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
+          <DialogHeader className={isCompact ? "px-4 pt-4 text-left" : undefined}>
             <DialogTitle>Create New Appointment</DialogTitle>
             <DialogDescription>
               Add a new appointment for a registered patient.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 py-2">
+          <div className={isCompact ? `grid content-start gap-3 ${COMPACT_DIALOG_BODY}` : "grid gap-3 py-2"}>
             <div className="grid grid-cols-1 gap-3">
               <div className="space-y-3">
                 <div className="space-y-1">
@@ -3258,8 +3259,8 @@ const Appointments = () => {
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <div className="flex space-x-2 ml-auto">
+          <DialogFooter className={isCompact ? COMPACT_STICKY_FOOTER : undefined}>
+            <div className={isCompact ? "flex flex-col gap-2" : "flex space-x-2 ml-auto"}>
               {hasPermission('appointments.create') && (
                 <Button
                   onClick={handleCreateAppointment}
@@ -3292,14 +3293,14 @@ const Appointments = () => {
           }
         }}
       >
-        <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] overflow-y-auto' : 'sm:max-w-[500px]'}`}>
-          <DialogHeader>
+        <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : `${isMobile ? 'max-w-[95vw] max-h-[90vh] overflow-y-auto' : 'sm:max-w-[500px]'}`}>
+          <DialogHeader className={isCompact ? "px-4 pt-4 text-left" : undefined}>
             <DialogTitle>Edit Appointment</DialogTitle>
             <DialogDescription>
               Reschedule or cancel the appointment.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className={isCompact ? `grid content-start gap-4 ${COMPACT_DIALOG_BODY}` : "grid gap-4 py-4"}>
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-patient">Patient</Label>
@@ -3429,8 +3430,8 @@ const Appointments = () => {
               </div>
             </div>
           </div>
-          <DialogFooter className="flex justify-between">
-            <div className="space-x-2">
+          <DialogFooter className={isCompact ? COMPACT_STICKY_FOOTER : "flex justify-between"}>
+            <div className={isCompact ? "grid grid-cols-2 gap-2" : "space-x-2"}>
               {hasPermission('appointments.edit') && (
                 <Button
                   onClick={openUpdateConfirmation}
