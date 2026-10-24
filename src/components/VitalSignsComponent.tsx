@@ -454,12 +454,12 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
                       )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 px-3 py-2">
-                    <div><span className="text-muted-foreground">Weight </span>{vs.weight} kg</div>
-                    <div><span className="text-muted-foreground">BP </span>{vs.blood_pressure}</div>
-                    <div><span className="text-muted-foreground">Pulse </span>{vs.pulse} bpm</div>
-                    <div><span className="text-muted-foreground">Temp </span>{vs.temperature} °C</div>
-                    <div><span className="text-muted-foreground">Resp </span>{vs.respiratory_rate} /min</div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-3 py-2">
+                    <div><div className="text-xs text-muted-foreground">Weight (kg)</div>{vs.weight}</div>
+                    <div><div className="text-xs text-muted-foreground">BP (mmHg)</div>{vs.blood_pressure}</div>
+                    <div><div className="text-xs text-muted-foreground">Pulse (bpm)</div>{vs.pulse}</div>
+                    <div><div className="text-xs text-muted-foreground">Temp (°C)</div>{vs.temperature}</div>
+                    <div><div className="text-xs text-muted-foreground">Resp Rate (breaths/min)</div>{vs.respiratory_rate}</div>
                   </div>
                   <div className="flex gap-2 px-3 pb-2">
                     <span className="text-muted-foreground">Notes</span>

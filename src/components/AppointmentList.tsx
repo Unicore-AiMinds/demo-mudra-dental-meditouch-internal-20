@@ -363,7 +363,7 @@ export const AppointmentList = () => {
                           <div><span className="inline-block w-16 text-muted-foreground">Doctor</span>{app.doctor || '-'}</div>
                           <div><span className="inline-block w-16 text-muted-foreground">Service</span>{app.service}</div>
                           <div className="flex">
-                            <span className="inline-block w-16 flex-shrink-0 text-muted-foreground">Phone</span>
+                            <span className="inline-block w-16 flex-shrink-0 text-muted-foreground leading-tight">Phone Number</span>
                             {app.phone ? (
                               <a href={`tel:${app.phone}`} className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
                                 <Phone className="h-4 w-4" />
