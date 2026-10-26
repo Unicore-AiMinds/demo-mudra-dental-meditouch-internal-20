@@ -403,7 +403,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
+              <div className={isCompact ? "flex justify-center gap-2" : "flex justify-end gap-2"}>
                 <Button variant="outline" onClick={handleCancel}>
                   <X className="h-4 w-4 mr-1" />
                   Cancel
