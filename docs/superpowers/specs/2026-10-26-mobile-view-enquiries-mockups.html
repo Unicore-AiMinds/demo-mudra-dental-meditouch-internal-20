@@ -1,0 +1,513 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
+  .m-sec { margin:30px 0 6px; padding-top:10px; border-top:2px solid #94a3b8; }
+  .m-sec h2 { margin:0 0 4px; }
+  .m-grid { display:flex; flex-wrap:wrap; gap:22px; justify-content:flex-start; margin-top:12px; }
+  .m-col { width:300px; display:flex; flex-direction:column; gap:6px; }
+  .m-col h3 { margin:0; font-size:15px; }
+  .m-cap { font-size:12.5px; color:#94a3b8; line-height:1.45; }
+  .m-cap b { color:inherit; }
+  /* ---------- phone, using the app's real fonts + colours ---------- */
+  .m-ph { width:282px; height:580px; border:8px solid #111; border-radius:28px; background:#f9fafb; overflow:hidden; position:relative; font-family:Inter,sans-serif; color:#020817; font-size:11.5px; line-height:1.35; }
+  .m-ph * { box-sizing:border-box; }
+  .m-top { background:#fff; border-bottom:1px solid #e2e8f0; padding:7px 8px; display:flex; align-items:center; gap:6px; }
+  .m-seg { display:flex; background:#f1f5f9; border-radius:6px; padding:2px; flex:1; }
+  .m-seg span { flex:1; text-align:center; padding:3px 0; border-radius:4px; font-size:9.5px; color:#64748b; }
+  .m-seg span.on { background:#fff; color:#4A90E2; font-weight:600; box-shadow:0 1px 2px #0002; }
+  .m-ic { width:22px; height:22px; border-radius:50%; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; background:#fff; }
+  .m-ic svg, .m-i { width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; vertical-align:-2px; }
+  .m-newb { background:#4A90E2; color:#fff; border-radius:5px; padding:4px 6px; font-size:9.5px; font-weight:600; white-space:nowrap; }
+  .m-alert { margin:6px 7px; background:#fffbeb; border:1px solid #f59e0b; color:#92400e; border-radius:6px; padding:5px 8px; display:flex; justify-content:space-between; font-size:10.5px; }
+  .m-tabs { display:flex; gap:2px; margin:0 7px; background:#f1f5f9; border-radius:6px; padding:3px; }
+  .m-tabs span { flex:1; text-align:center; padding:4px 0; border-radius:4px; font-size:9.5px; color:#64748b; }
+  .m-tabs span.on { background:#fff; color:#020817; font-weight:600; box-shadow:0 1px 2px #0001; }
+  .m-link { margin:5px 8px 0; font-size:10.5px; color:#2563eb; text-decoration:underline; }
+  .m-nav { display:flex; gap:4px; padding:6px 7px 3px; }
+  .m-btn { border:1px solid #e2e8f0; background:#fff; border-radius:5px; padding:4px 7px; font-size:10.5px; white-space:nowrap; text-align:center; }
+  .m-btn.grow { flex:1; text-align:left; }
+  .m-flt { display:flex; gap:4px; padding:3px 7px 6px; border-bottom:1px solid #e2e8f0; }
+  .m-flt div { flex:1; background:#fff; border:1px solid #e2e8f0; border-radius:5px; padding:4px 6px; font-size:10px; color:#64748b; }
+  .m-hour { padding:4px 9px 2px; font-weight:700; font-size:10.5px; color:#334155; }
+  .m-slot { display:flex; border-bottom:1px dashed #e2e8f0; min-height:31px; background:#fff; }
+  .m-slot .t { width:44px; font-size:9.5px; color:#9ca3af; padding:8px 4px; border-right:1px solid #e2e8f0; flex-shrink:0; }
+  .m-slot .c { flex:1; padding:3px; display:flex; gap:3px; min-width:0; }
+  .m-blk { flex:1; min-width:0; color:#fff; border-radius:4px; padding:2px 5px; font-size:9.5px; position:relative; }
+  .m-blk .s { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .m-blk .p { font-size:8.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .m-g { background:#27AE60; } .m-tl { background:#48C9B0; } .m-pu { background:#8E44AD; }
+  .m-av { color:#d1d5db; font-size:9.5px; display:flex; align-items:center; padding-left:3px; }
+  /* weekly / monthly */
+  .m-day { background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin:5px 7px; padding:5px; }
+  .m-day.today { border-color:#0063CC; background:#f2f7fd; }
+  .m-dh { display:flex; align-items:center; gap:5px; }
+  .m-pill { background:#f1f5f9; border-radius:5px; padding:2px 7px; font-weight:500; font-size:10.5px; }
+  .m-pill.sel { background:#4A90E2; color:#fff; }
+  .m-cnt { border-radius:9px; padding:0 6px; font-size:9.5px; }
+  .m-cg { background:#dcfce7; color:#166534; } .m-cy { background:#fef9c3; color:#854d0e; } .m-cr { background:#fee2e2; color:#991b1b; }
+  .m-item { border-left:2px solid #27AE60; background:rgba(39,174,96,.15); color:#27AE60; border-radius:3px; padding:2px 5px; margin-top:3px; font-size:9.5px; }
+  .m-item.b { border-left-color:#9B59B6; background:rgba(155,89,182,.15); color:#9B59B6; }
+  .m-item b { font-weight:600; }
+  .m-mgrid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; padding:4px 7px; }
+  .m-mgrid .h { text-align:center; font-size:9px; color:#64748b; }
+  .m-mgrid .d { background:#fff; border:1px solid #e2e8f0; border-radius:5px; height:38px; padding:2px; font-size:9.5px; text-align:center; position:relative; }
+  .m-mgrid .d.e { border-style:dashed; background:#f9fafb; }
+  .m-mgrid .d.on { border:2px solid #4A90E2; }
+  .m-mgrid .d .m-cnt { position:absolute; bottom:3px; left:50%; transform:translateX(-50%); }
+  /* dialogs */
+  .m-shade { position:absolute; inset:0; background:rgba(0,0,0,.8); z-index:4; }
+  .m-dlg { position:absolute; left:10px; right:10px; background:#fff; border-radius:8px; padding:14px; z-index:5; box-shadow:0 10px 30px #0004; }
+  .m-full { position:absolute; inset:0; background:#fff; z-index:5; padding:14px 12px 60px; overflow:hidden; }
+  .m-x { position:absolute; right:12px; top:12px; color:#64748b; font-size:13px; }
+  .m-tt { font-family:Poppins,sans-serif; font-weight:600; font-size:15px; display:flex; gap:6px; align-items:center; padding-right:18px; }
+  .m-ds { color:#64748b; font-size:11px; margin:3px 0 10px; }
+  .m-lb { font-size:11px; font-weight:500; margin:7px 0 3px; }
+  .m-lb i { color:#ef4444; font-style:normal; }
+  .m-in { border:1px solid #e2e8f0; border-radius:5px; padding:6px 8px; font-size:11px; display:flex; justify-content:space-between; color:#020817; background:#fff; }
+  .m-in.ph { color:#64748b; } .m-in.dis { background:#f1f5f9; color:#94a3b8; } .m-in.ta { height:38px; align-items:flex-start; }
+  .m-two { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .m-foot { position:absolute; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e2e8f0; padding:8px 12px; display:flex; flex-direction:column; gap:5px; }
+  .m-foot.row { flex-direction:row; justify-content:flex-end; }
+  .m-b { border-radius:5px; padding:7px 10px; font-size:11px; font-weight:500; text-align:center; white-space:nowrap; }
+  .m-pri { background:#4A90E2; color:#fff; } .m-def { background:#0063CC; color:#fff; } .m-out { border:1px solid #e2e8f0; background:#fff; }
+  .m-grn { border:1px solid #16a34a; color:#16a34a; background:#fff; } .m-red { background:#ef4444; color:#fff; } .m-org { background:#f97316; color:#fff; }
+  .m-gfill { background:#16a34a; color:#fff; }
+  .m-badge { display:inline-block; border:1px solid #e2e8f0; border-radius:9px; padding:1px 8px; font-size:10px; font-weight:600; }
+  .m-acard { background:#fff; border:1px solid #e2e8f0; border-radius:7px; margin-bottom:6px; overflow:hidden; }
+  .m-acard .hd { background:#eff6ff; color:#1e40af; border-bottom:1px solid #bfdbfe; font-weight:600; font-size:10.5px; padding:4px 8px; display:flex; justify-content:space-between; }
+  .m-acard .hd.amb { background:#fffbeb; color:#92400e; border-color:#fde68a; }
+  .m-acard .bd { padding:5px 8px; font-size:10.5px; line-height:1.5; }
+  .m-acard .k { color:#64748b; display:inline-block; width:50px; }
+  .m-tel { color:#2563eb; text-decoration:underline; }
+  .m-tog { display:flex; border:1px solid #e2e8f0; border-radius:5px; overflow:hidden; margin:6px 0; }
+  .m-tog span { flex:1; text-align:center; padding:5px; font-size:10.5px; font-weight:500; }
+  .m-tog span.on { background:#0063CC; color:#fff; }
+  .m-chk { display:flex; gap:5px; align-items:center; font-size:10.5px; font-weight:500; margin:5px 0; }
+  .m-box { width:12px; height:12px; border:1px solid #0063CC; border-radius:3px; flex-shrink:0; }
+  .m-box.on { background:#0063CC; }
+  .m-radio { display:inline-flex; gap:3px; align-items:center; margin-right:8px; font-size:10.5px; }
+  .m-radio span { width:11px; height:11px; border-radius:50%; border:1px solid #0063CC; display:inline-block; }
+  .m-radio span.on { background:radial-gradient(#0063CC 40%, #fff 45%); }
+
+  .m-top { flex-direction:column; align-items:stretch; gap:6px; padding:7px 8px 8px; }
+  .m-r1 { display:flex; align-items:center; gap:6px; }
+  .m-r1 .sp { flex:1; }
+  .m-top .m-seg span { font-size:10.5px; padding:4px 0; }
+  .m-menu { position:absolute; z-index:6; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 8px 24px #0003; font-size:11px; }
+  .m-menu::before { content:''; position:absolute; top:-5px; width:9px; height:9px; background:#fff; border-left:1px solid #e2e8f0; border-top:1px solid #e2e8f0; transform:rotate(45deg); }
+  .m-ring { box-shadow:0 0 0 2px #4A90E2; }
+  .m-col .m-menu::before { right:14px; }
+
+  .m-cal { padding:10px; font-family:Inter,sans-serif; }
+  .m-cal.bordered { border:1px solid #e2e8f0; border-radius:6px; }
+  .m-cal .cap { position:relative; display:flex; justify-content:center; align-items:center; height:26px; font-size:12.5px; font-weight:500; margin-bottom:10px; }
+  .m-cal .nb { position:absolute; top:1px; width:24px; height:24px; border:1px solid #e2e8f0; border-radius:5px; opacity:.5; display:flex; align-items:center; justify-content:center; font-size:12px; }
+  .m-cal .nb.l { left:2px; } .m-cal .nb.r { right:2px; }
+  .m-cal .row { display:flex; justify-content:space-between; margin-top:5px; }
+  .m-cal .row span { width:30px; height:30px; display:flex; align-items:center; justify-content:center; font-size:12px; border-radius:5px; }
+  .m-cal .hd span { height:18px; color:#64748b; font-size:10.5px; }
+  .m-cal .o { color:#64748b; opacity:.5; }
+  .m-cal .sel { background:#0063CC; color:#fff; }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-alarm" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M22 3H2l8 9.5V19l4 2v-8.5z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></symbol>
+</svg>
+<style>
+  /* ---------- Recall List additions ---------- */
+  .r-pg { padding:8px; }
+  .r-card0 { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:9px; }
+  .r-ct { font-family:Poppins,sans-serif; font-weight:600; font-size:13.5px; }
+  .r-cd { color:#64748b; font-size:10px; margin:1px 0 7px; }
+  .r-tabs { display:grid; grid-template-columns:repeat(3,1fr); border:1px solid #e2e8f0; border-radius:5px; overflow:hidden; margin-bottom:7px; }
+  .r-tabs span { text-align:center; padding:6px 2px; font-size:10.5px; font-weight:500; white-space:nowrap; background:#fff; }
+  .r-tabs span.on { background:#0063CC; color:#fff; }
+  .r-sel { border:1px solid #e2e8f0; border-radius:5px; padding:5px 8px; font-size:10.5px; display:flex; align-items:center; gap:6px; background:#fff; margin-bottom:6px; }
+  .r-sel .v { flex:1; text-align:center; }
+  .r-sel.dis { opacity:.5; color:#64748b; }
+  .r-sort { display:flex; align-items:center; gap:6px; font-size:10.5px; margin-bottom:6px; }
+  .r-sort .r-sel { flex:1; margin:0; }
+  .r-rc { border:1px solid #e2e8f0; border-radius:7px; padding:7px 8px; margin-bottom:6px; background:#fff; font-size:10.5px; }
+  .r-rc .nm { display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-weight:500; font-size:11.5px; }
+  .r-rc .ln { display:flex; gap:6px; margin-top:3px; line-height:1.3; }
+  .r-rc .ln .k { color:#64748b; width:96px; flex-shrink:0; }
+  .r-rc .ln .v { flex:1; min-width:0; }
+  .r-rc .act { display:flex; gap:4px; margin-top:6px; }
+  .r-rc .act .m-b { padding:5px 6px; font-size:10px; }
+  .r-rc .act .grow { flex:1; }
+  .r-red { color:#dc2626; font-weight:500; }
+  .r-bdg { display:inline-block; border-radius:9px; padding:0 6px; font-size:9px; font-weight:600; border:1px solid; line-height:15px; }
+  .r-ov { background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
+  .r-st { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+  .r-wt { background:#f3f4f6; color:#374151; border-color:#e5e7eb; }
+  .r-ib { width:24px; padding:5px 0 !important; text-align:center; }
+  .r-del { color:#dc2626; }
+  .r-snz { color:#64748b; font-size:9.5px; margin-left:2px; }
+  .r-empty { text-align:center; padding:26px 10px; }
+  .r-empty .t { font-weight:500; font-size:12.5px; margin-top:8px; }
+  .r-empty .d { color:#64748b; font-size:10.5px; margin-top:4px; line-height:1.4; }
+  .r-note { background:#f8fafc; border-radius:4px; padding:3px 5px; }
+  .r-amber { margin-top:6px; padding:5px; background:#fffbeb; border:1px solid #fde68a; border-radius:5px; color:#92400e; font-size:9.5px; text-align:left; }
+  .r-toast { position:absolute; left:8px; right:8px; top:8px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:9px 10px; box-shadow:0 6px 18px #0002; z-index:8; font-size:10.5px; }
+  .r-toast b { display:block; font-size:11px; margin-bottom:2px; }
+  .r-dd { position:absolute; z-index:6; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 8px 24px #0003; padding:4px; font-size:11px; }
+  .r-dd div { padding:6px 8px 6px 22px; border-radius:4px; position:relative; }
+  .r-dd div.on { background:#f1f5f9; }
+  .r-dd div.on::before { content:'✓'; position:absolute; left:7px; }
+  .r-list { font-size:12.5px; line-height:1.55; color:inherit; }
+  .r-list li { margin-bottom:4px; }
+  .r-kv { display:grid; grid-template-columns:1fr 1fr; gap:9px 8px; font-size:11px; text-align:left; }
+  .r-kv span { display:block; color:#64748b; font-size:10px; font-weight:500; }
+</style>
+<style>
+  .e-card { border:1px solid #e2e8f0; border-radius:7px; padding:7px 8px; margin-bottom:6px; background:#fff; font-size:10.5px; }
+  .e-card .nm { font-weight:600; font-size:11.5px; display:flex; justify-content:space-between; align-items:center; gap:6px; }
+  .e-card .ln { display:flex; gap:6px; margin-top:3px; line-height:1.3; }
+  .e-card .ln .k { color:#64748b; width:52px; flex-shrink:0; }
+  .e-card .ln .v { flex:1; min-width:0; overflow-wrap:anywhere; }
+  .e-card .act { display:flex; gap:4px; margin-top:6px; }
+  .e-card .act .m-b { padding:5px 6px; font-size:10px; }
+  .e-sel { border:1px solid #e2e8f0; border-radius:5px; padding:3px 7px; font-size:10px; display:inline-flex; gap:10px; align-items:center; background:#fff; }
+  .e-b { display:inline-block; border-radius:9px; padding:0 7px; font-size:9.5px; font-weight:600; line-height:16px; }
+  .e-new { background:#dbeafe; color:#1e40af; } .e-con { background:#fef3c7; color:#92400e; } .e-fu { background:#f3e8ff; color:#6b21a8; }
+  .e-sch { background:#dcfce7; color:#166534; } .e-clo { background:#e5e7eb; color:#374151; }
+  .e-tel { color:#2563eb; text-decoration:underline; }
+  .e-two { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:6px; }
+  .e-bar { display:flex; flex-direction:column; align-items:center; gap:4px; margin-bottom:6px; font-size:9.5px; color:#64748b; }
+  .e-bar .m-b { width:100%; box-sizing:border-box; }
+  .e-pg { border-top:1px solid #e2e8f0; padding-top:7px; font-size:10px; color:#64748b; text-align:center; }
+  .e-pg .r { display:flex; justify-content:center; align-items:center; gap:8px; margin-top:6px; }
+  .e-pg .nb { width:24px; height:24px; border:1px solid #e2e8f0; border-radius:5px; display:inline-flex; align-items:center; justify-content:center; color:#020817; background:#fff; }
+  .e-pg .nb.dis { opacity:.45; }
+  .e-h1 { font-family:Poppins,sans-serif; font-weight:700; font-size:18px; display:flex; align-items:center; gap:5px; }
+  .e-empty { text-align:center; color:#64748b; padding:28px 8px; font-size:10.5px; border:1px solid #e2e8f0; border-radius:6px; }
+</style>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5"/></symbol>
+  <symbol id="i-userplus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></symbol>
+</svg>
+
+<h2>Enquiries (Leads) on a phone</h2>
+<p class="subtitle">Same fonts, colours, words, buttons, rules and permissions as desktop. Only the layout changes to fit a phone. Desktop (1024 px and wider) is not touched. Data is real DEV data where it exists (DEV has only 2 enquiries: <b>Test Convert Lead</b> for Dental, <b>Sample Aesthetic Lead</b> for Meditouch); anything marked <i>example</i> is a sample. Same 2-row top bar as the other pages.</p>
+<p class="subtitle"><b>Today on a phone:</b> the 8-column table sits in a box you have to swipe sideways. The <b>Status</b> drop-down, <b>Convert</b> and <b>🗑 Delete</b> are far off to the right (Convert starts at x=1089 on a 384-wide screen). <b>Already fine:</b> the Delete confirmation and Convert, which opens the full-screen Add New Patient form pre-filled.</p>
+
+<!-- ======================= A. LIST ======================= -->
+<div class="m-sec"><h2>A. The enquiry list</h2></div>
+<div class="m-grid">
+
+  <div class="m-col"><h3>1. Enquiry list (real DEV)</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="e-h1"><svg class="m-i" style="width:16px;height:16px"><use href="#i-inbox"/></svg>Enquiries</div>
+        <div class="m-ds" style="margin:1px 0 5px">Website contact-form submissions for Dental Metrix</div>
+        <span class="m-b m-out" style="display:inline-block;margin-bottom:7px"><svg class="m-i"><use href="#i-refresh"/></svg> Refresh</span>
+        <div class="r-card0">
+          <div class="r-ct">Submissions</div><div class="r-cd">Search, filter by status, and update the progress of each enquiry.</div>
+          <div class="m-in ph" style="margin-bottom:6px">Search name, phone, email, service...</div>
+          <div class="e-two"><div class="r-sel" style="margin:0"><span class="v" style="text-align:left">All Status</span><span>⌄</span></div><div class="r-sel" style="margin:0"><span class="v" style="text-align:left">All Time</span><span>⌄</span></div></div>
+          <div class="e-bar"><span>1 record(s)</span><span class="m-b m-out" style="color:#020817">⤓ Export (CSV)</span></div>
+          <div class="r-sort"><span>Sort by</span><div class="r-sel"><span class="v" style="text-align:left">Date (Newest First)</span><span>⌄</span></div></div>
+          <div class="e-card"><div class="nm">Test Convert Lead</div>
+            <div class="ln"><span class="k">Date</span><span class="v">05/10/2026 15:43:00</span></div>
+            <div class="ln"><span class="k">Phone</span><span class="v"><span class="e-tel">+91 9812345678</span></span></div>
+            <div class="ln"><span class="k">Email</span><span class="v">test.convert@example.com</span></div>
+            <div class="ln"><span class="k">Service</span><span class="v">RCT &amp; Crown</span></div>
+            <div class="ln"><span class="k">Message</span><span class="v">Please call me to book.</span></div>
+            <div class="ln" style="align-items:center"><span class="k">Status</span><span class="v"><span class="e-sel">Contacted <span>⌄</span></span></span></div>
+            <div class="act"><span class="m-b m-out" style="flex:1"><svg class="m-i"><use href="#i-userplus"/></svg> Convert</span><span class="m-b m-out" style="width:28px;color:#dc2626"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+          </div>
+          <div class="e-pg">Rows per page <span class="e-sel" style="margin-left:4px">15 <span>⌄</span></span><div class="r"><span class="nb dis">‹</span><span>Page 1 of 1</span><span class="nb dis">›</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Desktop's 8-column table becomes <b>one card per enquiry</b>. The labels are the <b>desktop column names</b>: Date, Phone, Email, Service, Message, Status, with the name as the card title. Same <b>Status drop-down</b> (New, Contacted, Follow-up, Scheduled, Closed), same <b>Convert</b> and <b>🗑</b> buttons. Search is full width and the Status and Date filters share one row. Under them, "record(s)" is centred with a full-width <b>Export (CSV)</b> button below it (your request). The page title, "N new" badge and <b>Refresh</b> stay as they are today.</div>
+  </div>
+
+  <div class="m-col"><h3>2. Changing a status</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="e-card"><div class="nm">Test Convert Lead</div>
+          <div class="ln"><span class="k">Date</span><span class="v">05/10/2026 15:43:00</span></div>
+          <div class="ln"><span class="k">Phone</span><span class="v"><span class="e-tel">+91 9812345678</span></span></div>
+          <div class="ln"><span class="k">Email</span><span class="v">test.convert@example.com</span></div>
+          <div class="ln"><span class="k">Service</span><span class="v">RCT &amp; Crown</span></div>
+          <div class="ln"><span class="k">Message</span><span class="v">Please call me to book.</span></div>
+          <div class="ln" style="align-items:center"><span class="k">Status</span><span class="v"><span class="e-sel m-ring">Contacted <span>⌄</span></span></span></div>
+          <div class="act"><span class="m-b m-out" style="flex:1"><svg class="m-i"><use href="#i-userplus"/></svg> Convert</span><span class="m-b m-out" style="width:28px;color:#dc2626"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+        </div>
+      </div>
+      <div class="r-dd" style="top:206px;left:66px;width:150px"><div>New</div><div class="on">Contacted</div><div>Follow-up</div><div>Scheduled</div><div>Closed</div></div>
+    </div>
+    <div class="m-cap">Tapping the status opens the <b>same list</b> as desktop. Choosing one saves it straight away and shows "Status updated: Test Convert Lead marked as "Follow-up"." If saving fails, the old status comes back with the red error message, as on desktop. While it saves, the box is greyed out.</div>
+  </div>
+
+  <div class="m-col"><h3>3. Status filter / 4. Date filter</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="r-card0">
+          <div class="r-ct">Submissions</div><div class="r-cd">Search, filter by status, and update the progress of each enquiry.</div>
+          <div class="m-in ph" style="margin-bottom:6px">Search name, phone, email, service...</div>
+          <div class="e-two"><div class="r-sel m-ring" style="margin:0"><span class="v" style="text-align:left">All Status</span><span>⌄</span></div><div class="r-sel" style="margin:0"><span class="v" style="text-align:left">All Time</span><span>⌄</span></div></div>
+        </div>
+      </div>
+      <div class="r-dd" style="top:196px;left:22px;width:120px"><div class="on">All Status</div><div>New</div><div>Contacted</div><div>Follow-up</div><div>Scheduled</div><div>Closed</div></div>
+      <div class="r-dd" style="top:196px;left:150px;width:115px;opacity:.9"><div class="on">All Time</div><div>Today</div><div>Last 7 Days</div><div>Last 30 Days</div></div>
+    </div>
+    <div class="m-cap">The same two filters as desktop, side by side (shown open together here only to save space). <b>Status:</b> All Status / New / Contacted / Follow-up / Scheduled / Closed. <b>Date:</b> All Time / Today / Last 7 Days / Last 30 Days. Changing a filter jumps back to page 1, as on desktop.</div>
+  </div>
+
+  <div class="m-col"><h3>5. Sort by (open)</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="r-card0">
+          <div class="m-in ph" style="margin-bottom:6px">Search name, phone, email, service...</div>
+          <div class="e-two"><div class="r-sel" style="margin:0"><span class="v" style="text-align:left">All Status</span><span>⌄</span></div><div class="r-sel" style="margin:0"><span class="v" style="text-align:left">All Time</span><span>⌄</span></div></div>
+          <div class="e-bar"><span>1 record(s)</span><span class="m-b m-out" style="color:#020817">⤓ Export (CSV)</span></div>
+          <div class="r-sort"><span>Sort by</span><div class="r-sel m-ring"><span class="v" style="text-align:left">Date (Newest First)</span><span>⌄</span></div></div>
+        </div>
+      </div>
+      <div class="r-dd" style="top:202px;left:58px;right:22px"><div class="on">Date (Newest First)</div><div>Date (Oldest First)</div><div>Name (A-Z)</div><div>Name (Z-A)</div><div>Service (A-Z)</div><div>Service (Z-A)</div><div>Status (A-Z)</div><div>Status (Z-A)</div></div>
+    </div>
+    <div class="m-cap">Desktop sorts by tapping the <b>Date, Name, Service</b> and <b>Status</b> column headers (↑ ↓ arrows). Cards have no headers, so the phone gets the same small <b>Sort by</b> box as Patients and Recall List, with those 4 columns in both directions. Default unchanged: <b>Date, newest first</b>. <i>My call: desktop shows only arrows, so the words "Newest/Oldest First" and "A-Z/Z-A" are added to explain the arrows. Status sorts alphabetically, exactly as desktop does.</i></div>
+  </div>
+
+  <div class="m-col"><h3>6. Many enquiries: pages</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="e-card"><div class="nm">Priya Joshi</div>
+          <div class="ln"><span class="k">Date</span><span class="v">24/10/2026 11:02:14</span></div>
+          <div class="ln"><span class="k">Phone</span><span class="v"><span class="e-tel">+91 9822012345</span></span></div>
+          <div class="ln"><span class="k">Service</span><span class="v">Teeth Whitening</span></div>
+          <div class="ln" style="align-items:center"><span class="k">Status</span><span class="v"><span class="e-sel">New <span>⌄</span></span></span></div>
+        </div>
+        <div class="e-card"><div class="nm">Rahul Kulkarni</div>
+          <div class="ln"><span class="k">Date</span><span class="v">23/10/2026 18:40:51</span></div>
+          <div class="ln"><span class="k">Service</span><span class="v">Dental Implants</span></div>
+          <div class="ln" style="align-items:center"><span class="k">Status</span><span class="v"><span class="e-sel">Follow-up <span>⌄</span></span></span></div>
+          <div class="act"><span class="m-b m-out" style="flex:1"><svg class="m-i"><use href="#i-userplus"/></svg> Convert</span><span class="m-b m-out" style="width:28px;color:#dc2626"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+        </div>
+        <div class="e-pg">Rows per page <span class="e-sel" style="margin-left:4px">15 <span>⌄</span></span><div class="r"><span class="nb dis">‹</span><span>Page 1 of 3</span><span class="nb">›</span></div></div>
+      </div>
+    </div>
+    <div class="m-cap">Same controls as desktop: Rows per page (10, 15, 25, 50), "Page 1 of 3", ‹ and ›, greyed out at the first and last page. On the phone they sit centred on two lines (Rows per page, then ‹ Page › ) so they look balanced. <i>(Example data: DEV has only 1 enquiry per clinic.)</i></div>
+  </div>
+
+  <div class="m-col"><h3>7. Long message (tap to read)</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="e-card"><div class="nm">Snehal Deshmukh</div>
+          <div class="ln"><span class="k">Date</span><span class="v">22/10/2026 09:15:03</span></div>
+          <div class="ln"><span class="k">Phone</span><span class="v"><span class="e-tel">+91 9890011223</span></span></div>
+          <div class="ln"><span class="k">Email</span><span class="v">snehal.deshmukh.longemailaddress@gmail.com</span></div>
+          <div class="ln"><span class="k">Service</span><span class="v">Braces &amp; Aligners</span></div>
+          <div class="ln"><span class="k">Message</span><span class="v"><span class="r-note">My daughter is 13 and needs braces. Can we…</span> <span style="color:#2563eb">ⓘ</span></span></div>
+          <div class="ln" style="align-items:center"><span class="k">Status</span><span class="v"><span class="e-sel">New <span>⌄</span></span></span></div>
+        </div>
+        <div class="e-card"><div class="nm">Snehal Deshmukh</div>
+          <div class="ln"><span class="k">Message</span><span class="v"><span class="r-note" style="display:block">My daughter is 13 and needs braces. Can we visit on Saturday morning? Also please tell the approximate cost of clear aligners vs metal braces.</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Desktop cuts long messages and emails short and shows the rest only on mouse hover. A phone can't hover, so the message shows one line; <b>tap it to read all of it</b> (second card), the same as the notes on Patients and Recall. Long emails and names wrap onto the next line instead of being cut. <i>(Example data.)</i></div>
+  </div>
+
+  <div class="m-col"><h3>8. Meditouch (real DEV)</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#6CBFBF">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EAF6F6;color:#3A8F8F;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span>Dental Metrix</span><span class="on" style="color:#6CBFBF;background:#EAF6F6">Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="e-h1"><svg class="m-i" style="width:16px;height:16px"><use href="#i-inbox"/></svg>Enquiries</div>
+        <div class="m-ds" style="margin:1px 0 5px">Website contact-form submissions for Meditouch <span class="e-b e-new">1 new</span></div>
+        <span class="m-b m-out" style="display:inline-block;margin-bottom:7px"><svg class="m-i"><use href="#i-refresh"/></svg> Refresh</span>
+        <div class="r-card0">
+          <div class="e-card"><div class="nm">Sample Aesthetic Lead</div>
+            <div class="ln"><span class="k">Date</span><span class="v">05/10/2026 12:36:00</span></div>
+            <div class="ln"><span class="k">Phone</span><span class="v"><span class="e-tel">+91 9000000002</span></span></div>
+            <div class="ln"><span class="k">Email</span><span class="v">sample.aesthetic@example.com</span></div>
+            <div class="ln"><span class="k">Service</span><span class="v">HydraFacial Skin Rejuvenation</span></div>
+            <div class="ln"><span class="k">Message</span><span class="v">Want to book a consultation.</span></div>
+            <div class="ln" style="align-items:center"><span class="k">Status</span><span class="v"><span class="e-sel">New <span>⌄</span></span></span></div>
+            <div class="act"><span class="m-b m-out" style="flex:1"><svg class="m-i"><use href="#i-userplus"/></svg> Convert</span><span class="m-b m-out" style="width:28px;color:#dc2626"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Switching clinic reloads that clinic's enquiries, exactly as desktop. The blue <b>"1 new"</b> badge next to the subtitle counts the New ones, as on desktop.</div>
+  </div>
+</div>
+
+<!-- ======================= B. EMPTY / PERMISSIONS ======================= -->
+<div class="m-sec"><h2>B. Empty, loading and permission cases</h2></div>
+<div class="m-grid">
+
+  <div class="m-col"><h3>9. No match / no enquiries / loading</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="r-card0">
+          <div class="m-in" style="margin-bottom:6px">zzzz</div>
+          <div class="e-two"><div class="r-sel" style="margin:0"><span class="v" style="text-align:left">All Status</span><span>⌄</span></div><div class="r-sel" style="margin:0"><span class="v" style="text-align:left">All Time</span><span>⌄</span></div></div>
+          <div class="e-bar"><span>0 record(s)</span><span class="m-b m-out" style="opacity:.5;color:#020817">⤓ Export (CSV)</span></div>
+          <div class="e-empty">No enquiries match your search / filter.</div>
+          <div class="e-empty" style="margin-top:6px">No enquiries yet for this clinic.</div>
+          <div class="e-empty" style="margin-top:6px">Loading enquiries...</div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">The 3 messages from desktop, word for word: no match (search "zzzz"), a clinic with no enquiries at all, and while loading (the Refresh icon spins then). Export is greyed out with 0 records, and Sort by and the pages hide, as on desktop.</div>
+  </div>
+
+  <div class="m-col"><h3>10. User with fewer permissions</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">R</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="r-card0">
+          <div class="m-in ph" style="margin-bottom:6px">Search name, phone, email, service...</div>
+          <div class="e-two"><div class="r-sel" style="margin:0"><span class="v" style="text-align:left">All Status</span><span>⌄</span></div><div class="r-sel" style="margin:0"><span class="v" style="text-align:left">All Time</span><span>⌄</span></div></div>
+          <div class="e-bar"><span>1 record(s)</span></div>
+          <div class="e-card"><div class="nm">Test Convert Lead</div>
+            <div class="ln"><span class="k">Date</span><span class="v">05/10/2026 15:43:00</span></div>
+            <div class="ln"><span class="k">Phone</span><span class="v"><span class="e-tel">+91 9812345678</span></span></div>
+            <div class="ln"><span class="k">Email</span><span class="v">test.convert@example.com</span></div>
+            <div class="ln"><span class="k">Service</span><span class="v">RCT &amp; Crown</span></div>
+            <div class="ln"><span class="k">Message</span><span class="v">Please call me to book.</span></div>
+            <div class="ln"><span class="k">Status</span><span class="v"><span class="e-b e-con">Contacted</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Same permissions as desktop. Without <b>enquiries.change_status</b> the status shows as a coloured badge (same colours as desktop) instead of a drop-down. Without <b>patients.create</b> there is no Convert, without <b>enquiries.delete</b> no 🗑, and with neither the button row is gone. Without <b>enquiries.export</b> there is no Export button.</div>
+  </div>
+
+  <div class="m-col"><h3>11. Status colours (badges)</h3>
+    <div class="m-ph" style="height:auto;padding:12px;background:#fff">
+      <div style="display:flex;flex-direction:column;gap:9px;font-size:11px">
+        <div><span class="e-b e-new">New</span></div>
+        <div><span class="e-b e-con">Contacted</span></div>
+        <div><span class="e-b e-fu">Follow-up</span></div>
+        <div><span class="e-b e-sch">Scheduled</span></div>
+        <div><span class="e-b e-clo">Closed</span></div>
+      </div>
+    </div>
+    <div class="m-cap">The badge colours used when a user can't change the status, and for the "N new" count. They are identical to desktop.</div>
+  </div>
+</div>
+
+<!-- ======================= C. POPUPS & FLOWS ======================= -->
+<div class="m-sec"><h2>C. Popups and flows</h2></div>
+<div class="m-grid">
+
+  <div class="m-col"><h3>12. Delete (🗑) confirmation</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-shade"></div>
+      <div class="m-dlg" style="top:170px;text-align:center">
+        <div class="m-tt" style="justify-content:center">Are you sure?</div>
+        <div class="m-ds" style="margin-top:8px;line-height:1.5">This action cannot be undone. This will permanently delete the enquiry from Test Convert Lead.</div>
+        <div class="m-b" style="background:#dc2626;color:#fff;margin-top:6px">Delete</div>
+        <div class="m-b m-out" style="margin-top:5px">Cancel</div>
+      </div>
+    </div>
+    <div class="m-cap"><b>Unchanged:</b> it already fits a phone (checked at 384 px). Delete removes the card straight away and shows "Enquiry deleted: Removed Test Convert Lead." If deleting fails, the card comes back with the red error message.</div>
+  </div>
+
+  <div class="m-col"><h3>13. Convert → Add New Patient</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="m-tt">Add New Patient</div><span class="m-x">✕</span>
+      <div class="m-ds">Enter the patient details below. Fields marked with <span style="color:#ef4444">*</span> are required.</div>
+      <div class="m-lb">Full Name <i>*</i></div><div class="m-in">Test Convert Lead</div>
+      <div class="m-lb">Gender <i>*</i></div><div class="m-in ph"><span>Select Gender</span><span>⌄</span></div>
+      <div class="m-lb">Age/DOB <i>*</i></div><div><span class="m-radio"><span class="on"></span>Age</span><span class="m-radio"><span></span>DOB</span></div>
+      <div class="m-in ph" style="margin-top:4px">Enter age</div>
+      <div class="m-lb">Email</div><div class="m-in">test.convert@example.com</div>
+      <div class="m-lb">Phone Number <i>*</i></div>
+      <div style="display:flex;gap:4px"><div class="m-in" style="width:62px">+91 ⌄</div><div class="m-in" style="flex:1">9812345678</div></div>
+      <div class="m-foot"><span class="m-b m-pri">Add Patient</span><span class="m-b m-out">Cancel</span></div>
+    </div></div>
+    <div class="m-cap"><b>Already works on the phone today; nothing new to build.</b> Convert opens the same full-screen Add New Patient form with <b>Name, Email and Phone filled in</b> from the enquiry. All the usual checks apply (Missing Required Fields, Invalid Mobile Number, Duplicate Patient…), then the "Confirm Add Patient" step, then "Patient Added".</div>
+  </div>
+
+  <div class="m-col"><h3>14. After Convert</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#6CBFBF">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EAF6F6;color:#3A8F8F;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span>Dental Metrix</span><span class="on" style="color:#6CBFBF;background:#EAF6F6">Meditouch</span></div></div>
+      <div class="r-toast"><b>Patient Added</b>Sample Aesthetic Lead has been added to the patient registry.</div>
+      <div class="r-pg" style="padding-top:84px">
+        <div class="e-card"><div class="nm">Sample Aesthetic Lead</div>
+          <div class="ln"><span class="k">Service</span><span class="v">HydraFacial Skin Rejuvenation</span></div>
+          <div class="ln" style="align-items:center"><span class="k">Status</span><span class="v"><span class="e-sel">Contacted <span>⌄</span></span></span></div>
+          <div class="act"><span class="m-b m-out" style="flex:1"><svg class="m-i"><use href="#i-userplus"/></svg> Convert</span><span class="m-b m-out" style="width:28px;color:#dc2626"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Same as desktop: once the patient is added, a <b>New</b> enquiry moves to <b>Contacted</b> by itself. An enquiry that is already further along (Follow-up, Scheduled…) is never moved back. The patient can then be booked from Appointments as usual.</div>
+  </div>
+
+  <div class="m-col"><h3>15. Export (CSV) and Refresh</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="e-h1"><svg class="m-i" style="width:16px;height:16px"><use href="#i-inbox"/></svg>Enquiries</div>
+        <div class="m-ds" style="margin:1px 0 5px">Website contact-form submissions for Dental Metrix</div>
+        <span class="m-b m-out" style="display:inline-block;margin-bottom:7px;opacity:.6"><svg class="m-i" style="transform:rotate(90deg)"><use href="#i-refresh"/></svg> Refresh</span>
+        <div class="r-card0">
+          <div class="e-bar"><span>1 record(s)</span><span class="m-b m-out" style="color:#020817">⤓ Export (CSV)</span></div>
+          <div class="e-empty">Loading enquiries...</div>
+        </div>
+      </div>
+      <div class="r-toast" style="top:auto;bottom:10px"><b>Downloads</b>enquiries_dental_metrix_26-10-2026.csv</div>
+    </div>
+    <div class="m-cap"><b>Export (CSV)</b> makes exactly the same file as desktop (same columns, only the filtered rows). On a phone it goes to the phone's Downloads, shown by the phone's own download notice <i>(drawn here as an example; the real file name follows desktop's format)</i>. <b>Refresh</b> reloads the list; its icon spins and the button is greyed out while loading.</div>
+  </div>
+</div>
+
+<!-- ======================= D. RULES ======================= -->
+<div class="m-sec"><h2>D. Messages, edge cases and corner cases</h2></div>
+<div style="display:flex;flex-wrap:wrap;gap:30px">
+  <div style="flex:1;min-width:300px">
+    <h3>All messages (unchanged, same words as desktop)</h3>
+    <ul class="r-list">
+      <li><b>Status updated</b>: "{name} marked as "{Status}"."</li>
+      <li><b>Enquiry deleted</b>: "Removed {name}."</li>
+      <li><b>Error</b> (red): "Failed to load enquiries. Please try again." / "Could not update status. Please try again." / "Could not delete the enquiry. Please try again."</li>
+      <li>From the Convert form: Missing Required Fields, Invalid Mobile Number, Missing Age, Missing Date of Birth, Invalid Email Address, Duplicate Patient, <b>Patient Added</b>, Error.</li>
+    </ul>
+  </div>
+  <div style="flex:1;min-width:300px">
+    <h3>Edge and corner cases (all behave exactly as desktop)</h3>
+    <ul class="r-list">
+      <li><b>Tapping the phone number</b> opens the phone's dialler (the receptionist's main job on this page). <i>My call, same as the Appointment List cards you approved.</i></li>
+      <li><b>No email</b>: shows "-", as on desktop. <b>No message</b>: "-".</li>
+      <li><b>Long names, emails, services</b> wrap inside the card; nothing is cut and nothing scrolls sideways (checked at 360, 384, 412 px during the build).</li>
+      <li><b>Changing a status twice quickly</b>: the box is greyed out while the first change saves, as on desktop.</li>
+      <li><b>Filters / search / sort / rows-per-page change</b> → back to page 1, as on desktop.</li>
+      <li><b>"Today"</b> = since midnight; <b>Last 7 / 30 Days</b> = rolling, as on desktop.</li>
+      <li><b>Converting an enquiry that's already Contacted or later</b>: the status is not changed.</li>
+      <li><b>Converting the same person twice</b>: the form's "Duplicate Patient" check stops it.</li>
+      <li><b>Delete or status change fails</b> (no internet): the card goes back as it was, with the red message.</li>
+      <li><b>Phone sideways and tablets</b> (up to 1023 px): the same cards, full width. 1024 px and up: the desktop table, unchanged.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="m-sec"><h2>E. Existing issues found (not changed by this work)</h2></div>
+<ul class="r-list">
+  <li><b>Desktop at 1440 px:</b> the page is wider than the screen, so <b>Refresh</b>, <b>Export (CSV)</b> and the <b>Convert / 🗑</b> buttons are cut off on the right (🗑 ends at 1504 px on a 1440 screen). This is a desktop layout problem; the phone design doesn't touch desktop, so it stays unless you ask for a separate fix.</li>
+</ul>
