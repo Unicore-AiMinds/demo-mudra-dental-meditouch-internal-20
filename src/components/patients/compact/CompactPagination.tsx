@@ -18,7 +18,8 @@ const CompactPagination = <T,>({ table }: { table: Table<T> }) => {
 
   return (
     <div className="space-y-3 py-4 text-sm">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-evenly gap-2">
+        <div className="flex items-center gap-2">
         <p className="font-medium">Rows per page</p>
         <select
           value={pageSize}
@@ -29,7 +30,8 @@ const CompactPagination = <T,>({ table }: { table: Table<T> }) => {
             <option key={size} value={size}>{size}</option>
           ))}
         </select>
-        <span className="ml-auto font-medium">
+        </div>
+        <span className="font-medium">
           {total > 0 && <>{pageIndex * pageSize + 1}-{Math.min((pageIndex + 1) * pageSize, total)} of {total}</>}
         </span>
       </div>
