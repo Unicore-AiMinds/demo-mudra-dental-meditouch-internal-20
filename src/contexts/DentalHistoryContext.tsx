@@ -701,15 +701,15 @@ export const DentalHistoryProvider: React.FC<{ children: ReactNode }> = ({ child
         return 'Unknown Patient';
       }
 
-      // First try to find by patient_id field
+      // First try to find by id field (patients has no patient_id column, so that lookup always failed)
       let patients = await supabase.from('patients').getAll({
-        filters: { patient_id: patientId }
+        filters: { id: patientId }
       });
 
-      // If not found, try by id field
+      // If not found, try by patient_id field
       if (patients.length === 0) {
         patients = await supabase.from('patients').getAll({
-          filters: { id: patientId }
+          filters: { patient_id: patientId }
         });
       }
 

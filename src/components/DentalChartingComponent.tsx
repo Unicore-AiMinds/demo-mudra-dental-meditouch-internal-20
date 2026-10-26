@@ -84,9 +84,6 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
   const [showPrimaryTeeth, setShowPrimaryTeeth] = useState<boolean>(isChildPatient);
   const [currentTeethList, setCurrentTeethList] = useState<string[]>(isChildPatient ? primaryTeethList : permanentTeethList);
 
-  // Get patient name for follow-ups
-  const patientName = getPatientName(patientId) || "Unknown Patient";
-
   // Handle toggling the status of a charting entry
   const handleStatusToggle = async (entry: ChartingEntry) => {
     try {
@@ -256,10 +253,8 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
       // Generate follow-ups if this is a planned treatment
       if (selectedStatus === 'Planned' && newEntry.service) {
         try {
-          // Get the patient name as a string
-          const patientNameStr = typeof patientName === 'string'
-            ? patientName
-            : await patientName;
+          // Get the patient name for follow-ups (looked up here, not on every render)
+          const patientNameStr = (await getPatientName(patientId)) || "Unknown Patient";
 
           // Generate follow-ups using the integration service
           const followUps = generateFollowUpsFromChartingEntry(savedEntry, patientNameStr);
