@@ -319,7 +319,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
           {!isAddingNew && !isEditing && hasPermission('patients.create_vital_signs') && (
             <Button
               onClick={() => setIsAddingNew(true)}
-              className="flex items-center gap-1"
+              className={isCompact ? "flex w-full items-center justify-center gap-1" : "flex items-center gap-1"}
             >
               <Plus className="h-4 w-4" />
               Record Vital Signs
@@ -333,7 +333,7 @@ const VitalSignsComponent: React.FC<VitalSignsComponentProps> = ({ patientId, pa
               <h3 className="text-lg font-medium mb-4">
                 {isEditing ? "Edit Vital Signs" : "Record New Vital Signs"}
               </h3>
-              <div className={isCompact ? "grid grid-cols-2 grid-flow-row-dense gap-4 mb-4" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4"}>
+              <div className={isCompact ? "grid grid-cols-2 grid-flow-row-dense items-end gap-4 mb-4" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4"}>
                 <div className="space-y-2">
                   <Label htmlFor="weight">Weight (kg) <span className="text-red-500 ml-1">*</span></Label>
                   <Input

@@ -1373,7 +1373,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
           {!isAddingNew && !isEditing && hasPermission('patients.create_prescriptions') && (
             <Button
               onClick={() => setIsAddingNew(true)}
-              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700"
+              className={isCompact ? "flex w-full items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700" : "flex items-center gap-1 bg-blue-600 hover:bg-blue-700"}
             >
               <Plus className="h-4 w-4" />
               New Prescription

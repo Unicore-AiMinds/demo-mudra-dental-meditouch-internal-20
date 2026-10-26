@@ -375,7 +375,7 @@ const PatientDetails = () => {
               <CardTitle>Personal Information</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={isCompact ? "grid grid-cols-2 gap-4" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"}>
+              <div className={isCompact ? "grid grid-cols-2 gap-4 [&>div]:min-w-0 [&_p]:[overflow-wrap:anywhere] [&_p>span]:inline-block" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"}>
                 {patient.patient_code && (
                   <div>
                     <h3 className="font-medium text-sm text-muted-foreground">Patient Code</h3>
