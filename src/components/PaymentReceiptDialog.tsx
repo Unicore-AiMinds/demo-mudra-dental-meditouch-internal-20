@@ -189,7 +189,7 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
         </DialogHeader>
 
         <div className={isCompact ? `grid content-start gap-4 ${COMPACT_DIALOG_BODY}` : "grid gap-4 py-2"}>
-          <div className="grid grid-cols-2 gap-4">
+          <div className={isCompact ? "grid grid-cols-1 gap-4" : "grid grid-cols-2 gap-4"}>
             <div className="grid gap-1.5">
               <Label htmlFor="receipt-srno">Sr. No.</Label>
               <Input id="receipt-srno" value={srNo} onChange={(e) => setSrNo(e.target.value)} placeholder="e.g. 361" />
@@ -230,7 +230,7 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className={isCompact ? "grid grid-cols-1 gap-4" : "grid grid-cols-2 gap-4"}>
             <div className="grid gap-1.5">
               <Label htmlFor="receipt-instrument">{instrumentLabel}</Label>
               <Input
