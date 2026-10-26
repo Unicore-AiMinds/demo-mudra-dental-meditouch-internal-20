@@ -55,6 +55,7 @@ import AddPatientDialog from '@/components/AddPatientDialog';
 import { useIsCompact } from '@/hooks/use-compact';
 import EnquiryCardList from '@/components/enquiries/compact/EnquiryCardList';
 import EnquirySortSelect from '@/components/enquiries/compact/EnquirySortSelect';
+import StatusChangeDialog, { PendingStatusChange } from '@/components/enquiries/StatusChangeDialog';
 import {
   Enquiry,
   STATUS_OPTIONS,
@@ -91,6 +92,7 @@ const Enquiries = () => {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [enquiryToDelete, setEnquiryToDelete] = useState<Enquiry | null>(null);
   const [enquiryToConvert, setEnquiryToConvert] = useState<Enquiry | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<PendingStatusChange | null>(null);
 
   const loadEnquiries = useCallback(async () => {
     setIsLoading(true);
@@ -224,6 +226,12 @@ const Enquiries = () => {
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  // Status changes are confirmed first (Confirm Status Change popup), then saved.
+  const requestStatusChange = (enquiry: Enquiry, next: Enquiry['status']) => {
+    if (next === enquiry.status) return;
+    setPendingStatusChange({ enquiry, next });
   };
 
   const confirmDelete = async () => {
@@ -421,7 +429,7 @@ const Enquiries = () => {
                   canConvert={canConvert}
                   canDelete={canDelete}
                   updatingId={updatingId}
-                  onStatusChange={handleStatusChange}
+                  onStatusChange={requestStatusChange}
                   onConvert={setEnquiryToConvert}
                   onDelete={setEnquiryToDelete}
                 />
@@ -479,7 +487,7 @@ const Enquiries = () => {
                         {canChangeStatus ? (
                           <Select
                             value={e.status}
-                            onValueChange={(v) => handleStatusChange(e, v as Enquiry['status'])}
+                            onValueChange={(v) => requestStatusChange(e, v as Enquiry['status'])}
                             disabled={updatingId === e.id}
                           >
                             <SelectTrigger className="h-8 w-[140px]">
@@ -580,6 +588,17 @@ const Enquiries = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirm Status Change Dialog */}
+      <StatusChangeDialog
+        pending={pendingStatusChange}
+        activeClinic={activeClinic}
+        onConfirm={(enquiry, next) => {
+          setPendingStatusChange(null);
+          handleStatusChange(enquiry, next);
+        }}
+        onCancel={() => setPendingStatusChange(null)}
+      />
 
       {/* Confirm Delete Dialog */}
       <AlertDialog
