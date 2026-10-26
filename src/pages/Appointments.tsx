@@ -3142,7 +3142,7 @@ const Appointments = () => {
                 </Button>
               </div>
 
-              <div className={appointmentFollowUpService ? "grid grid-cols-2 gap-3" : ""}>
+              <div className={appointmentFollowUpService ? (isCompact ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3") : ""}>
                 <div className="space-y-1">
                   <Label htmlFor="service">Service</Label>
                   <Combobox
@@ -3164,7 +3164,7 @@ const Appointments = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className={isCompact ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
               <div className="space-y-1">
                 <Label>Appointment Date</Label>
                 <Popover>
