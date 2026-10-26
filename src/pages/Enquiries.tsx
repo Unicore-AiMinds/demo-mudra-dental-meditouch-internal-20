@@ -52,44 +52,15 @@ import {
   UserPlus,
 } from 'lucide-react';
 import AddPatientDialog from '@/components/AddPatientDialog';
-
-// A website contact-form submission ("enquiry").
-interface Enquiry {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  service_inquiry: string;
-  message: string | null;
-  clinic: 'dental_metrix' | 'meditouch';
-  status: 'new' | 'contacted' | 'follow-up' | 'scheduled' | 'closed';
-  submitted_at: string;
-  updated_at: string;
-}
-
-const STATUS_OPTIONS: Enquiry['status'][] = [
-  'new',
-  'contacted',
-  'follow-up',
-  'scheduled',
-  'closed',
-];
-
-const STATUS_STYLES: Record<Enquiry['status'], string> = {
-  new: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
-  contacted: 'bg-amber-100 text-amber-800 hover:bg-amber-100',
-  'follow-up': 'bg-purple-100 text-purple-800 hover:bg-purple-100',
-  scheduled: 'bg-green-100 text-green-800 hover:bg-green-100',
-  closed: 'bg-gray-200 text-gray-700 hover:bg-gray-200',
-};
-
-const STATUS_LABEL: Record<Enquiry['status'], string> = {
-  new: 'New',
-  contacted: 'Contacted',
-  'follow-up': 'Follow-up',
-  scheduled: 'Scheduled',
-  closed: 'Closed',
-};
+import { useIsCompact } from '@/hooks/use-compact';
+import EnquiryCardList from '@/components/enquiries/compact/EnquiryCardList';
+import EnquirySortSelect from '@/components/enquiries/compact/EnquirySortSelect';
+import {
+  Enquiry,
+  STATUS_OPTIONS,
+  STATUS_STYLES,
+  STATUS_LABEL,
+} from '@/components/enquiries/enquiry';
 
 const PAGE_SIZES = [10, 15, 25, 50];
 
@@ -97,6 +68,7 @@ const Enquiries = () => {
   const { activeClinic } = useClinic();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
+  const isCompact = useIsCompact();
 
   const canChangeStatus = hasPermission('enquiries.change_status');
   const canExport = hasPermission('enquiries.export');
@@ -374,15 +346,15 @@ const Enquiries = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className={isCompact ? "grid grid-cols-2 gap-2" : "flex flex-wrap items-center gap-2"}>
             <Input
               placeholder="Search name, phone, email, service..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-full sm:w-72"
+              className={isCompact ? "h-9 w-full col-span-2" : "h-9 w-full sm:w-72"}
             />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 w-[150px]">
+              <SelectTrigger className={isCompact ? "h-9 w-full" : "h-9 w-[150px]"}>
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -395,7 +367,7 @@ const Enquiries = () => {
               </SelectContent>
             </Select>
             <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="h-9 w-[150px]">
+              <SelectTrigger className={isCompact ? "h-9 w-full" : "h-9 w-[150px]"}>
                 <SelectValue placeholder="Date" />
               </SelectTrigger>
               <SelectContent>
@@ -405,7 +377,7 @@ const Enquiries = () => {
                 <SelectItem value="month">Last 30 Days</SelectItem>
               </SelectContent>
             </Select>
-            <div className="ml-auto flex items-center gap-2">
+            <div className={isCompact ? "col-span-2 flex flex-col items-center gap-2" : "ml-auto flex items-center gap-2"}>
               <span className="text-xs text-muted-foreground">
                 {filteredEnquiries.length} record(s)
               </span>
@@ -415,6 +387,7 @@ const Enquiries = () => {
                   size="sm"
                   onClick={handleExport}
                   disabled={filteredEnquiries.length === 0}
+                  className={isCompact ? 'w-full' : undefined}
                 >
                   <Download className="h-4 w-4 mr-2" /> Export (CSV)
                 </Button>
@@ -423,7 +396,7 @@ const Enquiries = () => {
           </div>
 
           {/* Table */}
-          <div className="overflow-auto rounded-md border">
+          <div className={isCompact && !isLoading && filteredEnquiries.length > 0 ? "space-y-3" : "overflow-auto rounded-md border"}>
             {isLoading ? (
               <div className="py-12 text-center text-muted-foreground">Loading enquiries...</div>
             ) : filteredEnquiries.length === 0 ? (
@@ -432,6 +405,27 @@ const Enquiries = () => {
                   ? 'No enquiries yet for this clinic.'
                   : 'No enquiries match your search / filter.'}
               </div>
+            ) : isCompact ? (
+              <>
+                <EnquirySortSelect
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onChange={(field, direction) => {
+                    setSortField(field);
+                    setSortDirection(direction);
+                  }}
+                />
+                <EnquiryCardList
+                  enquiries={pageRows}
+                  canChangeStatus={canChangeStatus}
+                  canConvert={canConvert}
+                  canDelete={canDelete}
+                  updatingId={updatingId}
+                  onStatusChange={handleStatusChange}
+                  onConvert={setEnquiryToConvert}
+                  onDelete={setEnquiryToDelete}
+                />
+              </>
             ) : (
               <Table>
                 <TableHeader>
@@ -543,7 +537,7 @@ const Enquiries = () => {
 
           {/* Pagination */}
           {filteredEnquiries.length > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t">
+            <div className={isCompact ? "flex flex-col items-center gap-2 pt-2 border-t" : "flex flex-wrap items-center justify-between gap-2 pt-2 border-t"}>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Rows per page</span>
                 <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
@@ -560,13 +554,13 @@ const Enquiries = () => {
                 </Select>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground">
+                <span className={`text-xs text-muted-foreground${isCompact ? ' order-2' : ''}`}>
                   Page {safePage} of {totalPages}
                 </span>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  className={`h-8 w-8${isCompact ? ' order-1' : ''}`}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={safePage <= 1}
                 >
@@ -575,7 +569,7 @@ const Enquiries = () => {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  className={`h-8 w-8${isCompact ? ' order-3' : ''}`}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
