@@ -3,7 +3,7 @@
 // DialogContent classes that turn a popup into a full-screen page. They also override
 // the dialog's own sm:max-w-lg / sm:rounded-lg so tablets get the full screen too.
 export const COMPACT_FULLSCREEN_DIALOG =
-  "left-0 top-0 translate-x-0 translate-y-0 w-screen max-w-none sm:max-w-none h-[100dvh] max-h-none rounded-none sm:rounded-none p-0 gap-0 flex flex-col " +
+  "left-0 top-0 translate-x-0 translate-y-0 w-screen max-sm:w-screen max-w-none sm:max-w-none h-[100dvh] max-h-none rounded-none max-sm:rounded-none sm:rounded-none p-0 gap-0 flex flex-col " +
   // cancel the centred slide-in of the normal dialog so the full-screen page just fades in
   "data-[state=open]:![--tw-enter-translate-x:0] data-[state=open]:![--tw-enter-translate-y:0] data-[state=closed]:![--tw-exit-translate-x:0] data-[state=closed]:![--tw-exit-translate-y:0]"
 
