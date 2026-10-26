@@ -3560,7 +3560,7 @@ const Appointments = () => {
       <Dialog open={isConfirmCreateOpen} onOpenChange={setIsConfirmCreateOpen}>
         <DialogContent className={`${isMobile ? 'max-w-[90vw] max-h-[80vh]' : 'sm:max-w-[425px]'}`}>
           <DialogHeader>
-            <DialogTitle>Confirm Appointment</DialogTitle>
+            <DialogTitle>Book Appointment</DialogTitle>
             <DialogDescription>
               Please confirm that you want to schedule this appointment.
             </DialogDescription>
@@ -3611,7 +3611,7 @@ const Appointments = () => {
               onClick={confirmCreateAppointment}
               className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
             >
-              Confirm Appointment
+              Book Appointment
             </Button>
           </DialogFooter>
         </DialogContent>
