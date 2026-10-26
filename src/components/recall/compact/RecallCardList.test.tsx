@@ -153,4 +153,9 @@ describe("RecallCardList", () => {
     renderList({ followUps: [followUp({ special_notes: "Call after 10th" })] });
     expect(screen.getByText("Call after 10th")).toBeTruthy();
   });
+
+  it("lets a short note without spaces wrap inside the card", () => {
+    renderList({ followUps: [followUp({ special_notes: "https://example.com/note-123" })] });
+    expect(screen.getByText("https://example.com/note-123").closest("div")!.className).toContain("[overflow-wrap:anywhere]");
+  });
 });

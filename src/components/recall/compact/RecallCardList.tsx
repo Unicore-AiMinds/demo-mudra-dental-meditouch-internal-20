@@ -87,7 +87,7 @@ const RecallCardList = ({
             <span className="text-muted-foreground">Original Doctor</span>
             <span className="[overflow-wrap:anywhere]">{followUp.original_doctor}</span>
             <span className="text-muted-foreground">Notes</span>
-            <div className="min-w-0">
+            <div className="min-w-0 [overflow-wrap:anywhere]">
               {followUp.special_notes ? (
                 <TapNote text={followUp.special_notes} maxChars={40} />
               ) : (
