@@ -1,0 +1,637 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
+  .m-sec { margin:30px 0 6px; padding-top:10px; border-top:2px solid #94a3b8; }
+  .m-sec h2 { margin:0 0 4px; }
+  .m-grid { display:flex; flex-wrap:wrap; gap:22px; justify-content:flex-start; margin-top:12px; }
+  .m-col { width:300px; display:flex; flex-direction:column; gap:6px; }
+  .m-col h3 { margin:0; font-size:15px; }
+  .m-cap { font-size:12.5px; color:#94a3b8; line-height:1.45; }
+  .m-cap b { color:inherit; }
+  /* ---------- phone, using the app's real fonts + colours ---------- */
+  .m-ph { width:282px; height:580px; border:8px solid #111; border-radius:28px; background:#f9fafb; overflow:hidden; position:relative; font-family:Inter,sans-serif; color:#020817; font-size:11.5px; line-height:1.35; }
+  .m-ph * { box-sizing:border-box; }
+  .m-top { background:#fff; border-bottom:1px solid #e2e8f0; padding:7px 8px; display:flex; align-items:center; gap:6px; }
+  .m-seg { display:flex; background:#f1f5f9; border-radius:6px; padding:2px; flex:1; }
+  .m-seg span { flex:1; text-align:center; padding:3px 0; border-radius:4px; font-size:9.5px; color:#64748b; }
+  .m-seg span.on { background:#fff; color:#4A90E2; font-weight:600; box-shadow:0 1px 2px #0002; }
+  .m-ic { width:22px; height:22px; border-radius:50%; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; background:#fff; }
+  .m-ic svg, .m-i { width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; vertical-align:-2px; }
+  .m-newb { background:#4A90E2; color:#fff; border-radius:5px; padding:4px 6px; font-size:9.5px; font-weight:600; white-space:nowrap; }
+  .m-alert { margin:6px 7px; background:#fffbeb; border:1px solid #f59e0b; color:#92400e; border-radius:6px; padding:5px 8px; display:flex; justify-content:space-between; font-size:10.5px; }
+  .m-tabs { display:flex; gap:2px; margin:0 7px; background:#f1f5f9; border-radius:6px; padding:3px; }
+  .m-tabs span { flex:1; text-align:center; padding:4px 0; border-radius:4px; font-size:9.5px; color:#64748b; }
+  .m-tabs span.on { background:#fff; color:#020817; font-weight:600; box-shadow:0 1px 2px #0001; }
+  .m-link { margin:5px 8px 0; font-size:10.5px; color:#2563eb; text-decoration:underline; }
+  .m-nav { display:flex; gap:4px; padding:6px 7px 3px; }
+  .m-btn { border:1px solid #e2e8f0; background:#fff; border-radius:5px; padding:4px 7px; font-size:10.5px; white-space:nowrap; text-align:center; }
+  .m-btn.grow { flex:1; text-align:left; }
+  .m-flt { display:flex; gap:4px; padding:3px 7px 6px; border-bottom:1px solid #e2e8f0; }
+  .m-flt div { flex:1; background:#fff; border:1px solid #e2e8f0; border-radius:5px; padding:4px 6px; font-size:10px; color:#64748b; }
+  .m-hour { padding:4px 9px 2px; font-weight:700; font-size:10.5px; color:#334155; }
+  .m-slot { display:flex; border-bottom:1px dashed #e2e8f0; min-height:31px; background:#fff; }
+  .m-slot .t { width:44px; font-size:9.5px; color:#9ca3af; padding:8px 4px; border-right:1px solid #e2e8f0; flex-shrink:0; }
+  .m-slot .c { flex:1; padding:3px; display:flex; gap:3px; min-width:0; }
+  .m-blk { flex:1; min-width:0; color:#fff; border-radius:4px; padding:2px 5px; font-size:9.5px; position:relative; }
+  .m-blk .s { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .m-blk .p { font-size:8.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .m-g { background:#27AE60; } .m-tl { background:#48C9B0; } .m-pu { background:#8E44AD; }
+  .m-av { color:#d1d5db; font-size:9.5px; display:flex; align-items:center; padding-left:3px; }
+  /* weekly / monthly */
+  .m-day { background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin:5px 7px; padding:5px; }
+  .m-day.today { border-color:#0063CC; background:#f2f7fd; }
+  .m-dh { display:flex; align-items:center; gap:5px; }
+  .m-pill { background:#f1f5f9; border-radius:5px; padding:2px 7px; font-weight:500; font-size:10.5px; }
+  .m-pill.sel { background:#4A90E2; color:#fff; }
+  .m-cnt { border-radius:9px; padding:0 6px; font-size:9.5px; }
+  .m-cg { background:#dcfce7; color:#166534; } .m-cy { background:#fef9c3; color:#854d0e; } .m-cr { background:#fee2e2; color:#991b1b; }
+  .m-item { border-left:2px solid #27AE60; background:rgba(39,174,96,.15); color:#27AE60; border-radius:3px; padding:2px 5px; margin-top:3px; font-size:9.5px; }
+  .m-item.b { border-left-color:#9B59B6; background:rgba(155,89,182,.15); color:#9B59B6; }
+  .m-item b { font-weight:600; }
+  .m-mgrid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; padding:4px 7px; }
+  .m-mgrid .h { text-align:center; font-size:9px; color:#64748b; }
+  .m-mgrid .d { background:#fff; border:1px solid #e2e8f0; border-radius:5px; height:38px; padding:2px; font-size:9.5px; text-align:center; position:relative; }
+  .m-mgrid .d.e { border-style:dashed; background:#f9fafb; }
+  .m-mgrid .d.on { border:2px solid #4A90E2; }
+  .m-mgrid .d .m-cnt { position:absolute; bottom:3px; left:50%; transform:translateX(-50%); }
+  /* dialogs */
+  .m-shade { position:absolute; inset:0; background:rgba(0,0,0,.8); z-index:4; }
+  .m-dlg { position:absolute; left:10px; right:10px; background:#fff; border-radius:8px; padding:14px; z-index:5; box-shadow:0 10px 30px #0004; }
+  .m-full { position:absolute; inset:0; background:#fff; z-index:5; padding:14px 12px 60px; overflow:hidden; }
+  .m-x { position:absolute; right:12px; top:12px; color:#64748b; font-size:13px; }
+  .m-tt { font-family:Poppins,sans-serif; font-weight:600; font-size:15px; display:flex; gap:6px; align-items:center; padding-right:18px; }
+  .m-ds { color:#64748b; font-size:11px; margin:3px 0 10px; }
+  .m-lb { font-size:11px; font-weight:500; margin:7px 0 3px; }
+  .m-lb i { color:#ef4444; font-style:normal; }
+  .m-in { border:1px solid #e2e8f0; border-radius:5px; padding:6px 8px; font-size:11px; display:flex; justify-content:space-between; color:#020817; background:#fff; }
+  .m-in.ph { color:#64748b; } .m-in.dis { background:#f1f5f9; color:#94a3b8; } .m-in.ta { height:38px; align-items:flex-start; }
+  .m-two { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .m-foot { position:absolute; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e2e8f0; padding:8px 12px; display:flex; flex-direction:column; gap:5px; }
+  .m-foot.row { flex-direction:row; justify-content:flex-end; }
+  .m-b { border-radius:5px; padding:7px 10px; font-size:11px; font-weight:500; text-align:center; white-space:nowrap; }
+  .m-pri { background:#4A90E2; color:#fff; } .m-def { background:#0063CC; color:#fff; } .m-out { border:1px solid #e2e8f0; background:#fff; }
+  .m-grn { border:1px solid #16a34a; color:#16a34a; background:#fff; } .m-red { background:#ef4444; color:#fff; } .m-org { background:#f97316; color:#fff; }
+  .m-gfill { background:#16a34a; color:#fff; }
+  .m-badge { display:inline-block; border:1px solid #e2e8f0; border-radius:9px; padding:1px 8px; font-size:10px; font-weight:600; }
+  .m-acard { background:#fff; border:1px solid #e2e8f0; border-radius:7px; margin-bottom:6px; overflow:hidden; }
+  .m-acard .hd { background:#eff6ff; color:#1e40af; border-bottom:1px solid #bfdbfe; font-weight:600; font-size:10.5px; padding:4px 8px; display:flex; justify-content:space-between; }
+  .m-acard .hd.amb { background:#fffbeb; color:#92400e; border-color:#fde68a; }
+  .m-acard .bd { padding:5px 8px; font-size:10.5px; line-height:1.5; }
+  .m-acard .k { color:#64748b; display:inline-block; width:50px; }
+  .m-tel { color:#2563eb; text-decoration:underline; }
+  .m-tog { display:flex; border:1px solid #e2e8f0; border-radius:5px; overflow:hidden; margin:6px 0; }
+  .m-tog span { flex:1; text-align:center; padding:5px; font-size:10.5px; font-weight:500; }
+  .m-tog span.on { background:#0063CC; color:#fff; }
+  .m-chk { display:flex; gap:5px; align-items:center; font-size:10.5px; font-weight:500; margin:5px 0; }
+  .m-box { width:12px; height:12px; border:1px solid #0063CC; border-radius:3px; flex-shrink:0; }
+  .m-box.on { background:#0063CC; }
+  .m-radio { display:inline-flex; gap:3px; align-items:center; margin-right:8px; font-size:10.5px; }
+  .m-radio span { width:11px; height:11px; border-radius:50%; border:1px solid #0063CC; display:inline-block; }
+  .m-radio span.on { background:radial-gradient(#0063CC 40%, #fff 45%); }
+
+  .m-top { flex-direction:column; align-items:stretch; gap:6px; padding:7px 8px 8px; }
+  .m-r1 { display:flex; align-items:center; gap:6px; }
+  .m-r1 .sp { flex:1; }
+  .m-top .m-seg span { font-size:10.5px; padding:4px 0; }
+  .m-menu { position:absolute; z-index:6; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 8px 24px #0003; font-size:11px; }
+  .m-menu::before { content:''; position:absolute; top:-5px; width:9px; height:9px; background:#fff; border-left:1px solid #e2e8f0; border-top:1px solid #e2e8f0; transform:rotate(45deg); }
+  .m-ring { box-shadow:0 0 0 2px #4A90E2; }
+  .m-col .m-menu::before { right:14px; }
+
+  .m-cal { padding:10px; font-family:Inter,sans-serif; }
+  .m-cal.bordered { border:1px solid #e2e8f0; border-radius:6px; }
+  .m-cal .cap { position:relative; display:flex; justify-content:center; align-items:center; height:26px; font-size:12.5px; font-weight:500; margin-bottom:10px; }
+  .m-cal .nb { position:absolute; top:1px; width:24px; height:24px; border:1px solid #e2e8f0; border-radius:5px; opacity:.5; display:flex; align-items:center; justify-content:center; font-size:12px; }
+  .m-cal .nb.l { left:2px; } .m-cal .nb.r { right:2px; }
+  .m-cal .row { display:flex; justify-content:space-between; margin-top:5px; }
+  .m-cal .row span { width:30px; height:30px; display:flex; align-items:center; justify-content:center; font-size:12px; border-radius:5px; }
+  .m-cal .hd span { height:18px; color:#64748b; font-size:10.5px; }
+  .m-cal .o { color:#64748b; opacity:.5; }
+  .m-cal .sel { background:#0063CC; color:#fff; }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-alarm" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M22 3H2l8 9.5V19l4 2v-8.5z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></symbol>
+</svg>
+<style>
+  /* ---------- Recall List additions ---------- */
+  .r-pg { padding:8px; }
+  .r-card0 { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:9px; }
+  .r-ct { font-family:Poppins,sans-serif; font-weight:600; font-size:13.5px; }
+  .r-cd { color:#64748b; font-size:10px; margin:1px 0 7px; }
+  .r-tabs { display:grid; grid-template-columns:repeat(3,1fr); border:1px solid #e2e8f0; border-radius:5px; overflow:hidden; margin-bottom:7px; }
+  .r-tabs span { text-align:center; padding:6px 2px; font-size:10.5px; font-weight:500; white-space:nowrap; background:#fff; }
+  .r-tabs span.on { background:#0063CC; color:#fff; }
+  .r-sel { border:1px solid #e2e8f0; border-radius:5px; padding:5px 8px; font-size:10.5px; display:flex; align-items:center; gap:6px; background:#fff; margin-bottom:6px; }
+  .r-sel .v { flex:1; text-align:center; }
+  .r-sel.dis { opacity:.5; color:#64748b; }
+  .r-sort { display:flex; align-items:center; gap:6px; font-size:10.5px; margin-bottom:6px; }
+  .r-sort .r-sel { flex:1; margin:0; }
+  .r-rc { border:1px solid #e2e8f0; border-radius:7px; padding:7px 8px; margin-bottom:6px; background:#fff; font-size:10.5px; }
+  .r-rc .nm { display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-weight:500; font-size:11.5px; }
+  .r-rc .ln { display:flex; gap:6px; margin-top:3px; line-height:1.3; }
+  .r-rc .ln .k { color:#64748b; width:96px; flex-shrink:0; }
+  .r-rc .ln .v { flex:1; min-width:0; }
+  .r-rc .act { display:flex; gap:4px; margin-top:6px; }
+  .r-rc .act .m-b { padding:5px 6px; font-size:10px; }
+  .r-rc .act .grow { flex:1; }
+  .r-red { color:#dc2626; font-weight:500; }
+  .r-bdg { display:inline-block; border-radius:9px; padding:0 6px; font-size:9px; font-weight:600; border:1px solid; line-height:15px; }
+  .r-ov { background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
+  .r-st { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+  .r-wt { background:#f3f4f6; color:#374151; border-color:#e5e7eb; }
+  .r-ib { width:24px; padding:5px 0 !important; text-align:center; }
+  .r-del { color:#dc2626; }
+  .r-snz { color:#64748b; font-size:9.5px; margin-left:2px; }
+  .r-empty { text-align:center; padding:26px 10px; }
+  .r-empty .t { font-weight:500; font-size:12.5px; margin-top:8px; }
+  .r-empty .d { color:#64748b; font-size:10.5px; margin-top:4px; line-height:1.4; }
+  .r-note { background:#f8fafc; border-radius:4px; padding:3px 5px; }
+  .r-amber { margin-top:6px; padding:5px; background:#fffbeb; border:1px solid #fde68a; border-radius:5px; color:#92400e; font-size:9.5px; text-align:left; }
+  .r-toast { position:absolute; left:8px; right:8px; top:8px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:9px 10px; box-shadow:0 6px 18px #0002; z-index:8; font-size:10.5px; }
+  .r-toast b { display:block; font-size:11px; margin-bottom:2px; }
+  .r-dd { position:absolute; z-index:6; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 8px 24px #0003; padding:4px; font-size:11px; }
+  .r-dd div { padding:6px 8px 6px 22px; border-radius:4px; position:relative; }
+  .r-dd div.on { background:#f1f5f9; }
+  .r-dd div.on::before { content:'✓'; position:absolute; left:7px; }
+  .r-list { font-size:12.5px; line-height:1.55; color:inherit; }
+  .r-list li { margin-bottom:4px; }
+  .r-kv { display:grid; grid-template-columns:1fr 1fr; gap:9px 8px; font-size:11px; text-align:left; }
+  .r-kv span { display:block; color:#64748b; font-size:10px; font-weight:500; }
+</style>
+
+<svg width="0" height="0" style="position:absolute"><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></symbol></svg>
+<h2>Recall List on a phone</h2>
+<p class="subtitle">Same fonts (Inter, Poppins for titles), same colours, same words, same buttons, same rules and permissions as desktop. Only the layout changes to fit a phone. Desktop (1024 px and wider) is not touched. Data is real DEV data where it exists; anything marked <i>example</i> is a sample. The top bar is the same 2-row bar already built for Appointments and Patients.</p>
+
+<p class="subtitle"><b>Today on a phone:</b> only the <b>Pending</b> tab button is visible (Waiting and Snoozed are cut off), and the table is cut after the date, so <b>Schedule, Snooze, ⓘ and Delete can't be reached</b>. The popups (Details, Snooze, Delete) already fit after last week's popup fix.</p>
+
+<!-- ======================= A. MAIN LIST ======================= -->
+<div class="m-sec"><h2>A. Pending list (the main screen)</h2></div>
+<div class="m-grid">
+
+  <div class="m-col"><h3>1. Pending tab</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="m-tt" style="font-size:18px">Recall List</div><div class="m-ds" style="margin:1px 0 7px">Manage follow-up appointments and patient recalls</div>
+        <div class="r-card0">
+          <div class="r-ct">Tentative Follow-ups</div><div class="r-cd">Patients due for follow-up appointments based on previous treatments</div>
+          <div class="r-tabs"><span class="on">Pending (34)</span><span>Waiting (0)</span><span>Snoozed (1)</span></div>
+          <div class="m-in ph" style="margin-bottom:6px;justify-content:flex-start;gap:6px"><svg class="m-i"><use href="#i-search"/></svg><span>Search patients, services...</span></div>
+          <div class="r-sel"><svg class="m-i"><use href="#i-filter"/></svg><span class="v">All Follow-ups</span><span>⌄</span></div>
+          <div class="r-sort"><span>Sort by</span><div class="r-sel"><span class="v" style="text-align:left">Tentative Date (Earliest First)</span><span>⌄</span></div></div>
+          <div class="r-rc"><div class="nm">Anjali Railkar</div>
+            <div class="ln"><span class="k">Tentative Date</span><span class="v"><span class="r-red">Sep 11, 2025</span> <span class="r-bdg r-ov">Overdue</span></span></div>
+            <div class="ln"><span class="k">Suggested Service</span><span class="v">PAIN FOLLOW UP</span></div>
+            <div class="ln"><span class="k">Original Service</span><span class="v">Implant Placement</span></div>
+            <div class="ln"><span class="k">Original Doctor</span><span class="v">Dr. Bhargavi Kolhapure</span></div>
+            <div class="ln"><span class="k">Notes</span><span class="v" style="color:#64748b">-</span></div>
+            <div class="act"><span class="m-b m-out r-ib"><svg class="m-i"><use href="#i-info"/></svg></span><span class="m-b m-out grow" style="color:#4A90E2"><svg class="m-i"><use href="#i-clock"/></svg> Schedule</span><span class="m-b m-out grow"><svg class="m-i"><use href="#i-alarm"/></svg> Snooze</span><span class="m-b m-out r-ib r-del"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+          </div>
+          <div class="r-rc"><div class="nm">Pallavi Naikare</div>
+            <div class="ln"><span class="k">Tentative Date</span><span class="v"><span class="r-red">Sep 11, 2025</span> <span class="r-bdg r-ov">Overdue</span></span></div>
+            <div class="ln"><span class="k">Suggested Service</span><span class="v">PAIN FOLLOW UP</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Desktop's 7-column table becomes <b>one card per follow-up</b> with the same fields and the <b>desktop column names</b> as grey labels: Tentative Date (red + <b>Overdue</b> badge when past), Suggested Service, Original Service, Original Doctor, Notes. The action buttons are the same and in the same order as desktop: <b>ⓘ details, Schedule</b> (clinic colour), <b>Snooze, 🗑 Delete</b>. The 3 tab buttons sit under the card title, full width, so all 3 are visible. <b>Search</b> and the <b>status filter</b> stay as they are today (full width).</div>
+  </div>
+
+  <div class="m-col"><h3>2. Status filter open</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="m-tt" style="font-size:18px">Recall List</div><div class="m-ds" style="margin:1px 0 7px">Manage follow-up appointments and patient recalls</div>
+        <div class="r-card0">
+          <div class="r-ct">Tentative Follow-ups</div><div class="r-cd">Patients due for follow-up appointments based on previous treatments</div>
+          <div class="r-tabs"><span class="on">Pending (34)</span><span>Waiting (0)</span><span>Snoozed (1)</span></div>
+          <div class="m-in ph" style="margin-bottom:6px;justify-content:flex-start;gap:6px"><svg class="m-i"><use href="#i-search"/></svg><span>Search patients, services...</span></div>
+          <div class="r-sel m-ring"><svg class="m-i"><use href="#i-filter"/></svg><span class="v">All Follow-ups</span><span>⌄</span></div>
+          <div class="r-sort"><span>Sort by</span><div class="r-sel"><span class="v" style="text-align:left">Tentative Date (Earliest First)</span><span>⌄</span></div></div>
+          <div class="r-rc"><div class="nm">Anjali Railkar</div><div class="ln"><span class="k">Tentative Date</span><span class="v"><span class="r-red">Sep 11, 2025</span> <span class="r-bdg r-ov">Overdue</span></span></div></div>
+        </div>
+      </div>
+      <div class="r-dd" style="top:262px;left:24px;right:24px"><div class="on">All Follow-ups</div><div>Upcoming</div><div>Overdue</div></div>
+    </div>
+    <div class="m-cap">The <b>same drop-down</b> as desktop: All Follow-ups, Upcoming, Overdue. It only shows on the Pending tab. On Waiting and Snoozed it is the greyed-out "Status filters not applicable" box, as on desktop (screen 9).</div>
+  </div>
+
+  <div class="m-col"><h3>3. Sort by (open)</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="m-tt" style="font-size:18px">Recall List</div><div class="m-ds" style="margin:1px 0 7px">Manage follow-up appointments and patient recalls</div>
+        <div class="r-card0">
+          <div class="r-ct">Tentative Follow-ups</div><div class="r-cd">Patients due for follow-up appointments based on previous treatments</div>
+          <div class="r-tabs"><span class="on">Pending (34)</span><span>Waiting (0)</span><span>Snoozed (1)</span></div>
+          <div class="m-in ph" style="margin-bottom:6px;justify-content:flex-start;gap:6px"><svg class="m-i"><use href="#i-search"/></svg><span>Search patients, services...</span></div>
+          <div class="r-sel"><svg class="m-i"><use href="#i-filter"/></svg><span class="v">All Follow-ups</span><span>⌄</span></div>
+          <div class="r-sort"><span>Sort by</span><div class="r-sel m-ring"><span class="v" style="text-align:left">Tentative Date (Earliest First)</span><span>⌄</span></div></div>
+        </div>
+      </div>
+      <div class="r-dd" style="top:296px;left:58px;right:24px"><div class="on">Tentative Date (Earliest First)</div><div>Tentative Date (Latest First)</div><div>Patient (A-Z)</div><div>Patient (Z-A)</div></div>
+    </div>
+    <div class="m-cap">Desktop sorts by tapping the <b>Patient ⇅</b> and <b>Tentative Date ⇅</b> column headers. Cards have no headers, so the phone gets a small <b>Sort by</b> drop-down with exactly those 4 choices, using desktop's own words. Default is unchanged: Tentative Date (Earliest First). <i>My call, same idea as the Patients "Sort by" you approved.</i></div>
+  </div>
+
+  <div class="m-col"><h3>4. Sequence step + notes</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="r-rc"><div class="nm">Swati <span class="r-bdg r-st">Step 1/3</span></div>
+          <div class="ln"><span class="k">Tentative Date</span><span class="v"><span class="r-red">Apr 4, 2026</span> <span class="r-bdg r-ov">Overdue</span></span></div>
+          <div class="ln"><span class="k">Suggested Service</span><span class="v">Recall-1</span></div>
+          <div class="ln"><span class="k">Original Service</span><span class="v">Stage 2</span></div>
+          <div class="ln"><span class="k">Original Doctor</span><span class="v">Dr Rakshandha</span></div>
+          <div class="ln"><span class="k">Notes</span><span class="v"><span class="r-note">Patient travelling until Jan…</span> <span style="color:#2563eb">more</span></span></div>
+          <div class="act"><span class="m-b m-out r-ib"><svg class="m-i"><use href="#i-info"/></svg></span><span class="m-b m-out grow" style="color:#4A90E2"><svg class="m-i"><use href="#i-clock"/></svg> Schedule</span><span class="m-b m-out grow"><svg class="m-i"><use href="#i-alarm"/></svg> Snooze</span><span class="m-b m-out r-ib r-del"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+        </div>
+        <div class="r-rc"><div class="nm">Nachiket <span class="r-bdg r-st">Step 3/3</span></div>
+          <div class="ln"><span class="k">Tentative Date</span><span class="v"><span class="r-red">Mar 20, 2026</span> <span class="r-bdg r-ov">Overdue</span></span></div>
+          <div class="ln"><span class="k">Suggested Service</span><span class="v">Check up</span></div>
+          <div class="ln"><span class="k">Original Service</span><span class="v">Stage 2</span></div>
+          <div class="ln"><span class="k">Original Doctor</span><span class="v">Dr Rakshandha</span></div>
+          <div class="ln"><span class="k">Notes</span><span class="v"><span class="r-note" style="display:block">Patient travelling until January, call after 10th. Prefers evening slots.</span></span></div>
+          <div class="act"><span class="m-b m-out r-ib"><svg class="m-i"><use href="#i-info"/></svg></span><span class="m-b m-out grow" style="color:#4A90E2"><svg class="m-i"><use href="#i-clock"/></svg> Schedule</span><span class="m-b m-out grow"><svg class="m-i"><use href="#i-alarm"/></svg> Snooze</span><span class="m-b m-out r-ib r-del"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Multi-step recalls keep the blue <b>Step 1/3</b> badge next to the name (real DEV data: Swati, Nachiket). On desktop, notes are hidden behind a 📄 button that opens a small "Notes" box. On a phone the note shows on the card, cut to one line; <b>tap it to see all of it</b> (second card), the same as the charting and vitals notes you approved. No note shows "-" like desktop. <i>(Note text is an example; DEV has no recall notes.)</i></div>
+  </div>
+
+  <div class="m-col"><h3>5. "Upcoming" filter</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="r-card0">
+          <div class="r-tabs"><span class="on">Pending (34)</span><span>Waiting (0)</span><span>Snoozed (1)</span></div>
+          <div class="m-in ph" style="margin-bottom:6px;justify-content:flex-start;gap:6px"><svg class="m-i"><use href="#i-search"/></svg><span>Search patients, services...</span></div>
+          <div class="r-sel"><svg class="m-i"><use href="#i-filter"/></svg><span class="v">Upcoming</span><span>⌄</span></div>
+          <div class="r-sort"><span>Sort by</span><div class="r-sel"><span class="v" style="text-align:left">Tentative Date (Earliest First)</span><span>⌄</span></div></div>
+          <div class="r-rc"><div class="nm">Abc</div>
+            <div class="ln"><span class="k">Tentative Date</span><span class="v">Mar 27, 2027</span></div>
+            <div class="ln"><span class="k">Suggested Service</span><span class="v">Recall</span></div>
+            <div class="ln"><span class="k">Original Service</span><span class="v">Scaling And Polishing</span></div>
+            <div class="ln"><span class="k">Original Doctor</span><span class="v">Dr. Bhargavi Kolhapure</span></div>
+            <div class="ln"><span class="k">Notes</span><span class="v" style="color:#64748b">-</span></div>
+            <div class="act"><span class="m-b m-out r-ib"><svg class="m-i"><use href="#i-info"/></svg></span><span class="m-b m-out grow" style="color:#4A90E2"><svg class="m-i"><use href="#i-clock"/></svg> Schedule</span><span class="m-b m-out grow"><svg class="m-i"><use href="#i-alarm"/></svg> Snooze</span><span class="m-b m-out r-ib r-del"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+          </div>
+          <div class="r-rc"><div class="nm">Pramod Pathak</div>
+            <div class="ln"><span class="k">Tentative Date</span><span class="v">Mar 27, 2027</span></div>
+            <div class="ln"><span class="k">Suggested Service</span><span class="v">Recall</span></div>
+            <div class="ln"><span class="k">Original Doctor</span><span class="v">Dr Sanika Modak</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Future dates are in normal black with no Overdue badge, as on desktop. Real DEV counts: <b>Upcoming = 2</b> (these two), <b>Overdue = 32</b>. The tab count stays "Pending (34)", as on desktop (the count ignores the filter).</div>
+  </div>
+
+  <div class="m-col"><h3>6. Search with no match</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="m-tt" style="font-size:18px">Recall List</div><div class="m-ds" style="margin:1px 0 7px">Manage follow-up appointments and patient recalls</div>
+        <div class="r-card0">
+          <div class="r-ct">Tentative Follow-ups</div><div class="r-cd">Patients due for follow-up appointments based on previous treatments</div>
+          <div class="r-tabs"><span class="on">Pending (34)</span><span>Waiting (0)</span><span>Snoozed (1)</span></div>
+          <div class="m-in" style="margin-bottom:6px;justify-content:flex-start;gap:6px"><svg class="m-i"><use href="#i-search"/></svg><span style="flex:1">zzzz</span><span style="color:#64748b">✕</span></div>
+          <div class="r-sel"><svg class="m-i"><use href="#i-filter"/></svg><span class="v">All Follow-ups</span><span>⌄</span></div>
+          <div class="r-empty"><svg class="m-i" style="width:30px;height:30px;color:#64748b"><use href="#i-cal"/></svg><div class="t">No pending follow-ups</div><div class="d">There are no pending follow-ups that match your filters.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Same empty message as desktop. The search box is a normal search field, so the phone's own ✕ clears it. Search looks in patient, suggested service, original service, doctor and notes, the same as desktop. The <b>Sort by</b> box hides when there are no cards.</div>
+  </div>
+
+  <div class="m-col"><h3>7. User without Delete permission</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">R</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="r-rc"><div class="nm">Anjali Railkar</div>
+          <div class="ln"><span class="k">Tentative Date</span><span class="v"><span class="r-red">Sep 11, 2025</span> <span class="r-bdg r-ov">Overdue</span></span></div>
+          <div class="ln"><span class="k">Suggested Service</span><span class="v">PAIN FOLLOW UP</span></div>
+          <div class="ln"><span class="k">Original Service</span><span class="v">Implant Placement</span></div>
+          <div class="ln"><span class="k">Original Doctor</span><span class="v">Dr. Bhargavi Kolhapure</span></div>
+          <div class="ln"><span class="k">Notes</span><span class="v" style="color:#64748b">-</span></div>
+          <div class="act"><span class="m-b m-out r-ib"><svg class="m-i"><use href="#i-info"/></svg></span><span class="m-b m-out grow" style="color:#4A90E2"><svg class="m-i"><use href="#i-clock"/></svg> Schedule</span><span class="m-b m-out grow"><svg class="m-i"><use href="#i-alarm"/></svg> Snooze</span></div>
+        </div>
+        <div class="r-rc"><div class="nm">Mrs. Chaya Shirude</div>
+          <div class="ln"><span class="k">Tentative Date</span><span class="v"><span class="r-red">Sep 21, 2025</span> <span class="r-bdg r-ov">Overdue</span></span></div>
+          <div class="ln"><span class="k">Suggested Service</span><span class="v">PAIN FOLLOW UP</span></div>
+          <div class="ln"><span class="k">Original Service</span><span class="v">Extraction</span></div>
+          <div class="ln"><span class="k">Original Doctor</span><span class="v">Dr. Sudhir Pawar</span></div>
+          <div class="ln"><span class="k">Notes</span><span class="v" style="color:#64748b">-</span></div>
+          <div class="act"><span class="m-b m-out r-ib"><svg class="m-i"><use href="#i-info"/></svg></span><span class="m-b m-out grow" style="color:#4A90E2"><svg class="m-i"><use href="#i-clock"/></svg> Schedule</span><span class="m-b m-out grow"><svg class="m-i"><use href="#i-alarm"/></svg> Snooze</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">The 🗑 button follows the same permission as desktop (<b>recall_list.delete</b>). Without it, the button simply isn't there and Schedule/Snooze share the space. The page itself still needs <b>recall_list.view</b>, as today.</div>
+  </div>
+
+  <div class="m-col"><h3>8. Meditouch selected</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#6CBFBF">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EAF6F6;color:#3A8F8F;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span>Dental Metrix</span><span class="on" style="color:#6CBFBF;background:#EAF6F6">Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="m-tt" style="font-size:18px">Recall List</div><div class="m-ds" style="margin:1px 0 7px">Manage follow-up appointments and patient recalls</div>
+        <div class="r-card0">
+          <div class="r-ct">Tentative Follow-ups</div><div class="r-cd">Patients due for follow-up appointments based on previous treatments</div>
+          <div class="r-tabs"><span class="on">Pending (4)</span><span>Waiting (0)</span><span>Snoozed (0)</span></div>
+          <div class="m-in ph" style="margin-bottom:6px;justify-content:flex-start;gap:6px"><svg class="m-i"><use href="#i-search"/></svg><span>Search patients, services...</span></div>
+          <div class="r-sel"><svg class="m-i"><use href="#i-filter"/></svg><span class="v">All Follow-ups</span><span>⌄</span></div>
+          <div class="r-rc"><div class="nm">Gayatri Gujrathi</div>
+            <div class="ln"><span class="k">Tentative Date</span><span class="v"><span class="r-red">Oct 20, 2025</span> <span class="r-bdg r-ov">Overdue</span></span></div>
+            <div class="ln"><span class="k">Suggested Service</span><span class="v">Lina Dighe</span></div>
+            <div class="act"><span class="m-b m-out r-ib"><svg class="m-i"><use href="#i-info"/></svg></span><span class="m-b m-out grow" style="color:#6CBFBF"><svg class="m-i"><use href="#i-clock"/></svg> Schedule</span><span class="m-b m-out grow"><svg class="m-i"><use href="#i-alarm"/></svg> Snooze</span><span class="m-b m-out r-ib r-del"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Switching clinic in the top bar shows only that clinic's recalls, with new counts, exactly as desktop (real DEV: <b>Pending (4)</b> for Meditouch). The <b>Schedule</b> text turns Meditouch teal like desktop. The selected tab stays the app's blue on both clinics, as on desktop.</div>
+  </div>
+</div>
+
+<!-- ======================= B. WAITING & SNOOZED ======================= -->
+<div class="m-sec"><h2>B. Waiting and Snoozed tabs</h2></div>
+<div class="m-grid">
+
+  <div class="m-col"><h3>9. Waiting tab</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="r-card0">
+          <div class="r-ct">Tentative Follow-ups</div><div class="r-cd">Patients due for follow-up appointments based on previous treatments</div>
+          <div class="r-tabs"><span>Pending (34)</span><span class="on">Waiting (2)</span><span>Snoozed (1)</span></div>
+          <div class="m-in ph" style="margin-bottom:6px;justify-content:flex-start;gap:6px"><svg class="m-i"><use href="#i-search"/></svg><span>Search patients, services...</span></div>
+          <div class="r-sel dis"><svg class="m-i"><use href="#i-filter"/></svg><span class="v" style="text-align:left">Status filters not applicable</span></div>
+          <div class="r-sort"><span>Sort by</span><div class="r-sel"><span class="v" style="text-align:left">Tentative Date (Earliest First)</span><span>⌄</span></div></div>
+          <div class="r-rc"><div class="nm">Swati <span class="r-bdg r-wt">Step 2/3 (Waiting)</span></div>
+            <div class="ln"><span class="k">Tentative Date</span><span class="v">Jul 4, 2026</span></div>
+            <div class="ln"><span class="k">Suggested Service</span><span class="v">Recall-2</span></div>
+            <div class="ln"><span class="k">Original Service</span><span class="v">Stage 2</span></div>
+            <div class="ln"><span class="k">Original Doctor</span><span class="v">Dr Rakshandha</span></div>
+            <div class="ln"><span class="k">Notes</span><span class="v" style="color:#64748b">-</span></div>
+            <div class="act"><span class="m-b m-out r-ib"><svg class="m-i"><use href="#i-info"/></svg></span><span class="m-b m-out grow"><svg class="m-i"><use href="#i-clock"/></svg> Activate Early</span><span class="m-b m-out r-ib r-del"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Same as desktop: a grey <b>Step 2/3 (Waiting)</b> badge, dates never red (no Overdue on this tab), and the buttons <b>ⓘ, Activate Early, 🗑</b>. The status filter becomes the greyed-out "Status filters not applicable" box. <i>(Example cards: DEV has 0 waiting recalls today.)</i></div>
+  </div>
+
+  <div class="m-col"><h3>10. Waiting tab empty (real DEV)</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="m-tt" style="font-size:18px">Recall List</div><div class="m-ds" style="margin:1px 0 7px">Manage follow-up appointments and patient recalls</div>
+        <div class="r-card0">
+          <div class="r-ct">Tentative Follow-ups</div><div class="r-cd">Patients due for follow-up appointments based on previous treatments</div>
+          <div class="r-tabs"><span>Pending (34)</span><span class="on">Waiting (0)</span><span>Snoozed (1)</span></div>
+          <div class="m-in ph" style="margin-bottom:6px;justify-content:flex-start;gap:6px"><svg class="m-i"><use href="#i-search"/></svg><span>Search patients, services...</span></div>
+          <div class="r-sel dis"><svg class="m-i"><use href="#i-filter"/></svg><span class="v" style="text-align:left">Status filters not applicable</span></div>
+          <div class="r-empty"><svg class="m-i" style="width:30px;height:30px;color:#64748b"><use href="#i-cal"/></svg><div class="t">No waiting follow-ups</div><div class="d">There are no waiting follow-ups. Waiting follow-ups are future steps in a sequence that will become active when previous steps are completed.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Same empty message as desktop, word for word.</div>
+  </div>
+
+  <div class="m-col"><h3>11. Snoozed tab (real DEV)</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="m-tt" style="font-size:18px">Recall List</div><div class="m-ds" style="margin:1px 0 7px">Manage follow-up appointments and patient recalls</div>
+        <div class="r-card0">
+          <div class="r-ct">Tentative Follow-ups</div><div class="r-cd">Patients due for follow-up appointments based on previous treatments</div>
+          <div class="r-tabs"><span>Pending (34)</span><span>Waiting (0)</span><span class="on">Snoozed (1)</span></div>
+          <div class="m-in ph" style="margin-bottom:6px;justify-content:flex-start;gap:6px"><svg class="m-i"><use href="#i-search"/></svg><span>Search patients, services...</span></div>
+          <div class="r-sel dis"><svg class="m-i"><use href="#i-filter"/></svg><span class="v" style="text-align:left">Status filters not applicable</span></div>
+          <div class="r-sort"><span>Sort by</span><div class="r-sel"><span class="v" style="text-align:left">Tentative Date (Earliest First)</span><span>⌄</span></div></div>
+          <div class="r-rc"><div class="nm">Swati Gode</div>
+            <div class="ln"><span class="k">Tentative Date</span><span class="v">Sep 7, 2025<br><span class="r-snz">Snoozed until Apr 25, 2026</span></span></div>
+            <div class="ln"><span class="k">Suggested Service</span><span class="v">PAIN FOLLOW UP</span></div>
+            <div class="ln"><span class="k">Original Service</span><span class="v">Extraction</span></div>
+            <div class="ln"><span class="k">Original Doctor</span><span class="v">Dr. Sudhir Pawar</span></div>
+            <div class="ln"><span class="k">Notes</span><span class="v" style="color:#64748b">-</span></div>
+            <div class="act"><span class="m-b m-out r-ib"><svg class="m-i"><use href="#i-info"/></svg></span><span class="m-b m-out grow"><svg class="m-i"><use href="#i-clock"/></svg> Activate</span><span class="m-b m-out r-ib r-del"><svg class="m-i"><use href="#i-trash"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Same as desktop: the date with a small grey <b>"Snoozed until …"</b> line under it, and the buttons <b>ⓘ, Activate, 🗑</b>. Activate moves it back to Pending.</div>
+  </div>
+
+  <div class="m-col"><h3>12. Snoozed tab empty</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#6CBFBF">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EAF6F6;color:#3A8F8F;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span>Dental Metrix</span><span class="on" style="color:#6CBFBF;background:#EAF6F6">Meditouch</span></div></div>
+      <div class="r-pg">
+        <div class="m-tt" style="font-size:18px">Recall List</div><div class="m-ds" style="margin:1px 0 7px">Manage follow-up appointments and patient recalls</div>
+        <div class="r-card0">
+          <div class="r-ct">Tentative Follow-ups</div><div class="r-cd">Patients due for follow-up appointments based on previous treatments</div>
+          <div class="r-tabs"><span>Pending (4)</span><span>Waiting (0)</span><span class="on">Snoozed (0)</span></div>
+          <div class="m-in ph" style="margin-bottom:6px;justify-content:flex-start;gap:6px"><svg class="m-i"><use href="#i-search"/></svg><span>Search patients, services...</span></div>
+          <div class="r-sel dis"><svg class="m-i"><use href="#i-filter"/></svg><span class="v" style="text-align:left">Status filters not applicable</span></div>
+          <div class="r-empty"><svg class="m-i" style="width:30px;height:30px;color:#64748b"><use href="#i-cal"/></svg><div class="t">No snoozed follow-ups</div><div class="d">There are no snoozed follow-ups. When you snooze a follow-up, it will appear here.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Same empty message as desktop (shown here on Meditouch, which has 0 snoozed in DEV).</div>
+  </div>
+</div>
+
+<!-- ======================= C. POPUPS ======================= -->
+<div class="m-sec"><h2>C. Popups and confirmations</h2></div>
+<div class="m-grid">
+
+  <div class="m-col"><h3>13. Follow-up Details (ⓘ)</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-shade"></div>
+      <div class="m-dlg" style="top:70px">
+        <span class="m-x">✕</span>
+        <div class="m-tt" style="justify-content:center;padding:0 18px">Follow-up Details</div>
+        <div class="r-kv" style="margin-top:12px">
+          <div><span>Patient</span>Swati Gode</div><div><span>Due Date</span>Sep 7, 2025</div>
+          <div><span>Suggested Service</span>PAIN FOLLOW UP</div><div><span>Original Service</span>Extraction</div>
+          <div><span>Original Doctor</span>Dr. Sudhir Pawar</div><div><span>Status</span>Snoozed</div>
+          <div><span>Sequence</span>Step 1 of 1</div><div><span>Snoozed Until</span>Apr 25, 2026</div>
+        </div>
+        <div style="text-align:left;margin-top:9px;font-size:11px"><span style="display:block;color:#64748b;font-size:10px;font-weight:500">Notes</span>Patient travelling, call after April.</div>
+        <div class="m-b m-out" style="margin-top:12px">Close</div>
+      </div>
+    </div>
+    <div class="m-cap">Unchanged: it already fits on a phone (checked at 384 px). Centred popup, 80% black behind it, the same 2-column details. Type, Sequence, Snoozed Until and Notes appear only when the recall has them, as on desktop. <i>(Notes text is an example.)</i></div>
+  </div>
+
+  <div class="m-col"><h3>14. Snooze Follow-up</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-shade"></div>
+      <div class="m-dlg" style="top:110px">
+        <span class="m-x">✕</span>
+        <div class="m-tt" style="justify-content:center;padding:0 18px">Snooze Follow-up</div>
+        <div class="m-ds" style="text-align:center">Temporarily hide this follow-up until the patient is available.</div>
+        <div class="m-lb">Snooze Until</div><div class="m-in" style="justify-content:flex-start;gap:8px"><svg class="m-i"><use href="#i-cal"/></svg>November 26th, 2026</div>
+        <div class="m-lb">Special Notes</div><div class="m-in ph ta" style="height:46px">Add notes about patient availability (e.g., 'Patient traveling until January')</div>
+        <div class="m-b m-def" style="margin-top:12px">Snooze Follow-up</div>
+        <div class="m-b m-out" style="margin-top:5px">Cancel</div>
+      </div>
+    </div>
+    <div class="m-cap">Unchanged: it already fits. The date starts at <b>1 month from today</b>, and any existing note is pre-filled, as on desktop. Snooze Follow-up stays disabled until a date is chosen. It is short, so it stays a centred popup (same rule as the other short popups), not full screen.</div>
+  </div>
+
+  <div class="m-col"><h3>15. Snooze: step in a sequence</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-shade"></div>
+      <div class="m-dlg" style="top:84px">
+        <span class="m-x">✕</span>
+        <div class="m-tt" style="justify-content:center;padding:0 18px">Snooze Follow-up</div>
+        <div class="m-ds" style="text-align:center">Temporarily hide this follow-up until the patient is available.
+          <div class="r-amber"><b>Note:</b> This follow-up is step 1 of 3 in a sequence. All subsequent steps will also be rescheduled accordingly.</div></div>
+        <div class="m-lb">Snooze Until</div><div class="m-in" style="justify-content:flex-start;gap:8px"><svg class="m-i"><use href="#i-cal"/></svg>November 26th, 2026</div>
+        <div class="m-lb">Special Notes</div><div class="m-in ph ta" style="height:46px">Add notes about patient availability (e.g., 'Patient traveling until January')</div>
+        <div class="m-b m-def" style="margin-top:12px">Snooze Follow-up</div>
+        <div class="m-b m-out" style="margin-top:5px">Cancel</div>
+      </div>
+    </div>
+    <div class="m-cap">For a multi-step recall (e.g. Swati, Step 1/3) the same amber note as desktop appears. On the last step (3 of 3) the second sentence is left out, as on desktop.</div>
+  </div>
+
+  <div class="m-col"><h3>16. Snooze: calendar open</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-shade"></div>
+      <div class="m-dlg" style="top:110px">
+        <span class="m-x">✕</span>
+        <div class="m-tt" style="justify-content:center;padding:0 18px">Snooze Follow-up</div>
+        <div class="m-ds" style="text-align:center">Temporarily hide this follow-up until the patient is available.</div>
+        <div class="m-lb">Snooze Until</div><div class="m-in" style="justify-content:flex-start;gap:8px"><svg class="m-i"><use href="#i-cal"/></svg>November 26th, 2026</div>
+        <div style="height:150px"></div>
+      </div>
+      <div class="m-cal bordered" style="position:absolute;top:236px;left:20px;width:230px;background:#fff;z-index:7;box-shadow:0 8px 24px #0003">
+        <div class="cap"><span class="nb l">‹</span>October 2026<span class="nb r">›</span></div>
+        <div class="row hd"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+        <div class="row"><span class="o">18</span><span class="o">19</span><span class="o">20</span><span class="o">21</span><span class="o">22</span><span class="o">23</span><span class="o">24</span></div>
+        <div class="row"><span class="o">25</span><span class="o">26</span><span>27</span><span>28</span><span>29</span><span>30</span><span>31</span></div>
+      </div>
+    </div>
+    <div class="m-cap">The <b>same calendar</b> as desktop, opening under the date box. Past days are faded and can't be picked, as on desktop. (Today it opens on the current month even though the date is next month; that's how desktop behaves too, so it stays.)</div>
+  </div>
+
+  <div class="m-col"><h3>17. Delete Follow-up</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-shade"></div>
+      <div class="m-dlg" style="top:140px;text-align:center">
+        <div class="m-tt" style="justify-content:center">Delete Follow-up</div>
+        <div class="m-ds" style="margin-top:8px;line-height:1.5">Are you sure you want to delete this follow-up for <b>Anjali Railkar</b>?<br><br><b>Service:</b> PAIN FOLLOW UP<br><b>Date:</b> Sep 11, 2025<br><br><b>This action cannot be undone.</b></div>
+        <div class="m-b" style="background:#dc2626;color:#fff;margin-top:6px">Delete Follow-up</div>
+        <div class="m-b m-out" style="margin-top:5px">Cancel</div>
+      </div>
+    </div>
+    <div class="m-cap">Unchanged: it already fits. Same words, red <b>Delete Follow-up</b> button, Cancel under it (the phone stacks the buttons, as all short confirmations do).</div>
+  </div>
+
+  <div class="m-col"><h3>18. Delete: step in a sequence</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-shade"></div>
+      <div class="m-dlg" style="top:120px;text-align:center">
+        <div class="m-tt" style="justify-content:center">Delete Follow-up</div>
+        <div class="m-ds" style="margin-top:8px;line-height:1.5">Are you sure you want to delete this follow-up for <b>Swati</b>?<br><br><b>Service:</b> Recall-2<br><b>Date:</b> Jul 4, 2026<br><b>Step:</b> 2 of 3<br><br><span style="font-size:10px">Note: The next step in this sequence will automatically become pending.</span><br><b>This action cannot be undone.</b></div>
+        <div class="m-b" style="background:#dc2626;color:#fff;margin-top:6px">Delete Follow-up</div>
+        <div class="m-b m-out" style="margin-top:5px">Cancel</div>
+      </div>
+    </div>
+    <div class="m-cap">For a step after the first, the <b>Step: 2 of 3</b> line shows. If later steps exist, the note "The next step in this sequence will automatically become pending" shows too. Same text as desktop. <i>(Example data.)</i></div>
+  </div>
+
+  <div class="m-col"><h3>19. Messages (toasts)</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="r-toast"><b>Follow-up Snoozed</b>Follow-up for Anjali Railkar has been snoozed until Nov 26, 2026.</div>
+      <div class="r-pg" style="padding-top:92px">
+        <div class="r-card0">
+          <div class="r-tabs"><span class="on">Pending (33)</span><span>Waiting (0)</span><span>Snoozed (2)</span></div>
+          <div class="r-rc"><div class="nm">Pallavi Naikare</div><div class="ln"><span class="k">Tentative Date</span><span class="v"><span class="r-red">Sep 11, 2025</span> <span class="r-bdg r-ov">Overdue</span></span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="m-cap">Every message keeps its desktop title and text and appears at the top, like the rest of the app on a phone. The counts update straight away. The full list is in section E.</div>
+  </div>
+</div>
+
+<!-- ======================= D. SCHEDULE ======================= -->
+<div class="m-sec"><h2>D. Schedule (books the recall)</h2></div>
+<div class="m-grid">
+  <div class="m-col"><h3>20. Tap Schedule → booking form</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="r-toast" style="top:6px"><b>Follow-up Appointment</b>Creating appointment for Anjali Railkar based on a follow-up reminder.</div>
+      <div style="height:62px"></div>
+      <div class="m-lb">Patient</div><div class="m-in">Anjali Railkar <svg class="m-i"><use href="#i-search"/></svg></div>
+      <div class="m-b m-pri" style="margin-top:5px">+ Add New Patient</div>
+      <div class="m-lb">Service</div><div class="m-in">Implant Placement <svg class="m-i"><use href="#i-search"/></svg></div>
+      <div class="m-lb">Follow-up Service</div><div class="m-in dis">PAIN FOLLOW UP</div>
+      <div class="m-lb">Appointment Date</div><div class="m-in" style="justify-content:flex-start;gap:8px"><svg class="m-i"><use href="#i-cal"/></svg>September 11th, 2025</div>
+      <div class="m-lb">Time Slot</div><div class="m-in ph"><span>Select time slot</span><span>⌄</span></div>
+      <div class="m-lb">Doctor</div><div class="m-in">Dr. Bhargavi Kolhapure <svg class="m-i"><use href="#i-search"/></svg></div>
+      <div class="m-foot"><span class="m-b m-pri">Create Appointment</span><span class="m-b m-out">Cancel</span></div>
+    </div></div>
+    <div class="m-cap"><b>Already works on the phone today; nothing new to build.</b> Schedule opens Appointments with the full-screen <b>Create New Appointment</b> form pre-filled: patient, service, the grey Follow-up Service box, date, doctor and the note "Follow-up appointment for …". Then the normal flow continues: Book Appointment → Booked → Confirm → Mark as Completed. (Checked live at 384 px; nothing was saved.)</div>
+  </div>
+</div>
+
+<!-- ======================= E. RULES / EDGE CASES ======================= -->
+<div class="m-sec"><h2>E. Messages, edge cases and corner cases</h2></div>
+<div style="display:flex;flex-wrap:wrap;gap:30px">
+  <div style="flex:1;min-width:300px">
+    <h3>All messages (unchanged, same words as desktop)</h3>
+    <ul class="r-list">
+      <li><b>Follow-up Snoozed</b>: "Follow-up for {name} has been snoozed until {date}."</li>
+      <li><b>Follow-up Sequence Updated</b>: snoozing a step that has later steps; "…All subsequent steps in this sequence have been rescheduled accordingly."</li>
+      <li><b>Follow-up Activated</b> (Snoozed → Activate): "…has been moved back to the pending list." (plus the sequence note for multi-step)</li>
+      <li><b>Follow-up Activated</b> (Waiting → Activate Early): "Step {n} for {name} has been activated and moved to the pending list."</li>
+      <li><b>Follow-up Deleted</b>: "{name}'s follow-up has been deleted." or "Step {n} deleted. Step {n+1} is now pending."</li>
+      <li><b>Error</b> (red): "Failed to snooze / activate / delete follow-up. Please try again."</li>
+      <li><b>Follow-up Appointment</b> (after Schedule, from the Appointments page)</li>
+    </ul>
+  </div>
+  <div style="flex:1;min-width:300px">
+    <h3>Edge and corner cases (all behave exactly as desktop)</h3>
+    <ul class="r-list">
+      <li><b>Long names / services / doctors</b> wrap inside the card; nothing is cut and nothing scrolls sideways (this will be checked at 360, 384 and 412 px during the build).</li>
+      <li><b>Very long notes</b>: one line on the card, tap to see all; the full note is also in ⓘ Details.</li>
+      <li><b>Duplicate-looking rows</b> (e.g. Kanti Devi, Sep 28, 2025 appears several times in DEV): the phone shows exactly the rows desktop shows, one card per row, with the same duplicate-removal rule.</li>
+      <li><b>Overdue badge</b>: Pending tab only, any date before now. Waiting and Snoozed never show it.</li>
+      <li><b>Due today</b>: today's recalls count as "Upcoming" in the filter, but the card still shows red/Overdue once the day has started. That's how desktop behaves; it stays (listed as an existing issue).</li>
+      <li><b>0 recalls</b> on a tab: the empty message for that tab (screens 6, 10, 12).</li>
+      <li><b>While loading</b>: the page shows the empty message for a moment, as desktop does (no spinner exists today).</li>
+      <li><b>Clinic switch</b>: list and counts change instantly (screen 8).</li>
+      <li><b>No delete permission</b>: no 🗑 on any tab (screen 7).</li>
+      <li><b>Overdue recall → Schedule</b>: the form opens on the old due date (e.g. Sep 11, 2025), same as desktop; the receptionist picks a new date.</li>
+      <li><b>Phone sideways and tablets</b> (up to 1023 px wide): the same card layout, cards using the full width. 1024 px and up: the desktop table, unchanged.</li>
+      <li>The hidden "Refresh &amp; Create Missing" button stays hidden. "Clear Sequence Filter" can't appear (nothing turns it on, on desktop either), so it isn't drawn.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="m-sec"><h2>F. Existing issues found (not changed by this work)</h2></div>
+<ul class="r-list">
+  <li><b>Desktop at 1440 px:</b> the Action column (🗑) and the "Snoozed" tab button are cut off on the right of the table. This is a desktop layout problem; the phone design doesn't touch desktop, so it stays unless you ask for a separate fix.</li>
+  <li><b>"Due today" mismatch</b> between the Upcoming filter and the Overdue badge (see section E).</li>
+  <li><b>Activate Early</b> shows no error message if it fails (desktop too).</li>
+</ul>
