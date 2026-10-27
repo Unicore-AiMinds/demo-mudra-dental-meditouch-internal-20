@@ -32,6 +32,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useIsCompact } from '@/hooks/use-compact';
+import { cn } from '@/lib/utils';
+import { COMPACT_FULLSCREEN_DIALOG, COMPACT_DIALOG_BODY, COMPACT_STICKY_FOOTER } from '@/lib/compact';
 
 // Define the patient type
 interface Patient {
@@ -67,6 +70,7 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
   prefill
 }) => {
   const { activeClinic } = useClinic();
+  const isCompact = useIsCompact();
   const { patients, addPatient } = usePatients();
   const { toast } = useToast();
   const [isConfirmAddOpen, setIsConfirmAddOpen] = useState(false);
@@ -340,15 +344,15 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : "sm:max-w-[600px] max-h-[90vh] overflow-y-auto"}>
+          <DialogHeader className={isCompact ? "px-4 pt-4 text-left" : undefined}>
             <DialogTitle>Add New Patient</DialogTitle>
             <DialogDescription>
               Enter the patient details below. Fields marked with <span className="text-red-500">*</span> are required.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAddPatient}>
-            <div className="grid gap-4 py-4">
+          <form onSubmit={handleAddPatient} className={isCompact ? "flex min-h-0 flex-1 flex-col" : undefined}>
+            <div className={isCompact ? `grid content-start gap-4 ${COMPACT_DIALOG_BODY}` : "grid gap-4 py-4"}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name <span className="text-red-500 ml-1">*</span></Label>
@@ -631,7 +635,7 @@ const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
                 </div>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className={isCompact ? cn(COMPACT_STICKY_FOOTER, "flex-col-reverse sm:flex-col-reverse") : undefined}>
               <Button variant="outline" type="button" onClick={handleDialogClose}>
                 Cancel
               </Button>

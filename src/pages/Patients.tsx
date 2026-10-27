@@ -11,6 +11,12 @@ import {
 import { useClinic } from '@/contexts/ClinicContext';
 import { capitalizeWords } from '@/utils/string-utils';
 import { usePatients, Patient } from '@/contexts/PatientContext';
+import { useIsCompact } from '@/hooks/use-compact';
+import { cn } from '@/lib/utils';
+import { COMPACT_FULLSCREEN_DIALOG, COMPACT_DIALOG_BODY, COMPACT_STICKY_FOOTER } from '@/lib/compact';
+import PatientCardList from '@/components/patients/compact/PatientCardList';
+import PatientSortSelect from '@/components/patients/compact/PatientSortSelect';
+import CompactPagination from '@/components/patients/compact/CompactPagination';
 import { usePermissions } from '@/contexts/PermissionContext';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import {
@@ -132,6 +138,7 @@ const getClinicBadge = (clinic: Patient['clinic'], activeClinic: 'dental' | 'med
 const Patients = () => {
   const { activeClinic } = useClinic();
   const { hasPermission } = usePermissions();
+  const isCompact = useIsCompact();
   const navigate = useNavigate();
   const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
   const [isEditPatientDialogOpen, setIsEditPatientDialogOpen] = useState(false);
@@ -1058,7 +1065,7 @@ const Patients = () => {
           <h1 className="text-3xl font-bold tracking-tight">Patients</h1>
           <p className="text-muted-foreground">Manage patient records and information</p>
         </div>
-        <div className="flex gap-2">
+        <div className={isCompact ? "flex gap-2 [&>*]:flex-1 [&>*]:min-w-0" : "flex gap-2"}>
           {hasPermission('patients.export') && (
             <Button
               variant="outline"
@@ -1123,13 +1130,13 @@ const Patients = () => {
         {/* Single table component for all tabs */}
         <div className="pt-4">
           <Card>
-            <CardHeader className="pb-0">
+            <CardHeader className={isCompact ? "px-3 pt-4 pb-0" : "pb-0"}>
               <CardTitle>
                 {currentTab === 'all' ? 'Patient Registry' :
                  currentTab === 'dental' ? 'Dental Metrix Patients' : 'Meditouch Patients'}
               </CardTitle>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
+            <CardContent className={isCompact ? "px-3 pb-3" : "overflow-x-auto"}>
               {isLoading ? (
                 <div className="space-y-4">
                   <div className="flex items-center space-x-4">
@@ -1144,6 +1151,23 @@ const Patients = () => {
                       ))}
                     </div>
                   ))}
+                </div>
+              ) : isCompact ? (
+                <div className="space-y-3 pt-3">
+                  <PatientSortSelect sorting={sorting} onChange={setSorting} />
+                  <PatientCardList
+                    rows={table.getRowModel().rows}
+                    lastVisitDates={patientLastVisitDates}
+                    renderClinicBadge={(clinic) => getClinicBadge(clinic, activeClinic)}
+                    onView={handleViewDetails}
+                    onEdit={handleEditPatientClick}
+                    onDelete={(patient) => {
+                      setCurrentEditPatient(patient);
+                      setIsConfirmDeleteOpen(true);
+                    }}
+                    canEdit={hasPermission('patients.edit')}
+                    canDelete={hasPermission('patients.delete')}
+                  />
                 </div>
               ) : (
                 <Table>
@@ -1191,7 +1215,8 @@ const Patients = () => {
           </Card>
           
           {/* Pagination */}
-          {!isLoading && filteredPatientsList.length > 0 && (
+          {!isLoading && filteredPatientsList.length > 0 && isCompact && <CompactPagination table={table} />}
+          {!isLoading && filteredPatientsList.length > 0 && !isCompact && (
             <div className="flex items-center justify-between space-x-6 lg:space-x-8 py-4">
               <div className="flex items-center space-x-2">
                 <p className="text-sm font-medium">Rows per page</p>
@@ -1292,15 +1317,15 @@ const Patients = () => {
       </Tabs>
 
       <Dialog open={isAddPatientDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : "sm:max-w-[600px] max-h-[90vh] overflow-y-auto"}>
+          <DialogHeader className={isCompact ? "px-4 pt-4 text-left" : undefined}>
             <DialogTitle>Add New Patient</DialogTitle>
             <DialogDescription>
               Enter the patient details below. Fields marked with <span className="text-red-500">*</span> are required.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAddPatient}>
-            <div className="grid gap-4 py-4">
+          <form onSubmit={handleAddPatient} className={isCompact ? "flex min-h-0 flex-1 flex-col" : undefined}>
+            <div className={isCompact ? `grid content-start gap-4 ${COMPACT_DIALOG_BODY}` : "grid gap-4 py-4"}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name <span className="text-red-500 ml-1">*</span></Label>
@@ -1587,7 +1612,7 @@ const Patients = () => {
 
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className={isCompact ? cn(COMPACT_STICKY_FOOTER, 'flex-col-reverse sm:flex-col-reverse') : undefined}>
               <Button variant="outline" type="button" onClick={handleDialogClose}>
                 Cancel
               </Button>
@@ -1606,16 +1631,16 @@ const Patients = () => {
 
       {/* Edit Patient Dialog */}
       <Dialog open={isEditPatientDialogOpen} onOpenChange={handleEditDialogClose}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : "sm:max-w-[600px] max-h-[90vh] overflow-y-auto"}>
+          <DialogHeader className={isCompact ? "px-4 pt-4 text-left" : undefined}>
             <DialogTitle>Edit Patient</DialogTitle>
             <DialogDescription>
               Update the patient details below. Fields marked with <span className="text-red-500">*</span> are required.
             </DialogDescription>
           </DialogHeader>
           {currentEditPatient && (
-            <form onSubmit={handleUpdatePatient}>
-              <div className="grid gap-4 py-4">
+            <form onSubmit={handleUpdatePatient} className={isCompact ? "flex min-h-0 flex-1 flex-col" : undefined}>
+              <div className={isCompact ? `grid content-start gap-4 ${COMPACT_DIALOG_BODY}` : "grid gap-4 py-4"}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Full Name <span className="text-red-500 ml-1">*</span></Label>
@@ -1895,7 +1920,7 @@ const Patients = () => {
                   </div>
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className={isCompact ? cn(COMPACT_STICKY_FOOTER, 'flex-col-reverse sm:flex-col-reverse') : undefined}>
                 <Button variant="outline" type="button" onClick={handleEditDialogClose}>
                   Cancel
                 </Button>

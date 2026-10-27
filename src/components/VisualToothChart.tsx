@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useIsCompact } from '@/hooks/use-compact';
 
 interface VisualToothChartProps {
   selectedTeeth: string[];
@@ -18,6 +19,7 @@ const VisualToothChart: React.FC<VisualToothChartProps> = ({
   // State to toggle between permanent and primary teeth
   // Use the external prop if provided, otherwise use internal state
   const [internalShowPrimaryTeeth, setInternalShowPrimaryTeeth] = useState(false);
+  const isCompact = useIsCompact();
 
   // Use the external prop if provided, otherwise use internal state
   const showPrimaryTeeth = externalShowPrimaryTeeth !== undefined ? externalShowPrimaryTeeth : internalShowPrimaryTeeth;
@@ -104,6 +106,84 @@ const VisualToothChart: React.FC<VisualToothChartProps> = ({
     // Molars: positions 6-8 in any quadrant
     return 'molar';
   };
+
+  // Phones/tablets: one row per quadrant (desktop puts two quadrants side by side, too
+  // wide for a phone). Same teeth, labels, order, shapes and colours.
+  if (isCompact) {
+    const count = showPrimaryTeeth ? 5 : 8;
+    const quadrants = [
+      { label: showPrimaryTeeth ? "QUADRANT 5 (Upper Right)" : "QUADRANT 1 (Upper Right)", teeth: upperTeeth.slice(0, count), upper: true },
+      { label: showPrimaryTeeth ? "QUADRANT 6 (Upper Left)" : "QUADRANT 2 (Upper Left)", teeth: upperTeeth.slice(count), upper: true },
+      { label: showPrimaryTeeth ? "QUADRANT 8 (Lower Right)" : "QUADRANT 4 (Lower Right)", teeth: lowerTeeth.slice(0, count), upper: false },
+      { label: showPrimaryTeeth ? "QUADRANT 7 (Lower Left)" : "QUADRANT 3 (Lower Left)", teeth: lowerTeeth.slice(count), upper: false },
+    ];
+    return (
+      <div className="w-full">
+        <div className="mb-4 space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={!showPrimaryTeeth ? "default" : "outline"}
+              onClick={() => updateShowPrimaryTeeth(false)}
+              className="h-auto whitespace-normal py-2 text-sm"
+            >
+              Full Mouth (Permanent Teeth)
+            </Button>
+            <Button
+              variant={showPrimaryTeeth ? "default" : "outline"}
+              onClick={() => updateShowPrimaryTeeth(true)}
+              className="h-auto whitespace-normal py-2 text-sm"
+            >
+              Show Child Teeth (Primary)
+            </Button>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="teeth-toggle"
+              checked={showPrimaryTeeth}
+              onCheckedChange={updateShowPrimaryTeeth}
+            />
+            <Label htmlFor="teeth-toggle" className="text-sm">
+              {showPrimaryTeeth ? "Primary Teeth" : "Permanent Teeth"}
+            </Label>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {quadrants.map(q => (
+            <div key={q.label} className="space-y-1">
+              <div className="text-sm font-medium text-center">{q.label}</div>
+              <div className={cn("grid gap-1", showPrimaryTeeth ? "grid-cols-5" : "grid-cols-8")}>
+                {q.teeth.map(tooth => (
+                  <button
+                    key={tooth}
+                    type="button"
+                    onClick={() => onToothSelect(tooth)}
+                    className={cn(
+                      "h-12 w-full border rounded-md flex items-center justify-center transition-colors text-sm",
+                      getToothType(tooth) === 'incisor' && (q.upper ? "rounded-b-xl" : "rounded-t-xl"),
+                      getToothType(tooth) === 'canine' && (q.upper ? "rounded-b-xl h-14" : "rounded-t-xl h-14"),
+                      selectedTeeth.includes(tooth)
+                        ? "bg-dental-primary text-white border-dental-primary"
+                        : "bg-white hover:bg-dental-50 border-gray-300"
+                    )}
+                  >
+                    {tooth}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 text-center text-sm text-muted-foreground">
+          Using FDI/ISO 3950 notation (Quadrant-Position)
+        </div>
+        <div className="text-center text-xs text-muted-foreground">
+          Click on teeth to select/deselect them
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-3xl mx-auto">

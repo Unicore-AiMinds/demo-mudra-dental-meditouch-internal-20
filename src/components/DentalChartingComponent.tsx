@@ -46,6 +46,8 @@ import ToothIndicator from './ToothIndicator';
 import SurfaceIndicator from './SurfaceIndicator';
 import { generateFollowUpsFromChartingEntry } from '@/services/integration-service';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
+import { useIsCompact } from '@/hooks/use-compact';
+import TapNote from '@/components/compact/TapNote';
 
 interface DentalChartingComponentProps {
   patientId: string;
@@ -55,6 +57,7 @@ interface DentalChartingComponentProps {
 const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patientId, patientAge }) => {
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
+  const isCompact = useIsCompact();
   const { addTentativeFollowUps, getPatientName } = useDentalHistory();
   const { getDentalServiceNames, dentalServices, isLoading: isServicesLoading } = useServices(); // Get dental services from context
 
@@ -80,9 +83,6 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
   const [currentNotes, setCurrentNotes] = useState<string>('');
   const [showPrimaryTeeth, setShowPrimaryTeeth] = useState<boolean>(isChildPatient);
   const [currentTeethList, setCurrentTeethList] = useState<string[]>(isChildPatient ? primaryTeethList : permanentTeethList);
-
-  // Get patient name for follow-ups
-  const patientName = getPatientName(patientId) || "Unknown Patient";
 
   // Handle toggling the status of a charting entry
   const handleStatusToggle = async (entry: ChartingEntry) => {
@@ -253,10 +253,8 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
       // Generate follow-ups if this is a planned treatment
       if (selectedStatus === 'Planned' && newEntry.service) {
         try {
-          // Get the patient name as a string
-          const patientNameStr = typeof patientName === 'string'
-            ? patientName
-            : await patientName;
+          // Get the patient name for follow-ups (looked up here, not on every render)
+          const patientNameStr = (await getPatientName(patientId)) || "Unknown Patient";
 
           // Generate follow-ups using the integration service
           const followUps = generateFollowUpsFromChartingEntry(savedEntry, patientNameStr);
@@ -343,19 +341,19 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
               </TabsContent>
 
               <TabsContent value="grid" className="mt-4">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center space-x-2">
+                <div className={isCompact ? "mb-4 space-y-2" : "flex justify-between items-center mb-4"}>
+                  <div className={isCompact ? "grid grid-cols-2 gap-2" : "flex items-center space-x-2"}>
                     <Button
                       variant={!showPrimaryTeeth ? "default" : "outline"}
                       onClick={() => toggleTeethType(false)}
-                      className="text-sm"
+                      className={isCompact ? "h-auto whitespace-normal py-2 text-sm" : "text-sm"}
                     >
                       Full Mouth (Permanent Teeth)
                     </Button>
                     <Button
                       variant={showPrimaryTeeth ? "default" : "outline"}
                       onClick={() => toggleTeethType(true)}
-                      className="text-sm"
+                      className={isCompact ? "h-auto whitespace-normal py-2 text-sm" : "text-sm"}
                     >
                       Show Child Teeth (Primary)
                     </Button>
@@ -372,7 +370,7 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
                   </div>
                 </div>
 
-                <div className="grid grid-cols-8 gap-2">
+                <div className={isCompact ? "grid grid-cols-4 gap-3" : "grid grid-cols-8 gap-2"}>
                   {currentTeethList.map(tooth => (
                     <div key={tooth} className="flex items-center space-x-2">
                       <Checkbox
@@ -550,7 +548,7 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
           {hasPermission('patients.edit_dental_chart') && (
             <Button
               onClick={handleAddChartingEntry}
-              className="w-full md:w-auto"
+              className={isCompact ? "w-full" : "w-full md:w-auto"}
               disabled={
                 selectedTeeth.length === 0 ||
                 (selectedStatus === 'Existing' && !selectedFinding) ||
@@ -569,6 +567,61 @@ const DentalChartingComponent: React.FC<DentalChartingComponentProps> = ({ patie
           {isLoading ? (
             <div className="flex justify-center py-8">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-dental-primary border-t-transparent"></div>
+            </div>
+          ) : patientChartingHistory.length > 0 && isCompact ? (
+            /* Phones/tablets: one card per entry with the same seven details */
+            <div className="space-y-2">
+              {patientChartingHistory.map(entry => (
+                <div key={entry.entry_id} className="overflow-hidden rounded-md border text-sm">
+                  <div className="flex items-center justify-between border-b bg-gray-50 px-3 py-2">
+                    <span className="font-medium">{new Date(entry.date_recorded).toLocaleDateString()}</span>
+                    {entry.status === 'Planned' ? (
+                      <Badge variant="outline">Planned</Badge>
+                    ) : (
+                      <Badge variant={entry.status === 'Completed' ? 'default' : 'secondary'}>{entry.status}</Badge>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-20 flex-shrink-0 text-muted-foreground">Teeth</span>
+                      <ToothIndicator toothNumbers={entry.tooth_numbers} />
+                      <span>{entry.tooth_numbers.join(', ')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-20 flex-shrink-0 text-muted-foreground">Surface(s)</span>
+                      {entry.surfaces ? (
+                        <>
+                          <SurfaceIndicator surfaces={entry.surfaces} />
+                          <span className="text-xs text-muted-foreground">{entry.surfaces.join(', ')}</span>
+                        </>
+                      ) : (
+                        'N/A'
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="w-20 flex-shrink-0 text-muted-foreground">{entry.status === 'Existing' ? 'Finding' : 'Service'}</span>
+                      {entry.status === 'Existing'
+                        ? <span className="text-amber-600">{entry.finding}</span>
+                        : <span className="text-blue-600">{entry.service}</span>
+                      }
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="w-20 flex-shrink-0 text-muted-foreground">Notes</span>
+                      <TapNote text={entry.notes || ''} />
+                    </div>
+                    {entry.status === 'Planned' && (
+                      <div className="flex items-center space-x-2 pt-1">
+                        <Switch
+                          id={`status-toggle-${entry.entry_id}`}
+                          checked={false}
+                          onCheckedChange={() => handleStatusToggle(entry)}
+                        />
+                        <span className="text-xs text-muted-foreground">Mark Completed</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : patientChartingHistory.length > 0 ? (
             <div className="rounded-md border overflow-x-auto">

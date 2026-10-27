@@ -35,6 +35,9 @@ import PatientUpcomingAppointments from '@/components/PatientUpcomingAppointment
 import VitalSignsComponent from '@/components/VitalSignsComponent';
 import PrescriptionComponent from '@/components/PrescriptionComponent';
 import UnresolvedAppointmentsAlert from '@/components/UnresolvedAppointmentsAlert';
+import { useIsCompact } from '@/hooks/use-compact';
+import { getVisiblePatientTabs } from '@/lib/patient-tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Import Patient type from PatientContext but create a local interface for UI compatibility
 // This helps us bridge between the Supabase field names and the UI component's expected field names
@@ -106,6 +109,7 @@ const PatientDetails = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeClinic } = useClinic();
   const { hasPermission } = usePermissions();
+  const isCompact = useIsCompact();
   const [patient, setPatient] = useState<LocalPatient | null>(null);
   const [dynamicLastVisit, setDynamicLastVisit] = useState<string>('');
 
@@ -289,7 +293,7 @@ const PatientDetails = () => {
   return (
     <div className="space-y-6">
       {/* Header with back button and actions */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+      <div className={isCompact ? "flex flex-col gap-3" : "flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4"}>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -312,7 +316,7 @@ const PatientDetails = () => {
           <Button
             variant="outline"
             onClick={handleEditPatient}
-            className="flex items-center gap-2"
+            className={isCompact ? "flex w-full items-center justify-center gap-2" : "flex items-center gap-2"}
           >
             <Edit className="h-4 w-4" />
             Edit Patient
@@ -325,6 +329,18 @@ const PatientDetails = () => {
         value={activeTab}
         onValueChange={handleTabChange}
         className="w-full">
+        {isCompact ? (
+          <Select value={activeTab} onValueChange={handleTabChange}>
+            <SelectTrigger className="w-full font-medium">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {getVisiblePatientTabs(patient.clinic, hasPermission).map(tab => (
+                <SelectItem key={tab.value} value={tab.value}>{tab.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
         <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 lg:flex lg:flex-wrap">
           {hasPermission('patients.view_patient_info') && (
             <TabsTrigger value="overview">Patient Info</TabsTrigger>
@@ -349,6 +365,7 @@ const PatientDetails = () => {
             <TabsTrigger value="vital-signs">Vital Signs</TabsTrigger>
           )}
         </TabsList>
+        )}
 
         {/* Patient Info Tab - Personal Information */}
         {hasPermission('patients.view_patient_info') && (
@@ -358,7 +375,7 @@ const PatientDetails = () => {
               <CardTitle>Personal Information</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className={isCompact ? "grid grid-cols-2 gap-4 [&>div]:min-w-0 [&_p]:[overflow-wrap:anywhere] [&_p>span]:inline-block" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"}>
                 {patient.patient_code && (
                   <div>
                     <h3 className="font-medium text-sm text-muted-foreground">Patient Code</h3>
@@ -508,6 +525,7 @@ const PatientAppointmentHistoryWrapper = ({
   patientClinic: 'dental' | 'meditouch' | 'both';
 }) => {
   const { getPatientHistory, updatePaymentStatus } = useDentalHistory();
+  const isCompact = useIsCompact();
   const [patientHistory, setPatientHistory] = useState<DentalHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaymentConfirmOpen, setIsPaymentConfirmOpen] = useState(false);
@@ -627,6 +645,27 @@ const PatientAppointmentHistoryWrapper = ({
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
+            </div>
+          ) : patientHistory.length > 0 && isCompact ? (
+            /* Phones/tablets: one row per visit, newest first, same Paid/Unpaid badge */
+            <div>
+              {[...patientHistory]
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .map((entry) => (
+                  <div key={entry.appointment_id} className="flex items-center justify-between gap-3 border-b py-2 text-sm">
+                    <div className="min-w-0">
+                      <div className="font-medium">{entry.service}</div>
+                      <div className="text-muted-foreground">{new Date(entry.date).toLocaleDateString()} · {entry.doctor}</div>
+                    </div>
+                    <Badge
+                      variant={entry.payment_status === 'paid' ? 'default' : 'outline'}
+                      className={`flex-shrink-0 cursor-pointer hover:opacity-80 ${entry.payment_status === 'paid' ? 'bg-green-500' : ''}`}
+                      onClick={() => handlePaymentStatusClick(entry)}
+                    >
+                      {entry.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
+                    </Badge>
+                  </div>
+                ))}
             </div>
           ) : patientHistory.length > 0 ? (
             <div className="overflow-x-auto">

@@ -20,6 +20,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Download } from 'lucide-react';
+import { useIsCompact } from '@/hooks/use-compact';
+import { cn } from '@/lib/utils';
+import { COMPACT_FULLSCREEN_DIALOG, COMPACT_DIALOG_BODY, COMPACT_STICKY_FOOTER } from '@/lib/compact';
 
 export interface ReceiptPrefill {
   patientName: string;
@@ -68,6 +71,7 @@ function rupeesToWords(input: string): string {
 
 const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDialogProps) => {
   const [srNo, setSrNo] = useState('');
+  const isCompact = useIsCompact();
   const [receiptDate, setReceiptDate] = useState<Date | undefined>(undefined);
   const [receivedFrom, setReceivedFrom] = useState('');
   const [amount, setAmount] = useState('');
@@ -179,13 +183,13 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : "max-w-lg"}>
+        <DialogHeader className={isCompact ? "px-4 pt-4 text-left" : undefined}>
           <DialogTitle>Payment Receipt</DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-2">
-          <div className="grid grid-cols-2 gap-4">
+        <div className={isCompact ? `grid content-start gap-4 ${COMPACT_DIALOG_BODY}` : "grid gap-4 py-2"}>
+          <div className={isCompact ? "grid grid-cols-1 gap-4" : "grid grid-cols-2 gap-4"}>
             <div className="grid gap-1.5">
               <Label htmlFor="receipt-srno">Sr. No.</Label>
               <Input id="receipt-srno" value={srNo} onChange={(e) => setSrNo(e.target.value)} placeholder="e.g. 361" />
@@ -201,7 +205,7 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
             <Input id="receipt-from" value={receivedFrom} onChange={(e) => setReceivedFrom(e.target.value)} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className={isCompact ? "grid grid-cols-1 gap-4" : "grid grid-cols-2 gap-4"}>
             <div className="grid gap-1.5">
               <Label htmlFor="receipt-amount">Sum of Rs.</Label>
               <Input id="receipt-amount" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 1500" />
@@ -226,7 +230,7 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className={isCompact ? "grid grid-cols-1 gap-4" : "grid grid-cols-2 gap-4"}>
             <div className="grid gap-1.5">
               <Label htmlFor="receipt-instrument">{instrumentLabel}</Label>
               <Input
@@ -249,7 +253,7 @@ const PaymentReceiptDialog = ({ open, onOpenChange, prefill }: PaymentReceiptDia
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className={isCompact ? cn(COMPACT_STICKY_FOOTER, "flex-col-reverse sm:flex-col-reverse") : undefined}>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
           <Button onClick={handleDownload} className="bg-dental-primary hover:bg-dental-dark">
             <Download className="h-4 w-4 mr-2" /> Download Receipt

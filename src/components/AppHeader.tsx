@@ -6,8 +6,10 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { usePatients } from '@/contexts/PatientContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsCompact } from '@/hooks/use-compact';
 import { DentalMetrixLogo, MeditouchLogo } from '@/assets/logos';
 import ClinicSelector from './ClinicSelector';
+import CompactHeader from './compact/CompactHeader';
 import { useSidebar } from '@/components/ui/sidebar';
 import {
   Search,
@@ -41,6 +43,7 @@ const AppHeader = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
   const { searchPatients } = usePatients();
   const { toast } = useToast();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -138,6 +141,209 @@ const AppHeader = () => {
     return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
+  // Shared by the desktop header and the compact (phone/tablet) header
+  const searchSheet = (
+        <Sheet open={isSearchOpen} onOpenChange={handleSearchClose}>
+          <SheetContent side="top" className="w-full h-auto pt-16 pb-8 px-6">
+            <SheetHeader className="mb-6">
+              <SheetTitle>Patient Search</SheetTitle>
+            </SheetHeader>
+            <div className="flex w-full max-w-xl mx-auto mb-4">
+              <Input
+                placeholder="Search by patient name or contact number..."
+                className="flex-1"
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isSearching}
+              />
+              <Button
+                className={`ml-2 ${
+                  activeClinic === 'dental'
+                    ? 'bg-dental-primary hover:bg-dental-dark'
+                    : 'bg-meditouch-primary hover:bg-meditouch-dark'
+                }`}
+                onClick={handleSearch}
+                disabled={isSearching}
+              >
+                <Search className="h-4 w-4 mr-2" />
+                {isSearching ? 'Searching...' : 'Search'}
+              </Button>
+            </div>
+
+            {/* Search Results */}
+            {searchResults.length > 0 && (
+              <div className="w-full max-w-xl mx-auto">
+                <div className="text-sm text-muted-foreground mb-2">
+                  Found {searchResults.length} patient{searchResults.length !== 1 ? 's' : ''}:
+                </div>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {searchResults.map((patient) => (
+                    <div
+                      key={patient.id}
+                      className="p-3 border rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                      onClick={() => handlePatientSelect(patient)}
+                    >
+                      <div className="font-medium">{patient.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {patient.phone} • {patient.email || 'No email'}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Patient ID: {patient.patient_code || patient.id}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </SheetContent>
+        </Sheet>
+  );
+
+  const notificationsMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" className="relative h-9 w-9 rounded-full">
+          <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-medium">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <div className="flex items-center justify-between px-4 py-2">
+          <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+          {notifications.length > 0 && unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={markAllAsRead}
+              className="text-xs h-auto p-1"
+            >
+              Mark all read
+            </Button>
+          )}
+        </div>
+        <DropdownMenuSeparator />
+        <div className="max-h-80 overflow-y-auto">
+          {notifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Bell className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No notifications</h3>
+              <p className="text-muted-foreground mt-2">
+                You're all caught up! New notifications will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {notifications.map((notification) => (
+                <DropdownMenuItem
+                  key={notification.id}
+                  className={`cursor-pointer p-3 focus:bg-muted ${
+                    !notification.isRead ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                  }`}
+                  onClick={() => handleNotificationClick(notification)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${
+                          !notification.isRead ? 'text-blue-900' : 'text-gray-900'
+                        }`}>
+                          {notification.title}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {notification.message}
+                        </p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-muted-foreground">
+                            {formatTimestamp(notification.timestamp)}
+                          </span>
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            notification.priority === 'high'
+                              ? 'bg-red-100 text-red-800'
+                              : notification.priority === 'medium'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {notification.priority}
+                          </span>
+                        </div>
+                      </div>
+                      {!notification.isRead && (
+                        <div className="h-2 w-2 bg-blue-500 rounded-full ml-2 mt-1 flex-shrink-0"></div>
+                      )}
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </div>
+          )}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const userMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className={activeClinic === 'dental' ? 'bg-dental-light text-dental-dark' : 'bg-meditouch-light text-meditouch-dark'}>
+              {user?.name ? getInitials(user.name) : 'U'}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem>
+            <User className="mr-2 h-4 w-4" />
+            <span>{user?.name}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/settings')}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={logout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const handleNewAppointment = () => {
+    navigate('/appointments');
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('openNewAppointmentForm'));
+    }, 100);
+  };
+
+  if (isCompact) {
+    return (
+      <>
+        <CompactHeader
+          activeClinic={activeClinic}
+          setActiveClinic={setActiveClinic}
+          toggleSidebar={toggleSidebar}
+          onOpenSearch={() => setIsSearchOpen(true)}
+          onNewAppointment={handleNewAppointment}
+          notificationsMenu={notificationsMenu}
+          userMenu={userMenu}
+        />
+        {searchSheet}
+      </>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center px-4 md:px-6">
@@ -201,62 +407,7 @@ const AppHeader = () => {
               <span className="sr-only">Search</span>
             </Button>
 
-            <Sheet open={isSearchOpen} onOpenChange={handleSearchClose}>
-              <SheetContent side="top" className="w-full h-auto pt-16 pb-8 px-6">
-                <SheetHeader className="mb-6">
-                  <SheetTitle>Patient Search</SheetTitle>
-                </SheetHeader>
-                <div className="flex w-full max-w-xl mx-auto mb-4">
-                  <Input
-                    placeholder="Search by patient name or contact number..."
-                    className="flex-1"
-                    autoFocus
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    disabled={isSearching}
-                  />
-                  <Button
-                    className={`ml-2 ${
-                      activeClinic === 'dental'
-                        ? 'bg-dental-primary hover:bg-dental-dark'
-                        : 'bg-meditouch-primary hover:bg-meditouch-dark'
-                    }`}
-                    onClick={handleSearch}
-                    disabled={isSearching}
-                  >
-                    <Search className="h-4 w-4 mr-2" />
-                    {isSearching ? 'Searching...' : 'Search'}
-                  </Button>
-                </div>
-
-                {/* Search Results */}
-                {searchResults.length > 0 && (
-                  <div className="w-full max-w-xl mx-auto">
-                    <div className="text-sm text-muted-foreground mb-2">
-                      Found {searchResults.length} patient{searchResults.length !== 1 ? 's' : ''}:
-                    </div>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {searchResults.map((patient) => (
-                        <div
-                          key={patient.id}
-                          className="p-3 border rounded-lg hover:bg-muted cursor-pointer transition-colors"
-                          onClick={() => handlePatientSelect(patient)}
-                        >
-                          <div className="font-medium">{patient.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {patient.phone} • {patient.email || 'No email'}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Patient ID: {patient.patient_code || patient.id}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </SheetContent>
-            </Sheet>
+            {searchSheet}
           </>
 
           {/* New Appointment Button */}
@@ -284,121 +435,10 @@ const AppHeader = () => {
           </Button>
 
           {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="relative h-9 w-9 rounded-full">
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-medium">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <div className="flex items-center justify-between px-4 py-2">
-                <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
-                {notifications.length > 0 && unreadCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={markAllAsRead}
-                    className="text-xs h-auto p-1"
-                  >
-                    Mark all read
-                  </Button>
-                )}
-              </div>
-              <DropdownMenuSeparator />
-              <div className="max-h-80 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Bell className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium">No notifications</h3>
-                    <p className="text-muted-foreground mt-2">
-                      You're all caught up! New notifications will appear here.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {notifications.map((notification) => (
-                      <DropdownMenuItem
-                        key={notification.id}
-                        className={`cursor-pointer p-3 focus:bg-muted ${
-                          !notification.isRead ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                        }`}
-                        onClick={() => handleNotificationClick(notification)}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-medium truncate ${
-                                !notification.isRead ? 'text-blue-900' : 'text-gray-900'
-                              }`}>
-                                {notification.title}
-                              </p>
-                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                {notification.message}
-                              </p>
-                              <div className="flex items-center justify-between mt-2">
-                                <span className="text-xs text-muted-foreground">
-                                  {formatTimestamp(notification.timestamp)}
-                                </span>
-                                <span className={`text-xs px-2 py-1 rounded-full ${
-                                  notification.priority === 'high'
-                                    ? 'bg-red-100 text-red-800'
-                                    : notification.priority === 'medium'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {notification.priority}
-                                </span>
-                              </div>
-                            </div>
-                            {!notification.isRead && (
-                              <div className="h-2 w-2 bg-blue-500 rounded-full ml-2 mt-1 flex-shrink-0"></div>
-                            )}
-                          </div>
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {notificationsMenu}
 
           {/* User Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback className={activeClinic === 'dental' ? 'bg-dental-light text-dental-dark' : 'bg-meditouch-light text-meditouch-dark'}>
-                    {user?.name ? getInitials(user.name) : 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>{user?.name}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {userMenu}
         </div>
       </div>
     </header>

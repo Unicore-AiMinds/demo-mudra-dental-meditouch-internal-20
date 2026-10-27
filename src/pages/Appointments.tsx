@@ -57,6 +57,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsCompact } from '@/hooks/use-compact';
+import AppointmentsCompactView from '@/components/appointments/compact/AppointmentsCompactView';
+import { COMPACT_FULLSCREEN_DIALOG, COMPACT_DIALOG_BODY, COMPACT_STICKY_FOOTER } from '@/lib/compact';
 import AddPatientDialog from '@/components/AddPatientDialog';
 import AppointmentList from '@/components/AppointmentList';
 import PaymentReceiptDialog, { ReceiptPrefill } from '@/components/PaymentReceiptDialog';
@@ -444,6 +447,7 @@ const Appointments = () => {
   const [editingAppointment, setEditingAppointment] = useState<AppointmentType | null>(null);
   const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
 
   const [appointmentPatient, setAppointmentPatient] = useState("");
   const [filteredPatients, setFilteredPatients] = useState<{id: string, name: string}[]>([]);
@@ -985,6 +989,35 @@ const Appointments = () => {
       setIsNewAppointmentOpen(true);
       console.log('Opening new appointment form with reset fields');
     }, 50);
+  };
+
+  // Compact (phone/tablet) slot tap. Deliberately mirrors the desktop slot onClick in the
+  // daily grid statement for statement, so the desktop JSX stays untouched.
+  const handleSlotTap = (slot: string) => {
+    const slotCounts = getBookedTimeSlots();
+    const currentCount = slotCounts[slot] || 0;
+    const maxAllowed = isDental ? 2 : 1;
+    const isFullyBooked = currentCount >= maxAllowed;
+
+    setAppointmentTime(slot);
+
+    if (isFullyBooked) {
+      setWarningMessage(`This time slot already has ${currentCount} appointment(s). Adding more may cause scheduling conflicts. Do you want to continue?`);
+      setIsWarningDialogOpen(true);
+      return;
+    }
+
+    if (selectedDoctor && selectedDoctor !== 'all') {
+      const defaultService = isDental ? 'Dental Checkup' : 'General Consultation';
+      const serviceToCheck = appointmentService || defaultService;
+
+      if (isDoctorBookedInOtherClinic(selectedDoctor, slot, serviceToCheck)) {
+        handleDoctorDoubleBookingWarning(selectedDoctor, slot);
+        return;
+      }
+    }
+
+    handleNewAppointmentForTimeSlot(slot);
   };
 
   const handleEditAppointment = (appointment: AppointmentType) => {
@@ -2310,6 +2343,45 @@ const Appointments = () => {
 
   return (
     <div className="space-y-6">
+      {isCompact ? (
+        <AppointmentsCompactView
+          isDental={isDental}
+          view={view}
+          onViewChange={(newView) => {
+            resetExpandedStates();
+            setView(newView);
+            setSearchParams(prev => {
+              const newParams = new URLSearchParams(prev);
+              newParams.set('view', newView);
+              return newParams;
+            }, { replace: true });
+          }}
+          date={date}
+          setDate={setDate}
+          popoverOpen={popoverOpen}
+          setPopoverOpen={setPopoverOpen}
+          onPrev={handlePreviousClick}
+          onNext={handleNextClick}
+          doctors={doctors}
+          selectedDoctor={selectedDoctor}
+          setSelectedDoctor={setSelectedDoctor}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          hourlyTimeSlots={hourlyTimeSlots}
+          getAppointmentsForTimeSlot={getAppointmentsForTimeSlot}
+          getBookedTimeSlots={getBookedTimeSlots}
+          getSlotsOccupied={getSlotsOccupied}
+          onSlotTap={handleSlotTap}
+          onEditAppointment={handleEditAppointment}
+          weekDates={weekDates}
+          monthDates={monthDates}
+          getAppointmentsForDate={getAppointmentsForDate}
+          getServiceDuration={getServiceDuration}
+          SlotAppointment={TimeSlotAppointment}
+          CalendarItem={CalendarAppointmentItem}
+        />
+      ) : (
+      <>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold tracking-tight">Appointments</h1>
@@ -3017,6 +3089,8 @@ const Appointments = () => {
           </Card>
         </div>
       </div>
+      </>
+      )}
 
       <Dialog
         open={isNewAppointmentOpen}
@@ -3033,14 +3107,14 @@ const Appointments = () => {
           }
         }}
       >
-        <DialogContent className={`${isMobile ? 'max-w-[95vw]' : 'sm:max-w-[500px]'} max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
-          <DialogHeader>
+        <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : `${isMobile ? 'max-w-[95vw]' : 'sm:max-w-[500px]'} max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
+          <DialogHeader className={isCompact ? "px-4 pt-4 text-left" : undefined}>
             <DialogTitle>Create New Appointment</DialogTitle>
             <DialogDescription>
               Add a new appointment for a registered patient.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 py-2">
+          <div className={isCompact ? `grid content-start gap-3 ${COMPACT_DIALOG_BODY}` : "grid gap-3 py-2"}>
             <div className="grid grid-cols-1 gap-3">
               <div className="space-y-3">
                 <div className="space-y-1">
@@ -3068,7 +3142,7 @@ const Appointments = () => {
                 </Button>
               </div>
 
-              <div className={appointmentFollowUpService ? "grid grid-cols-2 gap-3" : ""}>
+              <div className={appointmentFollowUpService ? (isCompact ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3") : ""}>
                 <div className="space-y-1">
                   <Label htmlFor="service">Service</Label>
                   <Combobox
@@ -3090,7 +3164,7 @@ const Appointments = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className={isCompact ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
               <div className="space-y-1">
                 <Label>Appointment Date</Label>
                 <Popover>
@@ -3185,8 +3259,8 @@ const Appointments = () => {
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <div className="flex space-x-2 ml-auto">
+          <DialogFooter className={isCompact ? COMPACT_STICKY_FOOTER : undefined}>
+            <div className={isCompact ? "flex flex-col gap-2" : "flex space-x-2 ml-auto"}>
               {hasPermission('appointments.create') && (
                 <Button
                   onClick={handleCreateAppointment}
@@ -3219,14 +3293,14 @@ const Appointments = () => {
           }
         }}
       >
-        <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] overflow-y-auto' : 'sm:max-w-[500px]'}`}>
-          <DialogHeader>
+        <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : `${isMobile ? 'max-w-[95vw] max-h-[90vh] overflow-y-auto' : 'sm:max-w-[500px]'}`}>
+          <DialogHeader className={isCompact ? "px-4 pt-4 text-left" : undefined}>
             <DialogTitle>Edit Appointment</DialogTitle>
             <DialogDescription>
               Reschedule or cancel the appointment.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className={isCompact ? `grid content-start gap-4 ${COMPACT_DIALOG_BODY}` : "grid gap-4 py-4"}>
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-patient">Patient</Label>
@@ -3356,8 +3430,8 @@ const Appointments = () => {
               </div>
             </div>
           </div>
-          <DialogFooter className="flex justify-between">
-            <div className="space-x-2">
+          <DialogFooter className={isCompact ? COMPACT_STICKY_FOOTER : "flex justify-between"}>
+            <div className={isCompact ? "grid grid-cols-2 gap-2" : "space-x-2"}>
               {hasPermission('appointments.edit') && (
                 <Button
                   onClick={openUpdateConfirmation}
@@ -3486,7 +3560,7 @@ const Appointments = () => {
       <Dialog open={isConfirmCreateOpen} onOpenChange={setIsConfirmCreateOpen}>
         <DialogContent className={`${isMobile ? 'max-w-[90vw] max-h-[80vh]' : 'sm:max-w-[425px]'}`}>
           <DialogHeader>
-            <DialogTitle>Confirm Appointment</DialogTitle>
+            <DialogTitle>Book Appointment</DialogTitle>
             <DialogDescription>
               Please confirm that you want to schedule this appointment.
             </DialogDescription>
@@ -3537,7 +3611,7 @@ const Appointments = () => {
               onClick={confirmCreateAppointment}
               className={isDental ? 'bg-dental-primary hover:bg-dental-dark' : 'bg-meditouch-primary hover:bg-meditouch-dark'}
             >
-              Confirm Appointment
+              Book Appointment
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,0 +1,646 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
+  .m-sec { margin:30px 0 6px; padding-top:10px; border-top:2px solid #94a3b8; }
+  .m-sec h2 { margin:0 0 4px; }
+  .m-grid { display:flex; flex-wrap:wrap; gap:22px; justify-content:flex-start; margin-top:12px; }
+  .m-col { width:300px; display:flex; flex-direction:column; gap:6px; }
+  .m-col h3 { margin:0; font-size:15px; }
+  .m-cap { font-size:12.5px; color:#94a3b8; line-height:1.45; }
+  .m-cap b { color:inherit; }
+  /* ---------- phone, using the app's real fonts + colours ---------- */
+  .m-ph { width:282px; height:580px; border:8px solid #111; border-radius:28px; background:#f9fafb; overflow:hidden; position:relative; font-family:Inter,sans-serif; color:#020817; font-size:11.5px; line-height:1.35; }
+  .m-ph * { box-sizing:border-box; }
+  .m-top { background:#fff; border-bottom:1px solid #e2e8f0; padding:7px 8px; display:flex; align-items:center; gap:6px; }
+  .m-seg { display:flex; background:#f1f5f9; border-radius:6px; padding:2px; flex:1; }
+  .m-seg span { flex:1; text-align:center; padding:3px 0; border-radius:4px; font-size:9.5px; color:#64748b; }
+  .m-seg span.on { background:#fff; color:#4A90E2; font-weight:600; box-shadow:0 1px 2px #0002; }
+  .m-ic { width:22px; height:22px; border-radius:50%; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; background:#fff; }
+  .m-ic svg, .m-i { width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; vertical-align:-2px; }
+  .m-newb { background:#4A90E2; color:#fff; border-radius:5px; padding:4px 6px; font-size:9.5px; font-weight:600; white-space:nowrap; }
+  .m-alert { margin:6px 7px; background:#fffbeb; border:1px solid #f59e0b; color:#92400e; border-radius:6px; padding:5px 8px; display:flex; justify-content:space-between; font-size:10.5px; }
+  .m-tabs { display:flex; gap:2px; margin:0 7px; background:#f1f5f9; border-radius:6px; padding:3px; }
+  .m-tabs span { flex:1; text-align:center; padding:4px 0; border-radius:4px; font-size:9.5px; color:#64748b; }
+  .m-tabs span.on { background:#fff; color:#020817; font-weight:600; box-shadow:0 1px 2px #0001; }
+  .m-link { margin:5px 8px 0; font-size:10.5px; color:#2563eb; text-decoration:underline; }
+  .m-nav { display:flex; gap:4px; padding:6px 7px 3px; }
+  .m-btn { border:1px solid #e2e8f0; background:#fff; border-radius:5px; padding:4px 7px; font-size:10.5px; white-space:nowrap; text-align:center; }
+  .m-btn.grow { flex:1; text-align:left; }
+  .m-flt { display:flex; gap:4px; padding:3px 7px 6px; border-bottom:1px solid #e2e8f0; }
+  .m-flt div { flex:1; background:#fff; border:1px solid #e2e8f0; border-radius:5px; padding:4px 6px; font-size:10px; color:#64748b; }
+  .m-hour { padding:4px 9px 2px; font-weight:700; font-size:10.5px; color:#334155; }
+  .m-slot { display:flex; border-bottom:1px dashed #e2e8f0; min-height:31px; background:#fff; }
+  .m-slot .t { width:44px; font-size:9.5px; color:#9ca3af; padding:8px 4px; border-right:1px solid #e2e8f0; flex-shrink:0; }
+  .m-slot .c { flex:1; padding:3px; display:flex; gap:3px; min-width:0; }
+  .m-blk { flex:1; min-width:0; color:#fff; border-radius:4px; padding:2px 5px; font-size:9.5px; position:relative; }
+  .m-blk .s { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .m-blk .p { font-size:8.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .m-g { background:#27AE60; } .m-tl { background:#48C9B0; } .m-pu { background:#8E44AD; }
+  .m-av { color:#d1d5db; font-size:9.5px; display:flex; align-items:center; padding-left:3px; }
+  /* weekly / monthly */
+  .m-day { background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin:5px 7px; padding:5px; }
+  .m-day.today { border-color:#0063CC; background:#f2f7fd; }
+  .m-dh { display:flex; align-items:center; gap:5px; }
+  .m-pill { background:#f1f5f9; border-radius:5px; padding:2px 7px; font-weight:500; font-size:10.5px; }
+  .m-pill.sel { background:#4A90E2; color:#fff; }
+  .m-cnt { border-radius:9px; padding:0 6px; font-size:9.5px; }
+  .m-cg { background:#dcfce7; color:#166534; } .m-cy { background:#fef9c3; color:#854d0e; } .m-cr { background:#fee2e2; color:#991b1b; }
+  .m-item { border-left:2px solid #27AE60; background:rgba(39,174,96,.15); color:#27AE60; border-radius:3px; padding:2px 5px; margin-top:3px; font-size:9.5px; }
+  .m-item.b { border-left-color:#9B59B6; background:rgba(155,89,182,.15); color:#9B59B6; }
+  .m-item b { font-weight:600; }
+  .m-mgrid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; padding:4px 7px; }
+  .m-mgrid .h { text-align:center; font-size:9px; color:#64748b; }
+  .m-mgrid .d { background:#fff; border:1px solid #e2e8f0; border-radius:5px; height:38px; padding:2px; font-size:9.5px; text-align:center; position:relative; }
+  .m-mgrid .d.e { border-style:dashed; background:#f9fafb; }
+  .m-mgrid .d.on { border:2px solid #4A90E2; }
+  .m-mgrid .d .m-cnt { position:absolute; bottom:3px; left:50%; transform:translateX(-50%); }
+  /* dialogs */
+  .m-shade { position:absolute; inset:0; background:rgba(0,0,0,.8); z-index:4; }
+  .m-dlg { position:absolute; left:10px; right:10px; background:#fff; border-radius:8px; padding:14px; z-index:5; box-shadow:0 10px 30px #0004; }
+  .m-full { position:absolute; inset:0; background:#fff; z-index:5; padding:14px 12px 60px; overflow:hidden; }
+  .m-x { position:absolute; right:12px; top:12px; color:#64748b; font-size:13px; }
+  .m-tt { font-family:Poppins,sans-serif; font-weight:600; font-size:15px; display:flex; gap:6px; align-items:center; padding-right:18px; }
+  .m-ds { color:#64748b; font-size:11px; margin:3px 0 10px; }
+  .m-lb { font-size:11px; font-weight:500; margin:7px 0 3px; }
+  .m-lb i { color:#ef4444; font-style:normal; }
+  .m-in { border:1px solid #e2e8f0; border-radius:5px; padding:6px 8px; font-size:11px; display:flex; justify-content:space-between; color:#020817; background:#fff; }
+  .m-in.ph { color:#64748b; } .m-in.dis { background:#f1f5f9; color:#94a3b8; } .m-in.ta { height:38px; align-items:flex-start; }
+  .m-two { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .m-foot { position:absolute; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e2e8f0; padding:8px 12px; display:flex; flex-direction:column; gap:5px; }
+  .m-foot.row { flex-direction:row; justify-content:flex-end; }
+  .m-b { border-radius:5px; padding:7px 10px; font-size:11px; font-weight:500; text-align:center; white-space:nowrap; }
+  .m-pri { background:#4A90E2; color:#fff; } .m-def { background:#0063CC; color:#fff; } .m-out { border:1px solid #e2e8f0; background:#fff; }
+  .m-grn { border:1px solid #16a34a; color:#16a34a; background:#fff; } .m-red { background:#ef4444; color:#fff; } .m-org { background:#f97316; color:#fff; }
+  .m-gfill { background:#16a34a; color:#fff; }
+  .m-badge { display:inline-block; border:1px solid #e2e8f0; border-radius:9px; padding:1px 8px; font-size:10px; font-weight:600; }
+  .m-acard { background:#fff; border:1px solid #e2e8f0; border-radius:7px; margin-bottom:6px; overflow:hidden; }
+  .m-acard .hd { background:#eff6ff; color:#1e40af; border-bottom:1px solid #bfdbfe; font-weight:600; font-size:10.5px; padding:4px 8px; display:flex; justify-content:space-between; }
+  .m-acard .hd.amb { background:#fffbeb; color:#92400e; border-color:#fde68a; }
+  .m-acard .bd { padding:5px 8px; font-size:10.5px; line-height:1.5; }
+  .m-acard .k { color:#64748b; display:inline-block; width:50px; }
+  .m-tel { color:#2563eb; text-decoration:underline; }
+  .m-tog { display:flex; border:1px solid #e2e8f0; border-radius:5px; overflow:hidden; margin:6px 0; }
+  .m-tog span { flex:1; text-align:center; padding:5px; font-size:10.5px; font-weight:500; }
+  .m-tog span.on { background:#0063CC; color:#fff; }
+  .m-chk { display:flex; gap:5px; align-items:center; font-size:10.5px; font-weight:500; margin:5px 0; }
+  .m-box { width:12px; height:12px; border:1px solid #0063CC; border-radius:3px; flex-shrink:0; }
+  .m-box.on { background:#0063CC; }
+  .m-radio { display:inline-flex; gap:3px; align-items:center; margin-right:8px; font-size:10.5px; }
+  .m-radio span { width:11px; height:11px; border-radius:50%; border:1px solid #0063CC; display:inline-block; }
+  .m-radio span.on { background:radial-gradient(#0063CC 40%, #fff 45%); }
+
+  .m-top { flex-direction:column; align-items:stretch; gap:6px; padding:7px 8px 8px; }
+  .m-r1 { display:flex; align-items:center; gap:6px; }
+  .m-r1 .sp { flex:1; }
+  .m-top .m-seg span { font-size:10.5px; padding:4px 0; }
+  .m-menu { position:absolute; z-index:6; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 8px 24px #0003; font-size:11px; }
+  .m-menu::before { content:''; position:absolute; top:-5px; width:9px; height:9px; background:#fff; border-left:1px solid #e2e8f0; border-top:1px solid #e2e8f0; transform:rotate(45deg); }
+  .m-ring { box-shadow:0 0 0 2px #4A90E2; }
+  .m-col .m-menu::before { right:14px; }
+
+  .m-cal { padding:10px; font-family:Inter,sans-serif; }
+  .m-cal.bordered { border:1px solid #e2e8f0; border-radius:6px; }
+  .m-cal .cap { position:relative; display:flex; justify-content:center; align-items:center; height:26px; font-size:12.5px; font-weight:500; margin-bottom:10px; }
+  .m-cal .nb { position:absolute; top:1px; width:24px; height:24px; border:1px solid #e2e8f0; border-radius:5px; opacity:.5; display:flex; align-items:center; justify-content:center; font-size:12px; }
+  .m-cal .nb.l { left:2px; } .m-cal .nb.r { right:2px; }
+  .m-cal .row { display:flex; justify-content:space-between; margin-top:5px; }
+  .m-cal .row span { width:30px; height:30px; display:flex; align-items:center; justify-content:center; font-size:12px; border-radius:5px; }
+  .m-cal .hd span { height:18px; color:#64748b; font-size:10.5px; }
+  .m-cal .o { color:#64748b; opacity:.5; }
+  .m-cal .sel { background:#0063CC; color:#fff; }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-alarm" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M22 3H2l8 9.5V19l4 2v-8.5z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></symbol>
+</svg>
+
+<h2>Every Appointments screen on a phone (v4)</h2>
+<p class="subtitle">v3: the top bar now has 2 rows (clinic switch gets its own full-width row), popups show the real page dimmed behind them, and #30 is split into two properly placed menus. Same fonts (Inter, Poppins for titles), same colours, same words, same buttons and the same rules as desktop. Only the layout changes to fit a phone. Desktop is not touched. Data is real DEV data where it exists; anything marked <i>example</i> is a sample.</p>
+
+<!-- ======================= A. TABS ======================= -->
+<div class="m-sec"><h2>A. The four tabs</h2></div>
+<div class="m-grid">
+
+  <div class="m-col"><h3>1. Daily</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-alert"><span>⚠ 46 Past Appointments Need Attention</span><span>›</span></div>
+      <div class="m-tabs"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div>
+      <div class="m-link"><svg class="m-i"><use href="#i-phone"/></svg> Appointment List (63)</div>
+      <div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div>
+      <div class="m-flt"><div>All Doctors ⌄</div><div><svg class="m-i"><use href="#i-search"/></svg> Search Patient</div></div>
+      <div class="m-hour">1 PM</div>
+      <div class="m-slot"><div class="t">1:00</div><div class="c"><div class="m-blk m-g"><div class="s">Jig Trial</div><div class="p">Pratap Mulchandani · Dr. Bhargavi Kolhapure</div></div></div></div>
+      <div class="m-slot"><div class="t">1:15</div><div class="c"><span class="m-av">1:15 PM</span></div></div>
+      <div class="m-slot"><div class="t">1:30</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up And X-ray</div><div class="p">Hrishikesh Deshpande · Dr. Bhargavi K.</div></div></div></div>
+      <div class="m-slot"><div class="t">1:45</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up And X-ray</div><div class="p">Hrishikesh Deshpande · Dr. Bhargavi K.</div></div></div></div>
+      <div class="m-hour">2 PM</div>
+      <div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal · Dr. Bhargavi K.</div></div></div></div>
+      <div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div>
+      <div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div>
+      <div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div>
+    </div>
+    <div class="m-cap">As agreed (Design B). Tap an empty row → <b>Create New Appointment</b> (#8). Tap a block → <b>Edit Appointment</b> (#12), which also shows what desktop's hover pop-up shows.</div>
+  </div>
+
+  <div class="m-col"><h3>2. Weekly</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-tabs" style="margin-top:6px"><span>Daily</span><span class="on">Weekly</span><span>Monthly</span><span>Pending</span></div>
+      <div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div>
+      <div class="m-flt"><div>All Doctors ⌄</div><div><svg class="m-i"><use href="#i-search"/></svg> Search Patient</div></div>
+      <div class="m-day"><div class="m-dh"><span class="m-pill">Sun 8</span></div></div>
+      <div class="m-day"><div class="m-dh"><span class="m-pill">Mon 9</span></div></div>
+      <div class="m-day"><div class="m-dh"><span class="m-pill">Tue 10</span><span class="m-cnt m-cg">2</span></div>
+        <div class="m-item b"><b>3:30 PM</b> Root Canal · Kanishka Shah</div>
+        <div class="m-item b"><b>4:00 PM</b> Root Canal · Shodhan Tatnis</div></div>
+      <div class="m-day"><div class="m-dh"><span class="m-pill">Wed 11</span></div></div>
+      <div class="m-day"><div class="m-dh"><span class="m-pill">Thu 12</span><span class="m-cnt m-cr">10</span></div>
+        <div class="m-item"><b>1:00 PM</b> Jig Trial · Pratap Mulchandani</div>
+        <div class="m-item"><b>1:30 PM</b> Cheak Up And X-ray · Hrishikesh D.</div>
+        <div class="m-item"><b>2:00 PM</b> Scaling And Polishing · Seema Birmal</div>
+        <div class="m-item"><b>2:15 PM</b> Cheak Up And X-ray · Rucha Limaye</div></div>
+      <div class="m-day"><div class="m-dh"><span class="m-pill">Fri 13</span></div></div>
+    </div>
+    <div class="m-cap">Desktop shows 7 <b>side-by-side columns</b>. On a phone the 7 days sit <b>one under another</b>. Kept the same: the count badge colours (green / yellow / red), each doctor's colour, today highlighted in blue, tap the day pill → Daily view, tap an appointment → Edit. <b>‹ ›</b> move a week. Each line uses desktop's fuller style (time · service · patient) because a phone row has room for it.</div>
+  </div>
+
+    <div class="m-col"><h3>3a. Monthly (tap a day)</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-tabs" style="margin-top:6px"><span>Daily</span><span>Weekly</span><span class="on">Monthly</span><span>Pending</span></div>
+      <div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div>
+      <div class="m-flt"><div>All Doctors ⌄</div><div><svg class="m-i"><use href="#i-search"/></svg> Search Patient</div></div>
+      <div class="m-mgrid">
+        <span class="h">Sun</span><span class="h">Mon</span><span class="h">Tue</span><span class="h">Wed</span><span class="h">Thu</span><span class="h">Fri</span><span class="h">Sat</span>
+        <div class="d">1</div><div class="d">2</div><div class="d">3</div><div class="d">4</div><div class="d">5</div><div class="d">6</div><div class="d">7</div>
+        <div class="d">8</div><div class="d">9</div><div class="d">10<span class="m-cnt m-cg">2</span></div><div class="d">11</div><div class="d on">12<span class="m-cnt m-cr">10</span></div><div class="d">13</div><div class="d">14</div>
+        <div class="d">15</div><div class="d">16</div><div class="d">17</div><div class="d">18</div><div class="d">19<span class="m-cnt m-cg">1</span></div><div class="d">20</div><div class="d">21<span class="m-cnt m-cg">1</span></div>
+        <div class="d">22</div><div class="d">23<span class="m-cnt m-cg">1</span></div><div class="d">24</div><div class="d">25</div><div class="d">26</div><div class="d">27</div><div class="d">28</div>
+      </div>
+      
+      <div class="m-day"><div class="m-dh"><span class="m-pill sel">Thu 12</span><span class="m-cnt m-cr">10</span><span style="margin-left:auto;color:#2563eb;font-size:10px">Open in Daily ›</span></div>
+        <div class="m-item"><b>1:00 PM</b> Jig Trial · Pratap Mulchandani</div>
+        <div class="m-item"><b>1:30 PM</b> Cheak Up And X-ray · Hrishikesh D.</div>
+        <div class="m-item"><b>2:00 PM</b> Scaling And Polishing · Seema Birmal</div>
+        <div style="text-align:center;margin-top:4px"><span class="m-b" style="font-size:10.5px;padding:3px 8px">+7 more</span></div></div>
+    </div>
+    <div class="m-cap">Tap a day → the first <b>3</b> appointments show underneath, then a <b>"+7 more"</b> button. This is exactly desktop's rule: a month box shows 3, then "+N more".</div>
+  </div>
+
+  <div class="m-col"><h3>3b. Monthly (after "+7 more")</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-tabs" style="margin-top:6px"><span>Daily</span><span>Weekly</span><span class="on">Monthly</span><span>Pending</span></div>
+      <div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div>
+      <div class="m-day" style="margin-top:6px"><div class="m-dh"><span class="m-pill sel">Thu 12</span><span class="m-cnt m-cr">10</span><span style="margin-left:auto;color:#2563eb;font-size:10px">Open in Daily ›</span></div>
+        <div class="m-item"><b>1:00 PM</b> Jig Trial · Pratap Mulchandani</div>
+        <div class="m-item"><b>1:30 PM</b> Cheak Up And X-ray · Hrishikesh Deshpande</div>
+        <div class="m-item"><b>2:00 PM</b> Scaling And Polishing · Seema Birmal</div>
+        <div class="m-item"><b>2:15 PM</b> Cheak Up And X-ray · Rucha Limaye</div>
+        <div class="m-item"><b>2:15 PM</b> Cheak Up And X-ray · Rucha Limaye</div>
+        <div class="m-item"><b>2:30 PM</b> Gic Filling · Prerana Keni</div>
+        <div class="m-item"><b>3:30 PM</b> Crown Prepration · subrahmanya</div>
+        <div class="m-item"><b>4:00 PM</b> Cap Cementation · Manisha Bapat</div>
+        <div class="m-item"><b>4:30 PM</b> Scaling And Polishing · vaibhav dongre</div>
+        <div class="m-item" style="border-left-color:#48C9B0;background:rgba(72,201,176,.15);color:#2a9d87"><b>5:30 PM</b> Ortho [braces] · Rewa Gode</div>
+        <div style="text-align:center;margin-top:4px"><span class="m-b" style="font-size:10.5px;padding:3px 8px">Collapse</span></div></div>
+    </div>
+    <div class="m-cap">"+7 more" → the <b>full list of all 10</b> opens in the same place (the calendar scrolls up out of the way), sorted by time, with a <b>Collapse</b> button. Same words and behaviour as desktop. Tap any line → Edit Appointment (#12). <i>Times after 2:30 PM are read from the 12 Feb screenshot.</i></div>
+  </div>
+
+<div class="m-col"><h3>4. Pending Treatments (Dental only)</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-tabs" style="margin-top:6px"><span>Daily</span><span>Weekly</span><span>Monthly</span><span class="on">Pending</span></div>
+      <div style="background:#fff;margin:7px;border:1px solid #e2e8f0;border-radius:8px;padding:9px">
+        <div class="m-tt" style="font-size:14px">Planned Treatments</div>
+        <div class="m-ds" style="margin-bottom:6px">Treatments planned in dental charting that need to be scheduled</div>
+        <div class="m-tog"><span class="on">Pending (1)</span><span>Snoozed (0)</span></div>
+        <div class="m-in ph"><span><svg class="m-i"><use href="#i-search"/></svg> Search patients, services, teeth...</span></div>
+        <div style="font-size:10.5px;font-weight:500;margin:8px 0 4px">Patient <svg class="m-i"><use href="#i-sort"/></svg></div>
+        <div class="m-acard"><div class="bd">
+          <div><span class="k">Patient</span><b>Patient 4</b></div>
+          <div><span class="k">Teeth</span>17, 18, 47, 48</div>
+          <div><span class="k">Service</span>Stage 2</div>
+          <div><span class="k">Notes</span>-</div>
+          <div style="display:flex;gap:5px;margin-top:5px"><span class="m-b m-out" style="flex:1;color:#4A90E2"><svg class="m-i"><use href="#i-clock"/></svg> Schedule</span><span class="m-b m-out" style="flex:1"><svg class="m-i"><use href="#i-alarm"/></svg> Snooze</span></div>
+        </div></div>
+      </div>
+    </div>
+    <div class="m-cap">The table becomes one card per treatment, with the same 4 details. Same <b>Pending / Snoozed</b> toggle, search, sort by Patient. <b>Schedule</b> opens Create New Appointment pre-filled; <b>Snooze</b> → #18. In Snoozed, the button is <b>Activate</b>. Same "No pending treatments / Go to Patients" message when empty.</div>
+  </div>
+</div>
+
+<!-- ======================= B. TOP-OF-PAGE POPUPS ======================= -->
+<div class="m-sec"><h2>B. Popups from the top of the page</h2></div>
+<div class="m-grid">
+
+  <div class="m-col"><h3>5. Past appointments list</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div><div class="m-shade"></div>
+      <div class="m-full">
+        <div class="m-tt">Unresolved Past Appointments</div><span class="m-x">✕</span>
+        <div class="m-ds">These appointments need to be marked as completed, cancelled, or rescheduled.</div>
+        <div class="m-acard"><div class="hd amb"><span>Aug 14, 2025</span><span>5:00 PM</span></div><div class="bd"><div><span class="k">Patient</span><b>Sapna Kusurkar</b></div><div><span class="k">Service</span>Jig Trial</div><div><span class="k">Status</span><span class="m-badge" style="background:#fef3c7;color:#92400e;border-color:#fcd34d">confirmed</span></div></div></div>
+        <div class="m-acard"><div class="hd amb"><span>Aug 14, 2025</span><span>5:00 PM</span></div><div class="bd"><div><span class="k">Patient</span><b>Sudhanshu Gore</b></div><div><span class="k">Service</span>Denture Delivery</div><div><span class="k">Status</span><span class="m-badge" style="background:#fef3c7;color:#92400e;border-color:#fcd34d">confirmed</span></div></div></div>
+        <div class="m-acard"><div class="hd amb"><span>Aug 14, 2025</span><span>5:15 PM</span></div><div class="bd"><div><span class="k">Patient</span><b>Garima Deshmukh</b></div><div><span class="k">Service</span>Scaling And Polishing</div><div><span class="k">Status</span><span class="m-badge" style="background:#fef3c7;color:#92400e;border-color:#fcd34d">confirmed</span></div></div></div>
+        <div class="m-foot row"><span class="m-b m-out">Close</span></div>
+      </div>
+    </div>
+    <div class="m-cap">On a phone the big amber box becomes the one-line bar (see #1, <i>my call</i>). Tapping it opens this list (desktop opens it from "+43 more"). Same amber colours, same columns as cards.</div>
+  </div>
+
+  <div class="m-col"><h3>6. Appointment List</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="m-tt"><svg class="m-i" style="width:15px;height:15px"><use href="#i-phone"/></svg> Appointment List</div><span class="m-x">✕</span>
+      <div class="m-ds">All created appointments. Entries will be removed when appointments are marked as completed or cancelled.</div>
+      <div class="m-lb"><svg class="m-i"><use href="#i-filter"/></svg> Filter by Date:</div>
+      <div class="m-in"><span>All Appointments</span><span>⌄</span></div>
+      <div style="display:flex;gap:5px;margin-top:5px"><div class="m-in" style="flex:1"><span>All Doctors</span><svg class="m-i"><use href="#i-search"/></svg></div><span class="m-b m-out"><svg class="m-i"><use href="#i-dl"/></svg> Export</span></div>
+      <div class="m-chk"><span class="m-box"></span>Phone List (patients without WhatsApp only)</div>
+      <div class="m-acard"><div class="hd"><span>Aug 14, 2025</span><span>5:00 PM</span></div><div class="bd"><div><span class="k">Patient</span><b>Sapna Kusurkar</b></div><div><span class="k">Doctor</span>Dr. Bhargavi Kolhapure</div><div><span class="k">Service</span>Jig Trial</div><div><span class="k">Phone</span><span class="m-tel"><svg class="m-i"><use href="#i-phone"/></svg> 9822775164</span></div></div></div>
+      <div class="m-foot row"><span class="m-b m-out">Close</span></div>
+    </div></div>
+    <div class="m-cap">Already agreed. Custom Range shows the Start and End calendars one above the other.</div>
+  </div>
+
+  <div class="m-col"><h3>7. Patient Search (top bar)</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div><div class="m-shade"></div>
+      <div class="m-dlg" style="top:0;left:0;right:0;border-radius:0 0 8px 8px;padding-top:24px">
+        <div class="m-tt">Patient Search</div><span class="m-x">✕</span>
+        <div style="display:flex;gap:5px;margin-top:10px"><div class="m-in" style="flex:1">sapna</div><span class="m-b m-pri"><svg class="m-i"><use href="#i-search"/></svg> Search</span></div>
+        <div class="m-ds" style="margin-top:9px">Found 1 patient:</div>
+        <div class="m-acard"><div class="bd"><b>Sapna Kusurkar</b><div style="color:#64748b">9822775164 • No email</div><div style="color:#64748b;font-size:9.5px">Patient ID: <i>example</i></div></div></div>
+      </div>
+    </div>
+    <div class="m-cap">This exists on desktop but its button is <b>switched off on phones</b> today. Turning it back on, same panel sliding from the top. Because it's in the shared top bar, it appears on every page on phones.</div>
+  </div>
+</div>
+
+<!-- ======================= C. BOOKING ======================= -->
+<div class="m-sec"><h2>C. Booking a new appointment</h2></div>
+<div class="m-grid">
+
+  <div class="m-col"><h3>8. Create New Appointment</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="m-tt">Create New Appointment</div><span class="m-x">✕</span>
+      <div class="m-ds">Add a new appointment for a registered patient.</div>
+      <div class="m-lb">Patient</div><div class="m-in ph"><span>Select patient</span><span>⌄</span></div>
+      <div class="m-b m-pri" style="margin-top:6px"><svg class="m-i"><use href="#i-user"/></svg> Add New Patient</div>
+      <div class="m-lb">Service</div><div class="m-in ph"><span>Select service</span><span>⌄</span></div>
+      <div class="m-two"><div><div class="m-lb">Appointment Date</div><div class="m-in"><span><svg class="m-i"><use href="#i-cal"/></svg> Feb 12th, 2026</span></div></div>
+        <div><div class="m-lb">Time Slot</div><div class="m-in"><span>2:45 PM</span><span>⌄</span></div></div></div>
+      <div class="m-lb">Doctor</div><div class="m-in ph"><span>Select doctor</span><span>⌄</span></div>
+      <div class="m-lb">Notes</div><div class="m-in ph ta">Add any special requirements or information</div>
+      <div class="m-foot"><span class="m-b m-pri">Create Appointment</span><span class="m-b m-out">Cancel</span></div>
+    </div></div>
+    <div class="m-cap">Same fields in the same order. Opened from <b>+ New</b> (time empty) or by tapping an empty row (time filled, e.g. 2:45 PM). Fills the whole screen; buttons stay at the bottom. Same past-date block, same "Follow-up Service" box when booking a follow-up.</div>
+  </div>
+
+  <div class="m-col"><h3>9. Add New Patient</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="m-tt">Add New Patient</div><span class="m-x">✕</span>
+      <div class="m-lb">Full Name <i>*</i></div><div class="m-in ph">Enter patient's full name</div>
+      <div class="m-lb">Gender <i>*</i></div><div class="m-in ph"><span>Select gender</span><span>⌄</span></div>
+      <div class="m-lb">Age/DOB <i>*</i></div><div><span class="m-radio"><span class="on"></span>Age</span><span class="m-radio"><span></span>DOB</span></div>
+      <div class="m-in ph" style="margin-top:4px">Enter age</div>
+      <div class="m-lb">Email</div><div class="m-in ph">Email address</div>
+      <div class="m-lb" style="display:flex;justify-content:space-between">Phone Number <i>*</i><span class="m-chk" style="margin:0;font-weight:400"><span class="m-box on"></span>WhatsApp</span></div>
+      <div style="display:flex;gap:4px"><div class="m-in" style="width:62px">+91 ⌄</div><div class="m-in ph" style="flex:1">Contact Number</div></div>
+      <div class="m-lb">Alternative Phone Number</div><div style="display:flex;gap:4px"><div class="m-in" style="width:62px">+91 ⌄</div><div class="m-in ph" style="flex:1">Alternative Contact Number</div></div>
+      <div style="text-align:center;color:#94a3b8;font-size:10px;margin-top:5px">↓ scroll: Address*, City*, Pincode*, Blood Group, Referred By, Registered For*, Last Visit</div>
+      <div class="m-foot"><span class="m-b m-pri">Add Patient</span><span class="m-b m-out">Cancel</span></div>
+    </div></div>
+    <div class="m-cap">The same form (desktop already stacks it into 1 column on small screens). Full screen and scrollable, with buttons pinned at the bottom. Then the same "Confirm Patient Addition" box.</div>
+  </div>
+
+  <div class="m-col"><h3>10. Warning: Time Slot Conflict</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div><div class="m-shade"></div>
+      <div class="m-dlg" style="top:150px">
+        <div class="m-tt">Warning: Time Slot Conflict</div><span class="m-x">✕</span>
+        <div class="m-ds">This time slot already has 2 appointment(s). Adding more may cause scheduling conflicts. Do you want to continue?</div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px"><span class="m-b m-org">Continue Anyway</span><span class="m-b m-out">Cancel</span></div>
+      </div>
+    </div>
+    <div class="m-cap">Same box and same orange button. The same box is used for "doctor busy in the other clinic" and "long service but next slots full", each with its own message.</div>
+  </div>
+
+  <div class="m-col"><h3>11. Confirm Appointment</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div><div class="m-shade"></div>
+      <div class="m-dlg" style="top:120px">
+        <div class="m-tt">Confirm Appointment</div><span class="m-x">✕</span>
+        <div class="m-ds">Please confirm that you want to schedule this appointment.</div>
+        <div style="font-size:11px;line-height:1.7"><b>Patient:</b> Seema Birmal<br><b>Service:</b> Gic Filling <span style="color:#64748b;font-size:10px">(30 min)</span> <i style="color:#94a3b8">example</i><br><b>Date:</b> Feb 12, 2026<br><b>Time:</b> 2:45 PM<br><b>Doctor:</b> Dr. Bhargavi Kolhapure</div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-top:10px"><span class="m-b m-pri">Confirm Appointment</span><span class="m-b m-out">Back</span></div>
+      </div>
+    </div>
+    <div class="m-cap">Same summary box shown after "Create Appointment". Short boxes like this stay as a centred popup; only the buttons stack (that's already how this app's popups behave on phones).</div>
+  </div>
+</div>
+
+<!-- ======================= D. EXISTING APPOINTMENT ======================= -->
+<div class="m-sec"><h2>D. Tapping a booked appointment: edit, reschedule, confirm, cancel</h2></div>
+<div class="m-grid">
+
+  <div class="m-col"><h3>12. Edit Appointment (Reschedule)</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="m-tt">Edit Appointment</div><span class="m-x">✕</span>
+      <div class="m-ds">Reschedule or cancel the appointment.</div>
+      <div class="m-lb">Patient</div><div class="m-in"><span>Prerana Keni</span><span>⌄</span></div>
+      <div class="m-lb">Service</div><div class="m-in"><span>Gic Filling</span><span>⌄</span></div>
+      <div class="m-lb">Appointment Date</div><div class="m-in"><span><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span></div>
+      <div class="m-lb">Time Slot</div><div class="m-in"><span>2:30 PM (Current)</span><span>⌄</span></div>
+      <div class="m-lb">Doctor</div><div class="m-in"><span>Dr. Bhargavi Kolhapure</span><span>⌄</span></div>
+      <div class="m-lb">Notes</div><div class="m-in ph ta">Add any special requirements or information</div>
+      <div class="m-foot"><div style="display:flex;gap:5px"><span class="m-b m-pri" style="flex:1">Update</span><span class="m-b m-grn" style="flex:1.6">Confirm Appointment</span></div><div style="display:flex;gap:5px"><span class="m-b m-red" style="flex:1">Cancel</span><span class="m-b m-out" style="flex:1">Close</span></div></div>
+    </div></div>
+    <div class="m-cap">Same popup desktop opens. <b>Rescheduling</b> = change date/time here and tap <b>Update</b>. The green button changes like desktop: <b>Confirm Appointment</b> when booked, <b>Mark as Completed</b> when confirmed (→ #15). Same permissions decide which buttons show.</div>
+  </div>
+
+  <div class="m-col"><h3>13. Confirm Update</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div><div class="m-shade"></div>
+      <div class="m-dlg" style="top:170px">
+        <div class="m-tt">Confirm Update</div><span class="m-x">✕</span>
+        <div class="m-ds">Are you sure you want to update this appointment?</div>
+        <div style="color:#64748b;font-size:11px">You are about to update the appointment for <b style="color:#020817">Prerana Keni</b> on Feb 13, 2026 at 11:00 AM.</div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-top:10px"><span class="m-b m-pri">Confirm Update</span><span class="m-b m-out">Cancel</span></div>
+      </div>
+    </div>
+    <div class="m-cap">After tapping Update. "Cancel" goes back to the Edit popup, same as desktop. <i>(New date/time is an example.)</i></div>
+  </div>
+
+  <div class="m-col"><h3>14. Confirm Cancellation</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div><div class="m-shade"></div>
+      <div class="m-dlg" style="top:170px">
+        <div class="m-tt">Confirm Cancellation</div><span class="m-x">✕</span>
+        <div class="m-ds">Are you sure you want to cancel this appointment? This action cannot be undone.</div>
+        <div style="color:#64748b;font-size:11px">You are about to cancel the appointment for <b style="color:#020817">Prerana Keni</b> on Feb 12, 2026 at 2:30 PM.</div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-top:10px"><span class="m-b m-red">Cancel Appointment</span><span class="m-b m-out">Go Back</span></div>
+      </div>
+    </div>
+    <div class="m-cap">After tapping the red Cancel. Same red button, same "Go Back" to the Edit popup.</div>
+  </div>
+</div>
+
+<!-- ======================= E. COMPLETE + PAYMENT + RECEIPT ======================= -->
+<div class="m-sec"><h2>E. Mark as Completed → payment → receipt PDF</h2></div>
+<div class="m-grid">
+
+  <div class="m-col"><h3>15. Service Completed Successfully</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div><div class="m-shade"></div>
+      <div class="m-dlg" style="top:110px">
+        <div class="m-tt">Service Completed Successfully</div><span class="m-x">✕</span>
+        <div style="font-size:11.5px;margin-top:10px;line-height:1.6">The appointment for <b>Prerana Keni</b> has been marked as completed.<br>Service: <b>Gic Filling</b></div>
+        <div style="display:flex;align-items:center;gap:6px;margin:8px 0 12px;font-size:11.5px">Payment Status: <span class="m-badge">Unpaid</span></div>
+        <div class="m-b m-def">Go to Patient Registry</div>
+        <div style="text-align:center;color:#64748b;font-size:10.5px;margin-top:5px">To view patient details or add additional services</div>
+        <div style="margin-top:12px" class="m-b m-out">Close</div>
+      </div>
+    </div>
+    <div class="m-cap">Opens after "Mark as Completed". Tapping the <b>Unpaid</b> badge → #16.</div>
+  </div>
+
+  <div class="m-col"><h3>16. Confirm Payment Status Change</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div><div class="m-shade"></div>
+      <div class="m-dlg" style="top:170px">
+        <div class="m-tt">Confirm Payment Status Change</div><span class="m-x">✕</span>
+        <div class="m-ds">Are you sure you want to change the payment status for this appointment?</div>
+        <div style="color:#64748b;font-size:11px">You are about to mark this appointment as <b style="color:#020817">Paid</b>.</div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-top:10px"><span class="m-b m-gfill">Mark as Paid</span><span class="m-b m-out">Cancel</span></div>
+      </div>
+    </div>
+    <div class="m-cap">Same green "Mark as Paid" (red "Mark as Unpaid" when going back). Marking Paid opens the receipt → #17.</div>
+  </div>
+
+  <div class="m-col"><h3>17. Payment Receipt (PDF)</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="m-tt">Payment Receipt</div><span class="m-x">✕</span>
+      <div class="m-two" style="margin-top:6px"><div><div class="m-lb">Sr. No.</div><div class="m-in ph">e.g. 361</div></div><div><div class="m-lb">Receipt Date</div><div class="m-in"><span><svg class="m-i"><use href="#i-cal"/></svg> 24/10/2026</span></div></div></div>
+      <div class="m-lb">Received with thanks from</div><div class="m-in">Prerana Keni</div>
+      <div class="m-two"><div><div class="m-lb">Sum of Rs.</div><div class="m-in">1500</div></div><div><div class="m-lb">Rupees (in words)</div><div class="m-in dis" style="font-size:9.5px">One Thousand Five Hundred Only</div></div></div>
+      <div class="m-lb">Payment Mode</div><div class="m-in"><span>Cash</span><span>⌄</span></div>
+      <div class="m-two"><div><div class="m-lb">Cheque / D.D. No.</div><div class="m-in dis">Not needed for cash</div></div><div><div class="m-lb">Cheque / DD Date</div><div class="m-in dis"><span><svg class="m-i"><use href="#i-cal"/></svg> Pick a date</span></div></div></div>
+      <div class="m-lb">for the Treatment</div><div class="m-in">Gic Filling</div>
+      <div class="m-foot"><span class="m-b m-pri"><svg class="m-i"><use href="#i-dl"/></svg> Download Receipt</span><span class="m-b m-out">Close</span></div>
+    </div></div>
+    <div class="m-cap">Same fields, same pairs side by side (they fit). <b>Download Receipt</b> makes the <b>exact same PDF</b> as desktop: same A4 receipt, same letterhead, same "cut here" line. On a phone it saves to Downloads, and you can print or share it from there. <i>(Amount is an example.)</i></div>
+  </div>
+</div>
+
+<!-- ======================= F. PENDING: SNOOZE ======================= -->
+<div class="m-sec"><h2>F. Pending Treatments popup</h2></div>
+<div class="m-grid">
+  <div class="m-col"><h3>18. Snooze Treatment</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div><div class="m-shade"></div>
+      <div class="m-dlg" style="top:140px">
+        <div class="m-tt">Snooze Treatment</div><span class="m-x">✕</span>
+        <div class="m-ds">Temporarily hide this treatment until the patient is available.</div>
+        <div class="m-lb">Snooze Until</div><div class="m-in ph"><span><svg class="m-i"><use href="#i-cal"/></svg> Pick a date</span></div>
+        <div class="m-lb">Special Notes</div><div class="m-in ph ta" style="height:46px;font-size:10px">Add notes about patient availability (e.g., 'Patient traveling until January')</div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-top:10px"><span class="m-b m-def" style="opacity:.5">Snooze Treatment</span><span class="m-b m-out">Cancel</span></div>
+      </div>
+    </div>
+    <div class="m-cap">Same box. "Snooze Treatment" stays greyed out until a date is picked, same as desktop.</div>
+  </div>
+</div>
+
+<!-- ======================= G. FOUND IN THE SECOND CHECK ======================= -->
+<div class="m-sec"><h2>G. Found in the second check of the code</h2><p class="subtitle" style="margin:0">These were missing from the first page. All of them already exist on desktop.</p></div>
+<div class="m-grid">
+
+  
+  <div class="m-col"><h3>19. Main date calendar</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div>
+      <div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div>
+      <div class="m-menu" style="top:146px;left:22px;width:238px;padding:0">
+        <div class="m-cal"><div class="cap"><span class="nb l">‹</span>February 2026<span class="nb r">›</span></div><div class="row hd"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div><div class="row"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span></div><div class="row"><span>8</span><span>9</span><span>10</span><span>11</span><span class="sel">12</span><span>13</span><span>14</span></div><div class="row"><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span></div><div class="row"><span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><span>27</span><span>28</span></div></div>
+      </div>
+    </div>
+    <div class="m-cap">The <b>same calendar component</b> desktop uses, unchanged: plain day numbers, small faded ‹ › buttons, selected day in the app's blue. I checked: it already fits a 404 px phone as it is, so <b>nothing changes</b> about it. Same in Daily, Weekly, Monthly and every date box in the forms.</div>
+  </div>
+
+<div class="m-col"><h3>20. "Full" slot</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div class="m-nav" style="margin-top:6px"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div>
+      <div class="m-flt"><div>All Doctors ⌄</div><div style="color:#020817;border:2px solid #020817"><svg class="m-i"><use href="#i-search"/></svg> Rewa</div></div>
+      <div class="m-hour">2 PM</div>
+      <div class="m-slot"><div class="t">2:00</div><div class="c"><span class="m-av">2:00 PM</span></div></div>
+      <div class="m-slot" style="background:#fff7ed"><div class="t">2:15</div><div class="c"><span class="m-av" style="color:#f97316;font-weight:600">2:15 PM <span style="font-size:8px;background:#ffedd5;color:#c2410c;padding:0 4px;border-radius:3px;margin-left:4px">Full</span></span></div></div>
+      <div class="m-slot" style="background:#fff7ed"><div class="t">2:30</div><div class="c"><span class="m-av" style="color:#f97316;font-weight:600">2:30 PM <span style="font-size:8px;background:#ffedd5;color:#c2410c;padding:0 4px;border-radius:3px;margin-left:4px">Full</span></span></div></div>
+      <div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div>
+      <div class="m-hour">5 PM</div>
+      <div class="m-slot"><div class="t">5:30</div><div class="c"><div class="m-blk m-tl"><div class="s">Ortho [braces]</div><div class="p">Rewa Gode · Dr Sanika Modak</div></div></div></div>
+    </div>
+    <div class="m-cap">Shows only when a search or doctor filter hides the patients in a slot that already has 2. Tapping it → Warning (#10).</div>
+  </div>
+
+  <div class="m-col"><h3>21. Pick lists inside forms</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="m-tt">Create New Appointment</div><span class="m-x">✕</span>
+      <div class="m-lb">Patient</div>
+      <div class="m-in" style="border-color:#020817"><span>sap</span><span>⌄</span></div>
+      <div style="border:1px solid #e2e8f0;border-radius:6px;box-shadow:0 4px 12px #0002;margin-top:3px;padding:3px">
+        <div style="padding:5px 7px;background:#f1f5f9;border-radius:4px">Sapna Kusurkar</div>
+        <div style="padding:5px 7px;color:#64748b;font-size:10px">(type to search · "No patient found" if none)</div></div>
+      <div class="m-lb" style="margin-top:12px">Time Slot</div>
+      <div class="m-in" style="border-color:#020817"><span>Select time slot</span><span>⌄</span></div>
+      <div style="border:1px solid #e2e8f0;border-radius:6px;box-shadow:0 4px 12px #0002;margin-top:3px;padding:3px;font-size:11px">
+        <div style="padding:5px 7px">3:00 PM</div><div style="padding:5px 7px;background:#f1f5f9;border-radius:4px">3:15 PM</div><div style="padding:5px 7px">3:30 PM</div><div style="padding:5px 7px">3:45 PM</div><div style="padding:5px 7px;color:#94a3b8">… scrolls to 7:45 PM</div></div>
+    </div></div>
+    <div class="m-cap">Every drop-down (Patient, Service, Doctor, Time Slot, Gender, Payment Mode…) opens as the same list under the box, full width. Kept: today shows <b>only future times</b>; Edit puts "<b>(Current)</b>" first; empty → "No available time slots for this date". Past dates greyed out in the date picker.</div>
+  </div>
+
+  <div class="m-col"><h3>22. Confirm Patient Addition</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div><div class="m-shade"></div>
+      <div class="m-dlg" style="top:180px">
+        <div class="m-tt">Confirm Patient Addition</div>
+        <div class="m-ds">Are you sure you want to add Ravi Patil to the patient registry? <i>(example name)</i></div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-top:10px"><span class="m-b m-def">Add Patient</span><span class="m-b m-out">Cancel</span></div>
+      </div>
+    </div>
+    <div class="m-cap">After "Add Patient" in #9. Then the new patient is auto-selected in Create New Appointment, same as desktop.</div>
+  </div>
+
+  <div class="m-col"><h3>23. Booking from Recall List / Pending</h3>
+    <div class="m-ph"><div class="m-full" style="padding-top:62px">
+      <div style="position:absolute;top:6px;left:8px;right:8px;background:#fff;border:1px solid #e2e8f0;border-radius:7px;box-shadow:0 6px 16px #0003;padding:7px 9px;z-index:6"><b style="font-size:11px">Follow-up Appointment</b><div style="color:#64748b;font-size:10.5px">Creating appointment for Sapna Kusurkar based on a follow-up reminder.</div></div>
+      <div class="m-tt">Create New Appointment</div>
+      <div class="m-ds">Add a new appointment for a registered patient.</div>
+      <div class="m-lb">Patient</div><div class="m-in"><span>Sapna Kusurkar</span><span>⌄</span></div>
+      <div class="m-two"><div><div class="m-lb">Service</div><div class="m-in"><span>Jig Trial</span><span>⌄</span></div></div><div><div class="m-lb">Follow-up Service</div><div class="m-in dis">Denture Delivery</div></div></div>
+      <div class="m-two"><div><div class="m-lb">Appointment Date</div><div class="m-in"><span>Oct 28th, 2026</span></div></div><div><div class="m-lb">Time Slot</div><div class="m-in ph"><span>Select time slot</span><span>⌄</span></div></div></div>
+      <div class="m-lb">Doctor</div><div class="m-in"><span>Dr. Bhargavi Kolhapure</span><span>⌄</span></div>
+      <div class="m-foot"><span class="m-b m-pri">Create Appointment</span><span class="m-b m-out">Cancel</span></div>
+    </div></div>
+    <div class="m-cap">From <b>Recall List</b> or Pending <b>Schedule</b>, the form opens <b>pre-filled</b>, with the grey "Follow-up Service" box and a message at the top. Same as desktop. <i>(Names/services are examples.)</i></div>
+  </div>
+
+  <div class="m-col"><h3>24. Messages (pop-up notes)</h3>
+    <div class="m-ph">
+      <div style="position:absolute;top:8px;left:8px;right:8px;background:#fff;border:1px solid #e2e8f0;border-radius:7px;box-shadow:0 6px 16px #0003;padding:8px 10px;z-index:6"><b style="font-size:11.5px">Appointment Created</b><div style="color:#64748b;font-size:10.5px">New appointment for Prerana Keni on Feb 12, 2026 at 2:45 PM (30 minutes)</div></div>
+      <div style="position:absolute;top:78px;left:8px;right:8px;background:#ef4444;color:#fff;border-radius:7px;box-shadow:0 6px 16px #0003;padding:8px 10px;z-index:6"><b style="font-size:11.5px">Time Slot Unavailable</b><div style="font-size:10.5px;opacity:.95">Cannot create appointments for times that have already passed. Please select a future time.</div></div>
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+    </div>
+    <div class="m-cap">All ~30 messages (Appointment Created / Rescheduled / Cancelled / Confirmed, Payment Status, Export Successful, Treatment Snoozed, Invalid Mobile Number, Error…) stay the same. On phones they already appear at the <b>top</b> of the screen (desktop: bottom-right). Red = problem. <i>(Examples.)</i></div>
+  </div>
+
+  <div class="m-col"><h3>25. Edit when already Confirmed</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="m-tt">Edit Appointment</div><span class="m-x">✕</span>
+      <div class="m-ds">Reschedule or cancel the appointment.</div>
+      <div class="m-lb">Patient</div><div class="m-in"><span>Seema Birmal</span><span>⌄</span></div>
+      <div class="m-lb">Service</div><div class="m-in"><span>Scaling And Polishing</span><span>⌄</span></div>
+      <div class="m-lb">Appointment Date</div><div class="m-in"><span><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span></div>
+      <div class="m-lb">Time Slot</div><div class="m-in"><span>2:00 PM (Current)</span><span>⌄</span></div>
+      <div class="m-lb">Doctor</div><div class="m-in"><span>Dr. Bhargavi Kolhapure</span><span>⌄</span></div>
+      <div class="m-foot"><div style="display:flex;gap:5px"><span class="m-b m-pri" style="flex:1">Update</span><span class="m-b m-grn" style="flex:1.6">Mark as Completed</span></div><div style="display:flex;gap:5px"><span class="m-b m-red" style="flex:1">Cancel</span><span class="m-b m-out" style="flex:1">Close</span></div></div>
+    </div></div>
+    <div class="m-cap">Same popup as #12, but for a <b>confirmed</b> appointment the green button is <b>Mark as Completed</b> → #15. Users without edit/delete permission don't see Update/Cancel, same as desktop.</div>
+  </div>
+
+  <div class="m-col"><h3>26. Payment Receipt, Cheque</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="m-tt">Payment Receipt</div><span class="m-x">✕</span>
+      <div class="m-two" style="margin-top:6px"><div><div class="m-lb">Sr. No.</div><div class="m-in">362</div></div><div><div class="m-lb">Receipt Date</div><div class="m-in"><span>24/10/2026</span></div></div></div>
+      <div class="m-lb">Received with thanks from</div><div class="m-in">Prerana Keni</div>
+      <div class="m-two"><div><div class="m-lb">Sum of Rs.</div><div class="m-in">2500</div></div><div><div class="m-lb">Rupees (in words)</div><div class="m-in dis" style="font-size:9.5px">Two Thousand Five Hundred Only</div></div></div>
+      <div class="m-lb">Payment Mode</div><div class="m-in"><span>Cheque</span><span>⌄</span></div>
+      <div class="m-two"><div><div class="m-lb">Cheque No.</div><div class="m-in">123456</div></div><div><div class="m-lb">Cheque / DD Date</div><div class="m-in"><span><svg class="m-i"><use href="#i-cal"/></svg> 23/10/2026</span></div></div></div>
+      <div class="m-lb">for the Treatment</div><div class="m-in">Gic Filling</div>
+      <div class="m-foot"><span class="m-b m-pri"><svg class="m-i"><use href="#i-dl"/></svg> Download Receipt</span><span class="m-b m-out">Close</span></div>
+    </div></div>
+    <div class="m-cap">Choose Cheque or Demand Draft and the number and date boxes switch on, with the label changing to "Cheque No." / "D.D. No.", same as desktop. <i>(Values are examples.)</i></div>
+  </div>
+
+  
+  <div class="m-col"><h3>27. Appointment List, Custom Range</h3>
+    <div class="m-ph"><div class="m-full" style="padding-bottom:12px">
+      <div class="m-tt"><svg class="m-i" style="width:15px;height:15px"><use href="#i-phone"/></svg> Appointment List</div><span class="m-x">✕</span>
+      <div class="m-lb" style="margin-top:8px"><svg class="m-i"><use href="#i-filter"/></svg> Filter by Date:</div>
+      <div class="m-in"><span>Custom Range</span><span>⌄</span></div>
+      <div class="m-in" style="margin-top:5px;border-color:#020817"><span><svg class="m-i"><use href="#i-cal"/></svg> Select date range</span></div>
+      <div class="m-menu" style="position:relative;margin-top:6px;padding:8px;box-shadow:0 6px 18px #0002">
+        <div style="font-size:11.5px;font-weight:500;margin-bottom:4px">Start Date</div>
+        <div class="m-cal bordered"><div class="cap"><span class="nb l">‹</span>October 2026<span class="nb r">›</span></div><div class="row hd"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div><div class="row"><span class="o">27</span><span class="o">28</span><span class="o">29</span><span class="o">30</span><span>1</span><span>2</span><span>3</span></div><div class="row"><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div><div class="row"><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span></div><div class="row"><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span></div><div class="row"><span>25</span><span>26</span><span>27</span><span>28</span><span>29</span><span>30</span><span>31</span></div></div>
+        <div style="font-size:11.5px;color:#94a3b8;text-align:center;margin-top:6px">↓ scroll: End Date calendar, then Apply Range</div>
+      </div>
+    </div></div>
+    <div class="m-cap">Same two calendars as desktop (each in its thin border box, with greyed days from the next/previous month). Desktop puts them <b>side by side</b>, but together they're about 590 px wide, wider than a phone, so on the phone they sit <b>one above the other</b>: Start Date, then End Date, then the blue <b>Apply Range</b>. Only that order changes.</div>
+  </div>
+
+<div class="m-col"><h3>28. Empty screens</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="m-tt"><svg class="m-i" style="width:15px;height:15px"><use href="#i-phone"/></svg> Appointment List</div><span class="m-x">✕</span>
+      <div class="m-ds">All created appointments. Entries will be removed when appointments are marked as completed or cancelled.</div>
+      <div style="text-align:center;color:#6b7280;margin-top:60px"><svg class="m-i" style="width:40px;height:40px;color:#d1d5db"><use href="#i-phone"/></svg><div style="margin-top:10px">No active appointments!</div><div style="font-size:10.5px">All appointments have been completed or cancelled.</div></div>
+      <div class="m-foot row"><span class="m-b m-out">Close</span></div>
+    </div></div>
+    <div class="m-cap">Every "nothing here" message stays the same: this one, "No pending treatments / Go to Patients", "No snoozed treatments", and a day with no bookings (all rows show their time). The amber bar hides when nothing is overdue.</div>
+  </div>
+
+  <div class="m-col"><h3>29. Meditouch clinic</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#6CBFBF">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EAF6F6;color:#3A8F8F;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span>Dental Metrix</span><span class="on" style="color:#6CBFBF">Meditouch</span></div></div>
+      <div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span></div>
+      <div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> October 24th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div>
+      <div class="m-flt"><div>All Doctors ⌄</div><div><svg class="m-i"><use href="#i-search"/></svg> Search Patient</div></div>
+      <div class="m-hour">10 AM</div>
+      <div class="m-slot"><div class="t">10:00</div><div class="c"><div class="m-blk" style="background:#16A085"><div class="s">Physiotherapy</div><div class="p">example patient</div></div></div></div>
+      <div class="m-slot"><div class="t">10:15</div><div class="c"><span class="m-av">10:15 AM</span></div></div>
+      <div class="m-slot"><div class="t">10:30</div><div class="c"><span class="m-av">10:30 AM</span></div></div>
+    </div>
+    <div class="m-cap">When Meditouch is chosen, same as desktop: <b>teal</b> buttons, <b>no Pending Treatments tab</b>, <b>no Appointment List link</b> (both are Dental-only today), and <b>1 patient per slot</b>. <i>(Booking is an example.)</i></div>
+  </div>
+
+  
+  <div class="m-col"><h3>30a. Notifications (tap 🔔)</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic m-ring"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div>
+      <div class="m-menu" style="top:40px;right:34px;width:236px;padding:8px">
+        
+        <div style="display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:11.5px;margin-bottom:5px">Notifications<span style="font-weight:400;font-size:10px">Mark all read</span></div>
+        <div style="border-top:1px solid #e2e8f0;padding-top:5px"><div style="background:#eff6ff;border-left:4px solid #3b82f6;padding:6px;border-radius:3px"><div style="font-weight:500;color:#1e3a8a;font-size:11px">Notification title</div><div style="color:#64748b;font-size:10.5px">Message text…</div><div style="display:flex;justify-content:space-between;margin-top:3px;font-size:9.5px;color:#64748b">2h ago<span style="background:#fef9c3;color:#854d0e;border-radius:9px;padding:0 6px">medium</span></div></div></div>
+      </div>
+    </div>
+    <div class="m-cap">Drops down <b>right under the bell</b>, lined up with the right edge, over the page (menus don't darken the page, same as desktop). Same list, colours and "Mark all read". Tap outside to close. <i>(Notification is an example.)</i></div>
+  </div>
+
+  <div class="m-col"><h3>30b. My Account (tap S)</h3>
+    <div class="m-ph"><div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb" style="background:#4A90E2">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic m-ring" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div><div class="m-tabs" style="margin-top:6px"><span class="on">Daily</span><span>Weekly</span><span>Monthly</span><span>Pending</span></div><div class="m-nav"><span class="m-btn">‹</span><span class="m-btn grow"><svg class="m-i"><use href="#i-cal"/></svg> February 12th, 2026</span><span class="m-btn">›</span><span class="m-btn">Today</span></div><div class="m-hour">2 PM</div><div class="m-slot"><div class="t">2:00</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:15</div><div class="c"><div class="m-blk m-g"><div class="s">Cheak Up…</div><div class="p">Rucha Limaye</div></div><div class="m-blk m-g"><div class="s">Scaling…</div><div class="p">Seema Birmal</div></div></div></div><div class="m-slot"><div class="t">2:30</div><div class="c"><div class="m-blk m-g"><div class="s">Gic Filling</div><div class="p">Prerana Keni</div></div></div></div><div class="m-slot"><div class="t">2:45</div><div class="c"><span class="m-av">2:45 PM</span></div></div><div class="m-slot"><div class="t">3:00</div><div class="c"><span class="m-av">3:00 PM</span></div></div><div class="m-slot"><div class="t">3:15</div><div class="c"><span class="m-av">3:15 PM</span></div></div><div class="m-hour">4 PM</div><div class="m-slot"><div class="t">4:00</div><div class="c"><div class="m-blk m-g"><div class="s">Cap Cementation</div><div class="p">Manisha Bapat</div></div></div></div><div class="m-slot"><div class="t">4:15</div><div class="c"><span class="m-av">4:15 PM</span></div></div><div class="m-slot"><div class="t">4:30</div><div class="c"><div class="m-blk m-g"><div class="s">Scaling And Polishing</div><div class="p">vaibhav dongre</div></div></div></div><div class="m-slot"><div class="t">4:45</div><div class="c"><span class="m-av">4:45 PM</span></div></div>
+      <div class="m-menu" style="top:40px;right:8px;width:170px;padding:5px">
+        <div style="font-weight:600;font-size:11.5px;padding:5px 7px">My Account</div>
+        <div style="border-top:1px solid #e2e8f0;margin:3px 0"></div>
+        <div style="padding:6px 7px">👤 System</div><div style="padding:6px 7px">⚙ Settings</div>
+        <div style="border-top:1px solid #e2e8f0;margin:3px 0"></div><div style="padding:6px 7px">↪ Log out</div>
+      </div>
+    </div>
+    <div class="m-cap">Drops down <b>right under the S button</b>, same 3 items as desktop: your name, Settings, Log out.</div>
+  </div>
+
+<div class="m-col"><h3>31. Side menu (☰)</h3>
+    <div class="m-ph">
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,.8)"></div>
+      <div style="position:absolute;left:0;top:0;bottom:0;width:190px;background:#fff;padding:14px 8px;z-index:5;font-size:11.5px">
+        <div style="font-family:Poppins;font-weight:600;font-size:14px;text-align:center;margin-bottom:14px">Dental Metrix<div style="font-family:Inter;font-weight:400;font-size:10px;color:#64748b">Clinic</div></div>
+        <div style="padding:6px">Dashboard</div><div style="padding:6px;background:#f1f5f9;border-radius:5px">Appointments</div><div style="padding:6px">Patients</div><div style="padding:6px">Recall List</div><div style="padding:6px">Lab Work</div><div style="padding:6px">Stock Tracker</div><div style="padding:6px">Reports</div><div style="padding:6px">Enquiries</div><div style="padding:6px">Audit Log</div><div style="padding:6px">Settings</div>
+        <div class="m-b m-out" style="position:absolute;bottom:14px;left:10px;right:10px">↪ Sign Out</div>
+      </div>
+    </div>
+    <div class="m-cap"><b>Already works on phones today</b> (I checked it at 404 px). No change.</div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:28px">Rule for every popup: <b>short boxes</b> (warnings, confirms) stay as a centred popup with the buttons stacked. <b>Long forms</b> (Create, Edit, Add Patient, Receipt, the two lists) fill the screen with the buttons pinned at the bottom, so they're always reachable with your thumb.</p>

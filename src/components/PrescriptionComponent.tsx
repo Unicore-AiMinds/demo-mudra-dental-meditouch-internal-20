@@ -30,6 +30,7 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { useIsCompact } from '@/hooks/use-compact';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface PrescriptionComponentProps {
@@ -54,6 +55,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   const { medicines } = useMedicines();
   const { supabase } = useSupabase();
   const { hasPermission } = usePermissions();
+  const isCompact = useIsCompact();
 
   // Log available medicines for debugging
   useEffect(() => {
@@ -1366,12 +1368,12 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardHeader className={isCompact ? "flex flex-row flex-wrap items-center justify-between gap-2 pb-2" : "flex flex-row items-center justify-between pb-2"}>
           <CardTitle>Prescriptions</CardTitle>
           {!isAddingNew && !isEditing && hasPermission('patients.create_prescriptions') && (
             <Button
               onClick={() => setIsAddingNew(true)}
-              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700"
+              className={isCompact ? "flex w-full items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700" : "flex items-center gap-1 bg-blue-600 hover:bg-blue-700"}
             >
               <Plus className="h-4 w-4" />
               New Prescription
@@ -1381,7 +1383,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
         <CardContent>
           {/* Form for adding or editing prescriptions */}
           {(isAddingNew || isEditing) && (
-            <div className="mb-6 p-4 border rounded-md bg-muted/20">
+            <div className={isCompact ? "mb-6 p-4 pb-24 md:pb-4 border rounded-md bg-muted/20" : "mb-6 p-4 border rounded-md bg-muted/20"}>
               <h3 className="text-lg font-medium mb-4">
                 {isEditing ? "Edit Prescription" : "Create New Prescription"}
               </h3>
@@ -1461,7 +1463,30 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                 <h4 className="text-md font-medium mb-2">Medications <span className="text-red-500 ml-1">*</span></h4>
 
                 {/* Current Medications List */}
-                {newMedications.length > 0 && (
+                {newMedications.length > 0 && isCompact && (
+                  <div className="mb-4 space-y-2">
+                    {newMedications.map((med, index) => (
+                      <div key={index} className="rounded-md border bg-background">
+                        <div className="flex items-center justify-between border-b px-3 py-1.5 text-sm font-medium">
+                          <span>{med.name} · {med.dosage}</span>
+                          <Button variant="ghost" size="sm" onClick={() => handleRemoveMedication(index)}>
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="px-3 py-1.5 text-xs text-muted-foreground">
+                          {[
+                            med.timing && [med.timing.morning ? 'Morning' : '', med.timing.afternoon ? 'Afternoon' : '', med.timing.night ? 'Night' : ''].filter(Boolean).join(', '),
+                            med.food_instructions,
+                            med.duration,
+                            med.dispense_quantity,
+                          ].filter(Boolean).join(' · ')}
+                          {med.instructions && <div>{med.instructions}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {newMedications.length > 0 && !isCompact && (
                   <div className="mb-4 overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -1604,7 +1629,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
                   </div>
 
                   {/* Third row - Duration and Dispense Quantity */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className={isCompact ? "grid grid-cols-1 gap-4 mb-4" : "grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"}>
                     {/* Duration - number + unit (Days / Weeks / Months) */}
                     <div>
                       <Label htmlFor="duration" className="text-xs font-medium mb-1 block">Duration <span className="text-red-500 ml-1">*</span></Label>
@@ -1693,7 +1718,7 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
               </div>
 
               {/* Form Actions */}
-              <div className="flex justify-end gap-2">
+              <div className={isCompact ? "fixed inset-x-0 bottom-0 z-20 grid grid-cols-2 gap-2 border-t bg-background px-4 py-3 md:static md:z-auto md:mt-4 md:border-t-0 md:bg-transparent md:px-0 md:py-0" : "flex justify-end gap-2"}>
                 <Button variant="outline" onClick={handleCancel}>
                   <X className="h-4 w-4 mr-1" />
                   Cancel
@@ -1721,7 +1746,47 @@ const PrescriptionComponent: React.FC<PrescriptionComponentProps> = ({ patientId
           {/* Table of prescriptions */}
           {!isAddingNew && !isEditing && (
             <>
-              {filteredPrescriptions.length > 0 ? (
+              {filteredPrescriptions.length > 0 && isCompact ? (
+                /* Phones/tablets: one card per prescription with the same details and actions */
+                <div className="space-y-2">
+                  {filteredPrescriptions.map((prescription) => (
+                    <div key={prescription.id} className="overflow-hidden rounded-md border text-sm">
+                      <div className="flex items-center justify-between border-b bg-gray-50 px-3 py-2 font-medium">
+                        <span>{format(new Date(prescription.date), 'dd/MM/yyyy')}</span>
+                        {getStatusBadge(prescription.status)}
+                      </div>
+                      <div className="space-y-1.5 px-3 py-2">
+                        <div><div className="text-xs font-medium text-muted-foreground">Diagnosis</div>{prescription.diagnosis}</div>
+                        <div>
+                          <div className="text-xs font-medium text-muted-foreground">Medications</div>
+                          {prescription.medications && prescription.medications.length > 0
+                            ? prescription.medications.map(med => med.name).join(', ')
+                            : 'No medications'}
+                        </div>
+                        <div><div className="text-xs font-medium text-muted-foreground">Prescribed By</div>{prescription.prescribed_by}</div>
+                      </div>
+                      <div className={`grid gap-2 px-3 pb-3 ${hasPermission('patients.edit_prescriptions') ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                        {hasPermission('patients.edit_prescriptions') && (
+                          <Button variant="outline" size="sm" onClick={() => handleEditPrescription(prescription.id)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDirectPrint(prescription)}
+                          title="Print directly"
+                          className="bg-blue-100 text-blue-600 hover:bg-blue-200"
+                        >
+                          <Printer className="mr-2 h-4 w-4 text-blue-600" />
+                          Print
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredPrescriptions.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>

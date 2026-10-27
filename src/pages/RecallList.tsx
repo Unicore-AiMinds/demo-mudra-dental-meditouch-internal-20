@@ -56,6 +56,9 @@ import { useAppointments } from '@/contexts/AppointmentContext';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useDentalHistory } from '@/contexts/DentalHistoryContext';
 import { useServices } from '@/contexts/ServiceContext';
+import { useIsCompact } from '@/hooks/use-compact';
+import RecallCardList from '@/components/recall/compact/RecallCardList';
+import RecallSortSelect from '@/components/recall/compact/RecallSortSelect';
 
 const RecallList = () => {
   const {
@@ -79,6 +82,7 @@ const RecallList = () => {
   const { supabase } = useSupabase();
   const { markAppointmentCompleted } = useDentalHistory();
   const { dentalServices, meditouchServices } = useServices();
+  const isCompact = useIsCompact();
 
   // UI state
   const [searchTerm, setSearchTerm] = useState('');
@@ -913,6 +917,18 @@ const RecallList = () => {
     }
   };
 
+  // Phone cards' "Activate Early": the same steps as the desktop Waiting button's inline handler
+  const handleActivateEarly = (followUp: FollowUp) => {
+    // Activate the waiting follow-up
+    activateFollowUp(followUp.id).then(() => {
+      toast({
+        title: "Follow-up Activated",
+        description: `Step ${followUp.follow_up_sequence} for ${followUp.patient_name} has been activated and moved to the pending list.`,
+      });
+      fetchFollowUps();
+    });
+  };
+
   // Handle opening delete confirmation dialog
   const handleDeleteFollowUp = (followUp: FollowUp) => {
     setFollowUpToDelete(followUp);
@@ -1052,25 +1068,25 @@ const RecallList = () => {
       </div>
 
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-center">
+        <CardHeader className={isCompact ? "pb-3 px-4" : "pb-3"}>
+          <div className={isCompact ? "flex flex-col gap-3" : "flex justify-between items-center"}>
             <div>
               <CardTitle>Tentative Follow-ups</CardTitle>
               <CardDescription>
                 Patients due for follow-up appointments based on previous treatments
               </CardDescription>
             </div>
-            <div className="flex border rounded-md overflow-hidden">
+            <div className={isCompact ? "grid grid-cols-3 border rounded-md overflow-hidden" : "flex border rounded-md overflow-hidden"}>
               <Button
                 variant={activeTab === 'pending' ? 'default' : 'ghost'}
-                className={`rounded-none ${activeTab === 'pending' ? '' : 'hover:bg-gray-100'}`}
+                className={`rounded-none ${activeTab === 'pending' ? '' : 'hover:bg-gray-100'}${isCompact ? ' px-2' : ''}`}
                 onClick={() => setActiveTab('pending')}
               >
                 Pending ({filteredCounts.pendingCount})
               </Button>
               <Button
                 variant={activeTab === 'waiting' ? 'default' : 'ghost'}
-                className={`rounded-none ${activeTab === 'waiting' ? '' : 'hover:bg-gray-100'}`}
+                className={`rounded-none ${activeTab === 'waiting' ? '' : 'hover:bg-gray-100'}${isCompact ? ' px-2' : ''}`}
                 onClick={async () => {
                   console.log('Switching to waiting tab');
 
@@ -1100,7 +1116,7 @@ const RecallList = () => {
               </Button>
               <Button
                 variant={activeTab === 'snoozed' ? 'default' : 'ghost'}
-                className={`rounded-none ${activeTab === 'snoozed' ? '' : 'hover:bg-gray-100'}`}
+                className={`rounded-none ${activeTab === 'snoozed' ? '' : 'hover:bg-gray-100'}${isCompact ? ' px-2' : ''}`}
                 onClick={() => setActiveTab('snoozed')}
               >
                 Snoozed ({filteredCounts.snoozedCount})
@@ -1108,7 +1124,7 @@ const RecallList = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className={isCompact ? "px-4" : undefined}>
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -1155,7 +1171,30 @@ const RecallList = () => {
             )}
           </div>
 
-          {filteredAndSortedFollowUps.length > 0 ? (
+          {filteredAndSortedFollowUps.length > 0 && isCompact ? (
+            <div className="space-y-3">
+              <RecallSortSelect
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onChange={(newSortBy, newSortOrder) => {
+                  setSortBy(newSortBy);
+                  setSortOrder(newSortOrder);
+                }}
+              />
+              <RecallCardList
+                followUps={filteredAndSortedFollowUps}
+                activeTab={activeTab}
+                activeClinic={activeClinic}
+                canDelete={hasPermission('recall_list.delete')}
+                onViewDetails={handleViewDetails}
+                onSchedule={handleScheduleAppointment}
+                onSnooze={handleOpenSnoozeDialog}
+                onActivateEarly={handleActivateEarly}
+                onActivate={handleUnsnoozeFollowUp}
+                onDelete={handleDeleteFollowUp}
+              />
+            </div>
+          ) : filteredAndSortedFollowUps.length > 0 ? (
             <div className="rounded-md border overflow-hidden">
               <Table>
                 <TableHeader>

@@ -14,6 +14,7 @@ import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointments, Appointment, DentalAppointment } from '@/contexts/AppointmentContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsCompact } from '@/hooks/use-compact';
 
 // Using Appointment types from AppointmentContext
 
@@ -37,6 +38,7 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
   dentalOnly = false
 }) => {
   const navigate = useNavigate();
+  const isCompact = useIsCompact();
   const { toast } = useToast();
   const { getPatientAppointments, isLoading } = useAppointments();
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
@@ -264,7 +266,7 @@ const PatientUpcomingAppointments: React.FC<PatientUpcomingAppointmentsProps> = 
                   </div>
                 ))}
               </div>
-              <div className="flex justify-end">
+              <div className={isCompact ? "flex justify-center" : "flex justify-end"}>
                 <Button
                   variant="outline"
                   size="sm"
