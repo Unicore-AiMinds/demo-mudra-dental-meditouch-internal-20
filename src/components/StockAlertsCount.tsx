@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useStock } from '@/hooks/use-stock';
+import { isPastExpiry, isWithinExpiryWindow } from '@/lib/stockExpiry';
 
 const StockAlertsCount: React.FC = () => {
   const { stockItems } = useStock();
@@ -26,25 +27,16 @@ const StockAlertsCount: React.FC = () => {
   const isOutOfStock = (item: any) => item.currentQuantity === 0;
   const isLowStock = (item: any) => item.currentQuantity > 0 && item.currentQuantity <= item.minimumThreshold;
 
+  // The expiry day itself is still usable; expired from the next day
   const isExpired = (item: any) => {
     if (!item.nearestExpiryDate) return false;
-    const expiryDate = new Date(item.nearestExpiryDate);
-    const today = new Date();
-    expiryDate.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-    return expiryDate <= today;
+    return isPastExpiry(item.nearestExpiryDate);
   };
 
   const isExpiringSoon = (item: any) => {
     if (!item.nearestExpiryDate) return false;
     if (isOutOfStock(item) || isExpired(item)) return false;
-
-    const expiryDate = new Date(item.nearestExpiryDate);
-    const today = new Date();
-    const differenceInTime = expiryDate.getTime() - today.getTime();
-    const differenceInDays = differenceInTime / (1000 * 60 * 60 * 24);
-
-    return differenceInDays > 0 && differenceInDays <= 60;
+    return isWithinExpiryWindow(item.nearestExpiryDate);
   };
 
   const getPrimaryStatus = (item: any) => {

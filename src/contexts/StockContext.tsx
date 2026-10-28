@@ -6,6 +6,7 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { format } from 'date-fns';
 import { useAuditLog } from '@/contexts/AuditLogContext';
 import { AuditLogTemplates } from '@/utils/auditLogger';
+import { isPastExpiry, isWithinExpiryWindow } from '@/lib/stockExpiry';
 
 export interface StockItem {
   id: string;
@@ -417,34 +418,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const isOutOfStock = (item: StockItem) => item.current_quantity === 0;
   const isLowStock = (item: StockItem) => item.current_quantity > 0 && item.current_quantity <= item.minimum_threshold;
 
-  // Check if item is expired (expiry date is today or in the past)
+  // Check if item is expired (expiry date is in the past; the expiry day itself is still usable)
   const isExpired = (item: StockItem) => {
     if (!item.nearest_expiry_date) return false;
-
-    const expiryDate = new Date(item.nearest_expiry_date);
-    const today = new Date();
-
-    // Set both dates to midnight to compare just the dates
-    expiryDate.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-
-    // Return true if expiry date is today or in the past
-    return expiryDate <= today;
+    return isPastExpiry(item.nearest_expiry_date);
   };
 
-  // Check if item is expiring soon (within 60 days) - only if not out of stock or expired
+  // Check if item is expiring soon (within 60 days, including the expiry day) - only if not out of stock or expired
   const isExpiringSoon = (item: StockItem) => {
     if (!item.nearest_expiry_date || isOutOfStock(item) || isExpired(item)) return false;
-
-    const expiryDate = new Date(item.nearest_expiry_date);
-    const today = new Date();
-
-    // Calculate the difference in days
-    const differenceInTime = expiryDate.getTime() - today.getTime();
-    const differenceInDays = differenceInTime / (1000 * 3600 * 24);
-
-    // Return true if expiring within 60 days but not expired yet
-    return differenceInDays > 0 && differenceInDays <= 60;
+    return isWithinExpiryWindow(item.nearest_expiry_date);
   };
 
   // Get items by priority-based status (no overlapping categories)

@@ -24,6 +24,7 @@ import { IncomingStockData } from '@/contexts/StockContext';
 import { useStock } from '@/hooks/use-stock';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
+import { isPastExpiry } from '@/lib/stockExpiry';
 
 interface IncomingStockDialogProps {
   isOpen: boolean;
@@ -105,12 +106,8 @@ const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
       return;
     }
 
-    // Check if expiry date is in the past
-    const expiryDate = new Date(formData.expiry_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-
-    if (expiryDate < today) {
+    // Check if expiry date is in the past (today is allowed: the expiry day itself is still usable)
+    if (isPastExpiry(formData.expiry_date)) {
       setValidationDialog({
         isOpen: true,
         title: 'Record Received Stock',
