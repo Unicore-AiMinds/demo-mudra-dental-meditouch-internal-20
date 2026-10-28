@@ -29,7 +29,8 @@ import {
   AlertCircle,
   LogOut,
   Clock,
-  Inbox
+  Inbox,
+  Boxes
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DentalMetrixLogo, MeditouchLogo } from '@/assets/logos';
@@ -83,6 +84,13 @@ const navItems: NavItem[] = [
     icon: PackageOpen,
     path: '/stock',
     clinics: ['dental', 'meditouch'],
+    permissions: ['stock.view'],
+  },
+  {
+    title: 'Implant Tracker',
+    icon: Boxes,
+    path: '/implants',
+    clinics: ['dental'],
     permissions: ['stock.view'],
   },
   {

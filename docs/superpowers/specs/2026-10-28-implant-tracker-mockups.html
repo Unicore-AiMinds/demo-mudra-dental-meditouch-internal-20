@@ -1,0 +1,466 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
+  .m-sec { margin:30px 0 6px; padding-top:10px; border-top:2px solid #94a3b8; }
+  .m-sec h2 { margin:0 0 4px; }
+  .m-grid { display:flex; flex-wrap:wrap; gap:22px; justify-content:flex-start; margin-top:12px; }
+  .m-col { width:300px; display:flex; flex-direction:column; gap:6px; }
+  .m-col h3 { margin:0; font-size:15px; }
+  .m-cap { font-size:12.5px; color:#94a3b8; line-height:1.45; }
+  .m-cap b { color:inherit; }
+  /* ---------- phone, using the app's real fonts + colours ---------- */
+  .m-ph { width:282px; height:580px; border:8px solid #111; border-radius:28px; background:#f9fafb; overflow:hidden; position:relative; font-family:Inter,sans-serif; color:#020817; font-size:11.5px; line-height:1.35; }
+  .m-ph * { box-sizing:border-box; }
+  .m-top { background:#fff; border-bottom:1px solid #e2e8f0; padding:7px 8px; display:flex; align-items:center; gap:6px; }
+  .m-seg { display:flex; background:#f1f5f9; border-radius:6px; padding:2px; flex:1; }
+  .m-seg span { flex:1; text-align:center; padding:3px 0; border-radius:4px; font-size:9.5px; color:#64748b; }
+  .m-seg span.on { background:#fff; color:#4A90E2; font-weight:600; box-shadow:0 1px 2px #0002; }
+  .m-ic { width:22px; height:22px; border-radius:50%; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; background:#fff; }
+  .m-ic svg, .m-i { width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; vertical-align:-2px; }
+  .m-newb { background:#4A90E2; color:#fff; border-radius:5px; padding:4px 6px; font-size:9.5px; font-weight:600; white-space:nowrap; }
+  .m-alert { margin:6px 7px; background:#fffbeb; border:1px solid #f59e0b; color:#92400e; border-radius:6px; padding:5px 8px; display:flex; justify-content:space-between; font-size:10.5px; }
+  .m-tabs { display:flex; gap:2px; margin:0 7px; background:#f1f5f9; border-radius:6px; padding:3px; }
+  .m-tabs span { flex:1; text-align:center; padding:4px 0; border-radius:4px; font-size:9.5px; color:#64748b; }
+  .m-tabs span.on { background:#fff; color:#020817; font-weight:600; box-shadow:0 1px 2px #0001; }
+  .m-link { margin:5px 8px 0; font-size:10.5px; color:#2563eb; text-decoration:underline; }
+  .m-nav { display:flex; gap:4px; padding:6px 7px 3px; }
+  .m-btn { border:1px solid #e2e8f0; background:#fff; border-radius:5px; padding:4px 7px; font-size:10.5px; white-space:nowrap; text-align:center; }
+  .m-btn.grow { flex:1; text-align:left; }
+  .m-flt { display:flex; gap:4px; padding:3px 7px 6px; border-bottom:1px solid #e2e8f0; }
+  .m-flt div { flex:1; background:#fff; border:1px solid #e2e8f0; border-radius:5px; padding:4px 6px; font-size:10px; color:#64748b; }
+  .m-hour { padding:4px 9px 2px; font-weight:700; font-size:10.5px; color:#334155; }
+  .m-slot { display:flex; border-bottom:1px dashed #e2e8f0; min-height:31px; background:#fff; }
+  .m-slot .t { width:44px; font-size:9.5px; color:#9ca3af; padding:8px 4px; border-right:1px solid #e2e8f0; flex-shrink:0; }
+  .m-slot .c { flex:1; padding:3px; display:flex; gap:3px; min-width:0; }
+  .m-blk { flex:1; min-width:0; color:#fff; border-radius:4px; padding:2px 5px; font-size:9.5px; position:relative; }
+  .m-blk .s { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .m-blk .p { font-size:8.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .m-g { background:#27AE60; } .m-tl { background:#48C9B0; } .m-pu { background:#8E44AD; }
+  .m-av { color:#d1d5db; font-size:9.5px; display:flex; align-items:center; padding-left:3px; }
+  /* weekly / monthly */
+  .m-day { background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin:5px 7px; padding:5px; }
+  .m-day.today { border-color:#0063CC; background:#f2f7fd; }
+  .m-dh { display:flex; align-items:center; gap:5px; }
+  .m-pill { background:#f1f5f9; border-radius:5px; padding:2px 7px; font-weight:500; font-size:10.5px; }
+  .m-pill.sel { background:#4A90E2; color:#fff; }
+  .m-cnt { border-radius:9px; padding:0 6px; font-size:9.5px; }
+  .m-cg { background:#dcfce7; color:#166534; } .m-cy { background:#fef9c3; color:#854d0e; } .m-cr { background:#fee2e2; color:#991b1b; }
+  .m-item { border-left:2px solid #27AE60; background:rgba(39,174,96,.15); color:#27AE60; border-radius:3px; padding:2px 5px; margin-top:3px; font-size:9.5px; }
+  .m-item.b { border-left-color:#9B59B6; background:rgba(155,89,182,.15); color:#9B59B6; }
+  .m-item b { font-weight:600; }
+  .m-mgrid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; padding:4px 7px; }
+  .m-mgrid .h { text-align:center; font-size:9px; color:#64748b; }
+  .m-mgrid .d { background:#fff; border:1px solid #e2e8f0; border-radius:5px; height:38px; padding:2px; font-size:9.5px; text-align:center; position:relative; }
+  .m-mgrid .d.e { border-style:dashed; background:#f9fafb; }
+  .m-mgrid .d.on { border:2px solid #4A90E2; }
+  .m-mgrid .d .m-cnt { position:absolute; bottom:3px; left:50%; transform:translateX(-50%); }
+  /* dialogs */
+  .m-shade { position:absolute; inset:0; background:rgba(0,0,0,.8); z-index:4; }
+  .m-dlg { position:absolute; left:10px; right:10px; background:#fff; border-radius:8px; padding:14px; z-index:5; box-shadow:0 10px 30px #0004; }
+  .m-full { position:absolute; inset:0; background:#fff; z-index:5; padding:14px 12px 60px; overflow:hidden; }
+  .m-x { position:absolute; right:12px; top:12px; color:#64748b; font-size:13px; }
+  .m-tt { font-family:Poppins,sans-serif; font-weight:600; font-size:15px; display:flex; gap:6px; align-items:center; padding-right:18px; }
+  .m-ds { color:#64748b; font-size:11px; margin:3px 0 10px; }
+  .m-lb { font-size:11px; font-weight:500; margin:7px 0 3px; }
+  .m-lb i { color:#ef4444; font-style:normal; }
+  .m-in { border:1px solid #e2e8f0; border-radius:5px; padding:6px 8px; font-size:11px; display:flex; justify-content:space-between; color:#020817; background:#fff; }
+  .m-in.ph { color:#64748b; } .m-in.dis { background:#f1f5f9; color:#94a3b8; } .m-in.ta { height:38px; align-items:flex-start; }
+  .m-two { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .m-foot { position:absolute; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e2e8f0; padding:8px 12px; display:flex; flex-direction:column; gap:5px; }
+  .m-foot.row { flex-direction:row; justify-content:flex-end; }
+  .m-b { border-radius:5px; padding:7px 10px; font-size:11px; font-weight:500; text-align:center; white-space:nowrap; }
+  .m-pri { background:#4A90E2; color:#fff; } .m-def { background:#0063CC; color:#fff; } .m-out { border:1px solid #e2e8f0; background:#fff; }
+  .m-grn { border:1px solid #16a34a; color:#16a34a; background:#fff; } .m-red { background:#ef4444; color:#fff; } .m-org { background:#f97316; color:#fff; }
+  .m-gfill { background:#16a34a; color:#fff; }
+  .m-badge { display:inline-block; border:1px solid #e2e8f0; border-radius:9px; padding:1px 8px; font-size:10px; font-weight:600; }
+  .m-acard { background:#fff; border:1px solid #e2e8f0; border-radius:7px; margin-bottom:6px; overflow:hidden; }
+  .m-acard .hd { background:#eff6ff; color:#1e40af; border-bottom:1px solid #bfdbfe; font-weight:600; font-size:10.5px; padding:4px 8px; display:flex; justify-content:space-between; }
+  .m-acard .hd.amb { background:#fffbeb; color:#92400e; border-color:#fde68a; }
+  .m-acard .bd { padding:5px 8px; font-size:10.5px; line-height:1.5; }
+  .m-acard .k { color:#64748b; display:inline-block; width:50px; }
+  .m-tel { color:#2563eb; text-decoration:underline; }
+  .m-tog { display:flex; border:1px solid #e2e8f0; border-radius:5px; overflow:hidden; margin:6px 0; }
+  .m-tog span { flex:1; text-align:center; padding:5px; font-size:10.5px; font-weight:500; }
+  .m-tog span.on { background:#0063CC; color:#fff; }
+  .m-chk { display:flex; gap:5px; align-items:center; font-size:10.5px; font-weight:500; margin:5px 0; }
+  .m-box { width:12px; height:12px; border:1px solid #0063CC; border-radius:3px; flex-shrink:0; }
+  .m-box.on { background:#0063CC; }
+  .m-radio { display:inline-flex; gap:3px; align-items:center; margin-right:8px; font-size:10.5px; }
+  .m-radio span { width:11px; height:11px; border-radius:50%; border:1px solid #0063CC; display:inline-block; }
+  .m-radio span.on { background:radial-gradient(#0063CC 40%, #fff 45%); }
+
+  .m-top { flex-direction:column; align-items:stretch; gap:6px; padding:7px 8px 8px; }
+  .m-r1 { display:flex; align-items:center; gap:6px; }
+  .m-r1 .sp { flex:1; }
+  .m-top .m-seg span { font-size:10.5px; padding:4px 0; }
+  .m-menu { position:absolute; z-index:6; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 8px 24px #0003; font-size:11px; }
+  .m-menu::before { content:''; position:absolute; top:-5px; width:9px; height:9px; background:#fff; border-left:1px solid #e2e8f0; border-top:1px solid #e2e8f0; transform:rotate(45deg); }
+  .m-ring { box-shadow:0 0 0 2px #4A90E2; }
+  .m-col .m-menu::before { right:14px; }
+
+  .m-cal { padding:10px; font-family:Inter,sans-serif; }
+  .m-cal.bordered { border:1px solid #e2e8f0; border-radius:6px; }
+  .m-cal .cap { position:relative; display:flex; justify-content:center; align-items:center; height:26px; font-size:12.5px; font-weight:500; margin-bottom:10px; }
+  .m-cal .nb { position:absolute; top:1px; width:24px; height:24px; border:1px solid #e2e8f0; border-radius:5px; opacity:.5; display:flex; align-items:center; justify-content:center; font-size:12px; }
+  .m-cal .nb.l { left:2px; } .m-cal .nb.r { right:2px; }
+  .m-cal .row { display:flex; justify-content:space-between; margin-top:5px; }
+  .m-cal .row span { width:30px; height:30px; display:flex; align-items:center; justify-content:center; font-size:12px; border-radius:5px; }
+  .m-cal .hd span { height:18px; color:#64748b; font-size:10.5px; }
+  .m-cal .o { color:#64748b; opacity:.5; }
+  .m-cal .sel { background:#0063CC; color:#fff; }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-alarm" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M22 3H2l8 9.5V19l4 2v-8.5z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></symbol>
+</svg>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap');
+  .d-win { width:980px; max-width:100%; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; overflow:hidden; font-family:Inter,sans-serif; color:#020817; font-size:12px; position:relative; box-shadow:0 4px 18px #0001; }
+  .d-win * { box-sizing:border-box; }
+  .d-flex { display:flex; min-height:560px; }
+  .d-side { width:168px; background:#fff; border-right:1px solid #e2e8f0; padding:12px 8px; flex-shrink:0; }
+  .d-logo { display:flex; gap:7px; align-items:center; padding:2px 6px 12px; font-family:Poppins,sans-serif; font-weight:600; font-size:13px; }
+  .d-logo i { width:24px; height:24px; border-radius:6px; background:#4A90E2; display:inline-block; }
+  .d-nav { padding:6px 8px; border-radius:6px; color:#334155; font-size:11.5px; display:flex; gap:7px; align-items:center; }
+  .d-nav.on { background:#f1f5f9; font-weight:600; color:#020817; }
+  .d-nav.new { outline:2px dashed #4A90E2; outline-offset:-2px; }
+  .d-main { flex:1; min-width:0; }
+  .d-top { height:42px; background:#fff; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; padding:0 14px; }
+  .d-seg { display:flex; background:#f1f5f9; border-radius:6px; padding:2px; }
+  .d-seg span { padding:4px 18px; border-radius:4px; font-size:11px; color:#64748b; }
+  .d-seg span.on { background:#ebf3fe; color:#4A90E2; font-weight:600; }
+  .d-btn { border-radius:6px; padding:6px 11px; font-size:11.5px; font-weight:500; white-space:nowrap; display:inline-flex; gap:5px; align-items:center; }
+  .d-pri { background:#4A90E2; color:#fff; } .d-out { border:1px solid #e2e8f0; background:#fff; color:#020817; } .d-red { background:#ef4444; color:#fff; }
+  .d-body { padding:14px; }
+  .d-h1 { font-family:Poppins,sans-serif; font-weight:700; font-size:21px; }
+  .d-sub { color:#64748b; font-size:12px; margin:1px 0 10px; }
+  .d-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-bottom:12px; }
+  .d-card { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 11px; display:flex; gap:9px; }
+  .d-card .ic { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
+  .d-card b { display:block; font-size:18px; } .d-card small { color:#64748b; font-size:10px; }
+  .d-panel { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:12px; }
+  .d-ph2 { font-family:Poppins,sans-serif; font-weight:700; font-size:15px; } .d-ph2 + p { color:#64748b; font-size:11px; margin:1px 0 9px; }
+  .d-tools { display:flex; gap:7px; align-items:center; margin-bottom:9px; flex-wrap:wrap; }
+  .d-search { border:1px solid #e2e8f0; border-radius:6px; padding:5px 9px; color:#94a3b8; width:200px; font-size:11px; }
+  .d-tabs { display:flex; background:#f1f5f9; border-radius:6px; padding:2px; }
+  .d-tabs span { padding:4px 9px; font-size:11px; color:#64748b; border-radius:4px; } .d-tabs span.on { background:#fff; color:#020817; font-weight:600; box-shadow:0 1px 2px #0001; }
+  table.d-t { width:100%; border-collapse:collapse; font-size:11.5px; }
+  .d-t th { text-align:left; color:#64748b; font-weight:500; padding:7px 8px; border-bottom:1px solid #e2e8f0; white-space:nowrap; }
+  .d-t td { padding:8px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+  .d-t tr.warn td { background:#fef2f2; }
+  .chip { display:inline-flex; gap:4px; align-items:center; border:1px solid #e2e8f0; border-radius:12px; padding:1px 7px; font-size:10.5px; margin:1px 3px 1px 0; white-space:nowrap; background:#fff; }
+  .chip b { font-weight:600; } .chip.zero { color:#94a3b8; }
+  .st { display:inline-block; border-radius:12px; padding:1px 8px; font-size:10px; font-weight:600; border:1px solid; white-space:nowrap; }
+  .st-n { background:#f0fdf4; color:#15803d; border-color:#bbf7d0; } .st-l { background:#fffbeb; color:#b45309; border-color:#fde68a; }
+  .st-o { background:#fef2f2; color:#b91c1c; border-color:#fecaca; } .st-e { background:#fff7ed; color:#c2410c; border-color:#fed7aa; }
+  .t-in { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; } .t-use { background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe; } .t-ret { background:#fffbeb; color:#b45309; border-color:#fde68a; }
+  .d-shade { position:absolute; inset:0; background:rgba(0,0,0,.8); z-index:4; }
+  .d-dlg { position:absolute; left:50%; transform:translateX(-50%); background:#fff; border-radius:10px; padding:16px 18px; z-index:5; box-shadow:0 10px 30px #0005; width:470px; max-width:94%; }
+  .d-dlg .t { font-family:Poppins,sans-serif; font-weight:600; font-size:15px; } .d-dlg .ds { color:#64748b; font-size:11.5px; margin:2px 0 12px; }
+  .d-x { position:absolute; right:14px; top:12px; color:#64748b; }
+  .fr { display:grid; grid-template-columns:130px 1fr; gap:8px; align-items:center; margin-bottom:8px; }
+  .fr label { text-align:right; font-size:11px; font-weight:500; } .fr label i { color:#ef4444; font-style:normal; }
+  .in { border:1px solid #e2e8f0; border-radius:6px; padding:6px 9px; font-size:11.5px; color:#020817; background:#fff; display:flex; justify-content:space-between; align-items:center; gap:6px; }
+  .in.ph { color:#94a3b8; } .in.focus { box-shadow:0 0 0 2px #020817; } .in.err { border-color:#ef4444; }
+  .d-foot { display:flex; justify-content:flex-end; gap:7px; margin-top:12px; }
+  .dsplit { border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; margin-bottom:8px; }
+  .dsplit .hd, .dsplit .row { display:grid; grid-template-columns:1.3fr .7fr 1fr 1fr 22px; gap:6px; padding:6px 8px; align-items:center; }
+  .dsplit .hd { background:#f8fafc; color:#64748b; font-size:10.5px; font-weight:500; } .dsplit .row { border-top:1px solid #f1f5f9; }
+  .addrow { color:#4A90E2; font-size:11px; font-weight:500; padding:4px 0 8px; }
+  .dealer-opt { display:flex; justify-content:space-between; align-items:center; border:1px solid #e2e8f0; border-radius:6px; padding:6px 9px; margin-bottom:5px; font-size:11.5px; }
+  .dealer-opt.on { border-color:#4A90E2; background:#f5f9ff; } .dealer-opt.dis { color:#94a3b8; background:#f8fafc; }
+  .dealer-opt .r { width:12px; height:12px; border-radius:50%; border:1px solid #4A90E2; display:inline-block; margin-right:7px; vertical-align:-2px; }
+  .dealer-opt.on .r { background:radial-gradient(#4A90E2 45%,#fff 50%); } .dealer-opt.dis .r { border-color:#cbd5e1; }
+  .hint { font-size:10.5px; color:#64748b; margin:-3px 0 8px 138px; }
+  .note { border-radius:6px; padding:7px 9px; font-size:11px; margin:6px 0; }
+  .note.amber { background:#fffbeb; border:1px solid #fde68a; color:#92400e; } .note.red { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; } .note.blue { background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; }
+  .menu { position:absolute; z-index:6; background:#fff; border:1px solid #e2e8f0; border-radius:7px; box-shadow:0 8px 24px #0003; padding:4px; font-size:11.5px; width:200px; }
+  .menu div { padding:6px 9px; border-radius:4px; } .menu div.on { background:#f1f5f9; } .menu hr { border:0; border-top:1px solid #e2e8f0; margin:3px 0; }
+  .toast { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:9px 11px; box-shadow:0 6px 18px #0002; font-size:11px; }
+  .toast b { display:block; font-size:11.5px; }
+  .w-col { display:flex; flex-direction:column; gap:6px; }
+  .grid2 { display:flex; flex-wrap:wrap; gap:22px; margin-top:12px; }
+  .i-card { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:7px 9px; margin-bottom:6px; font-size:10.5px; }
+  .i-card .nm { display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:11.5px; }
+  .i-list li { margin-bottom:5px; line-height:1.5; font-size:13px; }
+</style>
+
+<h2>Implant Tracker (demo for the client)</h2>
+<p class="subtitle">A new page in the ERP, after <b>Stock Tracker</b>, Dental Metrix only. It only tracks <b>quantities</b> (no money). One implant can come from <b>several dealers</b>; the receptionist records what came in, what was used for a patient and what went back, and the page always shows <b>how many are left from each dealer</b>. Words, buttons, colours and popup style are copied from the Stock Tracker and Lab Work pages. This is a <b>demo with sample data</b> (no database yet). Dealers and patients are real DEV names; quantities are <i>examples</i>.</p>
+
+<!-- ============ A. MAIN PAGE ============ -->
+<div class="m-sec"><h2>A. The Implant Tracker page</h2></div>
+
+<h3>1. Implant list (desktop)</h3>
+<div class="d-win">
+  <div class="d-flex">
+    <div class="d-side">
+      <div class="d-logo"><i></i>Dental Metrix</div>
+      <div class="d-nav">▦ Dashboard</div><div class="d-nav">📅 Appointments</div><div class="d-nav">👥 Patients</div><div class="d-nav">⏱ Recall List</div><div class="d-nav">🔬 Lab Work</div><div class="d-nav">📦 Stock Tracker</div>
+      <div class="d-nav on new">🦷 Implant Tracker</div>
+      <div class="d-nav">📄 Reports</div><div class="d-nav">✉ Enquiries</div><div class="d-nav">⚙ Settings</div>
+    </div>
+    <div class="d-main">
+      <div class="d-top"><div class="d-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div><span class="d-btn d-pri">⊕ New Appointment</span></div>
+      <div class="d-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div class="d-h1">Implant Tracker</div><div class="d-sub">Manage and track dental implants from every dealer</div></div>
+          <span class="d-btn d-pri">＋ Add New Implant</span>
+        </div>
+        <div class="d-cards">
+          <div class="d-card"><span class="ic" style="background:#eff6ff;color:#4A90E2">🦷</span><div><small>Total Implants</small><b>14</b><small>Pieces in stock, all dealers</small></div></div>
+          <div class="d-card"><span class="ic" style="background:#fef2f2;color:#dc2626">⚠</span><div><small>Out of Stock</small><b>1</b><small>Implants with zero quantity</small></div></div>
+          <div class="d-card"><span class="ic" style="background:#fffbeb;color:#d97706">⚠</span><div><small>Low Stock</small><b>1</b><small>Implants below minimum threshold</small></div></div>
+          <div class="d-card"><span class="ic" style="background:#fff7ed;color:#ea580c">⚠</span><div><small>Expiring Soon</small><b>1</b><small>Implants expiring within 60 days</small></div></div>
+        </div>
+        <div class="d-panel">
+          <div class="d-ph2">Implants</div><p>Quantity left from each dealer</p>
+          <div class="d-tools"><span class="d-search">🔍 Search implants...</span><div class="d-tabs"><span class="on">All Status</span><span>Out of Stock</span><span>Low Stock</span><span>Expiring Soon</span></div><span style="flex:1"></span><span class="d-btn d-out">⤓ Export</span></div>
+          <table class="d-t">
+            <thead><tr><th>Item</th><th>Sub-item</th><th>Quantity</th><th>From Dealers</th><th>Min Threshold</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+            <tbody>
+              <tr><td><b style="font-weight:500">Osstem TS III</b></td><td>4.0 × 10 mm</td><td><b>5</b> Pieces</td><td><span class="chip">Rahul Adin <b>3</b></span><span class="chip">Samarth Dental <b>2</b></span></td><td>2</td><td><span class="st st-n">Normal</span></td><td style="text-align:right;white-space:nowrap"><span class="d-btn d-out">✎ Edit</span> ⋯</td></tr>
+              <tr><td><b style="font-weight:500">Osstem TS III</b></td><td>4.5 × 11.5 mm</td><td><b>1</b> Piece</td><td><span class="chip">Rahul Adin <b>1</b></span></td><td>2</td><td><span class="st st-l">Low Stock</span></td><td style="text-align:right;white-space:nowrap"><span class="d-btn d-out">✎ Edit</span> ⋯</td></tr>
+              <tr class="warn"><td><b style="font-weight:500">Adin Touareg-S</b></td><td>3.75 × 10 mm</td><td><b>0</b> Pieces ⚠</td><td><span class="chip zero">Rahul Adin 0</span><span class="chip zero">Nitin GC 0</span></td><td>1</td><td><span class="st st-o">Out of Stock</span></td><td style="text-align:right;white-space:nowrap"><span class="d-btn d-out">✎ Edit</span> ⋯</td></tr>
+              <tr><td><b style="font-weight:500">Dentium SuperLine</b></td><td>4.0 × 10 mm</td><td><b>4</b> Pieces</td><td><span class="chip">Samarth Dental <b>4</b></span></td><td>2</td><td><span class="st st-e">Expiring Soon</span></td><td style="text-align:right;white-space:nowrap"><span class="d-btn d-out">✎ Edit</span> ⋯</td></tr>
+              <tr><td><b style="font-weight:500">Straumann BLT</b></td><td>4.1 × 10 mm</td><td><b>4</b> Pieces</td><td><span class="chip">Chintamani Surgical <b>2</b></span><span class="chip">Phoneix Surgical <b>2</b></span></td><td>1</td><td><span class="st st-n">Normal</span></td><td style="text-align:right;white-space:nowrap"><span class="d-btn d-out">✎ Edit</span> ⋯</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="m-cap" style="max-width:980px">Same layout as Stock Tracker: summary cards, search, status tabs, table, Export. The new column <b>From Dealers</b> shows how many are left from each dealer (e.g. Osstem 4.0 × 10: Rahul Adin 3 + Samarth Dental 2 = 5). Each implant is listed <b>once</b>, even with several dealers (today the Stock Tracker has to list "Cotton" twice, once per dealer). Status rules as Stock Tracker: <b>Out of Stock</b> = 0, <b>Low Stock</b> = below Min Threshold, <b>Expiring Soon</b> = a batch expires within 60 days.</p>
+
+<div class="grid2">
+  <div class="w-col" style="width:470px"><h3>2. Actions menu (⋯)</h3>
+    <div class="d-win" style="height:300px;width:470px">
+      <div class="d-body">
+        <table class="d-t"><thead><tr><th>Item</th><th>Sub-item</th><th>Quantity</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody><tr><td>Osstem TS III</td><td>4.0 × 10 mm</td><td><b>5</b> Pieces</td><td style="text-align:right;white-space:nowrap"><span class="d-btn d-out">✎ Edit</span> <b>⋯</b></td></tr></tbody></table>
+      </div>
+      <div class="menu" style="top:92px;right:14px"><div class="on">📥 Record Incoming</div><div>🦷 Record Consumption</div><div>↩ Record Return</div><hr><div>📋 View Batches &amp; History</div></div>
+    </div>
+    <p class="m-cap">Same menu as Stock Tracker (Record Incoming, Record Consumption, View Batches &amp; History) plus the one new action, <b>Record Return</b>.</p>
+  </div>
+
+  <div class="w-col" style="width:470px"><h3>3. Add New Implant</h3>
+    <div class="d-win" style="height:360px;width:470px"><div class="d-shade"></div>
+      <div class="d-dlg" style="top:22px"><span class="d-x">✕</span><div class="t">Add New Implant</div><div class="ds">Enter details for the new implant. Fields marked with <span style="color:#ef4444">*</span> are required.</div>
+        <div class="fr"><label>Item <i>*</i></label><div class="in">Osstem TS III</div></div>
+        <div class="fr"><label>Sub-item <i>*</i></label><div class="in">4.0 × 10 mm</div></div>
+        <div class="fr"><label>Unit</label><div class="in" style="background:#f8fafc">Piece</div></div>
+        <div class="fr"><label>Min. Threshold <i>*</i></label><div class="in">2</div></div>
+        <div class="fr"><label>Description</label><div class="in ph">e.g., Bone level, regular platform</div></div>
+        <div class="d-foot"><span class="d-btn d-out">Cancel</span><span class="d-btn d-pri">Save</span></div>
+      </div>
+    </div>
+    <p class="m-cap">Like Stock Tracker's "Add New Item", without Rate (no money). <b>Item</b> = brand / system, <b>Sub-item</b> = size. Dealers are not chosen here: any dealer can be picked when stock comes in.</p>
+  </div>
+</div>
+
+<!-- ============ B. RECORD INCOMING ============ -->
+<div class="m-sec"><h2>B. Record Incoming (implants received, split across dealers)</h2></div>
+<div class="grid2">
+  <div class="w-col" style="width:520px"><h3>4. Record Incoming Stock</h3>
+    <div class="d-win" style="height:470px;width:520px"><div class="d-shade"></div>
+      <div class="d-dlg" style="top:20px;width:490px"><span class="d-x">✕</span><div class="t">Record Incoming Stock</div><div class="ds">Add new stock for Osstem TS III (4.0 × 10 mm)</div>
+        <div class="dsplit">
+          <div class="hd"><span>Dealer *</span><span>Quantity Received *</span><span>Batch Number</span><span>Expiry Date *</span><span></span></div>
+          <div class="row"><div class="in">Rahul Adin ⌄</div><div class="in">5</div><div class="in">OS2410A</div><div class="in">10/2029</div><span style="color:#94a3b8">✕</span></div>
+          <div class="row"><div class="in">Samarth Dental ⌄</div><div class="in">3</div><div class="in ph">Optional</div><div class="in">03/2029</div><span style="color:#94a3b8">✕</span></div>
+        </div>
+        <div class="addrow">＋ Add another dealer</div>
+        <div class="fr"><label>Received Date <i>*</i></label><div class="in">28-10-2026 📅</div></div>
+        <div class="note blue">Total: <b>8 Pieces</b> (Rahul Adin 5, Samarth Dental 3)</div>
+        <div class="d-foot"><span class="d-btn d-out">Cancel</span><span class="d-btn d-pri">Save</span></div>
+      </div>
+    </div>
+    <p class="m-cap">The client's main case: <b>one implant, quantities from different dealers</b> in one go. One row per dealer (Dealer, Quantity Received, Batch Number, Expiry Date), <b>＋ Add another dealer</b> for more. Field names are the Stock Tracker's. Dealers come from <b>Settings → Dealers</b>. Expiry is required, as in Stock Tracker (implants are sterile and have an expiry).</p>
+  </div>
+  <div class="w-col" style="width:470px"><h3>5. Confirm Stock Addition</h3>
+    <div class="d-win" style="height:300px;width:470px"><div class="d-shade"></div>
+      <div class="d-dlg" style="top:50px;width:420px"><div class="t">Confirm Stock Addition</div>
+        <div class="ds" style="margin-top:8px;line-height:1.55">You are about to add <b>8 Pieces</b> of <b>Osstem TS III (4.0 × 10 mm)</b>:<br>• Rahul Adin: 5<br>• Samarth Dental: 3</div>
+        <div class="d-foot"><span class="d-btn d-out">Cancel</span><span class="d-btn d-pri">Confirm</span></div></div>
+    </div>
+    <div class="toast" style="width:300px;margin-top:6px"><b>Stock Added</b>8 Pieces of Osstem TS III (4.0 × 10 mm) recorded.</div>
+    <p class="m-cap">Same confirm step as Stock Tracker. After saving: Rahul Adin 3 → 8, Samarth Dental 2 → 5, total 5 → 13.</p>
+  </div>
+</div>
+
+<!-- ============ C. RECORD CONSUMPTION ============ -->
+<div class="m-sec"><h2>C. Record Consumption (implant used for a patient)</h2></div>
+<div class="grid2">
+  <div class="w-col" style="width:520px"><h3>6. Record Stock Consumption</h3>
+    <div class="d-win" style="height:520px;width:520px"><div class="d-shade"></div>
+      <div class="d-dlg" style="top:16px;width:490px"><span class="d-x">✕</span><div class="t">Record Stock Consumption</div><div class="ds">Record use of Osstem TS III (4.0 × 10 mm)</div>
+        <div class="fr"><label>Patient Name <i>*</i></label><div class="in">Anjali Railkar 🔍</div></div>
+        <div class="fr" style="align-items:flex-start"><label style="padding-top:6px">Dealer <i>*</i></label>
+          <div><div class="dealer-opt on"><span><span class="r"></span>Rahul Adin</span><span>3 left</span></div><div class="dealer-opt"><span><span class="r"></span>Samarth Dental</span><span>2 left</span></div></div></div>
+        <div class="fr"><label>Specific Batch</label><div class="in">OS2410A (exp. 10/2029) ⌄</div></div>
+        <div class="fr"><label>Quantity Used <i>*</i></label><div class="in">1</div></div>
+        <div class="fr"><label>Tooth No.</label><div class="in ph">e.g., 36</div></div>
+        <div class="fr"><label>Date Used <i>*</i></label><div class="in">28-10-2026 📅</div></div>
+        <div class="d-foot"><span class="d-btn d-out">Cancel</span><span class="d-btn d-pri">Save</span></div>
+      </div>
+    </div>
+    <p class="m-cap"><b>Patient Name</b> is picked from the ERP's patient list (same search box as Lab Work). The receptionist picks <b>which dealer's piece</b> was used; each dealer shows how many are left. Only that dealer's count goes down. <b>Specific Batch</b> and <b>Tooth No.</b> are optional (Stock Tracker already has "Specific Batch"); the batch defaults to the one expiring first.</p>
+  </div>
+  <div class="w-col" style="width:470px"><h3>7. Confirm Stock Consumption</h3>
+    <div class="d-win" style="height:280px;width:470px"><div class="d-shade"></div>
+      <div class="d-dlg" style="top:46px;width:420px"><div class="t">Confirm Stock Consumption</div>
+        <div class="ds" style="margin-top:8px;line-height:1.55">You are about to record <b>1 Piece</b> of <b>Osstem TS III (4.0 × 10 mm)</b> used for <b>Anjali Railkar</b>, from <b>Rahul Adin</b>.<br>Rahul Adin will have <b>2</b> left.</div>
+        <div class="d-foot"><span class="d-btn d-out">Cancel</span><span class="d-btn d-pri">Confirm</span></div></div>
+    </div>
+    <div class="toast" style="width:300px;margin-top:6px"><b>Consumption Recorded</b>1 Piece used for Anjali Railkar (Rahul Adin).</div>
+  </div>
+</div>
+
+<!-- ============ D. RECORD RETURN ============ -->
+<div class="m-sec"><h2>D. Record Return (unused implants sent back to a dealer)</h2></div>
+<div class="grid2">
+  <div class="w-col" style="width:520px"><h3>8. Record Stock Return</h3>
+    <div class="d-win" style="height:470px;width:520px"><div class="d-shade"></div>
+      <div class="d-dlg" style="top:20px;width:490px"><span class="d-x">✕</span><div class="t">Record Stock Return</div><div class="ds">Return Osstem TS III (4.0 × 10 mm) to a dealer</div>
+        <div class="fr" style="align-items:flex-start"><label style="padding-top:6px">Dealer <i>*</i></label>
+          <div><div class="dealer-opt"><span><span class="r"></span>Rahul Adin</span><span>3 left</span></div><div class="dealer-opt on"><span><span class="r"></span>Samarth Dental</span><span>2 left</span></div></div></div>
+        <div class="fr"><label>Specific Batch</label><div class="in ph">Any batch ⌄</div></div>
+        <div class="fr"><label>Quantity Returned <i>*</i></label><div class="in">2</div></div>
+        <div class="hint">You can return up to 2 Pieces to Samarth Dental.</div>
+        <div class="fr"><label>Return Date <i>*</i></label><div class="in">28-10-2026 📅</div></div>
+        <div class="fr"><label>Notes</label><div class="in ph">e.g., Not needed, wrong size</div></div>
+        <div class="d-foot"><span class="d-btn d-out">Cancel</span><span class="d-btn d-pri">Save</span></div>
+      </div>
+    </div>
+    <p class="m-cap">The one new action. Return goes <b>back to the dealer it came from</b>: only dealers that still have pieces are offered, and you can't return more than that dealer's count. Optional batch and a short note.</p>
+  </div>
+  <div class="w-col" style="width:470px"><h3>9. Confirm Stock Return</h3>
+    <div class="d-win" style="height:280px;width:470px"><div class="d-shade"></div>
+      <div class="d-dlg" style="top:46px;width:420px"><div class="t">Confirm Stock Return</div>
+        <div class="ds" style="margin-top:8px;line-height:1.55">You are about to return <b>2 Pieces</b> of <b>Osstem TS III (4.0 × 10 mm)</b> to <b>Samarth Dental</b>.<br>Samarth Dental will have <b>0</b> left.</div>
+        <div class="d-foot"><span class="d-btn d-out">Cancel</span><span class="d-btn d-pri">Confirm</span></div></div>
+    </div>
+    <div class="toast" style="width:300px;margin-top:6px"><b>Return Recorded</b>2 Pieces returned to Samarth Dental.</div>
+  </div>
+</div>
+
+<!-- ============ E. HISTORY ============ -->
+<div class="m-sec"><h2>E. View Batches &amp; History</h2></div>
+<div class="grid2">
+  <div class="w-col" style="width:620px"><h3>10. Batches tab</h3>
+    <div class="d-win" style="width:620px"><div class="d-body">
+      <div class="d-ph2" style="font-size:14px">Osstem TS III (4.0 × 10 mm)</div><p style="color:#64748b;font-size:11px;margin:1px 0 8px">View batch and transaction history</p>
+      <div class="d-tabs" style="display:inline-flex;margin-bottom:8px"><span class="on">Batches</span><span>Transactions</span></div>
+      <table class="d-t"><thead><tr><th>Dealer</th><th>Batch</th><th>Received</th><th>Expiry</th><th>Received Qty</th><th>Used</th><th>Returned</th><th>Left</th></tr></thead>
+      <tbody>
+        <tr><td>Rahul Adin</td><td>OS2410A</td><td>02/10/2026</td><td>10/2029</td><td>4</td><td>1</td><td>0</td><td><b>3</b></td></tr>
+        <tr><td>Samarth Dental</td><td>—</td><td>05/10/2026</td><td>03/2029</td><td>3</td><td>0</td><td>1</td><td><b>2</b></td></tr>
+        <tr><td colspan="4" style="text-align:right;color:#64748b">Total</td><td>7</td><td>1</td><td>1</td><td><b>5</b></td></tr>
+      </tbody></table>
+    </div></div>
+    <p class="m-cap">One line per dealer and batch: received, used, returned and <b>left</b>. Received − Used − Returned = Left, always.</p>
+  </div>
+  <div class="w-col" style="width:620px"><h3>11. Transactions tab</h3>
+    <div class="d-win" style="width:620px"><div class="d-body">
+      <div class="d-tabs" style="display:inline-flex;margin-bottom:8px"><span>Batches</span><span class="on">Transactions</span></div>
+      <table class="d-t"><thead><tr><th>Date</th><th>Type</th><th>Dealer</th><th>Quantity</th><th>Patient / Notes</th></tr></thead>
+      <tbody>
+        <tr><td>20/10/2026</td><td><span class="st t-ret">Return</span></td><td>Samarth Dental</td><td>1</td><td style="color:#64748b">Wrong size</td></tr>
+        <tr><td>15/10/2026</td><td><span class="st t-use">Consumption</span></td><td>Rahul Adin</td><td>1</td><td>Swati Gode · Tooth 46</td></tr>
+        <tr><td>05/10/2026</td><td><span class="st t-in">Incoming</span></td><td>Samarth Dental</td><td>3</td><td style="color:#64748b">—</td></tr>
+        <tr><td>02/10/2026</td><td><span class="st t-in">Incoming</span></td><td>Rahul Adin</td><td>4</td><td style="color:#64748b">Batch OS2410A</td></tr>
+      </tbody></table>
+    </div></div>
+    <p class="m-cap">Every entry with date, type, dealer and quantity; consumption shows the patient (and tooth if entered), returns show the note. Newest first.</p>
+  </div>
+</div>
+
+<!-- ============ F. EDGE CASES ============ -->
+<div class="m-sec"><h2>F. Checks and edge cases</h2></div>
+<div class="grid2">
+  <div class="w-col" style="width:470px"><h3>12. Too many (return or use)</h3>
+    <div class="d-win" style="height:230px;width:470px"><div class="d-shade"></div>
+      <div class="d-dlg" style="top:40px;width:400px"><div class="t">Insufficient Stock</div>
+        <div class="ds" style="margin-top:8px">Samarth Dental has only 2 Pieces of Osstem TS III (4.0 × 10 mm). You can return up to 2 Pieces.</div>
+        <div class="d-foot"><span class="d-btn d-pri">OK</span></div></div></div>
+    <p class="m-cap">Same "Insufficient Stock" message style as Stock Tracker. Also for consumption ("You can consume up to 3 Pieces").</p>
+  </div>
+  <div class="w-col" style="width:470px"><h3>13. Out of stock</h3>
+    <div class="d-win" style="height:230px;width:470px"><div class="d-shade"></div>
+      <div class="d-dlg" style="top:40px;width:400px"><div class="t">No Stock Available</div>
+        <div class="ds" style="margin-top:8px">This implant is currently out of stock. No consumption can be recorded until new stock is received.</div>
+        <div class="d-foot"><span class="d-btn d-pri">OK</span></div></div></div>
+    <p class="m-cap">Stock Tracker's own wording. Record Return is also blocked when nothing is left.</p>
+  </div>
+  <div class="w-col" style="width:470px"><h3>14. Missing information</h3>
+    <div class="d-win" style="height:250px;width:470px"><div class="d-body">
+      <div class="fr"><label>Patient Name <i>*</i></label><div class="in err ph">Select Patient</div></div>
+      <div class="fr"><label>Dealer <i>*</i></label><div class="in err ph">Select a dealer</div></div>
+      <div class="note red"><b>Missing Information</b> · Please fill in all required fields.</div>
+      <div class="note amber">This batch has expired (05/2026). Please choose another batch.</div>
+    </div></div>
+    <p class="m-cap">Required fields (patient, dealer, quantity, dates) as Lab Work / Stock Tracker. An <b>expired batch</b> can't be used for a patient.</p>
+  </div>
+  <div class="w-col" style="width:470px"><h3>15. No implants yet</h3>
+    <div class="d-win" style="height:200px;width:470px"><div class="d-body"><div class="d-panel" style="text-align:center;padding:36px 10px;color:#64748b">No implants found<br><span style="font-size:11px">Add an implant to start tracking stock from your dealers.</span><br><span class="d-btn d-pri" style="margin-top:10px">＋ Add New Implant</span></div></div></div>
+    <p class="m-cap">Empty state, and "No items match your search criteria" for an empty search (Stock Tracker wording).</p>
+  </div>
+</div>
+
+<!-- ============ G. PHONE ============ -->
+<div class="m-sec"><h2>G. On a phone (same as the other ERP pages)</h2></div>
+<div class="m-grid">
+  <div class="m-col"><h3>16. Implant list</h3>
+    <div class="m-ph">
+      <div class="m-top"><div class="m-r1"><svg class="m-i"><use href="#i-menu"/></svg><span class="sp"></span><div class="m-ic"><svg><use href="#i-search"/></svg></div><span class="m-newb">+ New</span><div class="m-ic"><svg><use href="#i-bell"/></svg></div><div class="m-ic" style="background:#EBF3FE;color:#1A5FB4;font-weight:600;font-size:9.5px;border:none">S</div></div><div class="m-seg"><span class="on">Dental Metrix</span><span>Meditouch</span></div></div>
+      <div style="padding:8px">
+        <div class="m-tt" style="font-size:17px">Implant Tracker</div><div class="m-ds" style="margin:1px 0 6px">Manage and track dental implants from every dealer</div>
+        <div class="m-b m-pri" style="margin-bottom:7px">＋ Add New Implant</div>
+        <div class="i-card"><div class="nm">Osstem TS III <span class="st st-n">Normal</span></div><div style="color:#334155">4.0 × 10 mm · <b>5</b> Pieces</div><div style="margin-top:3px"><span class="chip">Rahul Adin <b>3</b></span><span class="chip">Samarth Dental <b>2</b></span></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr 26px;gap:4px;margin-top:6px"><span class="m-b m-out" style="padding:5px 2px;font-size:10px">📥 Incoming</span><span class="m-b m-out" style="padding:5px 2px;font-size:10px">🦷 Use</span><span class="m-b m-out" style="padding:5px 2px;font-size:10px">↩ Return</span><span class="m-b m-out" style="padding:5px 0;font-size:10px">⋯</span></div></div>
+        <div class="i-card"><div class="nm">Osstem TS III <span class="st st-l">Low Stock</span></div><div style="color:#334155">4.5 × 11.5 mm · <b>1</b> Piece</div><div style="margin-top:3px"><span class="chip">Rahul Adin <b>1</b></span></div></div>
+        <div class="i-card"><div class="nm">Adin Touareg-S <span class="st st-o">Out of Stock</span></div><div style="color:#334155">3.75 × 10 mm · <b>0</b> Pieces</div></div>
+      </div>
+    </div>
+    <p class="m-cap">One card per implant with the dealer counts and the 3 actions as buttons (⋯ for History and Edit). <i>Short labels on phone only if you approve; otherwise the full "Record Incoming" etc. in the ⋯ menu.</i></p>
+  </div>
+  <div class="m-col"><h3>17. Record Consumption (phone)</h3>
+    <div class="m-ph"><div class="m-full">
+      <div class="m-tt">Record Stock Consumption</div><span class="m-x">✕</span><div class="m-ds">Record use of Osstem TS III (4.0 × 10 mm)</div>
+      <div class="m-lb">Patient Name <i>*</i></div><div class="m-in">Anjali Railkar <svg class="m-i"><use href="#i-search"/></svg></div>
+      <div class="m-lb">Dealer <i>*</i></div>
+      <div class="dealer-opt on" style="font-size:10.5px"><span><span class="r"></span>Rahul Adin</span><span>3 left</span></div>
+      <div class="dealer-opt" style="font-size:10.5px"><span><span class="r"></span>Samarth Dental</span><span>2 left</span></div>
+      <div class="m-lb">Specific Batch</div><div class="m-in">OS2410A (exp. 10/2029) ⌄</div>
+      <div class="m-two"><div><div class="m-lb">Quantity Used <i>*</i></div><div class="m-in">1</div></div><div><div class="m-lb">Tooth No.</div><div class="m-in ph">e.g., 36</div></div></div>
+      <div class="m-lb">Date Used <i>*</i></div><div class="m-in">28-10-2026</div>
+      <div class="m-foot"><span class="m-b m-pri">Save</span><span class="m-b m-out">Cancel</span></div>
+    </div></div>
+    <p class="m-cap">Popups are full screen on phones with Save / Cancel pinned at the bottom, like the other ERP forms.</p>
+  </div>
+</div>
+
+<!-- ============ H. NOTES ============ -->
+<div class="m-sec"><h2>H. How it behaves (demo)</h2></div>
+<ul class="i-list">
+  <li><b>Sample data only:</b> the demo keeps everything in the browser. Nothing is saved to the database; refreshing the page resets it to the sample data.</li>
+  <li><b>Counts always add up:</b> for each dealer, Left = Received − Used − Returned. The total is the sum of all dealers.</li>
+  <li><b>One implant, many dealers:</b> any dealer from Settings → Dealers can supply any implant; a dealer appears on an implant once something is received from them.</li>
+  <li><b>Use and return per dealer:</b> only that dealer's count changes. Dealers with 0 left are greyed out and can't be picked.</li>
+  <li><b>Batches:</b> optional batch number per delivery; consumption suggests the batch expiring first (FEFO, as Stock Tracker); expired batches can't be used.</li>
+  <li><b>Patient link:</b> each consumption is tied to a patient from the ERP list, so you can see which patient got which implant (useful if a maker recalls a batch).</li>
+  <li><b>No money</b> anywhere (no rate, no cost, no payment).</li>
+  <li><b>Dental Metrix only</b>, like Lab Work. Same look on phones as the other ERP pages.</li>
+</ul>

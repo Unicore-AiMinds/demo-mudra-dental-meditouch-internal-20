@@ -41,6 +41,7 @@ import Dashboard from "@/pages/Dashboard";
 import Appointments from "@/pages/Appointments";
 import NewAppointment from "@/pages/NewAppointment";
 import StockTracker from "@/pages/StockTracker";
+import ImplantTracker from "@/pages/ImplantTracker";
 import LabWork from "@/pages/LabWork";
 import Patients from "@/pages/Patients";
 import PatientDetails from "@/pages/PatientDetails";
@@ -111,6 +112,14 @@ const App = () => (
                                                     element={
                                                       <ProtectedRoute requiredPermissions={['stock.view']}>
                                                         <StockTracker />
+                                                      </ProtectedRoute>
+                                                    }
+                                                  />
+                                                  <Route
+                                                    path="/implants"
+                                                    element={
+                                                      <ProtectedRoute requiredPermissions={['stock.view']}>
+                                                        <ImplantTracker />
                                                       </ProtectedRoute>
                                                     }
                                                   />
