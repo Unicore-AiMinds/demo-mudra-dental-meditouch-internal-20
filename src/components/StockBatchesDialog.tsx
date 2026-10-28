@@ -24,7 +24,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { StockBatch, StockTransaction } from '@/contexts/StockContext';
 import { useStock } from '@/hooks/use-stock';
-import { format, isAfter, isBefore, addDays } from 'date-fns';
+import { format, isAfter } from 'date-fns';
+import { isPastExpiry, isWithinExpiryWindow } from '@/lib/stockExpiry';
 
 interface StockBatchesDialogProps {
   isOpen: boolean;
@@ -87,16 +88,12 @@ const StockBatchesDialog: React.FC<StockBatchesDialogProps> = ({
       return { status: 'No Expiry', color: 'bg-gray-100 text-gray-800' };
     }
 
-    const today = new Date();
-    const expiryDate = new Date(batch.expiry_date);
-    const sixtyDaysFromNow = addDays(today, 60);
-
-    // Priority-based status (highest priority first)
+    // Priority-based status (highest priority first); the expiry day itself is still usable
     if (isOutOfStock) {
       return { status: 'Out of Stock', color: 'bg-red-100 text-red-800' };
-    } else if (isBefore(expiryDate, today)) {
+    } else if (isPastExpiry(batch.expiry_date)) {
       return { status: 'Expired', color: 'bg-red-100 text-red-800' };
-    } else if (isBefore(expiryDate, sixtyDaysFromNow)) {
+    } else if (isWithinExpiryWindow(batch.expiry_date)) {
       return { status: 'Expiring Soon', color: 'bg-amber-100 text-amber-800' };
     } else {
       return { status: 'Good', color: 'bg-green-100 text-green-800' };

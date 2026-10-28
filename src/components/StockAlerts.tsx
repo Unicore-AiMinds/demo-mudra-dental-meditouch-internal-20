@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useStock } from '@/hooks/use-stock';
+import { daysUntilExpiry, isPastExpiry, isWithinExpiryWindow } from '@/lib/stockExpiry';
 
 const StockAlerts: React.FC = () => {
   const navigate = useNavigate();
@@ -15,18 +16,11 @@ const StockAlerts: React.FC = () => {
   // Get out-of-stock items (missing from context)
   const outOfStockItems = stockItems.filter(item => item.current_quantity === 0);
 
-  // Helper function to calculate days to expiry
-  const getDaysToExpiry = (expiryDate: string): number => {
-    const today = new Date();
-    const expiry = new Date(expiryDate);
-    const diffTime = expiry.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
   // Priority-based alert system (no compound conditions)
+  // The expiry day itself is still usable; expired from the next day
   const getStockAlertPriority = (item: any) => {
-    const isExpired = item.nearest_expiry_date && new Date(item.nearest_expiry_date) < new Date();
-    const isExpiringSoon = item.nearest_expiry_date && getDaysToExpiry(item.nearest_expiry_date) <= 60 && getDaysToExpiry(item.nearest_expiry_date) > 0;
+    const isExpired = item.nearest_expiry_date && isPastExpiry(item.nearest_expiry_date);
+    const isExpiringSoon = item.nearest_expiry_date && isWithinExpiryWindow(item.nearest_expiry_date);
     const isLowStock = item.current_quantity > 0 && item.current_quantity <= item.minimum_threshold;
     const isOutOfStock = item.current_quantity === 0;
 
@@ -50,13 +44,13 @@ const StockAlerts: React.FC = () => {
       };
     }
     if (isExpiringSoon) {
-      const days = getDaysToExpiry(item.nearest_expiry_date);
+      const days = daysUntilExpiry(item.nearest_expiry_date);
       return {
         priority: 800,
         type: 'urgent' as const,
         label: 'Expiring Soon',
         icon: '⏰',
-        description: `Expires in ${days} days`
+        description: days === 0 ? 'Expires today' : `Expires in ${days} days`
       };
     }
     if (isLowStock) {
