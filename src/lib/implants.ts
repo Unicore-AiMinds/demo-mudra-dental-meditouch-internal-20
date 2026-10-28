@@ -21,6 +21,7 @@ export interface ImplantBatch {
   received: number;
   used: number;
   returned: number;
+  costPerPiece?: number; // ₹, optional
 }
 
 export type ImplantTransactionType = 'Incoming' | 'Consumption' | 'Return';
@@ -170,7 +171,8 @@ const formatExpiry = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}
 export interface IncomingInput {
   implantId: string;
   receivedDate: string;
-  rows: { dealerId: string; dealerName: string; quantity: number; batchNumber: string; expiryDate: string }[];
+  notes?: string; // e.g. "Opening stock" when added with a new implant
+  rows: { dealerId: string; dealerName: string; quantity: number; batchNumber: string; expiryDate: string; costPerPiece?: number }[];
 }
 
 export const recordIncoming = (state: ImplantState, input: IncomingInput): ImplantState => {
@@ -185,6 +187,7 @@ export const recordIncoming = (state: ImplantState, input: IncomingInput): Impla
     received: r.quantity,
     used: 0,
     returned: 0,
+    costPerPiece: r.costPerPiece,
   }));
   const newTransactions: ImplantTransaction[] = newBatches.map((b) => ({
     id: newId('t'),
@@ -194,6 +197,7 @@ export const recordIncoming = (state: ImplantState, input: IncomingInput): Impla
     dealerName: b.dealerName,
     quantity: b.received,
     batchNumber: b.batchNumber || undefined,
+    notes: input.notes,
   }));
   return { ...state, batches: [...state.batches, ...newBatches], transactions: [...newTransactions, ...state.transactions] };
 };

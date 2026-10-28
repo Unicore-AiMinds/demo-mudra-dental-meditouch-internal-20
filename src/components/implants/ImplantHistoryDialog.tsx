@@ -7,12 +7,12 @@ import { COMPACT_FULLSCREEN_DIALOG, COMPACT_DIALOG_BODY } from '@/lib/compact';
 import { cn } from '@/lib/utils';
 import { Implant, ImplantState, ImplantTransaction, batchLeft, batchStatus, implantBatches } from '@/lib/implants';
 import { BatchStatusBadge, TypeBadge } from './shared';
-import { formatDate, formatExpiry, implantName, todayISO } from './utils';
+import { formatCost, formatDate, formatExpiry, implantName, todayISO } from './utils';
 
 const details = (t: ImplantTransaction) => {
   if (t.type === 'Consumption') return [t.patientName, t.toothNo && `Tooth ${t.toothNo}`].filter(Boolean).join(' · ');
   if (t.type === 'Return') return t.notes || '—';
-  return t.batchNumber ? `Batch ${t.batchNumber}` : '—';
+  return [t.batchNumber && `Batch ${t.batchNumber}`, t.notes].filter(Boolean).join(' · ') || '—';
 };
 
 // View Batches & History: per dealer batch counts and every movement
@@ -59,6 +59,7 @@ export default function ImplantHistoryDialog({
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">
             Batch {b.batchNumber || '—'} · Received {formatDate(b.receivedDate)} · Exp {formatExpiry(b.expiryDate)}
+            {b.costPerPiece ? ` · ${formatCost(b.costPerPiece)} per piece` : ''}
           </div>
           <div className="text-xs mt-1 flex justify-between gap-2">
             <span>
@@ -84,6 +85,7 @@ export default function ImplantHistoryDialog({
             <TableHead>Batch #</TableHead>
             <TableHead>Received</TableHead>
             <TableHead>Expiry</TableHead>
+            <TableHead className="text-right whitespace-nowrap">Cost / Piece</TableHead>
             <TableHead className="text-right">Received Qty</TableHead>
             <TableHead className="text-right">Used</TableHead>
             <TableHead className="text-right">Returned</TableHead>
@@ -100,6 +102,7 @@ export default function ImplantHistoryDialog({
               <TableCell className="whitespace-nowrap">
                 {formatExpiry(b.expiryDate)}
               </TableCell>
+              <TableCell className="text-right whitespace-nowrap">{formatCost(b.costPerPiece)}</TableCell>
               <TableCell className="text-right">{b.received}</TableCell>
               <TableCell className="text-right">{b.used}</TableCell>
               <TableCell className="text-right">{b.returned}</TableCell>
@@ -112,7 +115,7 @@ export default function ImplantHistoryDialog({
         </TableBody>
         <TableFooter>
           <TableRow>
-            <TableCell colSpan={4}>Total</TableCell>
+            <TableCell colSpan={5}>Total</TableCell>
             <TableCell className="text-right">{sum('received')}</TableCell>
             <TableCell className="text-right">{sum('used')}</TableCell>
             <TableCell className="text-right">{sum('returned')}</TableCell>
@@ -171,7 +174,7 @@ export default function ImplantHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : 'sm:max-w-[880px] max-h-[80vh] overflow-y-auto'}>
+      <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : 'sm:max-w-[980px] max-h-[80vh] overflow-y-auto'}>
         <DialogHeader className={isCompact ? 'px-4 pt-4 text-left' : undefined}>
           <DialogTitle>{implantName(implant)}</DialogTitle>
           <DialogDescription>View batch and transaction history</DialogDescription>

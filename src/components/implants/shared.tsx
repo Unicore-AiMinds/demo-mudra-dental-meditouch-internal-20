@@ -43,7 +43,7 @@ export function FormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={isCompact ? COMPACT_FULLSCREEN_DIALOG : cn('max-h-[90vh] overflow-y-auto', wide ? 'sm:max-w-[640px]' : 'sm:max-w-[500px]')}
+        className={isCompact ? COMPACT_FULLSCREEN_DIALOG : cn('max-h-[90vh] overflow-y-auto', wide ? 'sm:max-w-[760px]' : 'sm:max-w-[500px]')}
       >
         <DialogHeader className={isCompact ? 'px-4 pt-4 text-left' : undefined}>
           <DialogTitle>{title}</DialogTitle>

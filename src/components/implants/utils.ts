@@ -10,6 +10,9 @@ export const formatDate = (date: string) => (date ? format(new Date(`${date}T00:
 
 export const formatExpiry = (date: string) => (date ? format(new Date(`${date}T00:00:00`), 'dd/MM/yyyy') : '');
 
+// ₹9,000 (Indian grouping); '—' when not entered
+export const formatCost = (cost?: number) => (cost ? `₹${cost.toLocaleString('en-IN')}` : '—');
+
 export interface MessageState {
   isOpen: boolean;
   title: string;

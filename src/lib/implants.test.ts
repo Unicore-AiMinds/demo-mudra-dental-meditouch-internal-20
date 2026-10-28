@@ -136,6 +136,29 @@ describe("recordIncoming", () => {
       ["Incoming", "Samarth Dental", 3],
     ]);
   });
+
+  it("keeps the cost per piece on each batch (optional)", () => {
+    const next = recordIncoming(state(), {
+      implantId: "i2",
+      receivedDate: TODAY,
+      rows: [
+        { dealerId: "d1", dealerName: "Rahul Adin", quantity: 2, batchNumber: "", expiryDate: "2029-10-31", costPerPiece: 9000 },
+        { dealerId: "d2", dealerName: "Samarth Dental", quantity: 1, batchNumber: "", expiryDate: "2029-10-31" },
+      ],
+    });
+    expect(next.batches.filter((b) => b.implantId === "i2").map((b) => b.costPerPiece)).toEqual([9000, undefined]);
+  });
+
+  it("puts the note on the Incoming transactions (e.g. Opening stock)", () => {
+    const next = recordIncoming(state(), {
+      implantId: "i2",
+      receivedDate: TODAY,
+      notes: "Opening stock",
+      rows: [{ dealerId: "d1", dealerName: "Rahul Adin", quantity: 5, batchNumber: "", expiryDate: "2029-10-31" }],
+    });
+    expect(implantTotal(next, "i2")).toBe(5);
+    expect(next.transactions[0]).toMatchObject({ type: "Incoming", quantity: 5, notes: "Opening stock" });
+  });
 });
 
 describe("recordConsumption", () => {

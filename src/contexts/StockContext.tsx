@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { useAuditLog } from '@/contexts/AuditLogContext';
 import { AuditLogTemplates } from '@/utils/auditLogger';
 import { isPastExpiry, isWithinExpiryWindow } from '@/lib/stockExpiry';
+import { quantityFromBatches } from '@/lib/stockQuantity';
 
 export interface StockItem {
   id: string;
@@ -542,10 +543,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       // 4. Update the stock item's current quantity and nearest expiry date
       const stockItem = stockItems.find(item => item.id === stockItemId);
       if (stockItem) {
-        const newQuantity = stockItem.current_quantity + data.quantity_received;
-
-        // Get all batches to determine the nearest expiry date
+        // Get all batches to determine the quantity and the nearest expiry date
         const allBatches = await getBatchesForStockItem(stockItemId);
+        const newQuantity = quantityFromBatches(allBatches, stockItem.current_quantity + data.quantity_received);
         const validExpiryBatches = allBatches.filter(batch =>
           batch.expiry_date && batch.current_quantity > 0
         );
@@ -790,10 +790,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
 
       // Update the stock item's current quantity and nearest expiry date
-      const newQuantity = stockItem.current_quantity - data.quantity;
-
-      // Get all batches to determine the nearest expiry date
+      // Get all batches to determine the quantity and the nearest expiry date
       const updatedBatches = await getBatchesForStockItem(stockItemId);
+      const newQuantity = quantityFromBatches(updatedBatches, stockItem.current_quantity - data.quantity);
       const validExpiryBatches = updatedBatches.filter(batch =>
         batch.expiry_date && batch.current_quantity > 0
       );

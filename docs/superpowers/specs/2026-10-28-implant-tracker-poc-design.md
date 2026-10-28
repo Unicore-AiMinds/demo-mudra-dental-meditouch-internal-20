@@ -11,7 +11,9 @@ pieces to the dealer they came from. This is a **demo for the client**: no datab
 
 ## Decisions (user)
 
-- Quantity tracking only: **no rate, cost or payment** anywhere.
+- Quantity tracking; **no rate or payment**. Update 2026-10-28: an optional **Cost / Piece (₹)** per
+  batch (Record Incoming and opening stock), shown in the Batches tab, because one implant can cost
+  differently per dealer.
 - Simple flow for the **receptionist**.
 - Consumption is tied to a **patient** picked from the ERP list (required); **Tooth No.** and **Batch**
   optional.
@@ -31,7 +33,11 @@ pieces to the dealer they came from. This is a **demo for the client**: no datab
   dealer (dealer, optional batch number, expiry date, received date, quantity received; used and returned
   counts). **Left = received − used − returned** per batch; per dealer = sum of its batches.
 - **Record Incoming**: one implant, one or more rows (Dealer, Quantity Received, Batch Number, Expiry
-  Date) + Received Date; each row becomes a batch. Confirm step.
+  Date, optional Cost / Piece) + Received Date; each row becomes a batch. Confirm step.
+- **Add New Implant** has an optional **Opening stock** part (Quantity; then Dealer and Expiry Date
+  required, Batch Number and Cost / Piece optional). It is saved as an Incoming batch received today,
+  noted "Opening stock" in Transactions. **Edit Implant** has no quantity: after adding, stock changes
+  only through Incoming / Consumption / Return (Stock Tracker's editable quantity made its counts drift).
 - **Record Consumption**: Patient, Dealer (only dealers with usable pieces; count shown), optional
   Specific Batch (default: first expiring, FEFO; expired batches can't be used), Quantity Used, optional
   Tooth No., Date Used. Confirm step.

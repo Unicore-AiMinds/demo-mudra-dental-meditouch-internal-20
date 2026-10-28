@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useIsCompact } from '@/hooks/use-compact';
 import { Implant, IncomingInput, pieces } from '@/lib/implants';
 import { ConfirmDialog, FieldRow, FormDialog, MessageDialog } from './shared';
-import { MessageState, closedMessage, implantName, todayISO } from './utils';
+import { MessageState, closedMessage, formatCost, implantName, todayISO } from './utils';
 
 interface Row {
   key: number;
@@ -15,10 +15,11 @@ interface Row {
   quantity: string;
   batchNumber: string;
   expiryDate: string;
+  cost: string;
 }
 
 let rowKey = 0;
-const newRow = (): Row => ({ key: ++rowKey, dealer: '', quantity: '', batchNumber: '', expiryDate: '' });
+const newRow = (): Row => ({ key: ++rowKey, dealer: '', quantity: '', batchNumber: '', expiryDate: '', cost: '' });
 
 // Record Incoming Stock: one implant, quantities from one or more dealers in one go
 export default function ImplantIncomingDialog({
@@ -62,6 +63,8 @@ export default function ImplantIncomingDialog({
       if (!r.expiryDate) return fail('Missing Information', `Please select the expiry date for the stock from ${who}.`);
       if (r.expiryDate < todayISO())
         return fail('Record Received Stock', `Expiry date for ${who} cannot be in the past. Please select a future date.`);
+      if (r.cost.trim() !== '' && !(Number(r.cost) > 0))
+        return fail('Missing Information', `Cost per piece for ${who} must be a number above 0 (or leave it empty).`);
     }
     if (!receivedDate) return fail('Missing Information', 'Please select the date when this stock was received.');
     setConfirmOpen(true);
@@ -78,6 +81,7 @@ export default function ImplantIncomingDialog({
         quantity: Number(r.quantity),
         batchNumber: r.batchNumber,
         expiryDate: r.expiryDate,
+        costPerPiece: r.cost.trim() ? Number(r.cost) : undefined,
       })),
     });
   };
@@ -95,6 +99,19 @@ export default function ImplantIncomingDialog({
         ))}
       </SelectContent>
     </Select>
+  );
+
+  const costInput = (r: Row) => (
+    <Input
+      type="number"
+      min="0"
+      step="0.01"
+      inputMode="decimal"
+      aria-label="Cost per piece"
+      value={r.cost}
+      onChange={(e) => update(r.key, 'cost', e.target.value)}
+      placeholder="Optional"
+    />
   );
 
   const removeButton = (r: Row) =>
@@ -147,28 +164,36 @@ export default function ImplantIncomingDialog({
                     <Input aria-label="Batch Number" value={r.batchNumber} onChange={(e) => update(r.key, 'batchNumber', e.target.value)} placeholder="Optional" />
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Expiry Date {req}</Label>
-                  <Input type="date" aria-label="Expiry Date" value={r.expiryDate} onChange={(e) => update(r.key, 'expiryDate', e.target.value)} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Expiry Date {req}</Label>
+                    <Input type="date" aria-label="Expiry Date" value={r.expiryDate} onChange={(e) => update(r.key, 'expiryDate', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Cost / Piece (₹)</Label>
+                    {costInput(r)}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="rounded-md border">
-            <div className="grid grid-cols-[1.4fr_0.8fr_1fr_1.1fr_32px] gap-2 bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
+            <div className="grid grid-cols-[1.4fr_0.8fr_1fr_1.1fr_0.9fr_32px] gap-2 bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
               <span>Dealer {req}</span>
               <span>Quantity Received {req}</span>
               <span>Batch Number</span>
               <span>Expiry Date {req}</span>
+              <span>Cost / Piece (₹)</span>
               <span />
             </div>
             {rows.map((r) => (
-              <div key={r.key} className="grid grid-cols-[1.4fr_0.8fr_1fr_1.1fr_32px] items-center gap-2 border-t px-3 py-2" data-testid="incoming-row">
+              <div key={r.key} className="grid grid-cols-[1.4fr_0.8fr_1fr_1.1fr_0.9fr_32px] items-center gap-2 border-t px-3 py-2" data-testid="incoming-row">
                 {dealerSelect(r)}
                 <Input type="number" min="1" step="1" aria-label="Quantity Received" value={r.quantity} onChange={(e) => update(r.key, 'quantity', e.target.value)} />
                 <Input aria-label="Batch Number" value={r.batchNumber} onChange={(e) => update(r.key, 'batchNumber', e.target.value)} placeholder="Optional" />
                 <Input type="date" aria-label="Expiry Date" value={r.expiryDate} onChange={(e) => update(r.key, 'expiryDate', e.target.value)} />
+                {costInput(r)}
                 {removeButton(r)}
               </div>
             ))}
@@ -203,6 +228,7 @@ export default function ImplantIncomingDialog({
             <li key={r.key}>
               {r.dealer}: {r.quantity}
               {r.batchNumber.trim() && ` (Batch ${r.batchNumber.trim()})`}
+              {r.cost.trim() && ` at ${formatCost(Number(r.cost))} per piece`}
             </li>
           ))}
         </ul>

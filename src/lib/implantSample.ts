@@ -33,14 +33,15 @@ const tx = (b: ImplantBatch, type: ImplantTransaction['type'], date: string, qua
 });
 
 export const createSampleImplantState = (): ImplantState => {
-  const b1 = batch('i1', 'Rahul Adin', 'OS2410A', day(-26), month(36), 4, 1, 0);
-  const b2 = batch('i1', 'Samarth Dental', '', day(-23), month(29), 3, 0, 1);
+  // Some batches have a cost per piece; the same implant can cost differently per dealer
+  const b1 = { ...batch('i1', 'Rahul Adin', 'OS2410A', day(-26), month(36), 4, 1, 0), costPerPiece: 9000 };
+  const b2 = { ...batch('i1', 'Samarth Dental', '', day(-23), month(29), 3, 0, 1), costPerPiece: 8500 };
   const b3 = batch('i2', 'Rahul Adin', 'OS2411B', day(-40), month(30), 2, 1, 0);
   const b4 = batch('i3', 'Rahul Adin', 'AD771', day(-60), month(24), 2, 2, 0);
   const b5 = batch('i3', 'Nitin GC', 'AD802', day(-35), month(26), 1, 0, 1);
   const b6 = batch('i4', 'Samarth Dental', 'DS5521', day(-200), day(45), 4, 0, 0);
-  const b7 = batch('i5', 'Chintamani Surgical', 'SB1093', day(-18), month(40), 2, 0, 0);
-  const b8 = batch('i5', 'Phoneix Surgical', 'SB1101', day(-15), month(42), 3, 1, 0);
+  const b7 = { ...batch('i5', 'Chintamani Surgical', 'SB1093', day(-18), month(40), 2, 0, 0), costPerPiece: 22000 };
+  const b8 = { ...batch('i5', 'Phoneix Surgical', 'SB1101', day(-15), month(42), 3, 1, 0), costPerPiece: 21500 };
   const b9 = batch('i5', 'Chintamani Surgical', 'SB0950', day(-400), day(-20), 1, 0, 0); // expired, 1 left
 
   const transactions: ImplantTransaction[] = [

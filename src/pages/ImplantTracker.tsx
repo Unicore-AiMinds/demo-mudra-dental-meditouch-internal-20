@@ -42,7 +42,7 @@ import {
 import { createSampleImplantState } from '@/lib/implantSample';
 import { StatusBadge } from '@/components/implants/shared';
 import { formatExpiry, implantName, todayISO } from '@/components/implants/utils';
-import ImplantFormDialog, { ImplantFormValues } from '@/components/implants/ImplantFormDialog';
+import ImplantFormDialog, { ImplantFormValues, OpeningStock } from '@/components/implants/ImplantFormDialog';
 import ImplantIncomingDialog from '@/components/implants/ImplantIncomingDialog';
 import ImplantConsumeDialog from '@/components/implants/ImplantConsumeDialog';
 import ImplantReturnDialog from '@/components/implants/ImplantReturnDialog';
@@ -198,14 +198,35 @@ const ImplantTracker = () => {
   const close = () => setOpenKind(null);
   const dialogProps = (kind: DialogKind) => ({ open: openKind === kind, onOpenChange: (o: boolean) => !o && close() });
 
-  const handleSaveImplant = (values: ImplantFormValues) => {
+  const handleSaveImplant = (values: ImplantFormValues, opening?: OpeningStock) => {
     if (selected && openKind === 'form') {
       setState({ ...state, implants: state.implants.map((i) => (i.id === selected.id ? { ...i, ...values } : i)) });
       toast({ title: 'Implant Updated', description: `${values.item} (${values.subItem}) has been updated.` });
     } else {
       const implant: Implant = { id: `imp-${Date.now().toString(36)}`, ...values };
-      setState({ ...state, implants: [...state.implants, implant] });
-      toast({ title: 'Implant Added', description: `${implantName(implant)} has been added.` });
+      const added = { ...state, implants: [...state.implants, implant] };
+      // Opening stock is saved like Record Incoming, received today
+      setState(
+        opening
+          ? recordIncoming(added, {
+              implantId: implant.id,
+              receivedDate: today,
+              notes: 'Opening stock',
+              rows: [
+                {
+                  dealerId: opening.dealer,
+                  dealerName: opening.dealer,
+                  quantity: opening.quantity,
+                  batchNumber: opening.batchNumber,
+                  expiryDate: opening.expiryDate,
+                  costPerPiece: opening.costPerPiece,
+                },
+              ],
+            })
+          : added
+      );
+      const stockText = opening ? ` with ${pieces(opening.quantity)} from ${opening.dealer}` : '';
+      toast({ title: 'Implant Added', description: `${implantName(implant)} has been added${stockText}.` });
     }
     close();
   };
@@ -497,6 +518,7 @@ const ImplantTracker = () => {
         {...dialogProps('form')}
         implant={selected}
         existing={state.implants}
+        dealerNames={dealerNames}
         onSave={handleSaveImplant}
       />
       {selected && (

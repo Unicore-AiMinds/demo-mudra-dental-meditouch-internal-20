@@ -491,7 +491,7 @@ const StockTracker = () => {
         rate: currentEditItem.rate,
         description: currentEditItem.description,
         unit: currentEditItem.unit,
-        current_quantity: currentEditItem.currentQuantity,
+        // current_quantity is not sent: it only changes through Record Incoming / Record Consumption
         minimum_threshold: currentEditItem.minimumThreshold,
         nearest_expiry_date: currentEditItem.nearestExpiryDate,
         clinic_type: activeClinic as 'dental' | 'meditouch'
@@ -1002,26 +1002,18 @@ const StockTracker = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
-                  <Label htmlFor="editQuantity" className="text-right text-xs">Quantity <span className="text-red-500 ml-1">*</span></Label>
+                  <Label htmlFor="editQuantity" className="text-right text-xs">Quantity</Label>
+                  {/* Read-only: changing it here would not change the batches, so the counts would stop matching */}
                   <Input
                     id="editQuantity"
                     type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={currentEditItem.currentQuantity === 0 && document.activeElement !== document.getElementById('editQuantity') ? '' : currentEditItem.currentQuantity}
-                    onChange={(e) => {
-                      // Only allow numeric input
-                      const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                      const value = numericValue === '' ? 0 : parseInt(numericValue, 10);
-                      setCurrentEditItem({...currentEditItem, currentQuantity: value});
-                    }}
-                    onFocus={(e) => {
-                      if (currentEditItem.currentQuantity === 0) {
-                        e.target.value = '';
-                      }
-                    }}
-                    className="col-span-3 h-8"
+                    value={currentEditItem.currentQuantity}
+                    readOnly
+                    className="col-span-3 h-8 bg-gray-100"
                   />
+                  <p className="col-start-2 col-span-3 -mt-1 text-[11px] text-muted-foreground">
+                    To change the quantity, use Record Incoming or Record Consumption.
+                  </p>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-2">
                   <Label htmlFor="editUnit" className="text-right text-xs">Unit <span className="text-red-500 ml-1">*</span></Label>
