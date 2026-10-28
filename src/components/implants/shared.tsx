@@ -18,7 +18,7 @@ import {
 import { useIsCompact } from '@/hooks/use-compact';
 import { COMPACT_FULLSCREEN_DIALOG, COMPACT_DIALOG_BODY, COMPACT_STICKY_FOOTER } from '@/lib/compact';
 import { cn } from '@/lib/utils';
-import { DealerStock, ImplantStatus, ImplantTransactionType } from '@/lib/implants';
+import { BatchStatus, DealerStock, ImplantStatus, ImplantTransactionType } from '@/lib/implants';
 import { MessageState } from './utils';
 
 // Popup with a form: title, fields, Cancel / Save
@@ -216,6 +216,7 @@ export function ConfirmDialog({
 
 const STATUS_CLASS: Record<ImplantStatus, string> = {
   'Out of Stock': 'bg-red-100 text-red-700 border-red-300 font-medium',
+  Expired: 'bg-red-100 text-red-700 border-red-300 font-medium',
   'Low Stock': 'bg-amber-50 text-amber-700 border-amber-200',
   'Expiring Soon': 'bg-orange-50 text-orange-700 border-orange-200',
   Normal: 'bg-green-50 text-green-700 border-green-200',
@@ -241,4 +242,16 @@ export function TypeBadge({ type }: { type: ImplantTransactionType }) {
       {type}
     </Badge>
   );
+}
+
+// Same colours as Stock Tracker's batch list
+const BATCH_CLASS: Record<BatchStatus, string> = {
+  'Out of Stock': 'bg-red-100 hover:bg-red-100 text-red-800',
+  Expired: 'bg-red-100 hover:bg-red-100 text-red-800',
+  'Expiring Soon': 'bg-amber-100 hover:bg-amber-100 text-amber-800',
+  Good: 'bg-green-100 hover:bg-green-100 text-green-800',
+};
+
+export function BatchStatusBadge({ status }: { status: BatchStatus }) {
+  return <Badge className={cn('whitespace-nowrap', BATCH_CLASS[status])}>{status}</Badge>;
 }

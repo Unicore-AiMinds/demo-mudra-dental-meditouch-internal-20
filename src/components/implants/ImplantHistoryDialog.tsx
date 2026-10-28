@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useIsCompact } from '@/hooks/use-compact';
 import { COMPACT_FULLSCREEN_DIALOG, COMPACT_DIALOG_BODY } from '@/lib/compact';
 import { cn } from '@/lib/utils';
-import { Implant, ImplantState, ImplantTransaction, batchLeft, implantBatches, isExpired } from '@/lib/implants';
-import { TypeBadge } from './shared';
+import { Implant, ImplantState, ImplantTransaction, batchLeft, batchStatus, implantBatches } from '@/lib/implants';
+import { BatchStatusBadge, TypeBadge } from './shared';
 import { formatDate, formatExpiry, implantName, todayISO } from './utils';
 
 const details = (t: ImplantTransaction) => {
@@ -15,12 +14,6 @@ const details = (t: ImplantTransaction) => {
   if (t.type === 'Return') return t.notes || '—';
   return t.batchNumber ? `Batch ${t.batchNumber}` : '—';
 };
-
-const ExpiredTag = () => (
-  <Badge variant="outline" className="ml-1 bg-red-100 text-red-700 border-red-300 text-[10px] px-1.5 py-0">
-    Expired
-  </Badge>
-);
 
 // View Batches & History: per dealer batch counts and every movement
 export default function ImplantHistoryDialog({
@@ -59,17 +52,19 @@ export default function ImplantHistoryDialog({
   const batchesView = isCompact ? (
     <div className="space-y-2">
       {batches.map((b) => (
-        <div key={b.id} className={cn('rounded-md border p-3 text-sm', isExpired(b, today) && 'bg-red-50')} data-testid="batch-card">
+        <div key={b.id} className={cn('rounded-md border p-3 text-sm', batchStatus(b, today) === 'Expired' && 'bg-red-50')} data-testid="batch-card">
           <div className="flex items-start justify-between gap-2">
             <div className="font-medium">{b.dealerName}</div>
-            <div className="text-right font-semibold whitespace-nowrap">{batchLeft(b)} left</div>
+            <BatchStatusBadge status={batchStatus(b, today)} />
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">
             Batch {b.batchNumber || '—'} · Received {formatDate(b.receivedDate)} · Exp {formatExpiry(b.expiryDate)}
-            {isExpired(b, today) && <ExpiredTag />}
           </div>
-          <div className="text-xs mt-1">
-            Received {b.received} · Used {b.used} · Returned {b.returned}
+          <div className="text-xs mt-1 flex justify-between gap-2">
+            <span>
+              Received {b.received} · Used {b.used} · Returned {b.returned}
+            </span>
+            <span className="font-semibold text-sm whitespace-nowrap">{batchLeft(b)} left</span>
           </div>
         </div>
       ))}
@@ -81,7 +76,7 @@ export default function ImplantHistoryDialog({
       </div>
     </div>
   ) : (
-    <div className="border rounded-md overflow-x-auto">
+    <div className="border rounded-md overflow-x-auto [contain:inline-size]">
       <Table>
         <TableHeader>
           <TableRow>
@@ -93,22 +88,25 @@ export default function ImplantHistoryDialog({
             <TableHead className="text-right">Used</TableHead>
             <TableHead className="text-right">Returned</TableHead>
             <TableHead className="text-right">Left</TableHead>
+            <TableHead>Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {batches.map((b) => (
-            <TableRow key={b.id} className={isExpired(b, today) ? 'bg-red-50' : ''}>
+            <TableRow key={b.id} className={batchStatus(b, today) === 'Expired' ? 'bg-red-50' : ''}>
               <TableCell className="font-medium">{b.dealerName}</TableCell>
               <TableCell>{b.batchNumber || '—'}</TableCell>
               <TableCell>{formatDate(b.receivedDate)}</TableCell>
               <TableCell className="whitespace-nowrap">
                 {formatExpiry(b.expiryDate)}
-                {isExpired(b, today) && <ExpiredTag />}
               </TableCell>
               <TableCell className="text-right">{b.received}</TableCell>
               <TableCell className="text-right">{b.used}</TableCell>
               <TableCell className="text-right">{b.returned}</TableCell>
               <TableCell className="text-right font-semibold">{batchLeft(b)}</TableCell>
+              <TableCell>
+                <BatchStatusBadge status={batchStatus(b, today)} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -119,6 +117,7 @@ export default function ImplantHistoryDialog({
             <TableCell className="text-right">{sum('used')}</TableCell>
             <TableCell className="text-right">{sum('returned')}</TableCell>
             <TableCell className="text-right">{totalLeft}</TableCell>
+            <TableCell />
           </TableRow>
         </TableFooter>
       </Table>
@@ -142,7 +141,7 @@ export default function ImplantHistoryDialog({
       ))}
     </div>
   ) : (
-    <div className="border rounded-md overflow-x-auto">
+    <div className="border rounded-md overflow-x-auto [contain:inline-size]">
       <Table>
         <TableHeader>
           <TableRow>
@@ -172,7 +171,7 @@ export default function ImplantHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : 'sm:max-w-[760px] max-h-[80vh] overflow-y-auto'}>
+      <DialogContent className={isCompact ? COMPACT_FULLSCREEN_DIALOG : 'sm:max-w-[880px] max-h-[80vh] overflow-y-auto'}>
         <DialogHeader className={isCompact ? 'px-4 pt-4 text-left' : undefined}>
           <DialogTitle>{implantName(implant)}</DialogTitle>
           <DialogDescription>View batch and transaction history</DialogDescription>

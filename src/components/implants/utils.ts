@@ -8,7 +8,7 @@ export const implantName = (implant: Implant) => `${implant.item} (${implant.sub
 
 export const formatDate = (date: string) => (date ? format(new Date(`${date}T00:00:00`), 'dd/MM/yyyy') : '');
 
-export const formatExpiry = (date: string) => (date ? format(new Date(`${date}T00:00:00`), 'MM/yyyy') : '');
+export const formatExpiry = (date: string) => (date ? format(new Date(`${date}T00:00:00`), 'dd/MM/yyyy') : '');
 
 export interface MessageState {
   isOpen: boolean;

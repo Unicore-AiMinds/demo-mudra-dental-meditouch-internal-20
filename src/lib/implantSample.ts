@@ -41,6 +41,7 @@ export const createSampleImplantState = (): ImplantState => {
   const b6 = batch('i4', 'Samarth Dental', 'DS5521', day(-200), day(45), 4, 0, 0);
   const b7 = batch('i5', 'Chintamani Surgical', 'SB1093', day(-18), month(40), 2, 0, 0);
   const b8 = batch('i5', 'Phoneix Surgical', 'SB1101', day(-15), month(42), 3, 1, 0);
+  const b9 = batch('i5', 'Chintamani Surgical', 'SB0950', day(-400), day(-20), 1, 0, 0); // expired, 1 left
 
   const transactions: ImplantTransaction[] = [
     tx(b8, 'Consumption', day(-3), 1, { patientName: 'Anjali Railkar', toothNo: '36' }),
@@ -57,6 +58,7 @@ export const createSampleImplantState = (): ImplantState => {
     tx(b3, 'Incoming', day(-40), 2),
     tx(b4, 'Incoming', day(-60), 2),
     tx(b6, 'Incoming', day(-200), 4),
+    tx(b9, 'Incoming', day(-400), 1),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   return {
@@ -67,7 +69,7 @@ export const createSampleImplantState = (): ImplantState => {
       { id: 'i4', item: 'Dentium SuperLine', subItem: '4.0 × 10 mm', unit: 'Piece', minThreshold: 2, description: '' },
       { id: 'i5', item: 'Straumann BLT', subItem: '4.1 × 10 mm', unit: 'Piece', minThreshold: 1, description: 'Bone level tapered' },
     ],
-    batches: [b1, b2, b3, b4, b5, b6, b7, b8],
+    batches: [b1, b2, b3, b4, b5, b6, b7, b8, b9],
     transactions,
   };
 };

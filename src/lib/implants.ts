@@ -45,7 +45,7 @@ export interface ImplantState {
   transactions: ImplantTransaction[];
 }
 
-export type ImplantStatus = 'Out of Stock' | 'Low Stock' | 'Expiring Soon' | 'Normal';
+export type ImplantStatus = 'Out of Stock' | 'Expired' | 'Expiring Soon' | 'Low Stock' | 'Normal';
 
 export interface DealerStock {
   dealerId: string;
@@ -70,6 +70,7 @@ const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.r
 const daysBetween = (from: string, to: string) =>
   Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86400000);
 
+// The expiry date itself is still usable; the batch is expired from the next day
 export const isExpired = (batch: ImplantBatch, today: string) => batch.expiryDate < today;
 
 export const batchLeft = (batch: ImplantBatch) => batch.received - batch.used - batch.returned;
@@ -93,15 +94,50 @@ export const dealerStock = (state: ImplantState, implantId: string, today?: stri
 export const implantTotal = (state: ImplantState, implantId: string) =>
   implantBatches(state, implantId).reduce((sum, b) => sum + batchLeft(b), 0);
 
+const isExpiringSoon = (batch: ImplantBatch, today: string) =>
+  !isExpired(batch, today) && daysBetween(today, batch.expiryDate) <= EXPIRING_DAYS;
+
+// One status per implant, same order as Stock Tracker:
+// Out of Stock → Expired → Expiring Soon → Low Stock (at or below Min. Threshold) → Normal
 export const implantStatus = (state: ImplantState, implantId: string, today: string): ImplantStatus => {
   const implant = state.implants.find((i) => i.id === implantId);
   const total = implantTotal(state, implantId);
   if (total <= 0) return 'Out of Stock';
-  if (implant && total < implant.minThreshold) return 'Low Stock';
-  const expiring = implantBatches(state, implantId).some(
-    (b) => batchLeft(b) > 0 && daysBetween(today, b.expiryDate) <= EXPIRING_DAYS
-  );
-  return expiring ? 'Expiring Soon' : 'Normal';
+  const withPieces = implantBatches(state, implantId).filter((b) => batchLeft(b) > 0);
+  if (withPieces.some((b) => isExpired(b, today))) return 'Expired';
+  if (withPieces.some((b) => isExpiringSoon(b, today))) return 'Expiring Soon';
+  if (implant && total <= implant.minThreshold) return 'Low Stock';
+  return 'Normal';
+};
+
+export interface NearestExpiry {
+  date: string;
+  pieces: number; // pieces left in the batches with this date
+  expired: boolean;
+  expiringSoon: boolean;
+}
+
+// Earliest expiry among batches that still have pieces (empty batches are ignored)
+export const nearestExpiry = (state: ImplantState, implantId: string, today: string): NearestExpiry | null => {
+  const withPieces = implantBatches(state, implantId).filter((b) => batchLeft(b) > 0).sort(byExpiry);
+  if (withPieces.length === 0) return null;
+  const first = withPieces[0];
+  return {
+    date: first.expiryDate,
+    pieces: withPieces.filter((b) => b.expiryDate === first.expiryDate).reduce((sum, b) => sum + batchLeft(b), 0),
+    expired: isExpired(first, today),
+    expiringSoon: isExpiringSoon(first, today),
+  };
+};
+
+export type BatchStatus = 'Out of Stock' | 'Expired' | 'Expiring Soon' | 'Good';
+
+// Status of one batch (words of Stock Tracker's batch list)
+export const batchStatus = (batch: ImplantBatch, today: string): BatchStatus => {
+  if (batchLeft(batch) <= 0) return 'Out of Stock';
+  if (isExpired(batch, today)) return 'Expired';
+  if (isExpiringSoon(batch, today)) return 'Expiring Soon';
+  return 'Good';
 };
 
 // Batches a consumption can take from: not expired, pieces left, earliest expiry first (FEFO)
@@ -129,7 +165,7 @@ const allocate = (batches: ImplantBatch[], quantity: number) => {
   return parts;
 };
 
-const formatExpiry = (date: string) => `${date.slice(5, 7)}/${date.slice(0, 4)}`;
+const formatExpiry = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`;
 
 export interface IncomingInput {
   implantId: string;

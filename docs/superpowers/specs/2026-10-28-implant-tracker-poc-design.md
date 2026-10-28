@@ -37,8 +37,13 @@ pieces to the dealer they came from. This is a **demo for the client**: no datab
   Tooth No., Date Used. Confirm step.
 - **Record Return**: Dealer (only dealers with pieces left), optional Specific Batch, Quantity Returned
   (max = that dealer's / batch's left), Return Date, optional Notes. Confirm step.
-- **Status**: Out of Stock (0 left) → Low Stock (below Min. Threshold) → Expiring Soon (a batch with
-  pieces left expires within 60 days or has expired) → Normal.
+- **Status** (same order as Stock Tracker): Out of Stock (0 left) → Expired (a batch with pieces left is
+  past its expiry) → Expiring Soon (a batch with pieces left expires within 60 days) → Low Stock (at or
+  below Min. Threshold) → Normal. The expiry date itself is still usable; expired from the next day.
+- **Expiry column** (list; card line on phones): nearest expiry among batches with pieces left, full date,
+  with how many pieces it covers ("4 Pieces expiring", "1 Piece expired"). Expired summary card and tab.
+- **Batches tab** has a Status per batch: Good / Expiring Soon / Expired / Out of Stock (Stock Tracker
+  words and colours).
 - **View Batches & History**: Batches tab (per batch: dealer, batch, received date, expiry, received,
   used, returned, left) and Transactions tab (date, type, dealer, quantity, patient/tooth or notes).
 - Add / Edit implant (Item, Sub-item, Unit "Piece", Min. Threshold, Description). Export CSV of the list.
@@ -48,3 +53,21 @@ pieces to the dealer they came from. This is a **demo for the client**: no datab
 
 Database tables, permissions of its own (the demo uses `stock.view`), audit log, linking to the patient
 page or charting, money.
+
+## Later: pick implants from Settings instead of typing (noted 2026-10-28, parked by user)
+
+Today Add New Implant has free-text Item / Sub-item, so the same implant can be typed two ways
+(e.g. "osstem" / "4.0 mm" next to "Osstem TS III" / "4.0 × 10 mm"). Stock Tracker avoids this:
+
+- **Name** is a search box (`Combobox`) over **Settings → Stock Items** (`stock_item_definitions`).
+- **Sub-item** is a drop-down of that item's sub-items only.
+- **Unit, Min. Threshold, Description, Item Type** fill in from the chosen Settings entry.
+
+Settings → Stock Items holds: Item name, Sub-item, Description, Item Type (Consumable / Inventory),
+Unit, Clinic (dental / meditouch / both), Min. Threshold. On DEV it has 76 items and **no implants**,
+and there is no way to mark an item as an implant.
+
+Plan for the real version: add Item Type **"Implant"** in Settings → Stock Items (database change;
+check any constraint on `item_type`), enter each implant as Item = brand/system, Sub-item = size, and
+make Add New Implant search only items of type Implant, like Stock Tracker. A demo-only version with a
+sample implant list was offered and declined for now.

@@ -28,10 +28,12 @@ import {
   ImplantState,
   ImplantStatus,
   IncomingInput,
+  NearestExpiry,
   ReturnInput,
   dealerStock,
   implantStatus,
   implantTotal,
+  nearestExpiry,
   pieces,
   recordConsumption,
   recordIncoming,
@@ -39,7 +41,7 @@ import {
 } from '@/lib/implants';
 import { createSampleImplantState } from '@/lib/implantSample';
 import { StatusBadge } from '@/components/implants/shared';
-import { implantName, todayISO } from '@/components/implants/utils';
+import { formatExpiry, implantName, todayISO } from '@/components/implants/utils';
 import ImplantFormDialog, { ImplantFormValues } from '@/components/implants/ImplantFormDialog';
 import ImplantIncomingDialog from '@/components/implants/ImplantIncomingDialog';
 import ImplantConsumeDialog from '@/components/implants/ImplantConsumeDialog';
@@ -50,12 +52,13 @@ import ImplantHistoryDialog from '@/components/implants/ImplantHistoryDialog';
 let savedState: ImplantState | null = null;
 
 type DialogKind = 'form' | 'incoming' | 'consume' | 'return' | 'history';
-type StatusFilter = 'all' | 'outofstock' | 'low' | 'expiring';
+type StatusFilter = 'all' | 'outofstock' | 'low' | 'expiring' | 'expired';
 
 const FILTER_STATUS: Record<Exclude<StatusFilter, 'all'>, ImplantStatus> = {
   outofstock: 'Out of Stock',
   low: 'Low Stock',
   expiring: 'Expiring Soon',
+  expired: 'Expired',
 };
 
 interface Row {
@@ -63,6 +66,7 @@ interface Row {
   total: number;
   dealers: DealerStock[];
   status: ImplantStatus;
+  expiry: NearestExpiry | null;
 }
 
 const DealerChips = ({ dealers }: { dealers: DealerStock[] }) =>
@@ -84,8 +88,26 @@ const DealerChips = ({ dealers }: { dealers: DealerStock[] }) =>
     </div>
   );
 
-const SummaryCard = ({ icon, iconBg, title, value, note }: { icon: React.ReactNode; iconBg: string; title: string; value: number; note: string }) => (
-  <Card className="card-shadow">
+// Nearest expiry (batches with pieces left) and how many pieces it covers, like Stock Tracker's Expiry column
+const ExpiryInfo = ({ expiry }: { expiry: NearestExpiry | null }) =>
+  !expiry ? (
+    <span className="text-muted-foreground">N/A</span>
+  ) : (
+    <div className="whitespace-nowrap">
+      <div className="flex items-center gap-1">
+        <span className={expiry.expired ? 'text-red-600 font-medium' : ''}>{formatExpiry(expiry.date)}</span>
+        {expiry.expired && <AlertTriangle className="h-3 w-3 text-red-600" />}
+        {expiry.expiringSoon && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+      </div>
+      <div className={cn('text-xs', expiry.expired ? 'text-red-600' : expiry.expiringSoon ? 'text-amber-700' : 'text-muted-foreground')}>
+        {pieces(expiry.pieces)}
+        {expiry.expired ? ' expired' : expiry.expiringSoon ? ' expiring' : ''}
+      </div>
+    </div>
+  );
+
+const SummaryCard = ({ icon, iconBg, title, value, note, className }: { icon: React.ReactNode; iconBg: string; title: string; value: number; note: string; className?: string }) => (
+  <Card className={cn('card-shadow', className)}>
     <div className="p-4 flex items-center space-x-4">
       <div className={cn('p-2 rounded-full', iconBg)}>{icon}</div>
       <div>
@@ -132,6 +154,7 @@ const ImplantTracker = () => {
           total: implantTotal(state, implant.id),
           dealers: dealerStock(state, implant.id, today),
           status: implantStatus(state, implant.id, today),
+          expiry: nearestExpiry(state, implant.id, today),
         })),
     [state, today]
   );
@@ -210,7 +233,7 @@ const ImplantTracker = () => {
 
   const handleExport = () => {
     const quote = (text: string | number) => `"${String(text).replace(/"/g, '""')}"`;
-    const headers = ['Item', 'Sub-item', 'Quantity', 'From Dealers', 'Min Threshold', 'Status', 'Description'];
+    const headers = ['Item', 'Sub-item', 'Quantity', 'From Dealers', 'Min Threshold', 'Nearest Expiry', 'Status', 'Description'];
     const csv = [
       headers.join(','),
       ...visibleRows.map((r) =>
@@ -220,6 +243,7 @@ const ImplantTracker = () => {
           r.total,
           quote(r.dealers.map((d) => `${d.dealerName}: ${d.left}`).join('; ')),
           r.implant.minThreshold,
+          quote(r.expiry ? `${formatExpiry(r.expiry.date)} (${pieces(r.expiry.pieces)})` : ''),
           quote(r.status),
           quote(r.implant.description),
         ].join(',')
@@ -294,10 +318,11 @@ const ImplantTracker = () => {
         <span>Demo with sample data. Changes are not saved and are reset when the page is reloaded.</span>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <SummaryCard
           icon={<Boxes className="h-5 w-5 text-dental-primary" />}
           iconBg="bg-blue-50"
+          className="col-span-2 lg:col-span-1"
           title="Total Implants"
           value={totalPieces}
           note="Pieces in stock, all dealers"
@@ -314,7 +339,7 @@ const ImplantTracker = () => {
           iconBg="bg-amber-50"
           title="Low Stock"
           value={count('Low Stock')}
-          note="Implants below minimum threshold"
+          note="Implants at or below minimum threshold"
         />
         <SummaryCard
           icon={<AlertTriangle className="h-5 w-5 text-orange-500" />}
@@ -322,6 +347,13 @@ const ImplantTracker = () => {
           title="Expiring Soon"
           value={count('Expiring Soon')}
           note="Implants expiring within 60 days"
+        />
+        <SummaryCard
+          icon={<AlertTriangle className="h-5 w-5 text-red-600" />}
+          iconBg="bg-red-100"
+          title="Expired"
+          value={count('Expired')}
+          note="Implants with expired pieces"
         />
       </div>
 
@@ -331,21 +363,22 @@ const ImplantTracker = () => {
           <CardDescription>Quantity left from each dealer</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col lg:flex-row gap-3 mb-4">
+          <div className="flex flex-col xl:flex-row gap-3 mb-4">
             <div className="relative flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search implants..." className="pl-8" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
-            <Tabs value={filterStatus} onValueChange={(v) => setFilterStatus(v as StatusFilter)} className="w-full lg:w-auto">
+            <Tabs value={filterStatus} onValueChange={(v) => setFilterStatus(v as StatusFilter)} className="w-full xl:w-auto">
               <TabsList className={isCompact ? 'grid w-full grid-cols-2 h-auto gap-1' : undefined}>
-                <TabsTrigger value="all">All Status</TabsTrigger>
+                <TabsTrigger value="all" className={isCompact ? 'col-span-2' : undefined}>All Status</TabsTrigger>
                 <TabsTrigger value="outofstock">Out of Stock</TabsTrigger>
                 <TabsTrigger value="low">Low Stock</TabsTrigger>
                 <TabsTrigger value="expiring">Expiring Soon</TabsTrigger>
+                <TabsTrigger value="expired">Expired</TabsTrigger>
               </TabsList>
             </Tabs>
             {canExport && (
-              <Button variant="outline" className="flex gap-2 items-center" onClick={handleExport}>
+              <Button variant="outline" className="flex gap-2 items-center lg:self-start xl:self-auto" onClick={handleExport}>
                 <FileDown className="h-4 w-4" />
                 <span>Export</span>
               </Button>
@@ -358,7 +391,7 @@ const ImplantTracker = () => {
                 <div className="text-center py-8 text-muted-foreground">{emptyText}</div>
               ) : (
                 visibleRows.map((r) => (
-                  <div key={r.implant.id} className={cn('rounded-lg border p-3', r.status === 'Out of Stock' && 'bg-red-50')} data-testid="implant-card">
+                  <div key={r.implant.id} className={cn('rounded-lg border p-3', (r.status === 'Out of Stock' || r.status === 'Expired') && 'bg-red-50')} data-testid="implant-card">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="font-medium">{r.implant.item}</div>
@@ -374,6 +407,19 @@ const ImplantTracker = () => {
                       {r.total === 0 && <AlertTriangle className="h-3 w-3 text-red-600" />}
                       <span className="text-muted-foreground">· Min {r.implant.minThreshold}</span>
                     </div>
+                    {r.expiry && (
+                      <div
+                        className={cn(
+                          'mt-1 flex items-center gap-1 text-xs',
+                          r.expiry.expired ? 'text-red-600 font-medium' : r.expiry.expiringSoon ? 'text-amber-700' : 'text-muted-foreground'
+                        )}
+                        data-testid="card-expiry"
+                      >
+                        {(r.expiry.expired || r.expiry.expiringSoon) && <AlertTriangle className="h-3 w-3" />}
+                        Nearest expiry {formatExpiry(r.expiry.date)} · {pieces(r.expiry.pieces)}
+                        {r.expiry.expired ? ' expired' : r.expiry.expiringSoon ? ' expiring' : ''}
+                      </div>
+                    )}
                     <div className="mt-2">
                       <DealerChips dealers={r.dealers} />
                     </div>
@@ -382,7 +428,8 @@ const ImplantTracker = () => {
               )}
             </div>
           ) : (
-            <div className="border rounded-md overflow-x-auto">
+            <div className="border rounded-md overflow-x-auto [contain:inline-size]">
+              {/* contain: on small laptops the table scrolls inside this box instead of widening the page */}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -391,6 +438,7 @@ const ImplantTracker = () => {
                     <TableHead>Quantity</TableHead>
                     <TableHead>From Dealers</TableHead>
                     <TableHead className="whitespace-nowrap">Min Threshold</TableHead>
+                    <TableHead>Expiry</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -398,26 +446,29 @@ const ImplantTracker = () => {
                 <TableBody>
                   {visibleRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         {emptyText}
                       </TableCell>
                     </TableRow>
                   ) : (
                     visibleRows.map((r) => (
-                      <TableRow key={r.implant.id} className={r.status === 'Out of Stock' ? 'bg-red-50' : ''}>
-                        <TableCell className="font-medium">{r.implant.item}</TableCell>
+                      <TableRow key={r.implant.id} className={r.status === 'Out of Stock' || r.status === 'Expired' ? 'bg-red-50' : ''}>
+                        <TableCell className="font-medium whitespace-nowrap">{r.implant.item}</TableCell>
                         <TableCell className="whitespace-nowrap">{r.implant.subItem}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 whitespace-nowrap">
                             <span>{pieces(r.total)}</span>
                             {r.status === 'Out of Stock' && <AlertTriangle className="h-3 w-3 text-red-600" />}
-                            {r.status === 'Low Stock' && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                            {r.total > 0 && r.total <= r.implant.minThreshold && <AlertTriangle className="h-3 w-3 text-amber-500" />}
                           </div>
                         </TableCell>
                         <TableCell>
                           <DealerChips dealers={r.dealers} />
                         </TableCell>
                         <TableCell>{r.implant.minThreshold}</TableCell>
+                        <TableCell>
+                          <ExpiryInfo expiry={r.expiry} />
+                        </TableCell>
                         <TableCell>
                           <StatusBadge status={r.status} />
                         </TableCell>
