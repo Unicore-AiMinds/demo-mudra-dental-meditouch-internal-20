@@ -50,12 +50,14 @@ import {
   ArrowUp,
   ArrowDown,
   UserPlus,
+  Eye,
 } from 'lucide-react';
 import AddPatientDialog from '@/components/AddPatientDialog';
 import { useIsCompact } from '@/hooks/use-compact';
 import EnquiryCardList from '@/components/enquiries/compact/EnquiryCardList';
 import EnquirySortSelect from '@/components/enquiries/compact/EnquirySortSelect';
 import StatusChangeDialog, { PendingStatusChange } from '@/components/enquiries/StatusChangeDialog';
+import EnquiryDetailsDialog from '@/components/enquiries/EnquiryDetailsDialog';
 import {
   Enquiry,
   STATUS_OPTIONS,
@@ -93,6 +95,9 @@ const Enquiries = () => {
   const [enquiryToDelete, setEnquiryToDelete] = useState<Enquiry | null>(null);
   const [enquiryToConvert, setEnquiryToConvert] = useState<Enquiry | null>(null);
   const [pendingStatusChange, setPendingStatusChange] = useState<PendingStatusChange | null>(null);
+  // View popup: kept by id so it shows the latest status (and closes if the enquiry is deleted)
+  const [viewId, setViewId] = useState<number | null>(null);
+  const viewEnquiry = viewId === null ? null : enquiries.find((e) => e.id === viewId) ?? null;
 
   const loadEnquiries = useCallback(async () => {
     setIsLoading(true);
@@ -404,7 +409,8 @@ const Enquiries = () => {
           </div>
 
           {/* Table */}
-          <div className={isCompact && !isLoading && filteredEnquiries.length > 0 ? "space-y-3" : "overflow-auto rounded-md border"}>
+          {/* contain: a wide table scrolls inside this box instead of widening the page */}
+          <div className={isCompact && !isLoading && filteredEnquiries.length > 0 ? "space-y-3" : "overflow-auto rounded-md border [contain:inline-size]"}>
             {isLoading ? (
               <div className="py-12 text-center text-muted-foreground">Loading enquiries...</div>
             ) : filteredEnquiries.length === 0 ? (
@@ -430,6 +436,7 @@ const Enquiries = () => {
                   canDelete={canDelete}
                   updatingId={updatingId}
                   onStatusChange={requestStatusChange}
+                  onView={(e) => setViewId(e.id)}
                   onConvert={setEnquiryToConvert}
                   onDelete={setEnquiryToDelete}
                 />
@@ -465,7 +472,8 @@ const Enquiries = () => {
                     >
                       <span className="inline-flex items-center gap-1">Status {getSortIcon('status')}</span>
                     </TableHead>
-                    {(canConvert || canDelete) && <TableHead className="text-right">Actions</TableHead>}
+                    {/* Actions stay pinned on the right while the other columns scroll */}
+                    <TableHead className="text-right sticky right-0 bg-background shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -480,7 +488,7 @@ const Enquiries = () => {
                         {e.email || '-'}
                       </TableCell>
                       <TableCell>{e.service_inquiry}</TableCell>
-                      <TableCell className="max-w-[240px] truncate" title={e.message || ''}>
+                      <TableCell className="max-w-[160px] truncate" title={e.message || ''}>
                         {e.message || '-'}
                       </TableCell>
                       <TableCell>
@@ -507,35 +515,43 @@ const Enquiries = () => {
                           </Badge>
                         )}
                       </TableCell>
-                      {(canConvert || canDelete) && (
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {canConvert && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8"
-                                onClick={() => setEnquiryToConvert(e)}
-                                title="Create a patient from this enquiry"
-                              >
-                                <UserPlus className="h-4 w-4 mr-1" />
-                                Convert
-                              </Button>
-                            )}
-                            {canDelete && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={() => setEnquiryToDelete(e)}
-                                title="Delete enquiry"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      )}
+                      <TableCell className="text-right sticky right-0 bg-background shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                            onClick={() => setViewId(e.id)}
+                            title="View enquiry details"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          {canConvert && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8"
+                              onClick={() => setEnquiryToConvert(e)}
+                              title="Create a patient from this enquiry"
+                            >
+                              <UserPlus className="h-4 w-4 mr-1" />
+                              Convert
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setEnquiryToDelete(e)}
+                              title="Delete enquiry"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -588,6 +604,21 @@ const Enquiries = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* View: full details of one enquiry */}
+      <EnquiryDetailsDialog
+        enquiry={viewEnquiry}
+        isCompact={isCompact}
+        canChangeStatus={canChangeStatus}
+        canConvert={canConvert}
+        updatingId={updatingId}
+        onStatusChange={requestStatusChange}
+        onConvert={(e) => {
+          setViewId(null);
+          setEnquiryToConvert(e);
+        }}
+        onClose={() => setViewId(null)}
+      />
 
       {/* Confirm Status Change Dialog */}
       <StatusChangeDialog

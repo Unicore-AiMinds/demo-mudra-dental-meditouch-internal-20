@@ -136,7 +136,7 @@ const AppSidebar = () => {
   const { activeClinic, setActiveClinic } = useClinic();
   const { user, logout } = useAuth();
   const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions();
-  const { state, toggleSidebar } = useSidebar();
+  const { state, toggleSidebar, isMobile, setOpenMobile } = useSidebar();
 
 
 
@@ -191,7 +191,8 @@ const AppSidebar = () => {
                   isActive={location.pathname === item.path}
                   tooltip={item.title}
                 >
-                  <Link to={item.path}>
+                  {/* On phones the menu slides over the page, so close it once a page is picked */}
+                  <Link to={item.path} onClick={() => { if (isMobile) setOpenMobile(false); }}>
                     <item.icon className={cn(
                       "transition-colors",
                       activeClinic === 'dental'

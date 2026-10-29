@@ -1,4 +1,4 @@
-import { Trash2, UserPlus } from 'lucide-react';
+import { Eye, Trash2, UserPlus } from 'lucide-react';
 import { formatDateForDisplay } from '@/utils/dateFormatter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ export interface EnquiryCardListProps {
   canDelete: boolean;
   updatingId: number | null;
   onStatusChange: (enquiry: Enquiry, next: Enquiry['status']) => void;
+  onView: (enquiry: Enquiry) => void;
   onConvert: (enquiry: Enquiry) => void;
   onDelete: (enquiry: Enquiry) => void;
 }
@@ -32,6 +33,7 @@ const EnquiryCardList = ({
   canDelete,
   updatingId,
   onStatusChange,
+  onView,
   onConvert,
   onDelete,
 }: EnquiryCardListProps) => (
@@ -84,34 +86,36 @@ const EnquiryCardList = ({
           </div>
         </div>
 
-        {(canConvert || canDelete) && (
-          <div className="mt-3 flex gap-2">
-            {canConvert && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1"
-                onClick={() => onConvert(e)}
-                title="Create a patient from this enquiry"
-              >
-                <UserPlus className="h-4 w-4 mr-1" />
-                Convert
-              </Button>
-            )}
-            {canDelete && (
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label="Delete enquiry"
-                className="w-9 px-0 text-destructive hover:text-destructive"
-                onClick={() => onDelete(e)}
-                title="Delete enquiry"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        )}
+        <div className="mt-3 flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => onView(e)} title="View enquiry details">
+            <Eye className="h-4 w-4 mr-1" />
+            View
+          </Button>
+          {canConvert && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => onConvert(e)}
+              title="Create a patient from this enquiry"
+            >
+              <UserPlus className="h-4 w-4 mr-1" />
+              Convert
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Delete enquiry"
+              className="w-9 px-0 text-destructive hover:text-destructive"
+              onClick={() => onDelete(e)}
+              title="Delete enquiry"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
     ))}
   </div>

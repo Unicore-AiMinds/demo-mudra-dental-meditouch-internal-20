@@ -19,7 +19,7 @@ const enquiry = (over: Partial<Enquiry> = {}): Enquiry => ({
 });
 
 const renderList = (props: Partial<EnquiryCardListProps> = {}) => {
-  const h = { onStatusChange: vi.fn(), onConvert: vi.fn(), onDelete: vi.fn() };
+  const h = { onStatusChange: vi.fn(), onView: vi.fn(), onConvert: vi.fn(), onDelete: vi.fn() };
   render(
     <EnquiryCardList
       enquiries={[enquiry()]}
@@ -95,8 +95,15 @@ describe("EnquiryCardList", () => {
     expect(screen.getByRole("button", { name: "Delete enquiry" })).toBeTruthy();
   });
 
-  it("shows no button row without both permissions", () => {
+  it("opens View with the enquiry", () => {
+    const h = renderList();
+    fireEvent.click(screen.getByRole("button", { name: /View/ }));
+    expect(h.onView).toHaveBeenCalledWith(expect.objectContaining({ id: 4 }));
+  });
+
+  it("still shows View without Convert and Delete permissions", () => {
     renderList({ canConvert: false, canDelete: false });
+    expect(screen.getByRole("button", { name: /View/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Convert/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete enquiry" })).toBeNull();
   });
